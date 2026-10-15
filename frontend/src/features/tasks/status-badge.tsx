@@ -1,4 +1,4 @@
-import { CircleDashed, CircleDot, type LucideIcon } from "lucide-react";
+import { Ban, CircleDashed, CircleDot, CircleSlash, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
@@ -6,7 +6,13 @@ import type { TaskStatus } from "./tasks";
 
 const STATUS: Record<TaskStatus, { label: string; icon: LucideIcon; className: string }> = {
   open: { label: "Open", icon: CircleDashed, className: "bg-surface-muted text-muted-foreground" },
+  blocked: { label: "Blocked", icon: Ban, className: "bg-warning-soft text-warning" },
   completed: { label: "Completed", icon: CircleDot, className: "bg-success-soft text-success" },
+  wont_do: {
+    label: "Won't do",
+    icon: CircleSlash,
+    className: "bg-surface-muted text-muted-foreground",
+  },
 };
 
 /** A Task's Status as a small coloured label. */

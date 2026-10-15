@@ -16,6 +16,8 @@ function task(overrides: Partial<TaskDetail>): TaskDetail {
     title: "Buy milk",
     description: "",
     status: "open",
+    priority: 0,
+    blocked_reason: "",
     completed_at: null,
     created_at: "2026-10-15T09:00:00Z",
     updated_at: "2026-10-15T09:00:00Z",

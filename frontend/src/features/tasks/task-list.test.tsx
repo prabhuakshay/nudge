@@ -13,6 +13,8 @@ function task(overrides: Partial<Task>): Task {
     project_id: INBOX.id,
     title: "Buy milk",
     status: "open",
+    priority: 0,
+    blocked_reason: "",
     completed_at: null,
     created_at: "2026-10-15T09:00:00Z",
     updated_at: "2026-10-15T09:00:00Z",

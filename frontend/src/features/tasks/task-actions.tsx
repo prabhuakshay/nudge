@@ -1,5 +1,5 @@
-import { Ban, Copy, Ellipsis, Link2, Pin, PinOff, type LucideIcon } from "lucide-react";
-import type { ReactNode } from "react";
+import { Ban, Copy, Ellipsis, Link2, Pin, PinOff, Trash2, type LucideIcon } from "lucide-react";
+import { Fragment, type ReactNode } from "react";
 import { toast } from "sonner";
 
 import {
@@ -14,8 +14,10 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useDeleteTask } from "@/features/trash/trash";
 import { cn } from "@/lib/utils";
 
 import { useTaskLink } from "./open-task";
@@ -23,7 +25,15 @@ import { isClosed } from "./task-properties";
 import { useDuplicateTask } from "./task-placement";
 import { useSetTaskStatus, useUpdateTask, type Task } from "./tasks";
 
-type TaskAction = { label: string; icon: LucideIcon; run: () => void };
+type TaskAction = {
+  label: string;
+  icon: LucideIcon;
+  run: () => void;
+  /** Destructive actions come last and show in the danger colour. */
+  danger?: boolean;
+  /** The key that does the same on a focused row, shown in the right-click menu. */
+  shortcut?: string;
+};
 
 async function copyLink(link: string) {
   try {
@@ -36,10 +46,11 @@ async function copyLink(link: string) {
 
 /**
  * The less common actions on a Task, in the order its menus list them. A read-only Task, in an
- * archived Project, only offers its link.
+ * archived Project, only offers its link. `onDeleted` runs once the Task is on its way to Trash.
  */
-function useTaskActions(task: Task, readOnly = false): TaskAction[] {
+function useTaskActions(task: Task, readOnly = false, onDeleted?: () => void): TaskAction[] {
   const { mutate: update } = useUpdateTask();
+  const { mutate: deleteTask } = useDeleteTask();
   const { mutate: setStatus } = useSetTaskStatus();
   const { mutate: duplicate } = useDuplicateTask();
   const taskLink = useTaskLink();
@@ -76,6 +87,16 @@ function useTaskActions(task: Task, readOnly = false): TaskAction[] {
       },
     },
     copy,
+    {
+      label: "Delete",
+      icon: Trash2,
+      danger: true,
+      shortcut: "⌫",
+      run: () => {
+        deleteTask(task);
+        onDeleted?.();
+      },
+    },
   ];
 }
 
@@ -83,13 +104,16 @@ function useTaskActions(task: Task, readOnly = false): TaskAction[] {
 export function TaskActionsMenu({
   task,
   readOnly,
+  onDeleted,
   className,
 }: {
   task: Task;
   readOnly?: boolean;
+  /** Runs after Delete, so the drawer can close. */
+  onDeleted?: () => void;
   className?: string;
 }) {
-  const actions = useTaskActions(task, readOnly);
+  const actions = useTaskActions(task, readOnly, onDeleted);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -109,11 +133,14 @@ export function TaskActionsMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        {actions.map(({ label, icon: Icon, run }) => (
-          <DropdownMenuItem key={label} onSelect={run}>
-            <Icon aria-hidden />
-            {label}
-          </DropdownMenuItem>
+        {actions.map(({ label, icon: Icon, run, danger }) => (
+          <Fragment key={label}>
+            {danger && <DropdownMenuSeparator />}
+            <DropdownMenuItem onSelect={run} variant={danger ? "danger" : "default"}>
+              <Icon aria-hidden />
+              {label}
+            </DropdownMenuItem>
+          </Fragment>
         ))}
       </DropdownMenuContent>
     </DropdownMenu>
@@ -153,11 +180,15 @@ export function TaskContextMenu({
           {isClosed(task.status) ? "Reopen" : "Complete"}
         </ContextMenuItem>
         <ContextMenuSeparator />
-        {actions.map(({ label, icon: Icon, run }) => (
-          <ContextMenuItem key={label} onSelect={run}>
-            <Icon aria-hidden />
-            {label}
-          </ContextMenuItem>
+        {actions.map(({ label, icon: Icon, run, danger, shortcut }) => (
+          <Fragment key={label}>
+            {danger && <ContextMenuSeparator />}
+            <ContextMenuItem onSelect={run} variant={danger ? "danger" : "default"}>
+              <Icon aria-hidden />
+              {label}
+              {shortcut && <ContextMenuShortcut>{shortcut}</ContextMenuShortcut>}
+            </ContextMenuItem>
+          </Fragment>
         ))}
       </ContextMenuContent>
     </ContextMenu>

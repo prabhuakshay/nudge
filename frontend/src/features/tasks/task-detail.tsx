@@ -10,6 +10,7 @@ import { ProjectIcon } from "@/features/projects/project-icon";
 import { findProject } from "@/features/projects/projects";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { plainMentions } from "@/features/people/mentions";
+import { useDeleteTask } from "@/features/trash/trash";
 
 import { ActivityFeed } from "./activity-feed";
 import { Attachments } from "./attachments";
@@ -132,6 +133,7 @@ function isEditing(target: EventTarget | null) {
 
 function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps & { task: Task }) {
   const { mutate: setStatus } = useSetTaskStatus();
+  const { mutate: deleteTask } = useDeleteTask();
   const { data: sidebar } = useQuery(sidebarQuery);
   const taskProject = (sidebar && findProject(sidebar, task.project_id)) ?? project;
   const readOnly = taskProject.is_archived;
@@ -143,6 +145,12 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.metaKey || event.ctrlKey || event.altKey || isEditing(event.target)) return;
+      if (!readOnly && (event.key === "Delete" || event.key === "Backspace")) {
+        event.preventDefault();
+        deleteTask(task);
+        onClose();
+        return;
+      }
       const step = { j: next, ArrowDown: next, k: previous, ArrowUp: previous }[event.key];
       if (step === undefined) return;
       event.preventDefault();
@@ -152,7 +160,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [next, previous, onOpen]);
+  }, [next, previous, onOpen, readOnly, deleteTask, task, onClose]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -178,7 +186,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
         >
           <ChevronDown className="size-4" aria-hidden />
         </HeaderButton>
-        <TaskActionsMenu task={task} readOnly={readOnly} />
+        <TaskActionsMenu task={task} readOnly={readOnly} onDeleted={onClose} />
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
         <HeaderButton label="Close" shortcut="Esc" onClick={onClose}>
           <X className="size-4" aria-hidden />

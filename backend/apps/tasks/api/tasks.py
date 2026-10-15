@@ -10,6 +10,7 @@ from apps.accounts.schemas import ErrorOut
 from apps.tasks import services, tree
 from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
+from apps.tasks.dates import TaskDates
 from apps.tasks.pagination import InvalidCursorError
 from apps.tasks.schemas import (
     AffectedTaskOut,
@@ -190,14 +191,14 @@ def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Stat
     return Status(_HTTP_CREATED, TaskOut.from_orm(copy))
 
 
-def _dates(patch: TaskPatchIn) -> services.TaskDates | None:
+def _dates(patch: TaskPatchIn) -> TaskDates | None:
     """Return the dates the patch sets, an empty set when it clears them, or None if neither."""
     if "dates" not in patch.model_fields_set:
         return None
     if patch.dates is None:
-        return services.TaskDates()
+        return TaskDates()
     dates = patch.dates
-    return services.TaskDates(dates.due_date, dates.due_time, dates.start_date, dates.start_time)
+    return TaskDates(dates.due_date, dates.due_time, dates.start_date, dates.start_time)
 
 
 @router.get(

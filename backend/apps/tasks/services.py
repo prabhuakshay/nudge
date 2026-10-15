@@ -18,6 +18,7 @@ from fractional_indexing import generate_key_between
 
 from apps.core.palette import PaletteColor
 from apps.tasks.archive import ensure_writable
+from apps.tasks.dates import TaskDates
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
@@ -39,8 +40,6 @@ from apps.tasks.tree import (
 )
 
 if TYPE_CHECKING:
-    from datetime import date, time
-
     from django.db.models import QuerySet
 
     from apps.accounts.models import User
@@ -48,32 +47,6 @@ if TYPE_CHECKING:
 
 class TaskRuleError(Exception):
     """A change that would break a Task rule. The message says which, in the user's words."""
-
-
-@dataclass(frozen=True)
-class TaskDates:
-    """A Task's due date, time and range, as clock times in the owner's zone; all None = undated."""
-
-    due_date: date | None = None
-    due_time: time | None = None
-    start_date: date | None = None
-    start_time: time | None = None
-
-    @classmethod
-    def of(cls, task: Task) -> TaskDates:
-        """Return the Task's current dates."""
-        return cls(task.due_date, task.due_time, task.start_date, task.start_time)
-
-    def as_activity(self) -> dict[str, str | None] | None:
-        """Return the dates as Activity stores them: ISO strings, or None when undated."""
-        if self.due_date is None:
-            return None
-        return {
-            "due_date": self.due_date.isoformat(),
-            "due_time": None if self.due_time is None else self.due_time.isoformat("minutes"),
-            "start_date": None if self.start_date is None else self.start_date.isoformat(),
-            "start_time": None if self.start_time is None else self.start_time.isoformat("minutes"),
-        }
 
 
 @dataclass(frozen=True)

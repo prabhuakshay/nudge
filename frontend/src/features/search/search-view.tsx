@@ -33,18 +33,26 @@ const MATCH_LABEL: Record<Exclude<SearchResult["match_in"], "title">, [string, L
 /**
  * The Search view: a search box and the Tasks whose title, Description or a Comment hold every
  * word, Open before Closed. Results follow typing once it pauses, and the URL's `?q=` follows the
- * search so it can be shared or reloaded. Results open in the drawer like any list's rows.
+ * search so it can be shared or reloaded. A new `?q=` from elsewhere, such as the command bar,
+ * replaces what was typed. Results open in the drawer like any list's rows.
  */
 export function SearchView({
-  initialQuery,
+  addressQuery,
   inbox,
 }: {
-  initialQuery: string;
+  /** The URL's `?q=`. */
+  addressQuery: string;
   /** The drawer's fallback Project. */
   inbox: SidebarProject;
 }) {
-  const [text, setText] = useState(initialQuery);
+  const [text, setText] = useState(addressQuery);
   const query = useDebouncedValue(text.trim(), DEBOUNCE_MS);
+  const [seenAddress, setSeenAddress] = useState(addressQuery);
+  if (addressQuery !== seenAddress) {
+    setSeenAddress(addressQuery);
+    // The URL only echoing what was typed leaves the search box alone.
+    if (addressQuery !== query) setText(addressQuery);
+  }
   const { data: results, isFetching } = useQuery(searchQuery(query));
   const { openTaskId, setOpenTask } = useOpenTask();
   const navigate = useNavigate();

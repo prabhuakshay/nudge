@@ -22,8 +22,7 @@ export const Route = createFileRoute("/_app/search")({
 });
 
 function SearchPage() {
-  // Read once: from here on the search box leads and the URL follows it.
   const { q } = Route.useSearch();
   const { data: sidebar } = useSuspenseQuery(sidebarQuery);
-  return <SearchView initialQuery={q ?? ""} inbox={sidebar.inbox} />;
+  return <SearchView addressQuery={q ?? ""} inbox={sidebar.inbox} />;
 }

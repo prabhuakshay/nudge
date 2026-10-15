@@ -1,4 +1,5 @@
 import { screen, waitFor, within } from "@testing-library/react";
+import { useState } from "react";
 
 import { GARDEN, INBOX, json, renderListRoute, WORK } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
@@ -35,14 +36,18 @@ function searches(fetchSpy: ReturnType<typeof mockApi>) {
     .map((url) => url.searchParams.get("q"));
 }
 
-function renderView(initialQuery = "") {
+function stubWideScreen() {
   vi.stubGlobal("matchMedia", (query: string) => ({
     media: query,
     matches: true,
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  return renderListRoute(<SearchView initialQuery={initialQuery} inbox={INBOX} />);
+}
+
+function renderView(addressQuery = "") {
+  stubWideScreen();
+  return renderListRoute(<SearchView addressQuery={addressQuery} inbox={INBOX} />);
 }
 
 afterEach(() => {
@@ -73,6 +78,36 @@ describe("SearchView", () => {
     expect(await screen.findByRole("searchbox", { name: "Search tasks" })).toHaveValue("flights");
     expect(await screen.findByText("flights", { selector: "mark" })).toBeInTheDocument();
     expect(searches(fetchSpy)).toEqual(["flights"]);
+  });
+
+  it("follows a new query in the address, as the command bar's See all results sends", async () => {
+    const fetchSpy = mockApi([result({ title: "Book flights" })]);
+    function Page() {
+      const [address, setAddress] = useState("flights");
+      return (
+        <>
+          <button
+            type="button"
+            onClick={() => {
+              setAddress("rent");
+            }}
+          >
+            Search for rent
+          </button>
+          <SearchView addressQuery={address} inbox={INBOX} />
+        </>
+      );
+    }
+    stubWideScreen();
+    const { user } = renderListRoute(<Page />);
+    const box = await screen.findByRole("searchbox", { name: "Search tasks" });
+
+    await user.click(screen.getByRole("button", { name: "Search for rent" }));
+
+    expect(box).toHaveValue("rent");
+    await waitFor(() => {
+      expect(searches(fetchSpy)).toEqual(["flights", "rent"]);
+    });
   });
 
   it("shows where a result matched, with the words highlighted in the snippet", async () => {

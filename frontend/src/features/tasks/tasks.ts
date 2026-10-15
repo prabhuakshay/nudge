@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
+import { plainMentions } from "@/features/people/mentions";
 
 import { isClosed, STATUS_VERB } from "./task-properties";
 
@@ -35,9 +36,9 @@ export const sidebarQuery = queryOptions({
 });
 
 /** The key prefix of every Task list, so one invalidation refreshes them all. */
-const TASKS_KEY = ["tasks"] as const;
+export const TASKS_KEY = ["tasks"] as const;
 /** The key prefix of every open-Task list, so a change can show in all of them at once. */
-const OPEN_KEY = [...TASKS_KEY, "open"] as const;
+export const OPEN_KEY = [...TASKS_KEY, "open"] as const;
 
 /** A Project's open Tasks, in the user's manual order. */
 export function openTasksQuery(projectId: number) {
@@ -260,7 +261,7 @@ export function useSetTaskStatus() {
       patchTask({ id: task.id, status }),
     onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
     onSuccess: ({ affected }, { task, status }) => {
-      toast(`${STATUS_VERB[status]} “${task.title}”`, {
+      toast(`${STATUS_VERB[status]} “${plainMentions(task.title)}”`, {
         action: {
           label: "Undo",
           onClick: () => {

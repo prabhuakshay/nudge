@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TaskList } from "@/features/tasks/task-list";
+import type { Person } from "@/features/people/people";
 import type { SidebarProject, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
 import { makeTask } from "@/test/tasks";
 
@@ -30,6 +31,8 @@ export const WORK: SidebarProject = {
 };
 
 export const task = makeTask;
+
+export const PRIYA: Person = { id: 1, name: "Priya", color: "violet" };
 
 function json(body: unknown, status = 200) {
   return Promise.resolve(
@@ -60,6 +63,7 @@ export function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
       return json({ items: activity, next_cursor: null, count: activity.length });
     }
     if (url.pathname.endsWith("/attachments")) return json([]);
+    if (url.pathname.endsWith("/people")) return json([PRIYA]);
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);
     if (request.method === "PATCH" && found) {

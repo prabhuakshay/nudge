@@ -34,7 +34,8 @@ import {
 } from "./projects";
 import type { Placement } from "./sidebar-order";
 
-const ROW =
+/** A sidebar row: the classes every Project, Folder and Person row shares. */
+export const ROW =
   "group flex h-10 items-center gap-2.5 rounded-md pr-1 pl-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground lg:h-9";
 
 /** Keeps a press on a row's own controls from starting a drag of the row. */
@@ -48,7 +49,8 @@ const DRAG_GUARD = {
   onKeyDown: keepFromDragging,
 };
 
-function RowMenu({ label, children }: { label: string; children: ReactNode }) {
+/** A row's ⋯ menu, shown on hover or focus where there is a pointer, always on touch. */
+export function RowMenu({ label, children }: { label: string; children: ReactNode }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger

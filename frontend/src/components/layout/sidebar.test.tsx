@@ -13,6 +13,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/features/settings/settings-dialog", () => ({ SettingsDialog: () => null }));
 vi.mock("@/features/projects/sidebar-projects", () => ({ SidebarProjects: () => null }));
+vi.mock("@/features/people/sidebar-people", () => ({ SidebarPeople: () => null }));
 
 const ada = {
   id: 1,

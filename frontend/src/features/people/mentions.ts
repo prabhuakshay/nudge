@@ -8,13 +8,16 @@ const MENTION = /\[@([^\]]*)\]\(person:(\d+)\)/g;
 /** A Mention as it sits in a text: the Person's id and the name it was written with. */
 export type Mention = { id: number; name: string };
 
+/** A Mention found in a text, with where its token starts. */
+export type MentionPart = Mention & { start: number };
+
 /** Split a text into its plain parts and its Mentions, in order. Empty parts are left out. */
-export function splitMentions(text: string): (string | Mention)[] {
-  const parts: (string | Mention)[] = [];
+export function splitMentions(text: string): (string | MentionPart)[] {
+  const parts: (string | MentionPart)[] = [];
   let last = 0;
   for (const match of text.matchAll(MENTION)) {
     if (match.index > last) parts.push(text.slice(last, match.index));
-    parts.push({ id: Number(match[2]), name: match[1] ?? "" });
+    parts.push({ id: Number(match[2]), name: match[1] ?? "", start: match.index });
     last = match.index + match[0].length;
   }
   if (last < text.length) parts.push(text.slice(last));

@@ -1,6 +1,7 @@
 import { Paperclip } from "lucide-react";
 import { memo } from "react";
 
+import { MentionText } from "@/features/people/mention-text";
 import { cn } from "@/lib/utils";
 
 import { CountIcon } from "./count-icon";
@@ -79,7 +80,7 @@ export const TaskRow = memo(function TaskRow({
               closed ? "text-muted-foreground line-through" : "font-semibold",
             )}
           >
-            {task.title}
+            <MentionText text={task.title} />
           </span>
           {blocked && <BlockedNote task={task} className="hidden lg:flex" />}
         </div>

@@ -8,9 +8,9 @@ describe("splitMentions", () => {
   it("splits text into plain parts and Mentions", () => {
     expect(splitMentions("Ask [@Priya](person:1) and [@Sam](person:22)!")).toEqual([
       "Ask ",
-      { id: 1, name: "Priya" },
+      { id: 1, name: "Priya", start: 4 },
       " and ",
-      { id: 22, name: "Sam" },
+      { id: 22, name: "Sam", start: 27 },
       "!",
     ]);
   });

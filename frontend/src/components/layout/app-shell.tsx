@@ -7,6 +7,7 @@ import { SettingsDialog } from "@/features/settings/settings-dialog";
 import { ThemeToggle } from "@/features/theme/theme-toggle";
 
 import { BottomNav } from "./bottom-nav";
+import { Clock } from "./clock";
 import { Sidebar } from "./sidebar";
 import { UserAvatar } from "./user-avatar";
 
@@ -39,6 +40,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
       </div>
 
       <BottomNav />
+      <Clock />
     </div>
   );
 }

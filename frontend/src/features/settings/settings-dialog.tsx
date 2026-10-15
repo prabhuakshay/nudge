@@ -3,6 +3,7 @@ import {
   Bell,
   ChevronLeft,
   ChevronRight,
+  Globe,
   KeyRound,
   LogOut,
   type LucideIcon,
@@ -27,15 +28,17 @@ import { NotificationSettings } from "@/features/notifications/notification-sett
 import { PUSH_STATUS_LABELS, pushStatusQuery } from "@/features/notifications/push";
 import { THEME_LABELS, useTheme } from "@/features/theme/theme";
 import { ThemePicker } from "@/features/theme/theme-picker";
+import { TimeZoneSettings } from "@/features/time-zone/time-zone-settings";
 import { cn } from "@/lib/utils";
 
 import { PasswordPage, ProfilePage } from "./account-pages";
 
-type Page = "profile" | "password" | "notifications" | "appearance";
+type Page = "profile" | "password" | "time-zone" | "notifications" | "appearance";
 
 const PAGES: { page: Page; label: string; icon: LucideIcon }[] = [
   { page: "profile", label: "Profile", icon: UserRound },
   { page: "password", label: "Password", icon: KeyRound },
+  { page: "time-zone", label: "Time zone", icon: Globe },
   { page: "notifications", label: "Notifications", icon: Bell },
   { page: "appearance", label: "Appearance", icon: Palette },
 ];
@@ -133,6 +136,8 @@ function PageContent({ page, user }: { page: Page; user: User }) {
       return <ProfilePage user={user} />;
     case "password":
       return <PasswordPage />;
+    case "time-zone":
+      return <TimeZoneSettings timeZone={user.time_zone} />;
     case "notifications":
       return <NotificationSettings />;
     case "appearance":
@@ -152,6 +157,7 @@ function SettingsNav({ user, current, onSelect, className }: SettingsNavProps) {
   const { data: pushStatus } = useQuery(pushStatusQuery);
   const theme = useTheme();
   const hints: Partial<Record<Page, string>> = {
+    "time-zone": user.time_zone,
     notifications: pushStatus && PUSH_STATUS_LABELS[pushStatus],
     appearance: THEME_LABELS[theme],
   };

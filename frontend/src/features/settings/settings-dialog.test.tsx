@@ -92,6 +92,17 @@ describe("SettingsDialog", () => {
     expect(appearance).toHaveTextContent("Dark");
   });
 
+  it("shows the time zone beside Time zone and opens its page", async () => {
+    const user = await openDialog();
+    const timeZone = screen.getByRole("button", { name: /Time zone/ });
+    expect(timeZone).toHaveTextContent("Europe/London");
+
+    await user.click(timeZone);
+
+    expect(screen.getByRole("region", { name: "Time zone" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
+  });
+
   it("closes with Escape", async () => {
     const user = await openDialog();
 

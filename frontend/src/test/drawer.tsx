@@ -4,10 +4,9 @@ import userEvent from "@testing-library/user-event";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { TaskList } from "@/features/tasks/task-list";
+import type { SidebarProject, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
 import { makeTask } from "@/test/tasks";
-
-import { TaskList } from "./task-list";
-import type { SidebarProject, TaskActivity, TaskDetail } from "./tasks";
 
 /* A stand-in server and a rendered list for the drawer's tests, shared by their test files. */
 

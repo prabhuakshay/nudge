@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 
-import { mockApi, openTask, patches, renderList, task } from "./drawer-test-utils";
+import { mockApi, openTask, patches, renderList, task } from "@/test/drawer";
 
 afterEach(() => {
   vi.unstubAllGlobals();

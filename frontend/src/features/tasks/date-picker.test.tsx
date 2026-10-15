@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { makeTask } from "@/test/tasks";
 
-import { INBOX as DRAWER_INBOX } from "./drawer-test-utils";
+import { INBOX as DRAWER_INBOX } from "@/test/drawer";
 import { TaskList } from "./task-list";
 import type { TaskDetail } from "./tasks";
 

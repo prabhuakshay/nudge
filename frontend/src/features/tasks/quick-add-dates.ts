@@ -129,12 +129,23 @@ function firstRepeat(phrases: readonly FoundRepeat[], isKept: ScheduleContext["i
     .find((match) => !isKept(match));
 }
 
+/** A Repeat's first day, at its own time as in "every morning"; tomorrow once that has passed. */
+function repeatDates({ rule, time }: RepeatMatch, now: Date): QuickAddDates {
+  const today = startOfDay(now);
+  const from = time !== undefined && time <= clock(now) ? addDays(today, 1) : today;
+  return {
+    due_date: iso(firstDay(rule, from)),
+    due_time: time ?? null,
+    start_date: null,
+    start_time: null,
+  };
+}
+
 /** The new Task's dates: those typed, or else the Repeat's first day, at any time typed. */
-function scheduleDates(found: FoundDate | undefined, repeat: RepeatMatch | undefined, today: Date) {
+function scheduleDates(found: FoundDate | undefined, repeat: RepeatMatch | undefined, now: Date) {
   if (!repeat || found?.dayGiven) return found?.dates ?? null;
-  const dates = found?.dates ?? { due_time: null, start_date: null, start_time: null };
-  const from = found ? parseISO(found.dates.due_date) : today;
-  return { ...dates, due_date: iso(firstDay(repeat.rule, from)) };
+  if (!found) return repeatDates(repeat, now);
+  return { ...found.dates, due_date: iso(firstDay(repeat.rule, parseISO(found.dates.due_date))) };
 }
 
 /**
@@ -150,7 +161,7 @@ export function readSchedule(text: string, taken: readonly Span[], context: Sche
   const found = [...findDates(mask(free, phrases), now, dayFirst)].find(
     (date) => !isKept({ ...date, kind: "date", label: "" }),
   );
-  const dates = scheduleDates(found, repeat, today);
+  const dates = scheduleDates(found, repeat, now);
   const date: DateMatch | undefined =
     found && dates ? { ...found, kind: "date", label: dueLabel(dates, now), dates } : undefined;
   return {

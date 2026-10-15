@@ -1960,6 +1960,122 @@
           }
         ]
       }
+    },
+    "/api/v1/calendar/feed": {
+      "get": {
+        "operationId": "apps_tasks_api_calendar_get_feed",
+        "summary": "Get the Calendar feed address",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeedOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the signed-in user's feed address, or null while the feed is off.",
+        "tags": [
+          "calendar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_tasks_api_calendar_turn_on_feed",
+        "summary": "Turn on or reset the Calendar feed",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeedOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Give the user a new feed address; any old address stops working.",
+        "tags": [
+          "calendar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_calendar_turn_off_feed",
+        "summary": "Turn off the Calendar feed",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Clear the user's feed address so it stops working.",
+        "tags": [
+          "calendar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/calendar/{token}.ics": {
+      "get": {
+        "operationId": "apps_tasks_api_calendar_feed",
+        "summary": "Fetch a Calendar feed",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The feed as an iCalendar file.",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the feed's owner's open dated Tasks as an iCalendar file.",
+        "tags": [
+          "calendar"
+        ]
+      }
     }
   },
   "components": {
@@ -4336,6 +4452,28 @@
           "created_at"
         ],
         "title": "AttachmentOut",
+        "type": "object"
+      },
+      "CalendarFeedOut": {
+        "description": "The user's Calendar feed address.",
+        "properties": {
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The private `.ics` address, or null while it's off.",
+            "title": "Url"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "CalendarFeedOut",
         "type": "object"
       }
     },

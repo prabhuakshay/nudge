@@ -10,7 +10,7 @@ from apps.core.palette import PaletteColor
 from apps.tasks import projects
 from apps.tasks.api import signed_in_user
 from apps.tasks.models import Folder, Project
-from apps.tasks.schemas import SidebarFolderOut, SidebarOut, SidebarProjectOut
+from apps.tasks.schemas.projects import SidebarFolderOut, SidebarOut, SidebarProjectOut
 
 if TYPE_CHECKING:
     from django.http import HttpRequest

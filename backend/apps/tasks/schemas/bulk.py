@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Literal
 
 from ninja import Field, Schema
+from pydantic import model_validator
 
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.tasks.schemas.tasks import (  # noqa: TC001 - Pydantic needs the types at runtime
@@ -27,6 +28,21 @@ class BulkStatusIn(Schema):
 
     kind: Literal["status"]
     status: Task.Status
+
+
+class TaskStatusIn(Schema):
+    """The Status, and Blocked reason, to give one Task."""
+
+    id: int
+    status: Task.Status
+    blocked_reason: str = ""
+
+
+class BulkStatusesIn(Schema):
+    """Give each Task its own Status, in the order listed, as Undo of a cascade does."""
+
+    kind: Literal["statuses"]
+    statuses: list[TaskStatusIn]
 
 
 class BulkPriorityIn(Schema):
@@ -57,7 +73,13 @@ class BulkDeleteIn(Schema):
 
 
 BulkAction = Annotated[
-    BulkMoveIn | BulkStatusIn | BulkPriorityIn | BulkDatesIn | BulkTagIn | BulkDeleteIn,
+    BulkMoveIn
+    | BulkStatusIn
+    | BulkStatusesIn
+    | BulkPriorityIn
+    | BulkDatesIn
+    | BulkTagIn
+    | BulkDeleteIn,
     Field(discriminator="kind"),
 ]
 
@@ -67,6 +89,16 @@ class TaskBulkIn(Schema):
 
     ids: list[int] = Field(min_length=1, max_length=MAX_BULK)
     action: BulkAction
+
+    @model_validator(mode="after")
+    def _statuses_name_the_tasks(self) -> TaskBulkIn:
+        """Refuse per-Task Statuses that aren't for exactly the Tasks given, in their order."""
+        if isinstance(self.action, BulkStatusesIn) and self.ids != [
+            entry.id for entry in self.action.statuses
+        ]:
+            message = "The statuses must be for the tasks given, in the same order."
+            raise ValueError(message)
+        return self
 
 
 class TaskBulkOut(Schema):

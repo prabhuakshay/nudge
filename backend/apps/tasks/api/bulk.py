@@ -19,7 +19,9 @@ from apps.tasks.schemas.bulk import (
     BulkDeleteIn,
     BulkMoveIn,
     BulkPriorityIn,
+    BulkStatusesIn,
     BulkStatusIn,
+    BulkTagIn,
     TaskBulkIn,
     TaskBulkOut,
 )
@@ -74,13 +76,24 @@ def _run(user: User, ids: list[int], action: BulkAction) -> list[AffectedTask] |
     """Do the action; return the Tasks whose Status changed, or None if something wasn't found."""
     if isinstance(action, BulkDeleteIn):
         return [] if bulk.trash_tasks(user, ids) else None
-    if isinstance(action, BulkMoveIn | BulkStatusIn | BulkPriorityIn | BulkDatesIn):
-        edit = _edit(user, action)
-        return None if edit is None else bulk.update_tasks(user, ids, edit)
+    if isinstance(action, BulkStatusesIn):
+        statuses = [
+            bulk.TaskStatus(entry.id, entry.status, entry.blocked_reason)
+            for entry in action.statuses
+        ]
+        return bulk.set_statuses(user, statuses)
+    if isinstance(action, BulkTagIn):
+        return _tag(user, ids, action)
+    edit = _edit(user, action)
+    return None if edit is None else bulk.update_tasks(user, ids, edit)
+
+
+def _tag(user: User, ids: list[int], action: BulkTagIn) -> list[AffectedTask] | None:
+    """Put the Tag on the Tasks or take it off; None if the Tag or a Task isn't the user's."""
     tag = tags.tag(user, action.tag_id)
-    if tag is None:
+    if tag is None or not bulk.tag_tasks(user, ids, tag, add=action.kind == "add_tag"):
         return None
-    return [] if bulk.tag_tasks(user, ids, tag, add=action.kind == "add_tag") else None
+    return []
 
 
 def _edit(

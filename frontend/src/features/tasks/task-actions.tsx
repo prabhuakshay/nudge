@@ -25,7 +25,8 @@ import { cn } from "@/lib/utils";
 import { useTaskLink } from "./open-task";
 import { isClosed } from "./task-properties";
 import { useDuplicateTask } from "./task-placement";
-import { useSetTaskStatus, useUpdateTask, type Task } from "./tasks";
+import { useSetTaskStatus } from "./set-status";
+import { useUpdateTask, type Task } from "./tasks";
 
 type TaskAction = {
   label: string;

@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 
-import { json, mockApi, patches, renderList, task } from "@/test/drawer";
+import { bulkRequests, json, mockApi, patches, renderList, task } from "@/test/drawer";
 
 function row(title: string) {
   const found = screen
@@ -31,13 +31,6 @@ function mockBulk(affected: Affected = []) {
     return tasksApi(input, init);
   });
   return fetchSpy;
-}
-
-async function bulkRequests(fetchSpy: ReturnType<typeof mockApi>) {
-  const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
-    .filter((request) => new URL(request.url).pathname.endsWith("/tasks/bulk"));
-  return Promise.all(requests.map(async (request) => (await request.json()) as unknown));
 }
 
 /** Mod-click "Buy milk", then Shift-click "Return books": all three rows. */
@@ -129,7 +122,7 @@ describe("the N selected bar", () => {
     expect(screen.getByText("Changed the priority of 3 tasks")).toBeInTheDocument();
   });
 
-  it("completes every Task, and Undo reopens each Task the server says it closed", async () => {
+  it("completes every Task, and Undo reopens in one request each Task the server says it closed", async () => {
     const fetchSpy = mockBulk([
       { id: 1, prior_status: "open", prior_blocked_reason: "" },
       { id: 2, prior_status: "blocked", prior_blocked_reason: "Waiting on the bank" },
@@ -142,14 +135,20 @@ describe("the N selected bar", () => {
     await user.click(await screen.findByRole("button", { name: "Undo" }));
 
     await vi.waitFor(async () => {
-      expect(await patches(fetchSpy)).toEqual([
-        ["/api/v1/tasks/1", { status: "open" }],
-        ["/api/v1/tasks/2", { status: "blocked", blocked_reason: "Waiting on the bank" }],
+      expect(await bulkRequests(fetchSpy)).toEqual([
+        { ids: [1, 2, 3], action: { kind: "status", status: "completed" } },
+        {
+          ids: [1, 2],
+          action: {
+            kind: "statuses",
+            statuses: [
+              { id: 1, status: "open", blocked_reason: "" },
+              { id: 2, status: "blocked", blocked_reason: "Waiting on the bank" },
+            ],
+          },
+        },
       ]);
     });
-    expect(await bulkRequests(fetchSpy)).toEqual([
-      { ids: [1, 2, 3], action: { kind: "status", status: "completed" } },
-    ]);
   });
 
   it("moves every Task to Trash, and Undo restores each one", async () => {

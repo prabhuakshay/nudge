@@ -3,8 +3,8 @@ import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
-import { offerStatusUndo } from "@/features/tasks/status-undo";
-import { refreshTasks, useUpdateTask } from "@/features/tasks/tasks";
+import { offerStatusUndo, useRestoreStatuses } from "@/features/tasks/set-status";
+import { refreshTasks } from "@/features/tasks/tasks";
 
 export type Notification = components["schemas"]["NotificationOut"];
 export type NotificationList = components["schemas"]["NotificationListOut"];
@@ -83,7 +83,7 @@ export function useSendTestNotification() {
 /** Complete the Task a Reminder notification is about, then offer Undo in a toast. */
 export function useCompleteFromReminder() {
   const queryClient = useQueryClient();
-  const { mutate: update } = useUpdateTask();
+  const { mutate: restore } = useRestoreStatuses();
   return useMutation({
     mutationFn: async (id: number) => {
       const { data, error } = await api.POST("/api/v1/notifications/{notification_id}/complete", {
@@ -95,7 +95,7 @@ export function useCompleteFromReminder() {
       return data;
     },
     onSuccess: ({ task, affected }) => {
-      offerStatusUndo(update, task, "completed", affected);
+      offerStatusUndo(restore, task, "completed", affected);
     },
     onError: (error) => toast.error(error.message),
     onSettled: () =>

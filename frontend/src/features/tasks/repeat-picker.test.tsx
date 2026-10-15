@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 
-import { INBOX, json, renderTaskList } from "@/test/drawer";
+import { INBOX, bulkRequests, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
 
 import type { TaskDetail } from "./tasks";
@@ -19,6 +19,7 @@ function mockApi(saved: TaskDetail) {
       save(saved, (await request.clone().json()) as Partial<TaskDetail>);
       return json({ task: saved, affected: [{ id: saved.id, prior_status: "open" }] });
     }
+    if (url.pathname.endsWith("/tasks/bulk")) return json({ affected: [] });
     if (url.pathname.endsWith("/sidebar")) return json({ inbox: INBOX, items: [], archived: [] });
     if (url.pathname.endsWith("/activity")) {
       return json({ items: [], next_cursor: null, count: 0 });
@@ -129,14 +130,18 @@ describe("Repeat", () => {
   });
 
   it("moves a completed repeating Task on and offers Undo", async () => {
-    const fetchSpy = mockApi(task({ due_date: "2026-10-15", repeat_rule: "FREQ=DAILY" }));
+    const milk = task({ due_date: "2026-10-15", repeat_rule: "FREQ=DAILY" });
+    const fetchSpy = mockApi(milk);
     const user = renderList();
 
     await user.click(await screen.findByRole("checkbox", { name: "Complete “Buy milk”" }));
     expect(await screen.findByText("Completed “Buy milk”; next due Tomorrow")).toBeVisible();
     await user.click(screen.getByRole("button", { name: "Undo" }));
 
-    expect(await patches(fetchSpy)).toEqual([{ status: "completed" }, { status: "open" }]);
+    expect(await patches(fetchSpy)).toEqual([{ status: "completed" }]);
+    expect(await bulkRequests(fetchSpy)).toMatchObject([
+      { ids: [milk.id], action: { kind: "statuses", statuses: [{ status: "open" }] } },
+    ]);
     expect(screen.getByRole("checkbox", { name: "Complete “Buy milk”" })).toBeVisible();
   });
 

@@ -1,6 +1,6 @@
 import { screen, waitFor, within } from "@testing-library/react";
 
-import { mockApi, openTask, patches, renderList, task } from "@/test/drawer";
+import { bulkRequests, mockApi, openTask, patches, renderList, task } from "@/test/drawer";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -20,9 +20,12 @@ describe("PropertyChips", () => {
     await user.click(screen.getByRole("button", { name: "Undo" }));
 
     expect(await within(drawer).findByRole("button", { name: "Status: Open" })).toBeVisible();
-    expect(await patches(fetchSpy)).toEqual([
-      ["/api/v1/tasks/1", { status: "wont_do" }],
-      ["/api/v1/tasks/1", { status: "open" }],
+    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { status: "wont_do" }]]);
+    expect(await bulkRequests(fetchSpy)).toEqual([
+      {
+        ids: [1],
+        action: { kind: "statuses", statuses: [{ id: 1, status: "open", blocked_reason: "" }] },
+      },
     ]);
   });
 
@@ -48,7 +51,15 @@ describe("PropertyChips", () => {
       ["/api/v1/tasks/1", { status: "blocked" }],
       ["/api/v1/tasks/1", { blocked_reason: "Waiting on Ada" }],
       ["/api/v1/tasks/1", { status: "completed" }],
-      ["/api/v1/tasks/1", { status: "blocked", blocked_reason: "Waiting on Ada" }],
+    ]);
+    expect(await bulkRequests(fetchSpy)).toEqual([
+      {
+        ids: [1],
+        action: {
+          kind: "statuses",
+          statuses: [{ id: 1, status: "blocked", blocked_reason: "Waiting on Ada" }],
+        },
+      },
     ]);
   });
 

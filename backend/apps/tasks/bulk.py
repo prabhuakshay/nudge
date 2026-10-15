@@ -8,6 +8,7 @@ ancestor when it moves or goes to Trash, rather than leaving its tree.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from django.db import transaction
@@ -21,6 +22,15 @@ if TYPE_CHECKING:
     from apps.accounts.models import User
     from apps.tasks.models import Tag, Task
     from apps.tasks.tree import AffectedTask
+
+
+@dataclass(frozen=True)
+class TaskStatus:
+    """The Status, and Blocked reason, to give one Task."""
+
+    id: int
+    status: Task.Status
+    blocked_reason: str = ""
 
 
 def _owned(user: User, ids: Iterable[int]) -> list[Task] | None:
@@ -58,6 +68,29 @@ def update_tasks(
         affected: list[AffectedTask] = []
         for task in tasks:
             change = services.update_task(user, task.pk, edit)
+            affected.extend(change.affected if change else [])
+    return affected
+
+
+def set_statuses(user: User, statuses: list[TaskStatus]) -> list[AffectedTask] | None:
+    """Give each of the user's Tasks its own Status, in order; None, changing nothing, if any isn't.
+
+    Undo of a cascade uses this to put every Task it touched back at once.
+
+    Returns:
+        Every Task whose Status changed, with its Status from before.
+
+    Raises:
+        TaskRuleError, RepeatRuleError, ArchivedProjectError: as `services.update_task` does for
+            any one of the Tasks.
+    """
+    with transaction.atomic():
+        if _owned(user, (entry.id for entry in statuses)) is None:
+            return None
+        affected: list[AffectedTask] = []
+        for entry in statuses:
+            edit = services.TaskEdit(status=entry.status, blocked_reason=entry.blocked_reason)
+            change = services.update_task(user, entry.id, edit)
             affected.extend(change.affected if change else [])
     return affected
 

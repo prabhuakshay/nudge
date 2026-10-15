@@ -7,6 +7,7 @@ import { trashQuery } from "@/features/trash/trash";
 import type { SidebarTag } from "@/features/tags/tags";
 import { toastWithUndo } from "@/lib/undo-toast";
 
+import { useRestoreStatuses } from "./set-status";
 import { STATUS_VERB } from "./task-properties";
 import {
   refreshTasks,
@@ -100,6 +101,7 @@ export function useBulkActions(chosen: Task[], tasks: Task[]) {
   const { mutate: change } = useBulkChange();
   const { mutate: update } = useUpdateTask();
   const { mutate: restore } = useRestoreTasks();
+  const { mutate: restoreStatuses } = useRestoreStatuses();
   const ids = chosen.map((task) => task.id);
   const count = tasksCount(chosen.length);
 
@@ -137,15 +139,7 @@ export function useBulkActions(chosen: Task[], tasks: Task[]) {
         {
           onSuccess: ({ affected }) => {
             toastWithUndo(`${STATUS_VERB[status]} ${count}`, () => {
-              for (const prior of affected) {
-                update({
-                  id: prior.id,
-                  status: prior.prior_status,
-                  ...(prior.prior_status === "blocked" && {
-                    blocked_reason: prior.prior_blocked_reason,
-                  }),
-                });
-              }
+              restoreStatuses(affected);
             });
           },
         },

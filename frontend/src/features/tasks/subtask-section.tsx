@@ -14,7 +14,8 @@ import type { Placement } from "./task-drag";
 import { isClosed } from "./task-properties";
 import { MAX_DEPTH, treeRows, type SubtaskProgress } from "./task-tree";
 import { useMoveTask } from "./task-placement";
-import { useSetTaskStatus, type Task, type TaskDetail } from "./tasks";
+import { useSetTaskStatus } from "./set-status";
+import type { Task, TaskDetail } from "./tasks";
 
 /** How far each level of Subtasks steps in inside the drawer, in pixels. */
 const INDENT = 22;

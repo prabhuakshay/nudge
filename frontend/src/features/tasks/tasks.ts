@@ -11,9 +11,7 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 
 import { remindersAfter } from "./reminders";
-import { advances } from "./repeat";
 import type { ScheduleView } from "./schedule";
-import { offerStatusUndo } from "./status-undo";
 import { openTrees } from "./task-tree";
 
 export type Task = components["schemas"]["TaskOut"];
@@ -227,7 +225,7 @@ export type TaskChange = { id: number; pinned?: boolean } & Partial<
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
-async function patchTask({ id, tags, ...change }: TaskChange) {
+export async function patchTask({ id, tags, ...change }: TaskChange) {
   const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
     params: { path: { task_id: id } },
     body: { ...change, ...(tags && { tag_ids: tags.map((tag) => tag.id) }) },
@@ -270,7 +268,7 @@ function applyTo<T extends Task>(task: T, change: TaskChange): T {
 }
 
 /** Show a change in every drawer and list before the server answers, dropping closed trees. */
-async function showChange(queryClient: QueryClient, change: TaskChange) {
+export async function showChange(queryClient: QueryClient, change: TaskChange) {
   await queryClient.cancelQueries({ queryKey: DETAIL_KEY });
   await queryClient.cancelQueries({ queryKey: OPEN_KEY });
   queryClient.setQueriesData<TaskDetail>(
@@ -301,24 +299,6 @@ export function useUpdateTask() {
   return useMutation({
     mutationFn: patchTask,
     onMutate: (change) => showChange(queryClient, change),
-    onError: (error) => toast.error(error.message),
-    onSettled: () => refreshTasks(queryClient),
-  });
-}
-
-/** Set a Task's Status, then offer Undo in a toast. */
-export function useSetTaskStatus() {
-  const queryClient = useQueryClient();
-  const { mutate: update } = useUpdateTask();
-  return useMutation({
-    mutationFn: ({ task, status }: { task: Task; status: TaskStatus }) =>
-      patchTask({ id: task.id, status }),
-    // A repeating Task moves on rather than closing, so it stays where it is until the server says.
-    onMutate: ({ task, status }) =>
-      advances(task, status) ? undefined : showChange(queryClient, { id: task.id, status }),
-    onSuccess: ({ task, affected }, { status }) => {
-      offerStatusUndo(update, task, status, affected);
-    },
     onError: (error) => toast.error(error.message),
     onSettled: () => refreshTasks(queryClient),
   });

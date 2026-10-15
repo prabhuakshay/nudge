@@ -4986,6 +4986,29 @@
         "title": "BulkStatusIn",
         "type": "object"
       },
+      "BulkStatusesIn": {
+        "description": "Give each Task its own Status, in the order listed, as Undo of a cascade does.",
+        "properties": {
+          "kind": {
+            "const": "statuses",
+            "title": "Kind",
+            "type": "string"
+          },
+          "statuses": {
+            "items": {
+              "$ref": "#/components/schemas/TaskStatusIn"
+            },
+            "title": "Statuses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "statuses"
+        ],
+        "title": "BulkStatusesIn",
+        "type": "object"
+      },
       "BulkTagIn": {
         "description": "Put a Tag on the Tasks, or take it off.",
         "properties": {
@@ -5030,7 +5053,8 @@
                 "move": "#/components/schemas/BulkMoveIn",
                 "priority": "#/components/schemas/BulkPriorityIn",
                 "remove_tag": "#/components/schemas/BulkTagIn",
-                "status": "#/components/schemas/BulkStatusIn"
+                "status": "#/components/schemas/BulkStatusIn",
+                "statuses": "#/components/schemas/BulkStatusesIn"
               },
               "propertyName": "kind"
             },
@@ -5040,6 +5064,9 @@
               },
               {
                 "$ref": "#/components/schemas/BulkStatusIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkStatusesIn"
               },
               {
                 "$ref": "#/components/schemas/BulkPriorityIn"
@@ -5113,6 +5140,29 @@
           "due_date"
         ],
         "title": "TaskDatesIn",
+        "type": "object"
+      },
+      "TaskStatusIn": {
+        "description": "The Status, and Blocked reason, to give one Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "blocked_reason": {
+            "default": "",
+            "title": "Blocked Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "TaskStatusIn",
         "type": "object"
       },
       "TaskListQuery": {

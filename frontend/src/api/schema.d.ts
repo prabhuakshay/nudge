@@ -2024,6 +2024,19 @@ export interface components {
       status: components["schemas"]["Status"];
     };
     /**
+     * BulkStatusesIn
+     * @description Give each Task its own Status, in the order listed, as Undo of a cascade does.
+     */
+    BulkStatusesIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "statuses";
+      /** Statuses */
+      statuses: components["schemas"]["TaskStatusIn"][];
+    };
+    /**
      * BulkTagIn
      * @description Put a Tag on the Tasks, or take it off.
      */
@@ -2047,6 +2060,7 @@ export interface components {
       action:
         | components["schemas"]["BulkMoveIn"]
         | components["schemas"]["BulkStatusIn"]
+        | components["schemas"]["BulkStatusesIn"]
         | components["schemas"]["BulkPriorityIn"]
         | components["schemas"]["BulkDatesIn"]
         | components["schemas"]["BulkTagIn"]
@@ -2071,6 +2085,20 @@ export interface components {
       start_date?: string | null;
       /** Start Time */
       start_time?: string | null;
+    };
+    /**
+     * TaskStatusIn
+     * @description The Status, and Blocked reason, to give one Task.
+     */
+    TaskStatusIn: {
+      /** Id */
+      id: number;
+      status: components["schemas"]["Status"];
+      /**
+       * Blocked Reason
+       * @default
+       */
+      blocked_reason: string;
     };
     /**
      * TaskListQuery

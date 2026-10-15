@@ -1,11 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { Kbd } from "@/components/ui/kbd";
 import { findProject } from "@/features/projects/projects";
+import { shortcutText } from "@/features/shortcuts/registry";
+import { useShortcuts, useSingleKeyShortcuts } from "@/features/shortcuts/use-shortcuts";
 import { cn } from "@/lib/utils";
 
 import type { QuickAdd } from "./quick-add";
@@ -22,29 +24,15 @@ import {
 import { sidebarQuery, useCreateTask, type Task } from "./tasks";
 import { useQuickAdd } from "./use-quick-add";
 
-/** Whether a key press happened where typing `c` means text, not a shortcut. */
-function isTyping(target: EventTarget | null) {
-  return (
-    target instanceof Element &&
-    target.closest("input, textarea, select, [contenteditable], [role=menu], [role=dialog]") !==
-      null
-  );
-}
-
-/** Focus the input when `C` is pressed anywhere on the page outside a text field. */
-function useFocusOnC(input: { current: HTMLInputElement | null }) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "c" || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isTyping(event.target)) return;
-      event.preventDefault();
+/** Focus the input on the Quick add shortcut, `C`, pressed anywhere outside a field or dialog. */
+function useFocusOnShortcut(input: { current: HTMLInputElement | null }) {
+  useShortcuts({
+    quickAdd: (event) => {
+      // The drawer or another dialog is open over the list.
+      if (event.target instanceof Element && event.target.closest("[role=dialog]")) return;
       input.current?.focus();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [input]);
+    },
+  });
 }
 
 /**
@@ -94,10 +82,13 @@ function AddMark({ focused }: { focused: boolean }) {
 
 /** The keys at the end of the input on wide screens: `C` while idle, Enter and ⌫ while typing. */
 function KeyHints({ focused, typed }: { focused: boolean; typed: boolean }) {
+  const singleKey = useSingleKeyShortcuts();
   if (!focused && !typed) {
+    if (!singleKey) return null;
+    const key = shortcutText("quickAdd");
     return (
-      <Kbd className="hidden shrink-0 lg:inline-flex" aria-label="Press C to add a task">
-        C
+      <Kbd className="hidden shrink-0 lg:inline-flex" aria-label={`Press ${key} to add a task`}>
+        {key}
       </Kbd>
     );
   }
@@ -125,7 +116,7 @@ export function QuickAddCard({ view }: { view: QuickAddView }) {
   const titleOf = useQuickAddTitle();
   const announce = useAnnounceElsewhere(view);
   const inputRef = useRef<HTMLInputElement>(null);
-  useFocusOnC(inputRef);
+  useFocusOnShortcut(inputRef);
 
   const add = async (text: string, parsed: QuickAdd) => {
     if (!sidebar) return;

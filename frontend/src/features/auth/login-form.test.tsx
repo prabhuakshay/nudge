@@ -33,6 +33,7 @@ describe("LoginForm", () => {
       email: "ada@example.com",
       full_name: "Ada Lovelace",
       time_zone: "Europe/London",
+      single_key_shortcuts: true,
     };
     const fetchSpy = mockFetch(200, ada);
     const onSuccess = vi.fn();

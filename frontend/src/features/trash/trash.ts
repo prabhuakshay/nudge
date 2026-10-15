@@ -11,6 +11,7 @@ import {
   type Task,
   type TaskDetail,
 } from "@/features/tasks/tasks";
+import { toastWithUndo } from "@/lib/undo-toast";
 
 export type TrashedTask = components["schemas"]["TrashedTaskOut"];
 export type TrashedProject = components["schemas"]["TrashedProjectOut"];
@@ -153,13 +154,8 @@ export function useDeleteTask() {
       );
     },
     onSuccess: (_, task) => {
-      toast(`Moved “${plainMentions(task.title)}” to Trash`, {
-        action: {
-          label: "Undo",
-          onClick: () => {
-            restore(task.id);
-          },
-        },
+      toastWithUndo(`Moved “${plainMentions(task.title)}” to Trash`, () => {
+        restore(task.id);
       });
     },
     onError: (error) => toast.error(error.message),

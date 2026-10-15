@@ -1,6 +1,5 @@
-import { toast } from "sonner";
-
 import type { components } from "@/api/schema";
+import { toastWithUndo } from "@/lib/undo-toast";
 
 import { statusToast } from "./repeat";
 import type { Task, TaskChange, TaskStatus } from "./tasks";
@@ -18,20 +17,15 @@ export function offerStatusUndo(
   status: TaskStatus,
   affected: AffectedTask[],
 ) {
-  toast(statusToast(task, status, affected.length - 1), {
-    action: {
-      label: "Undo",
-      onClick: () => {
-        for (const prior of affected) {
-          update({
-            id: prior.id,
-            status: prior.prior_status,
-            ...(prior.prior_status === "blocked" && {
-              blocked_reason: prior.prior_blocked_reason,
-            }),
-          });
-        }
-      },
-    },
+  toastWithUndo(statusToast(task, status, affected.length - 1), () => {
+    for (const prior of affected) {
+      update({
+        id: prior.id,
+        status: prior.prior_status,
+        ...(prior.prior_status === "blocked" && {
+          blocked_reason: prior.prior_blocked_reason,
+        }),
+      });
+    }
   });
 }

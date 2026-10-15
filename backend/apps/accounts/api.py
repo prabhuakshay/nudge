@@ -24,12 +24,14 @@ from apps.accounts.schemas import (
     PasswordChangeIn,
     ProfileIn,
     SessionOut,
+    ShortcutsIn,
     TimeZoneIn,
     UserOut,
 )
 from apps.accounts.services import (
     PasswordChangeError,
     change_password,
+    set_single_key_shortcuts,
     set_time_zone,
     update_profile,
 )
@@ -121,3 +123,11 @@ def time_zone(request: HttpRequest, changes: TimeZoneIn) -> UserOut:
     user = request.user
     assert isinstance(user, User)  # noqa: S101 - django_auth only lets signed-in users through
     return UserOut.from_orm(set_time_zone(user, changes.time_zone))
+
+
+@router.put("/shortcuts", response=UserOut, auth=django_auth, summary="Set keyboard shortcuts")
+def shortcuts(request: HttpRequest, changes: ShortcutsIn) -> UserOut:
+    """Turn the signed-in user's single-key shortcuts on or off and return the updated user."""
+    user = request.user
+    assert isinstance(user, User)  # noqa: S101 - django_auth only lets signed-in users through
+    return UserOut.from_orm(set_single_key_shortcuts(user, enabled=changes.single_key))

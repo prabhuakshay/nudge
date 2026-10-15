@@ -164,9 +164,9 @@ describe("Task actions", () => {
         .map((item) => item.textContent),
     ).toEqual([
       "OpenEnter",
-      "Complete",
-      "Pin to top",
-      "Won't do",
+      "CompleteSpace",
+      "Pin to topP",
+      "Won't doW",
       "Duplicate",
       "Copy link",
       "Delete⌫",

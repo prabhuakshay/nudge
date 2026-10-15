@@ -65,6 +65,13 @@ class User(AbstractBaseUser, PermissionsMixin):
             "stored as is so the address can be copied again at any time."
         ),
     )
+    single_key_shortcuts = models.BooleanField(
+        default=True,
+        help_text=(
+            "Whether shortcuts of one unmodified key, such as C or G then I, work. Speech input "
+            "can trigger them by accident (WCAG 2.1.4), so the user can turn them off."
+        ),
+    )
     is_staff = models.BooleanField(
         default=False,
         help_text="Whether the user can sign in to the admin site.",

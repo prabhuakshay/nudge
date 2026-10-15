@@ -4,6 +4,7 @@ import { toast } from "sonner";
 
 import { ProjectIcon } from "@/features/projects/project-icon";
 import { ProjectPicker } from "@/features/projects/project-picker";
+import { ShortcutTooltip } from "@/features/shortcuts/shortcut-tooltip";
 import { TagBadge } from "@/features/tags/tag-badge";
 import { TagPicker } from "@/features/tags/tag-picker";
 import { cn } from "@/lib/utils";
@@ -51,31 +52,36 @@ export function PropertyChips({ task, project }: { task: Task; project: SidebarP
       </StatusMenu>
 
       <PriorityMenu task={task}>
-        <Chip
-          aria-label={`Priority: ${priorityLabel}`}
-          className={
-            task.priority > 0
-              ? cn("border-transparent", priority.soft, priority.text)
-              : "border-dashed border-border text-muted-foreground hover:bg-surface-muted"
-          }
-        >
-          <Flag className={cn("size-3.5", task.priority > 0 && "fill-current")} aria-hidden />
-          {task.priority > 0 ? priorityLabel : "Priority"}
-        </Chip>
+        <ShortcutTooltip label="Set priority" shortcut="setPriority">
+          <Chip
+            aria-label={`Priority: ${priorityLabel}`}
+            className={
+              task.priority > 0
+                ? cn("border-transparent", priority.soft, priority.text)
+                : "border-dashed border-border text-muted-foreground hover:bg-surface-muted"
+            }
+          >
+            <Flag className={cn("size-3.5", task.priority > 0 && "fill-current")} aria-hidden />
+            {task.priority > 0 ? priorityLabel : "Priority"}
+          </Chip>
+        </ShortcutTooltip>
       </PriorityMenu>
 
       <DatePicker task={task}>
-        <Chip
-          aria-label={`Date: ${dueName(task, new Date())}`}
-          className={
-            task.due_date === null
-              ? "border-dashed border-border text-muted-foreground hover:bg-surface-muted"
-              : "border-transparent bg-surface-muted hover:brightness-95"
-          }
-        >
-          <CalendarDays className="size-3.5 text-muted-foreground" aria-hidden />
-          {task.due_date === null ? "Date" : <DueBadge task={task} />}
-        </Chip>
+        <ShortcutTooltip label="Set date" shortcut="setDate">
+          <Chip
+            data-shortcut="setDate"
+            aria-label={`Date: ${dueName(task, new Date())}`}
+            className={
+              task.due_date === null
+                ? "border-dashed border-border text-muted-foreground hover:bg-surface-muted"
+                : "border-transparent bg-surface-muted hover:brightness-95"
+            }
+          >
+            <CalendarDays className="size-3.5 text-muted-foreground" aria-hidden />
+            {task.due_date === null ? "Date" : <DueBadge task={task} />}
+          </Chip>
+        </ShortcutTooltip>
       </DatePicker>
 
       {/* A Subtask lives in its root's Project, so it has no Project of its own to change. */}
@@ -102,10 +108,15 @@ function TagChips({ task }: { task: Task }) {
         />
       ))}
       <TagPicker task={task}>
-        <Chip className="border-dashed border-border text-muted-foreground hover:bg-surface-muted">
-          <Hash className="size-3.5" aria-hidden />
-          {task.tags.length ? "Tag" : "Add tag"}
-        </Chip>
+        <ShortcutTooltip label="Add tag" shortcut="addTag">
+          <Chip
+            data-shortcut="addTag"
+            className="border-dashed border-border text-muted-foreground hover:bg-surface-muted"
+          >
+            <Hash className="size-3.5" aria-hidden />
+            {task.tags.length ? "Tag" : "Add tag"}
+          </Chip>
+        </ShortcutTooltip>
       </TagPicker>
     </>
   );
@@ -124,13 +135,16 @@ function ProjectChip({ task, project }: { task: Task; project: SidebarProject })
         );
       }}
     >
-      <Chip
-        aria-label={`Project: ${project.name}. Move to another project`}
-        className="border-border bg-surface text-foreground hover:bg-surface-muted"
-      >
-        <ProjectIcon project={project} className="size-3.5" />
-        {project.name}
-      </Chip>
+      <ShortcutTooltip label="Move to project" shortcut="moveToProject">
+        <Chip
+          data-shortcut="moveToProject"
+          aria-label={`Project: ${project.name}. Move to another project`}
+          className="border-border bg-surface text-foreground hover:bg-surface-muted"
+        >
+          <ProjectIcon project={project} className="size-3.5" />
+          {project.name}
+        </Chip>
+      </ShortcutTooltip>
     </ProjectPicker>
   );
 }

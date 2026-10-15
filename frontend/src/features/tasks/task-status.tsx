@@ -97,11 +97,14 @@ export function BlockedReasonField({ task, className }: { task: Task; className?
           // A new key whenever the saved reason changes, such as on Undo, resets the field to it.
           key={`${String(task.id)}-${task.blocked_reason}`}
           aria-label="Blocked reason"
+          data-shortcut="markBlocked"
           defaultValue={plainMentions(task.blocked_reason)}
           maxLength={500}
           placeholder="What is it waiting on? Type @ and a name to mention someone"
           onKeyDown={(event) => {
-            if (event.key === "Enter") event.currentTarget.blur();
+            if (event.key === "Escape")
+              event.currentTarget.value = plainMentions(task.blocked_reason);
+            if (event.key === "Enter" || event.key === "Escape") event.currentTarget.blur();
           }}
           onBlur={(event) => {
             const reason = withMentions(event.currentTarget.value.trim());

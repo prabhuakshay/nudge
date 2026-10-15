@@ -1,20 +1,21 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ShortcutId } from "@/features/shortcuts/registry";
+import { ShortcutTooltip } from "@/features/shortcuts/shortcut-tooltip";
 import { ProjectIcon } from "@/features/projects/project-icon";
 import { findProject } from "@/features/projects/projects";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { plainMentions } from "@/features/people/mentions";
-import { useDeleteTask } from "@/features/trash/trash";
 
 import { ActivityFeed } from "./activity-feed";
 import { Attachments } from "./attachments";
 import { CommentFooter, Comments } from "./comment-section";
+import { backOutOfField, useDetailKeys } from "./detail-keys";
 import { DetailTabsList } from "./detail-tabs";
 import { PropertyChips } from "./property-chips";
 import { SubtaskSection } from "./subtask-section";
@@ -73,13 +74,6 @@ export function TaskDetail(props: TaskDetailProps) {
       event.preventDefault();
     }
   };
-  // Escape in a filled Quick add field, such as Add subtask, first closes its picker or clears it.
-  const keepOpenForTyping = (event: KeyboardEvent) => {
-    const { target } = event;
-    if (target instanceof HTMLInputElement && target.role === "combobox" && target.value) {
-      event.preventDefault();
-    }
-  };
   const returnFocus = (event: Event) => {
     event.preventDefault();
     document.querySelector<HTMLElement>(`[data-task-id="${String(lastOpened)}"]`)?.focus();
@@ -98,8 +92,8 @@ export function TaskDetail(props: TaskDetailProps) {
             (event.currentTarget as HTMLElement | null)?.focus();
           }}
           onCloseAutoFocus={returnFocus}
+          onEscapeKeyDown={backOutOfField}
           onInteractOutside={keepOpenForToasts}
-          onEscapeKeyDown={keepOpenForTyping}
           className="gap-0 p-0 sm:max-w-[600px]"
         >
           <SheetTitle className="sr-only">Task details</SheetTitle>
@@ -120,8 +114,8 @@ export function TaskDetail(props: TaskDetailProps) {
       <DrawerContent
         aria-describedby={undefined}
         onCloseAutoFocus={returnFocus}
+        onEscapeKeyDown={backOutOfField}
         onInteractOutside={keepOpenForToasts}
-        onEscapeKeyDown={keepOpenForTyping}
         className="h-[96dvh] max-h-[96dvh]"
       >
         <DrawerTitle className="sr-only">Task details</DrawerTitle>
@@ -131,18 +125,8 @@ export function TaskDetail(props: TaskDetailProps) {
   );
 }
 
-/** Whether a key press belongs to a field or menu rather than to the drawer's shortcuts. */
-function isEditing(target: EventTarget | null) {
-  return (
-    target instanceof Element &&
-    target.closest("input, textarea, select, [contenteditable], [role=menu], [role=listbox]") !==
-      null
-  );
-}
-
 function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps & { task: Task }) {
   const { mutate: setStatus } = useSetTaskStatus();
-  const { mutate: deleteTask } = useDeleteTask();
   const { data: sidebar } = useQuery(sidebarQuery);
   const taskProject = (sidebar && findProject(sidebar, task.project_id)) ?? project;
   const readOnly = taskProject.is_archived;
@@ -150,34 +134,15 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
   const index = order.indexOf(task.id);
   const previous = index > 0 ? order[index - 1] : undefined;
   const next = index >= 0 ? order[index + 1] : undefined;
-
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.metaKey || event.ctrlKey || event.altKey || isEditing(event.target)) return;
-      if (!readOnly && (event.key === "Delete" || event.key === "Backspace")) {
-        event.preventDefault();
-        deleteTask(task);
-        onClose();
-        return;
-      }
-      const step = { j: next, ArrowDown: next, k: previous, ArrowUp: previous }[event.key];
-      if (step === undefined) return;
-      event.preventDefault();
-      onOpen(step);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [next, previous, onOpen, readOnly, deleteTask, task, onClose]);
+  const body = useDetailKeys({ task, readOnly, previous, next, onOpen, onClose });
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
+    <div ref={body} className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-1 border-b border-border px-3 sm:px-4">
         <Breadcrumb task={task} project={taskProject} onOpen={onOpen} />
         <HeaderButton
           label="Previous task"
-          shortcut="K"
+          shortcut="previousTask"
           disabled={previous === undefined}
           onClick={() => {
             if (previous !== undefined) onOpen(previous);
@@ -187,7 +152,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
         </HeaderButton>
         <HeaderButton
           label="Next task"
-          shortcut="J"
+          shortcut="nextTask"
           disabled={next === undefined}
           onClick={() => {
             if (next !== undefined) onOpen(next);
@@ -197,7 +162,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
         </HeaderButton>
         <TaskActionsMenu task={task} readOnly={readOnly} onDeleted={onClose} />
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-        <HeaderButton label="Close" shortcut="Esc" onClick={onClose}>
+        <HeaderButton label="Close" shortcut="back" onClick={onClose}>
           <X className="size-4" aria-hidden />
         </HeaderButton>
       </header>
@@ -300,28 +265,22 @@ function HeaderButton({
   children,
 }: {
   label: string;
-  shortcut: string;
+  shortcut: ShortcutId;
   disabled?: boolean;
   onClick: () => void;
   children: ReactNode;
 }) {
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          type="button"
-          aria-label={label}
-          aria-keyshortcuts={shortcut === "Esc" ? "Escape" : shortcut}
-          disabled={disabled}
-          onClick={onClick}
-          className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35 sm:size-8"
-        >
-          {children}
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>
-        {label} <span className="ml-1 opacity-60">{shortcut}</span>
-      </TooltipContent>
-    </Tooltip>
+    <ShortcutTooltip label={label} shortcut={shortcut}>
+      <button
+        type="button"
+        aria-label={label}
+        disabled={disabled}
+        onClick={onClick}
+        className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-35 sm:size-8"
+      >
+        {children}
+      </button>
+    </ShortcutTooltip>
   );
 }

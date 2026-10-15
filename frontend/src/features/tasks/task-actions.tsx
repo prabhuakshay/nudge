@@ -14,9 +14,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuShortcut,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { ariaKeyShortcuts, shortcutText, type ShortcutId } from "@/features/shortcuts/registry";
 import { useDeleteTask } from "@/features/trash/trash";
 import { cn } from "@/lib/utils";
 
@@ -31,8 +33,8 @@ type TaskAction = {
   run: () => void;
   /** Destructive actions come last and show in the danger colour. */
   danger?: boolean;
-  /** The key that does the same on a focused row, shown in the right-click menu. */
-  shortcut?: string;
+  /** The shortcut that does the same on a focused row or in the drawer, shown in the menus. */
+  shortcut?: ShortcutId;
 };
 
 async function copyLink(link: string) {
@@ -59,6 +61,7 @@ function useTaskActions(task: Task, readOnly = false, onDeleted?: () => void): T
   const pin: TaskAction = {
     label: pinned ? "Unpin" : "Pin to top",
     icon: pinned ? PinOff : Pin,
+    shortcut: "togglePin",
     run: () => {
       update({ id: task.id, pinned: !pinned });
     },
@@ -74,6 +77,7 @@ function useTaskActions(task: Task, readOnly = false, onDeleted?: () => void): T
     ...(task.parent_id === null ? [pin] : []),
     {
       label: wontDo ? "Reopen" : "Won't do",
+      shortcut: "markWontDo",
       icon: Ban,
       run: () => {
         setStatus({ task, status: wontDo ? "open" : "wont_do" });
@@ -91,7 +95,7 @@ function useTaskActions(task: Task, readOnly = false, onDeleted?: () => void): T
       label: "Delete",
       icon: Trash2,
       danger: true,
-      shortcut: "⌫",
+      shortcut: "deleteTask",
       run: () => {
         deleteTask(task);
         onDeleted?.();
@@ -133,12 +137,19 @@ export function TaskActionsMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        {actions.map(({ label, icon: Icon, run, danger }) => (
+        {actions.map(({ label, icon: Icon, run, danger, shortcut }) => (
           <Fragment key={label}>
             {danger && <DropdownMenuSeparator />}
-            <DropdownMenuItem onSelect={run} variant={danger ? "danger" : "default"}>
+            <DropdownMenuItem
+              onSelect={run}
+              variant={danger ? "danger" : "default"}
+              aria-keyshortcuts={shortcut && ariaKeyShortcuts(shortcut)}
+            >
               <Icon aria-hidden />
               {label}
+              {shortcut && (
+                <DropdownMenuShortcut aria-hidden>{shortcutText(shortcut)}</DropdownMenuShortcut>
+              )}
             </DropdownMenuItem>
           </Fragment>
         ))}
@@ -172,21 +183,28 @@ export function TaskContextMenu({
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
-        <ContextMenuItem onSelect={onOpen}>
+        <ContextMenuItem onSelect={onOpen} aria-keyshortcuts={ariaKeyShortcuts("openTask")}>
           Open
-          <ContextMenuShortcut>Enter</ContextMenuShortcut>
+          <ContextMenuShortcut aria-hidden>{shortcutText("openTask")}</ContextMenuShortcut>
         </ContextMenuItem>
-        <ContextMenuItem onSelect={onToggle}>
+        <ContextMenuItem onSelect={onToggle} aria-keyshortcuts={ariaKeyShortcuts("completeTask")}>
           {isClosed(task.status) ? "Reopen" : "Complete"}
+          <ContextMenuShortcut aria-hidden>{shortcutText("completeTask")}</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuSeparator />
         {actions.map(({ label, icon: Icon, run, danger, shortcut }) => (
           <Fragment key={label}>
             {danger && <ContextMenuSeparator />}
-            <ContextMenuItem onSelect={run} variant={danger ? "danger" : "default"}>
+            <ContextMenuItem
+              onSelect={run}
+              variant={danger ? "danger" : "default"}
+              aria-keyshortcuts={shortcut && ariaKeyShortcuts(shortcut)}
+            >
               <Icon aria-hidden />
               {label}
-              {shortcut && <ContextMenuShortcut>{shortcut}</ContextMenuShortcut>}
+              {shortcut && (
+                <ContextMenuShortcut aria-hidden>{shortcutText(shortcut)}</ContextMenuShortcut>
+              )}
             </ContextMenuItem>
           </Fragment>
         ))}

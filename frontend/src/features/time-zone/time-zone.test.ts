@@ -4,7 +4,13 @@ import { sessionQuery } from "@/features/auth/session";
 
 import { adoptBrowserTimeZone } from "./time-zone";
 
-const ada = { id: 1, email: "ada@example.com", full_name: "Ada Lovelace", time_zone: "" };
+const ada = {
+  id: 1,
+  email: "ada@example.com",
+  full_name: "Ada Lovelace",
+  time_zone: "",
+  single_key_shortcuts: true,
+};
 
 function useBrowserTimeZone(timeZone: string) {
   const real = new Intl.DateTimeFormat().resolvedOptions();

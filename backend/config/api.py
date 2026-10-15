@@ -17,6 +17,7 @@ from apps.accounts.api import router as accounts_router
 from apps.core.api import router as core_router
 from apps.notifications.api import router as notifications_router
 from apps.tasks.api.attachments import router as attachments_router
+from apps.tasks.api.calendar import router as calendar_router
 from apps.tasks.api.comments import router as comments_router
 from apps.tasks.api.folders import router as folders_router
 from apps.tasks.api.people import router as people_router
@@ -43,3 +44,4 @@ api.add_router("/sidebar", sidebar_router, tags=["sidebar"])
 api.add_router("/tasks", tasks_router, tags=["tasks"])
 api.add_router("/", attachments_router, tags=["attachments"])
 api.add_router("/", comments_router, tags=["comments"])
+api.add_router("/calendar", calendar_router, tags=["calendar"])

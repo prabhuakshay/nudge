@@ -103,6 +103,20 @@ describe("SettingsDialog", () => {
     expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
   });
 
+  it("opens the Calendar feed page", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ url: null }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const user = await openDialog();
+
+    await user.click(screen.getByRole("button", { name: /Calendar feed/ }));
+
+    expect(screen.getByRole("region", { name: "Calendar feed" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Turn on" })).toBeInTheDocument();
+  });
+
   it("closes with Escape", async () => {
     const user = await openDialog();
 

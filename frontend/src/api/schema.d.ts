@@ -529,7 +529,7 @@ export interface paths {
     };
     /**
      * Get the sidebar
-     * @description Return the Inbox, Folders and ungrouped Projects in order, then archived Projects.
+     * @description Return everything the sidebar lists, with open counts for Projects, Today and Upcoming.
      */
     get: operations["apps_tasks_api_sidebar_sidebar"];
     put?: never;
@@ -548,12 +548,13 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * List a Project's or a Person's Tasks
-     * @description Return the open Tasks of a Project or Person, or, with `closed`, a page of Closed ones.
+     * List a Project's, a Person's or a view's Tasks
+     * @description Return the open Tasks of a Project, Person or view, or, with `closed`, a page of Closed ones.
      *
      *     A Project's Tasks come in manual order. A Person's are the Tasks that mention them, flat, in
-     *     each Project's manual order. Closed Tasks come most recently completed first, in pages; open
-     *     Tasks come all at once.
+     *     each Project's manual order. Today and Upcoming list flat rows by date, with Overdue first in
+     *     Today; Today's Closed Tasks are those closed today, and Upcoming has none. Closed Tasks come
+     *     most recently completed first, in pages; open Tasks come all at once.
      */
     get: operations["apps_tasks_api_tasks_list_tasks"];
     put?: never;
@@ -748,6 +749,54 @@ export interface paths {
      * @description Replace a Comment's body.
      */
     patch: operations["apps_tasks_api_comments_edit_comment"];
+    trace?: never;
+  };
+  "/api/v1/calendar/feed": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the Calendar feed address
+     * @description Return the signed-in user's feed address, or null while the feed is off.
+     */
+    get: operations["apps_tasks_api_calendar_get_feed"];
+    put?: never;
+    /**
+     * Turn on or reset the Calendar feed
+     * @description Give the user a new feed address; any old address stops working.
+     */
+    post: operations["apps_tasks_api_calendar_turn_on_feed"];
+    /**
+     * Turn off the Calendar feed
+     * @description Clear the user's feed address so it stops working.
+     */
+    delete: operations["apps_tasks_api_calendar_turn_off_feed"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/calendar/{token}.ics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Fetch a Calendar feed
+     * @description Return the feed's owner's open dated Tasks as an iCalendar file.
+     */
+    get: operations["apps_tasks_api_calendar_feed"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
 }
@@ -1159,6 +1208,16 @@ export interface components {
        * @description Archived Projects, by name.
        */
       archived: components["schemas"]["SidebarProjectOut"][];
+      /**
+       * Today Count
+       * @description Open Tasks in Today, Overdue ones included.
+       */
+      today_count: number;
+      /**
+       * Upcoming Count
+       * @description Open Tasks in Upcoming.
+       */
+      upcoming_count: number;
     };
     /**
      * SidebarProjectOut
@@ -1188,6 +1247,35 @@ export interface components {
       /** Open Count */
       open_count: number;
     };
+    /**
+     * TaskListQuery
+     * @description Which Tasks to list: one Project's, one Person's or one view's, open or Closed.
+     */
+    TaskListQuery: {
+      /** Project */
+      project?: number | null;
+      /** Person */
+      person?: number | null;
+      /** @description Today or Upcoming, picked by date. */
+      view?: components["schemas"]["View"] | null;
+      /**
+       * Closed
+       * @description List Closed Tasks, a page at a time.
+       * @default false
+       */
+      closed: boolean;
+      /**
+       * Cursor
+       * @description From the previous page of Closed ones.
+       */
+      cursor?: string | null;
+    };
+    /**
+     * View
+     * @description A list of Tasks picked by their dates rather than by Project.
+     * @enum {string}
+     */
+    View: "today" | "upcoming";
     /**
      * Priority
      * @description How urgent a Task is; P1 is the most urgent.
@@ -1305,6 +1393,26 @@ export interface components {
       comment_count: number;
     };
     /**
+     * TaskDatesIn
+     * @description A Task's due date, time and range, all clock times in the user's time zone.
+     *
+     *     Without a time the Task is all-day. A start turns it into a range ending at the due date;
+     *     start and due are then both all-day or both timed. Times have minute precision.
+     */
+    TaskDatesIn: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Due Time */
+      due_time?: string | null;
+      /** Start Date */
+      start_date?: string | null;
+      /** Start Time */
+      start_time?: string | null;
+    };
+    /**
      * TaskIn
      * @description A new Task from Quick add.
      */
@@ -1321,6 +1429,8 @@ export interface components {
        * @description Makes the Task the last Subtask of this one; reopens it if it's Closed.
        */
       parent_id?: number | null;
+      /** @description Dates the Task from the start, such as today in Today. Not for a Subtask. */
+      dates?: components["schemas"]["TaskDatesIn"] | null;
     };
     /**
      * TaskAncestorOut
@@ -1457,26 +1567,6 @@ export interface components {
       task: components["schemas"]["TaskDetailOut"];
       /** Affected */
       affected: components["schemas"]["AffectedTaskOut"][];
-    };
-    /**
-     * TaskDatesIn
-     * @description A Task's due date, time and range, all clock times in the user's time zone.
-     *
-     *     Without a time the Task is all-day. A start turns it into a range ending at the due date;
-     *     start and due are then both all-day or both timed. Times have minute precision.
-     */
-    TaskDatesIn: {
-      /**
-       * Due Date
-       * Format: date
-       */
-      due_date: string;
-      /** Due Time */
-      due_time?: string | null;
-      /** Start Date */
-      start_date?: string | null;
-      /** Start Time */
-      start_time?: string | null;
     };
     /**
      * TaskPatchIn
@@ -1935,6 +2025,17 @@ export interface components {
     CommentIn: {
       /** Body */
       body: string;
+    };
+    /**
+     * CalendarFeedOut
+     * @description The user's Calendar feed address.
+     */
+    CalendarFeedOut: {
+      /**
+       * Url
+       * @description The private `.ics` address, or null while it's off.
+       */
+      url: string | null;
     };
   };
   responses: never;
@@ -2819,7 +2920,11 @@ export interface operations {
       query?: {
         project?: number | null;
         person?: number | null;
+        /** @description Today or Upcoming, picked by date. */
+        view?: components["schemas"]["View"] | null;
+        /** @description List Closed Tasks, a page at a time. */
         closed?: boolean;
+        /** @description From the previous page of Closed ones. */
         cursor?: string | null;
       };
       header?: never;
@@ -3363,6 +3468,95 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_get_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CalendarFeedOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_turn_on_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CalendarFeedOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_turn_off_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  apps_tasks_api_calendar_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The feed as an iCalendar file. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/calendar": string;
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

@@ -11,7 +11,7 @@ from apps.tasks import comments, services
 from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.mentions import MentionError
-from apps.tasks.schemas import CommentIn, CommentOut
+from apps.tasks.schemas.comments import CommentIn, CommentOut
 
 if TYPE_CHECKING:
     from django.http import HttpRequest

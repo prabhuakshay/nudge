@@ -7,9 +7,9 @@ import { SidebarArchived } from "@/features/projects/sidebar-archived";
 import { SidebarPeople } from "@/features/people/sidebar-people";
 import { SidebarProjects } from "@/features/projects/sidebar-projects";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
-import { sidebarQuery } from "@/features/tasks/tasks";
+import { sidebarQuery, type Sidebar as SidebarData } from "@/features/tasks/tasks";
 
-import { NAV_ITEMS } from "./nav-items";
+import { NAV_ITEMS, type NavItem } from "./nav-items";
 import { UserAvatar } from "./user-avatar";
 
 /** Desktop navigation: smart views, Projects and the account, always visible. */
@@ -45,6 +45,15 @@ export function Sidebar({ user }: { user: User }) {
   );
 }
 
+/** How many open Tasks a view lists; Today's count takes in Overdue. */
+function navCount(sidebar: SidebarData, to: NavItem["to"]) {
+  return {
+    "/inbox": sidebar.inbox.open_count,
+    "/": sidebar.today_count,
+    "/upcoming": sidebar.upcoming_count,
+  }[to];
+}
+
 /**
  * The views, then the user's Projects and People: the body of the desktop sidebar and of the phone menu.
  * `onNavigate` runs when a link is followed, so the phone menu can close.
@@ -55,7 +64,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
     <>
       <nav aria-label="Views" className="flex flex-col gap-0.5 px-2 pt-3">
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
-          const count = to === "/inbox" ? sidebar?.inbox.open_count : undefined;
+          const count = sidebar && navCount(sidebar, to);
           return (
             <Link
               key={to}

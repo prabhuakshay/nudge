@@ -12,6 +12,8 @@ from apps.accounts.services import local_zone
 from apps.tasks.models import Attachment, Comment
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from django.db.models import QuerySet
 
     from apps.accounts.models import User
@@ -36,17 +38,26 @@ def with_counts(tasks: QuerySet[Task]) -> QuerySet[Task]:
     return tasks.annotate(attachment_count=_count(Attachment), comment_count=_count(Comment))
 
 
-def with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
-    """Annotate each Task with `is_overdue`, judged by the user's clock right now.
+def local_now(user: User) -> datetime:
+    """Return the time right now on the user's clock."""
+    return timezone.now().astimezone(local_zone(user))
+
+
+def overdue(user: User) -> Q:
+    """Return the condition for a Task being overdue, judged by the user's clock right now.
 
     Times are floating, so the comparison is on the user's local date and time: an all-day Task
     is overdue once its day ends, a timed one once its time passes, a range once its end passes.
     """
-    now = timezone.now().astimezone(local_zone(user))
-    overdue = Q(completed_at__isnull=True) & (
+    now = local_now(user)
+    return Q(completed_at__isnull=True) & (
         Q(due_date__lt=now.date()) | Q(due_date=now.date(), due_time__lt=now.time())
     )
-    return tasks.annotate(is_overdue=Case(When(overdue, then=True), default=False))
+
+
+def with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
+    """Annotate each Task with `is_overdue`, judged by the user's clock right now."""
+    return tasks.annotate(is_overdue=Case(When(overdue(user), then=True), default=False))
 
 
 def as_rows(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:

@@ -8,9 +8,9 @@ from typing import TYPE_CHECKING
 import pytest
 
 from apps.accounts.services import set_time_zone
-from apps.tasks import projects, reminders, services
+from apps.tasks import moves, projects, reminders, services
 from apps.tasks.dates import TaskDates
-from apps.tasks.models import Reminder, Task
+from apps.tasks.models import Project, Reminder, Task
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -218,6 +218,36 @@ def test_archiving_a_project_stops_its_reminders_and_unarchiving_restores_them(
 
     assert archived == [None]
     assert _fire_at(task) == [datetime(2026, 11, 6, 13, 30, tzinfo=UTC)]
+
+
+def _drag(user: User, task: Task, project: Project) -> None:  # noqa: ARG001 - same shape as _edit
+    moves.move_task(task, moves.Destination(project=project))
+
+
+def _edit(user: User, task: Task, project: Project) -> None:
+    services.update_task(user, task.pk, services.TaskEdit(project=project))
+
+
+@pytest.mark.parametrize("move", [_drag, _edit])
+@pytest.mark.django_db
+def test_moving_a_task_to_another_project_reschedules_its_subtasks_reminders(
+    london: User,
+    freeze_time: Callable[[datetime], None],
+    move: Callable[[User, Task, Project], None],
+) -> None:
+    freeze_time(NOW)
+    parent = services.create_task(services.inbox(london), "Plan the trip")
+    subtask = services.create_subtask(parent, "Book the train").task
+    dates = TaskDates(due_date=date(2026, 11, 6), due_time=time(14, 0))
+    services.update_task(london, subtask.pk, services.TaskEdit(dates=dates))
+    _remind(london, subtask, THIRTY_MINUTES_BEFORE)
+    # A stale fire time shows whether the move reached the Subtask, which a bulk update skips.
+    Reminder.objects.filter(task=subtask).update(fire_at=None)
+
+    parent.refresh_from_db()
+    move(london, parent, projects.create_project(london, "Travel"))
+
+    assert _fire_at(subtask) == [datetime(2026, 11, 6, 13, 30, tzinfo=UTC)]
 
 
 @pytest.mark.django_db

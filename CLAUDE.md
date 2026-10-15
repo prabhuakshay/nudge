@@ -24,9 +24,12 @@ should be something a maintainer of a well-known project would merge without ask
 
 - **No sign-up.** Accounts are created by an admin (`createsuperuser` or the Django admin). Never
   add a registration endpoint or page.
-- **Everything belongs to a user.** Every task, list, tag and reminder has an owner, and every
-  query filters by `request.user`. A user must never be able to read or change another user's
-  data, including through IDs in URLs. Test this for every endpoint.
+- **Use the glossary's words.** Name things in code, UI and docs as [GLOSSARY.md](GLOSSARY.md)
+  does: Project (not list), Comment (not note), Repeat, Occurrence, Closed, Pinned, Mention,
+  Calendar feed.
+- **Everything belongs to a user.** Every Task, Project, Tag, Person and Reminder has an owner,
+  and every query filters by `request.user`. A user must never be able to read or change another
+  user's data, including through IDs in URLs. Test this for every endpoint.
 - **API endpoints are private by default.** The Ninja API uses session auth globally; an endpoint
   opts out only with an explicit `auth=None`.
 - **Users sign in with email.** `apps.accounts.User` has `email` (unique, case-insensitive) and
@@ -62,13 +65,20 @@ Backend commands outside Docker need `NUDGE_DEBUG=true` (or a `NUDGE_SECRET_KEY`
   - `schemas.py`: Ninja request/response schemas (`...In`, `...Out`).
   - `api.py`: thin HTTP layer exposing `router`, registered in `config/api.py`.
   - `tests/`: pytest, one file per module under test.
-- Return explicit status codes with `ninja.Status(code, body)`.
+- `apps/tasks/` holds Tasks, Projects, Folders, Tags, People, Comments, Attachments, Activity and
+  Reminders, with one router file per resource. Reminder delivery lives in `apps/notifications/`.
+- Return explicit status codes with `ninja.Status(code, body)`; errors use `ErrorOut`.
+- `PATCH /{id}` edits a resource; `POST /{id}/<verb>` performs an action on it (`/archive`,
+  `/move`, `/restore`).
+- A request that breaks a domain rule (too deep, a cycle, an Inbox guard, a bad RRULE, a Mention
+  of another user's Person) returns 422 with the reason in `ErrorOut.detail`. Another user's id
+  returns 404.
 - Ruff runs with `select = ["ALL"]` and Google-style docstrings. Fix the code rather than adding
   `noqa`; when a suppression is right, add the reason after it.
 - mypy runs in strict mode with the django-stubs plugin.
 - Coverage must stay at or above 90%.
-- Syncable models (tasks, lists, tags) get `updated_at` and soft delete (`deleted_at`) from their
-  first migration. Repeating tasks store RFC 5545 RRULE strings.
+- Tasks and Projects get `updated_at` and soft delete (`deleted_at`) from their first migration,
+  for Trash and Activity. Repeat is stored as an RFC 5545 RRULE string.
 
 ## Frontend (frontend/)
 

@@ -1,8 +1,10 @@
 @import "tailwindcss";
+@import "./tokens.css";
 
 /*
- * Design tokens. Brand values come from branding/colors; components use only the semantic
- * names below (bg-surface, text-muted-foreground, ...), never raw hex values. Each token is
+ * Design tokens. Brand values come from branding/colors; status, Priority and palette colours
+ * live in the generated tokens.css. Components use only the semantic names below (bg-surface,
+ * text-muted-foreground, text-p1, bg-hue-red-soft, ...), never raw hex values. Each token is
  * light-dark(light, dark), resolved by the root color-scheme.
  */
 :root {
@@ -62,6 +64,34 @@
   --color-ring: var(--ring);
   --color-brand-surface: var(--brand-surface);
   --color-on-brand: var(--on-brand);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-p1: var(--p1);
+  --color-p1-soft: var(--p1-soft);
+  --color-p2: var(--p2);
+  --color-p2-soft: var(--p2-soft);
+  --color-p3: var(--p3);
+  --color-p3-soft: var(--p3-soft);
+  --color-p4: var(--p4);
+  --color-p4-soft: var(--p4-soft);
+  --color-hue-red: var(--hue-red);
+  --color-hue-red-soft: var(--hue-red-soft);
+  --color-hue-orange: var(--hue-orange);
+  --color-hue-orange-soft: var(--hue-orange-soft);
+  --color-hue-amber: var(--hue-amber);
+  --color-hue-amber-soft: var(--hue-amber-soft);
+  --color-hue-green: var(--hue-green);
+  --color-hue-green-soft: var(--hue-green-soft);
+  --color-hue-teal: var(--hue-teal);
+  --color-hue-teal-soft: var(--hue-teal-soft);
+  --color-hue-blue: var(--hue-blue);
+  --color-hue-blue-soft: var(--hue-blue-soft);
+  --color-hue-violet: var(--hue-violet);
+  --color-hue-violet-soft: var(--hue-violet-soft);
+  --color-hue-pink: var(--hue-pink);
+  --color-hue-pink-soft: var(--hue-pink-soft);
 
   --font-sans: "Bricolage Grotesque Variable", ui-sans-serif, system-ui, sans-serif;
 
@@ -82,6 +112,15 @@
     @apply bg-background font-sans text-foreground antialiased;
     font-optical-sizing: auto;
     -webkit-tap-highlight-color: transparent;
+  }
+
+  /* iOS Safari zooms into inputs under 16px, so touch screens never go below, even at `sm:`. */
+  @media (pointer: coarse) {
+    input,
+    textarea,
+    select {
+      font-size: max(16px, 1em);
+    }
   }
 
   :focus-visible {

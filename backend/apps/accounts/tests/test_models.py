@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
 
 from apps.accounts.models import User
@@ -79,3 +80,20 @@ def test_names_fall_back_to_email(full_name: str, expected_full: str, expected_s
     assert user.get_full_name() == expected_full
     assert user.get_short_name() == expected_short
     assert str(user) == "ada@example.com"
+
+
+def test_time_zone_is_unset_for_a_new_user() -> None:
+    assert User(email="ada@example.com").time_zone == ""
+
+
+def test_full_clean_accepts_an_iana_time_zone() -> None:
+    user = User(email="ada@example.com", password="x", time_zone="Europe/London")
+
+    user.full_clean(validate_unique=False, validate_constraints=False)
+
+
+def test_full_clean_rejects_an_unknown_time_zone() -> None:
+    user = User(email="ada@example.com", password="x", time_zone="Mars/Olympus_Mons")
+
+    with pytest.raises(ValidationError, match="time zone"):
+        user.full_clean(validate_unique=False, validate_constraints=False)

@@ -205,6 +205,44 @@
         ]
       }
     },
+    "/api/v1/auth/time-zone": {
+      "put": {
+        "operationId": "apps_accounts_api_time_zone",
+        "summary": "Set time zone",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change the signed-in user's time zone and return the updated user.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimeZoneIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "apps_notifications_api_notifications",
@@ -516,12 +554,18 @@
           "full_name": {
             "title": "Full Name",
             "type": "string"
+          },
+          "time_zone": {
+            "description": "IANA time zone name, or empty when not set yet.",
+            "title": "Time Zone",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "email",
-          "full_name"
+          "full_name",
+          "time_zone"
         ],
         "title": "UserOut",
         "type": "object"
@@ -591,6 +635,21 @@
           "full_name"
         ],
         "title": "ProfileIn",
+        "type": "object"
+      },
+      "TimeZoneIn": {
+        "description": "The user's new time zone.",
+        "properties": {
+          "time_zone": {
+            "description": "IANA time zone name, such as Europe/London.",
+            "title": "Time Zone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time_zone"
+        ],
+        "title": "TimeZoneIn",
         "type": "object"
       },
       "NotificationListOut": {

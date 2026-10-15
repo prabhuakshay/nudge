@@ -11,8 +11,14 @@ vi.mock("@/features/notifications/notification-center", () => ({
 }));
 vi.mock("@/features/settings/settings-dialog", () => ({ SettingsDialog: () => null }));
 vi.mock("@/features/theme/theme-toggle", () => ({ ThemeToggle: () => null }));
+vi.mock("@/features/time-zone/time-zone-banner", () => ({ TimeZoneBanner: () => null }));
 
-const ada = { id: 1, email: "ada@example.com", full_name: "Ada Lovelace" };
+const ada = {
+  id: 1,
+  email: "ada@example.com",
+  full_name: "Ada Lovelace",
+  time_zone: "Europe/London",
+};
 
 function DeleteButton({ onUndo }: { onUndo: () => void }) {
   return (

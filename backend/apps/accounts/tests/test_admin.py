@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.accounts.forms import UserCreateForm
+from apps.accounts.forms import UserCreateForm, UserEditForm
 from apps.accounts.models import User
 
 if TYPE_CHECKING:
@@ -39,3 +39,15 @@ def test_admin_user_list_loads_for_superuser(client: Client) -> None:
 
     assert response.status_code == 200
     assert b"root@example.com" in response.content
+
+
+@pytest.mark.django_db
+def test_edit_form_rejects_an_unknown_time_zone() -> None:
+    ada = User.objects.create_user("ada@example.com", "pw", full_name="Ada Lovelace")
+    form = UserEditForm(
+        instance=ada,
+        data={"email": ada.email, "full_name": ada.full_name, "time_zone": "Mars/Olympus_Mons"},
+    )
+
+    assert not form.is_valid()
+    assert "time_zone" in form.errors

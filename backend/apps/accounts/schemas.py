@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from ninja import Field, Schema
+from pydantic import field_validator
+
+from apps.accounts.models import is_time_zone
 
 
 class UserOut(Schema):
@@ -11,6 +14,7 @@ class UserOut(Schema):
     id: int
     email: str
     full_name: str
+    time_zone: str = Field(description="IANA time zone name, or empty when not set yet.")
 
 
 class SessionOut(Schema):
@@ -37,6 +41,20 @@ class ProfileIn(Schema):
     """Profile fields the user can change themselves."""
 
     full_name: str = Field(max_length=150)
+
+
+class TimeZoneIn(Schema):
+    """The user's new time zone."""
+
+    time_zone: str = Field(description="IANA time zone name, such as Europe/London.")
+
+    @field_validator("time_zone")
+    @classmethod
+    def _must_be_iana_name(cls, value: str) -> str:
+        if not is_time_zone(value):
+            message = "Not a known IANA time zone name."
+            raise ValueError(message)
+        return value
 
 
 class ErrorOut(Schema):

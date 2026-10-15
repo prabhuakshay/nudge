@@ -28,7 +28,12 @@ async function signIn(email: string, password: string) {
 
 describe("LoginForm", () => {
   it("signs in and reports the user", async () => {
-    const ada = { id: 1, email: "ada@example.com", full_name: "Ada Lovelace" };
+    const ada = {
+      id: 1,
+      email: "ada@example.com",
+      full_name: "Ada Lovelace",
+      time_zone: "Europe/London",
+    };
     const fetchSpy = mockFetch(200, ada);
     const onSuccess = vi.fn();
     renderWithQueryClient(<LoginForm onSuccess={onSuccess} />);

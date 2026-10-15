@@ -37,3 +37,14 @@ def update_profile(user: User, full_name: str) -> User:
     user.full_name = full_name.strip()
     user.save(update_fields=["full_name"])
     return user
+
+
+def set_time_zone(user: User, time_zone: str) -> User:
+    """Save the user's IANA time zone.
+
+    Clock times on tasks are floating in this zone, so they keep their wall-clock value: a task
+    due at 09:00 is still due at 09:00 in the new zone.
+    """
+    user.time_zone = time_zone
+    user.save(update_fields=["time_zone"])
+    return user

@@ -8,7 +8,12 @@ vi.mock("@/features/auth/sign-out-button", () => ({
   SignOutButton: () => <button type="button">Sign out</button>,
 }));
 
-const ada = { id: 1, email: "ada@example.com", full_name: "Ada Lovelace" };
+const ada = {
+  id: 1,
+  email: "ada@example.com",
+  full_name: "Ada Lovelace",
+  time_zone: "Europe/London",
+};
 
 async function openDialog() {
   render(
@@ -85,6 +90,17 @@ describe("SettingsDialog", () => {
     await user.click(screen.getByRole("radio", { name: "Dark" }));
 
     expect(appearance).toHaveTextContent("Dark");
+  });
+
+  it("shows the time zone beside Time zone and opens its page", async () => {
+    const user = await openDialog();
+    const timeZone = screen.getByRole("button", { name: /Time zone/ });
+    expect(timeZone).toHaveTextContent("Europe/London");
+
+    await user.click(timeZone);
+
+    expect(screen.getByRole("region", { name: "Time zone" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
   });
 
   it("closes with Escape", async () => {

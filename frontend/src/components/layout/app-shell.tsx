@@ -7,6 +7,7 @@ import type { User } from "@/features/auth/session";
 import { NotificationCenter } from "@/features/notifications/notification-center";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
 import { ThemeToggle } from "@/features/theme/theme-toggle";
+import { TimeZoneBanner } from "@/features/time-zone/time-zone-banner";
 
 import { BottomNav } from "./bottom-nav";
 import { Clock } from "./clock";
@@ -46,6 +47,8 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
               </SettingsDialog>
             </div>
           </header>
+
+          <TimeZoneBanner user={user} />
 
           <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pt-6 lg:pb-8">
             {children}

@@ -17,7 +17,7 @@ The mark is a calendar page with today's task checked off. Blue is the brand col
 | Website favicons | everything in `favicon/` (paste `favicon/head-snippet.html` into `<head>`) |
 | iOS / Android / desktop app icon | `app-icon/png/app-icon-1024.png` and its size set |
 | Link previews (Open Graph, X, Slack) | `social/og-image.png` (1200×630) |
-| Colours in code | `colors/colors.css` or `colors/tokens.json` |
+| Colours in code | `colors/colors.css`, `colors/tokens.css` or `colors/tokens.json` |
 
 Every SVG has its own PNG exports in the matching `png/` folder. Mark PNGs come at 64–1024px. Lockup and wordmark PNGs are named by height (`-128h` = 128px tall).
 
@@ -56,6 +56,18 @@ Copy the contents of `favicon/` to the web root.
 | mist | `#EEF1F8` | `night #0E1224` | Page background |
 
 ![Palette](colors/palette.png)
+
+### App colours
+
+Status, Priority and palette colours for the app UI. Each has a `-soft` partner for chip and row backgrounds, and a light and a dark value.
+
+| Token | Use |
+| --- | --- |
+| `success`, `warning` | Done and success; blocked and warnings |
+| `p1` … `p4` | Priority 1 (urgent) to 4 (low) |
+| `hue-red`, `hue-orange`, `hue-amber`, `hue-green`, `hue-teal`, `hue-blue`, `hue-violet`, `hue-pink` | The palette Projects, Tags and People pick from |
+
+`colors/tokens.css` defines them as `light-dark()` CSS variables. The frontend copies it to `frontend/src/styles/tokens.css`, and the backend lists the palette keys in `apps/core/palette.py`; change all three together.
 
 ## Type
 

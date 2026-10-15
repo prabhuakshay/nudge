@@ -45,6 +45,7 @@ describe("Sidebar", () => {
       "/inbox",
       "/",
       "/upcoming",
+      "/trash",
     ]);
   });
 

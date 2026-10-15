@@ -1,19 +1,20 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ProjectIcon } from "@/features/projects/project-icon";
 import { findProject } from "@/features/projects/projects";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { plainMentions } from "@/features/people/mentions";
-import { cn } from "@/lib/utils";
 
 import { ActivityFeed } from "./activity-feed";
 import { Attachments } from "./attachments";
+import { CommentFooter, Comments } from "./comment-section";
+import { DetailTabsList } from "./detail-tabs";
 import { PropertyChips } from "./property-chips";
 import { SubtaskSection } from "./subtask-section";
 import { TaskActionsMenu } from "./task-actions";
@@ -23,7 +24,6 @@ import { isClosed } from "./task-properties";
 import { BlockedReasonField } from "./task-status";
 import {
   sidebarQuery,
-  taskActivityQuery,
   taskQuery,
   useSetTaskStatus,
   type SidebarProject,
@@ -136,8 +136,6 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
   const taskProject = (sidebar && findProject(sidebar, task.project_id)) ?? project;
   const readOnly = taskProject.is_archived;
   const [tab, setTab] = useState("details");
-  const { data: activity } = useInfiniteQuery(taskActivityQuery(task.id));
-  const activityCount = activity?.pages[0]?.count;
   const index = order.indexOf(task.id);
   const previous = index > 0 ? order[index - 1] : undefined;
   const next = index >= 0 ? order[index + 1] : undefined;
@@ -207,15 +205,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
 
         <Tabs value={tab} onValueChange={setTab} className="mt-5">
           <div className="sticky top-0 z-10 bg-surface px-5 sm:px-6">
-            <TabsList variant="underline" className="w-full justify-start gap-6">
-              <TabsTrigger value="details">Details</TabsTrigger>
-              <TabsTrigger value="activity">
-                Activity{" "}
-                {activityCount !== undefined && (
-                  <CountPill active={tab === "activity"}>{activityCount}</CountPill>
-                )}
-              </TabsTrigger>
-            </TabsList>
+            <DetailTabsList taskId={task.id} tab={tab} />
           </div>
 
           <TabsContent value="details" className="px-5 py-5 sm:px-6">
@@ -233,6 +223,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
               </section>
               <SubtaskSection task={task} readOnly={readOnly} onOpen={onOpen} />
               <Attachments taskId={task.id} />
+              <Comments taskId={task.id} />
             </fieldset>
           </TabsContent>
 
@@ -241,6 +232,8 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
           </TabsContent>
         </Tabs>
       </div>
+
+      {tab === "details" && !readOnly && <CommentFooter taskId={task.id} />}
     </div>
   );
 }
@@ -279,20 +272,6 @@ function Breadcrumb({
         </span>
       ))}
     </nav>
-  );
-}
-
-/** A tab's count, highlighted while its tab is open. */
-function CountPill({ active, children }: { active: boolean; children: ReactNode }) {
-  return (
-    <span
-      className={cn(
-        "rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums",
-        active ? "bg-primary-soft text-primary" : "bg-surface-muted text-muted-foreground",
-      )}
-    >
-      {children}
-    </span>
   );
 }
 

@@ -10,14 +10,14 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
-from apps.tasks.models import Person, Task, TaskMention
+from apps.tasks.models import Comment, Person, Task, TaskMention
 
 if TYPE_CHECKING:
     from apps.accounts.models import User
 
 MENTION = re.compile(r"\[@([^\]]*)\]\(person:(\d+)\)")
 
-# Every text of a Task that can hold a Mention. Comments join them when they arrive.
+# Every text field of a Task that can hold a Mention. Its Comments' bodies can hold them too.
 TEXT_FIELDS = ("title", "description", "blocked_reason")
 
 
@@ -46,8 +46,9 @@ def check_mentions(user: User, *texts: str) -> None:
 
 
 def sync_mentions(task: Task) -> None:
-    """Rebuild the Task's TaskMention rows from its texts as they are saved now."""
-    ids = mentioned_ids(*(getattr(task, field) for field in TEXT_FIELDS))
+    """Rebuild the Task's TaskMention rows from its texts and Comments as they are saved now."""
+    bodies = task.comments.values_list("body", flat=True)
+    ids = mentioned_ids(*(getattr(task, field) for field in TEXT_FIELDS), *bodies)
     task.mentions.exclude(person_id__in=ids).delete()
     TaskMention.objects.bulk_create(
         [TaskMention(task=task, person_id=person_id) for person_id in ids],
@@ -58,7 +59,8 @@ def sync_mentions(task: Task) -> None:
 def rewrite_mentions(person: Person, replacement: str) -> list[Task]:
     """Replace every Mention of the Person with `replacement` in the Tasks that mention them.
 
-    Returns the Tasks it changed, saved. Call it inside a transaction.
+    Their Comments are rewritten too, without counting as an edit. Returns the Tasks that mention
+    the Person, saved. Call it inside a transaction.
     """
 
     def replace(match: re.Match[str]) -> str:
@@ -69,6 +71,10 @@ def rewrite_mentions(person: Person, replacement: str) -> list[Task]:
         for field in TEXT_FIELDS:
             setattr(task, field, MENTION.sub(replace, getattr(task, field)))
     Task.objects.bulk_update(tasks, TEXT_FIELDS)
+    comments = list(Comment.objects.filter(task__in=tasks))
+    for comment in comments:
+        comment.body = MENTION.sub(replace, comment.body)
+    Comment.objects.bulk_update(comments, ["body"])
     return tasks
 
 

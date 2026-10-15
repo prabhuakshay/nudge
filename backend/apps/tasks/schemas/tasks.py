@@ -48,6 +48,10 @@ class TaskOut(Schema):
         default=0,
         description="How many Attachments the Task has. A Task just added has none.",
     )
+    comment_count: int = Field(
+        default=0,
+        description="How many Comments the Task has. A Task just added has none.",
+    )
 
 
 class TaskAncestorOut(Schema):

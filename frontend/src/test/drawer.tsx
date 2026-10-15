@@ -14,6 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { validateTaskSearch } from "@/features/tasks/open-task";
 import { TaskList } from "@/features/tasks/task-list";
 import type { Person } from "@/features/people/people";
+import type { Comment } from "@/features/tasks/comments";
 import type { SidebarProject, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
 import { makeTask } from "@/test/tasks";
 
@@ -69,9 +70,13 @@ export function minutesAgo(minutes: number) {
 
 /**
  * A stand-in for the server holding a few Tasks, which saves PATCHes to them. Each Task starts
- * with the given history, and a rename adds to it as the real server does.
+ * with the given history and Comments, and a rename adds to the history as the real server does.
  */
-export function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
+export function mockApi(
+  tasks: TaskDetail[],
+  history: TaskActivity[] = [],
+  comments: Comment[] = [],
+) {
   const activity = [...history];
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = input as Request;
@@ -83,6 +88,7 @@ export function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
       return json({ items: activity, next_cursor: null, count: activity.length });
     }
     if (url.pathname.endsWith("/attachments")) return json([]);
+    if (url.pathname.endsWith("/comments")) return json(comments);
     if (url.pathname.endsWith("/people")) return json([PRIYA]);
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);

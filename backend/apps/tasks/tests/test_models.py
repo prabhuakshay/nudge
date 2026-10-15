@@ -9,7 +9,7 @@ import pytest
 from django.db import IntegrityError, transaction
 
 from apps.tasks import people, projects, services
-from apps.tasks.models import Attachment, Task, TaskMention
+from apps.tasks.models import Attachment, Comment, Task, TaskMention
 
 if TYPE_CHECKING:
     from apps.accounts.models import User
@@ -45,6 +45,15 @@ def test_an_attachment_reads_as_its_original_name(ada: User) -> None:
     attachment = Attachment(task=task, name="receipt.pdf", size=1, content_type="application/pdf")
 
     assert str(attachment) == "receipt.pdf"
+
+
+@pytest.mark.django_db
+def test_a_comment_reads_as_the_start_of_its_body(ada: User) -> None:
+    task = services.create_task(services.inbox(ada), "File the taxes")
+
+    comment = Comment(task=task, body="x" * 60)
+
+    assert str(comment) == "x" * 50
 
 
 @pytest.mark.django_db

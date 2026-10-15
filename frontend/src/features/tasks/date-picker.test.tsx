@@ -21,7 +21,9 @@ function mockApi(saved: TaskDetail) {
     if (url.pathname.endsWith("/activity")) {
       return json({ items: [], next_cursor: null, count: 0 });
     }
-    if (url.pathname.endsWith("/attachments")) return json([]);
+    if (url.pathname.endsWith("/attachments") || url.pathname.endsWith("/comments")) {
+      return json([]);
+    }
     if (url.pathname.endsWith(`/tasks/${String(saved.id)}`)) return json(saved);
     if (url.searchParams.get("closed") === "true") return json({ items: [], next_cursor: null });
     return json({ items: [saved], next_cursor: null });

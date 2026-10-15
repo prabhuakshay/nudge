@@ -242,4 +242,44 @@ describe("ActivityFeed", () => {
 
     expect(await screen.findByText("Moved from “Inbox” to “Work”")).toBeInTheDocument();
   });
+
+  it("says which parent a Task moved under or out of", async () => {
+    const inbox = { from_project: "Inbox", to_project: "Inbox" };
+    const events = [
+      {
+        id: 3,
+        kind: "moved",
+        at: NEWER.at,
+        data: { ...inbox, from_parent: "Trip", to_parent: null },
+      },
+      {
+        id: 2,
+        kind: "moved",
+        at: OLDER.at,
+        data: { ...inbox, from_parent: null, to_parent: "Trip" },
+      },
+      {
+        id: 1,
+        kind: "moved",
+        at: OLDER.at,
+        data: { from_project: "Inbox", to_project: "Work", from_parent: null, to_parent: "Launch" },
+      },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 3 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <ActivityFeed taskId={1} />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Moved to the top level")).toBeInTheDocument();
+    expect(screen.getByText("Moved under “Trip”")).toBeInTheDocument();
+    expect(screen.getByText("Moved from “Inbox” to “Work”, under “Launch”")).toBeInTheDocument();
+  });
 });

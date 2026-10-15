@@ -151,6 +151,20 @@ class TaskPatchIn(Schema):
     project_id: int | None = Field(default=None, description="Moves the Task first into it.")
 
 
+class TaskMoveIn(Schema):
+    """Where a Task goes: under a parent, or to the top level of a Project, after a sibling."""
+
+    project_id: int | None = Field(
+        default=None,
+        description="Defaults to the parent's Project, or the Task's own for a root.",
+    )
+    parent_id: int | None = Field(default=None, description="The top level when left out.")
+    after_id: int | None = Field(
+        default=None,
+        description="The sibling it now follows; first when left out, last when it isn't there.",
+    )
+
+
 class AffectedTaskOut(Schema):
     """A Task whose Status a change touched, with its Status before, so the client can undo."""
 
@@ -252,14 +266,16 @@ class DatesChangedActivityOut(Schema):
 
 
 class MovedData(Schema):
-    """The Projects a Task moved between, by their names at the time."""
+    """The Projects and parents a Task moved between, by their names and titles at the time."""
 
     from_project: str
     to_project: str
+    from_parent: str | None = Field(default=None, description="Null when it was a root.")
+    to_parent: str | None = Field(default=None, description="Null when it became a root.")
 
 
 class MovedActivityOut(Schema):
-    """The Task moved to another Project."""
+    """The Task moved to another Project or parent."""
 
     id: int
     kind: Literal["moved"]

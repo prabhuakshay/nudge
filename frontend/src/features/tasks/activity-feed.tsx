@@ -35,11 +35,20 @@ const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string }
   attachment_added: (data) => `Attached “${data.name}”`,
   attachment_removed: (data) => `Deleted the attachment “${data.name}”`,
   dates_changed: (data) => describeDatesChange(data),
-  moved: (data) => `Moved from “${data.from_project}” to “${data.to_project}”`,
+  moved: (data) => describeMove(data),
 };
 
 function describe<K extends keyof ActivityData>(event: { kind: K; data: ActivityData[K] }) {
   return DESCRIBE[event.kind](event.data);
+}
+
+function describeMove(move: ActivityData["moved"]): string {
+  const under = move.to_parent ? `under “${move.to_parent}”` : null;
+  if (move.from_project !== move.to_project) {
+    const between = `Moved from “${move.from_project}” to “${move.to_project}”`;
+    return under ? `${between}, ${under}` : between;
+  }
+  return under ? `Moved ${under}` : "Moved to the top level";
 }
 
 function describeDatesChange({ old, new: next }: DatesChange): string {

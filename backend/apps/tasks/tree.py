@@ -1,5 +1,8 @@
 """Subtask trees: reading a Task's ancestors and descendants, and keeping their Statuses consistent.
 
+Moving a Task within or between trees is recorded here too, as one `moved` event naming the
+Project and parent it left and the ones it joined.
+
 A tree holds one rule across Status changes: a Closed Task has no open descendants. Closing a Task
 closes the open work under it, and opening work under a Closed Task reopens it. Every knock-on
 change is recorded in the changed Task's Activity and returned as an `AffectedTask`, so Undo can
@@ -67,6 +70,26 @@ def ancestors(task: Task) -> list[Task]:
         chain.insert(0, parent)
         parent = parent.parent
     return chain
+
+
+def height(task: Task) -> int:
+    """Return how many levels of live Subtasks hang below the Task: 0 when it has none."""
+    for levels in range(MAX_DEPTH, 0, -1):
+        lookup = "__".join(["parent"] * levels)
+        if Task.objects.filter(**{lookup: task}, deleted_at__isnull=True).exists():
+            return levels
+    return 0
+
+
+def moved_event(task: Task, from_project: str, from_parent: str | None) -> TaskActivity:
+    """Return the Activity event for a Task that left a Project or parent for where it is now."""
+    data = {
+        "from_project": from_project,
+        "to_project": task.project.name,
+        "from_parent": from_parent,
+        "to_parent": task.parent_title,
+    }
+    return TaskActivity(task=task, kind=TaskActivity.Kind.MOVED, data=data)
 
 
 def move_tree(task: Task, project: Project, position: str) -> list[str]:

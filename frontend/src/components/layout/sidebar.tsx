@@ -4,7 +4,6 @@ import { Logo } from "@/components/brand/logo";
 import type { User } from "@/features/auth/session";
 
 import { NAV_ITEMS } from "./nav-items";
-import { SignOutButton } from "./sign-out-button";
 import { UserAvatar } from "./user-avatar";
 
 /** Desktop navigation: smart views, lists and the account, always visible. */
@@ -40,7 +39,10 @@ export function Sidebar({ user }: { user: User }) {
       </section>
 
       <div className="mt-auto border-t border-border p-3">
-        <div className="flex items-center gap-3 px-3 py-2">
+        <Link
+          to="/account"
+          className="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-surface-muted data-[status=active]:bg-primary-soft"
+        >
           <UserAvatar user={user} />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{user.full_name || user.email}</p>
@@ -48,8 +50,7 @@ export function Sidebar({ user }: { user: User }) {
               <p className="truncate text-xs text-muted-foreground">{user.email}</p>
             )}
           </div>
-        </div>
-        <SignOutButton className="w-full" />
+        </Link>
       </div>
     </aside>
   );

@@ -3,16 +3,15 @@ import { LogOut } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useLogout } from "@/features/auth/session";
-import { cn } from "@/lib/utils";
 
-export function SignOutButton({ className }: { className?: string }) {
+/** Ends the session and returns to the login page, even if the server call fails. */
+export function SignOutButton() {
   const logout = useLogout();
   const navigate = useNavigate();
 
   return (
     <Button
-      variant="ghost"
-      className={cn("justify-start", className)}
+      variant="danger"
       disabled={logout.isPending}
       onClick={() => {
         logout.mutate(undefined, {
@@ -21,7 +20,7 @@ export function SignOutButton({ className }: { className?: string }) {
       }}
     >
       <LogOut aria-hidden />
-      Sign out
+      {logout.isPending ? "Signing out…" : "Sign out"}
     </Button>
   );
 }

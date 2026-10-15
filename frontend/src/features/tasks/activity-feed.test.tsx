@@ -23,7 +23,35 @@ function at(day: number) {
   return `2026-10-${String(day)}T09:00:00Z`;
 }
 
+const DAY = { due_date: "2026-11-06", due_time: null, start_date: null, start_time: null };
+const TRIP = {
+  due_date: "2026-11-04",
+  due_time: "06:30:00",
+  start_date: "2026-11-03",
+  start_time: "22:00:00",
+};
+
 describe("ActivityFeed", () => {
+  it.each([
+    [{ old: null, new: DAY }, "Set the date to 6 Nov 2026"],
+    [
+      { old: DAY, new: TRIP },
+      "Changed the date from 6 Nov 2026 to 3 Nov 2026, 22:00 – 4 Nov 2026, 06:30",
+    ],
+    [{ old: DAY, new: null }, "Removed the date (was 6 Nov 2026)"],
+  ])("describes a date change %#", async (data, text) => {
+    const events = [{ id: 1, kind: "dates_changed", at: at(15), data }];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 1 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    renderFeed();
+
+    expect(await screen.findByText(text)).toBeInTheDocument();
+  });
+
   it("describes Status and Priority changes, with a Blocked reason", async () => {
     const events = [
       {

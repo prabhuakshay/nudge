@@ -18,6 +18,7 @@ export type TaskStatus = components["schemas"]["Status"];
 export type TaskPriority = components["schemas"]["Priority"];
 export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"][number];
 export type Attachment = components["schemas"]["AttachmentOut"];
+export type DatesChange = components["schemas"]["DatesChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 
@@ -177,10 +178,18 @@ export function useDeleteAttachment(taskId: number) {
   });
 }
 
-/** A change to a Task: the fields to set, which are all left as they are when absent. */
+/** A Task's dates as the API takes them; null removes them all. */
+export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
+
+/**
+ * A change to a Task: the fields to set, which are all left as they are when absent. `dates`
+ * replaces all four date fields at once.
+ */
 export type TaskChange = { id: number } & Partial<
   Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason">
->;
+> & { dates?: DatesIn };
+
+const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
 async function patchTask({ id, ...change }: TaskChange) {
   const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
@@ -194,10 +203,15 @@ async function patchTask({ id, ...change }: TaskChange) {
 }
 
 /** The Task as the server will return it after the change, for showing the change straight away. */
-function withChange<T extends Task>(task: T, change: TaskChange): T {
+function withChange<T extends Task>(task: T, { dates, ...change }: TaskChange): T {
   const leavesStatus = change.status !== undefined && change.status !== task.status;
   // The server drops the Blocked reason on any Status change, unless the change sets one.
-  return { ...task, ...(leavesStatus && { blocked_reason: "" }), ...change };
+  return {
+    ...task,
+    ...(leavesStatus && { blocked_reason: "" }),
+    ...change,
+    ...(dates !== undefined && { ...UNDATED, ...dates }),
+  };
 }
 
 /** Show a change in the drawer and in every open list before the server answers. */

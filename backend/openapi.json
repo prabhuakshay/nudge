@@ -1489,6 +1489,61 @@
             "description": "When it was Completed or marked Won't do.",
             "title": "Completed At"
           },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for an all-day Task.",
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for a range, which ends on the due date.",
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "is_overdue": {
+            "description": "Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.",
+            "title": "Is Overdue",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1514,6 +1569,11 @@
           "priority",
           "blocked_reason",
           "completed_at",
+          "due_date",
+          "due_time",
+          "start_date",
+          "start_time",
+          "is_overdue",
           "created_at",
           "updated_at"
         ],
@@ -1588,6 +1648,61 @@
             "description": "When it was Completed or marked Won't do.",
             "title": "Completed At"
           },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for an all-day Task.",
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for a range, which ends on the due date.",
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "is_overdue": {
+            "description": "Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.",
+            "title": "Is Overdue",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -1618,6 +1733,11 @@
           "priority",
           "blocked_reason",
           "completed_at",
+          "due_date",
+          "due_time",
+          "start_date",
+          "start_time",
+          "is_overdue",
           "created_at",
           "updated_at",
           "description"
@@ -1667,6 +1787,57 @@
           "affected"
         ],
         "title": "TaskChangeOut",
+        "type": "object"
+      },
+      "TaskDatesIn": {
+        "description": "A Task's due date, time and range, all clock times in the user's time zone.\n\nWithout a time the Task is all-day. A start turns it into a range ending at the due date;\nstart and due are then both all-day or both timed. Times have minute precision.",
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          }
+        },
+        "required": [
+          "due_date"
+        ],
+        "title": "TaskDatesIn",
         "type": "object"
       },
       "TaskPatchIn": {
@@ -1730,6 +1901,17 @@
                 "type": "null"
               }
             ]
+          },
+          "dates": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskDatesIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Replaces all of the Task's dates; null removes them."
           }
         },
         "title": "TaskPatchIn",
@@ -1837,6 +2019,121 @@
           "data"
         ],
         "title": "CreatedActivityOut",
+        "type": "object"
+      },
+      "DatesChangedActivityOut": {
+        "description": "The Task's due date, time or range was set, changed or removed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "dates_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DatesChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "DatesChangedActivityOut",
+        "type": "object"
+      },
+      "DatesChangedData": {
+        "description": "The dates before and after a change; null when the Task had or has none.",
+        "properties": {
+          "old": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatesData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "new": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatesData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "DatesChangedData",
+        "type": "object"
+      },
+      "DatesData": {
+        "description": "A Task's dates at one moment, as a change recorded them.",
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          }
+        },
+        "required": [
+          "due_date",
+          "due_time",
+          "start_date",
+          "start_time"
+        ],
+        "title": "DatesData",
         "type": "object"
       },
       "DescriptionEditedActivityOut": {
@@ -1984,6 +2281,7 @@
                   "attachment_added": "#/components/schemas/AttachmentAddedActivityOut",
                   "attachment_removed": "#/components/schemas/AttachmentRemovedActivityOut",
                   "created": "#/components/schemas/CreatedActivityOut",
+                  "dates_changed": "#/components/schemas/DatesChangedActivityOut",
                   "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
                   "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
                   "status_changed": "#/components/schemas/StatusChangedActivityOut",
@@ -2012,6 +2310,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/AttachmentRemovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/DatesChangedActivityOut"
                 }
               ]
             },

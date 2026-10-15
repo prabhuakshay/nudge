@@ -4,28 +4,14 @@ import userEvent from "@testing-library/user-event";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { makeTask } from "@/test/tasks";
 
 import { TaskList } from "./task-list";
 import type { TaskActivity, TaskDetail } from "./tasks";
 
 const INBOX = { id: 7, name: "Inbox", open_count: 3 };
 
-function task(overrides: Partial<TaskDetail>): TaskDetail {
-  return {
-    id: 1,
-    project_id: INBOX.id,
-    title: "Buy milk",
-    description: "",
-    status: "open",
-    priority: 0,
-    blocked_reason: "",
-    completed_at: null,
-    created_at: "2026-10-15T09:00:00Z",
-    updated_at: "2026-10-15T09:00:00Z",
-    attachment_count: 0,
-    ...overrides,
-  };
-}
+const task = makeTask;
 
 function json(body: unknown, status = 200) {
   return Promise.resolve(

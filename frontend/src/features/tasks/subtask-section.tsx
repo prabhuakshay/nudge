@@ -2,6 +2,7 @@ import { ChevronRight, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { Kbd } from "@/components/ui/kbd";
+import { MentionText } from "@/features/people/mention-text";
 import { cn } from "@/lib/utils";
 
 import { SubtaskCount } from "./subtask-count";
@@ -86,7 +87,7 @@ function SubtaskItem({ row, onOpen }: { row: TreeRow; onOpen: (taskId: number) =
           isClosed(task.status) && "text-muted-foreground line-through",
         )}
       >
-        {task.title}
+        <MentionText text={task.title} />
       </button>
       {task.status === "blocked" && (
         <span className="rounded bg-warning-soft px-1.5 py-px text-[10px] font-bold text-warning">

@@ -61,6 +61,7 @@ def test_create_makes_a_project_with_a_palette_colour_and_the_list_icon(
         "icon": "list",
         "folder_id": None,
         "is_inbox": False,
+        "is_archived": False,
     }
     assert body["color"] in PaletteColor.values
     assert ada.projects.get(pk=body["id"]).name == "Home"
@@ -167,6 +168,7 @@ def test_patch_renames_recolours_and_changes_the_icon(client: Client, ada: User)
         "icon": "rocket",
         "folder_id": None,
         "is_inbox": False,
+        "is_archived": False,
     }
 
 

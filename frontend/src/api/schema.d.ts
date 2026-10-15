@@ -412,6 +412,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/projects/{project_id}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Archive a Project
+     * @description Make a Project read-only and move it to the sidebar's Archived section.
+     */
+    post: operations["apps_tasks_api_projects_archive_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/projects/{project_id}/unarchive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Unarchive a Project
+     * @description Bring an archived Project back to its place in the sidebar, unchanged.
+     */
+    post: operations["apps_tasks_api_projects_unarchive_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/sidebar": {
     parameters: {
       query?: never;
@@ -421,7 +461,7 @@ export interface paths {
     };
     /**
      * Get the sidebar
-     * @description Return the Inbox, Folders and ungrouped Projects, then Tags, in order, with Task counts.
+     * @description Return the Inbox, Folders and ungrouped Projects in order, archived Projects, then Tags.
      */
     get: operations["apps_tasks_api_sidebar_sidebar"];
     put?: never;
@@ -537,7 +577,9 @@ export interface paths {
      * Add a Task
      * @description Add a Task first in its Project, or in the Inbox when no Project is given.
      *
-     *     Tags named in `tags` that the user doesn't have yet are created with the Task.
+     *     With `parent_id` it is added last under that Task instead, which reopens the parent and its
+     *     ancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are
+     *     created with the Task.
      */
     post: operations["apps_tasks_api_tasks_create_task"];
     delete?: never;
@@ -571,6 +613,26 @@ export interface paths {
      *     offer Undo without the server keeping anything.
      */
     patch: operations["apps_tasks_api_tasks_update_task"];
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/duplicate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Duplicate a Task
+     * @description Add an open copy of a Task right after it, with its title, Description and Priority.
+     */
+    post: operations["apps_tasks_api_tasks_duplicate_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
     trace?: never;
   };
   "/api/v1/tasks/{task_id}/activity": {
@@ -939,6 +1001,11 @@ export interface components {
       folder_id: number | null;
       /** Is Inbox */
       is_inbox: boolean;
+      /**
+       * Is Archived
+       * @description Archived Projects are read-only.
+       */
+      is_archived: boolean;
     };
     /**
      * ProjectIn
@@ -1017,6 +1084,11 @@ export interface components {
        * @description In the user's order.
        */
       tags: components["schemas"]["SidebarTagOut"][];
+      /**
+       * Archived
+       * @description Archived Projects, by name.
+       */
+      archived: components["schemas"]["SidebarProjectOut"][];
     };
     /**
      * SidebarProjectOut
@@ -1033,6 +1105,11 @@ export interface components {
       folder_id: number | null;
       /** Is Inbox */
       is_inbox: boolean;
+      /**
+       * Is Archived
+       * @description Archived Projects are read-only.
+       */
+      is_archived: boolean;
       /**
        * @description discriminator enum property added by openapi-typescript
        * @enum {string}
@@ -1141,13 +1218,33 @@ export interface components {
     };
     /**
      * TaskOut
-     * @description A Task as a list row shows it.
+     * @description A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`.
      */
     TaskOut: {
       /** Id */
       id: number;
       /** Project Id */
       project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
       /** Title */
       title: string;
       status: components["schemas"]["Status"];
@@ -1163,6 +1260,11 @@ export interface components {
        * @description When it was Completed or marked Won't do.
        */
       completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
       /** Due Date */
       due_date: string | null;
       /**
@@ -1213,9 +1315,14 @@ export interface components {
       title: string;
       /**
        * Project Id
-       * @description Defaults to the Inbox.
+       * @description Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.
        */
       project_id?: number | null;
+      /**
+       * Parent Id
+       * @description Makes the Task the last Subtask of this one; reopens it if it's Closed.
+       */
+      parent_id?: number | null;
       /**
        * Tags
        * @description Tag names, in any case; Tags the user doesn't have yet are created.
@@ -1228,14 +1335,44 @@ export interface components {
       tag_ids?: number[];
     };
     /**
+     * TaskAncestorOut
+     * @description A Task above another in the tree, as a breadcrumb links to it.
+     */
+    TaskAncestorOut: {
+      /** Id */
+      id: number;
+      /** Title */
+      title: string;
+    };
+    /**
      * TaskDetailOut
-     * @description A Task as the detail drawer shows it.
+     * @description A Task as the detail drawer shows it, with where it sits in the tree and what's under it.
      */
     TaskDetailOut: {
       /** Id */
       id: number;
       /** Project Id */
       project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
       /** Title */
       title: string;
       status: components["schemas"]["Status"];
@@ -1251,6 +1388,11 @@ export interface components {
        * @description When it was Completed or marked Won't do.
        */
       completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
       /** Due Date */
       due_date: string | null;
       /**
@@ -1296,6 +1438,16 @@ export interface components {
        * @description Markdown, as the user wrote it.
        */
       description: string;
+      /**
+       * Ancestors
+       * @description From the root down to the parent.
+       */
+      ancestors: components["schemas"]["TaskAncestorOut"][];
+      /**
+       * Subtasks
+       * @description Every Subtask below, whatever its Status, as flat rows in manual order.
+       */
+      subtasks: components["schemas"]["TaskOut"][];
     };
     /**
      * AffectedTaskOut
@@ -1357,6 +1509,11 @@ export interface components {
        */
       blocked_reason?: string | null;
       priority?: components["schemas"]["Priority"] | null;
+      /**
+       * Pinned
+       * @description Pin the Task to the top of its lists, or unpin it.
+       */
+      pinned?: boolean | null;
       /** @description Replaces all of the Task's dates; null removes them. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
       /**
@@ -1533,6 +1690,25 @@ export interface components {
      */
     NoActivityData: Record<string, never>;
     /**
+     * PinnedActivityOut
+     * @description The Task was pinned.
+     */
+    PinnedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "pinned";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
      * PriorityChangedActivityOut
      * @description The Task's Priority changed.
      */
@@ -1580,13 +1756,32 @@ export interface components {
     };
     /**
      * StatusChangedData
-     * @description The Status before and after a change, and the Blocked reason it was given, if any.
+     * @description The Status before and after a change, the Blocked reason it was given, and any cascade.
+     *
+     *     A change the user made to a relative names that relative: `via_parent` when closing a
+     *     parent closed this Task, `via_subtask` when reopening a Subtask reopened it.
      */
     StatusChangedData: {
       old: components["schemas"]["Status"];
       new: components["schemas"]["Status"];
       /** Blocked Reason */
       blocked_reason: string;
+      /**
+       * Via Parent
+       * @description The Closed parent's title.
+       */
+      via_parent?: string | null;
+      /**
+       * Via Subtask
+       * @description The reopened Subtask's title.
+       */
+      via_subtask?: string | null;
+      /**
+       * Closed Subtasks
+       * @description How many Subtasks closed with it.
+       * @default 0
+       */
+      closed_subtasks: number;
     };
     /**
      * TagAddedActivityOut
@@ -1675,6 +1870,8 @@ export interface components {
         | components["schemas"]["DescriptionEditedActivityOut"]
         | components["schemas"]["StatusChangedActivityOut"]
         | components["schemas"]["PriorityChangedActivityOut"]
+        | components["schemas"]["PinnedActivityOut"]
+        | components["schemas"]["UnpinnedActivityOut"]
         | components["schemas"]["AttachmentAddedActivityOut"]
         | components["schemas"]["AttachmentRemovedActivityOut"]
         | components["schemas"]["DatesChangedActivityOut"]
@@ -1722,6 +1919,25 @@ export interface components {
       old: string;
       /** New */
       new: string;
+    };
+    /**
+     * UnpinnedActivityOut
+     * @description The Task was unpinned.
+     */
+    UnpinnedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "unpinned";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
     };
     /**
      * AttachmentOut
@@ -2368,6 +2584,77 @@ export interface operations {
       };
     };
   };
+  apps_tasks_api_projects_archive_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_unarchive_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
   apps_tasks_api_sidebar_sidebar: {
     parameters: {
       query?: never;
@@ -2643,6 +2930,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorOut"];
         };
       };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
     };
   };
   apps_tasks_api_tasks_get_task: {
@@ -2698,6 +2994,46 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TaskChangeOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_duplicate_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskOut"];
         };
       };
       /** @description Not Found */
@@ -2841,6 +3177,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorOut"];
         };
       };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
     };
   };
   apps_tasks_api_attachments_download_attachment: {
@@ -2894,6 +3239,15 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
         headers: {
           [name: string]: unknown;
         };

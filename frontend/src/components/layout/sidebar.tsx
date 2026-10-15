@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 
 import { Logo } from "@/components/brand/logo";
 import type { User } from "@/features/auth/session";
+import { SidebarArchived } from "@/features/projects/sidebar-archived";
 import { SidebarProjects } from "@/features/projects/sidebar-projects";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
 import { SidebarTags } from "@/features/tags/sidebar-tags";
@@ -80,6 +81,9 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="mt-5">
         <SidebarProjects onNavigate={onNavigate} />
+      </div>
+      <div className="mt-3">
+        <SidebarArchived onNavigate={onNavigate} />
       </div>
 
       <div className="mt-5">

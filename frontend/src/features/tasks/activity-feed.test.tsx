@@ -105,6 +105,71 @@ describe("ActivityFeed", () => {
     ]);
   });
 
+  it("names the relative behind a cascade and counts the Subtasks closed with a parent", async () => {
+    const status = { blocked_reason: "", via_parent: null, via_subtask: null, closed_subtasks: 0 };
+    const events = [
+      {
+        id: 4,
+        kind: "status_changed",
+        at: at(13),
+        data: { ...status, old: "completed", new: "open", via_subtask: "Book seats" },
+      },
+      {
+        id: 3,
+        kind: "status_changed",
+        at: at(12),
+        data: { ...status, old: "open", new: "wont_do", via_parent: "Plan the trip" },
+      },
+      {
+        id: 2,
+        kind: "status_changed",
+        at: at(11),
+        data: { ...status, old: "open", new: "completed", closed_subtasks: 1 },
+      },
+      {
+        id: 1,
+        kind: "status_changed",
+        at: at(10),
+        data: { ...status, old: "open", new: "completed", closed_subtasks: 3 },
+      },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 4 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    renderFeed();
+
+    const items = await screen.findAllByRole("listitem");
+    expect(items.map((item) => item.querySelector("p")?.textContent)).toEqual([
+      "Reopened via Subtask “Book seats”",
+      "Marked Won't do via parent “Plan the trip”",
+      "Completed with 1 Subtask",
+      "Completed with 3 Subtasks",
+    ]);
+  });
+
+  it("describes pinning and unpinning", async () => {
+    const events = [
+      { id: 2, kind: "unpinned", at: at(15), data: {} },
+      { id: 1, kind: "pinned", at: at(14), data: {} },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 2 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    renderFeed();
+
+    const items = await screen.findAllByRole("listitem");
+    expect(items.map((item) => item.querySelector("p")?.textContent)).toEqual([
+      "Unpinned",
+      "Pinned to the top",
+    ]);
+  });
+
   it("loads older events a page at a time", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const cursor = new URL((input as Request).url).searchParams.get("cursor");

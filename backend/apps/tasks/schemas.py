@@ -9,40 +9,36 @@ from ninja import Field, Schema
 from pydantic import StringConstraints, field_validator, model_validator
 
 from apps.core.palette import PaletteColor  # noqa: TC001 - Pydantic needs the type at runtime
-from apps.tasks.models import Project, Tag, Task
+from apps.tasks.models import Project, Task
+from apps.tasks.tag_schemas import (
+    SidebarTagOut,
+    TagAddedActivityOut,
+    TagName,
+    TagOut,
+    TagRemovedActivityOut,
+    TagsMergedActivityOut,
+)
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
-TagName = Annotated[
-    str,
-    StringConstraints(strip_whitespace=True, min_length=1, max_length=64, pattern=r"^[^\s#]+$"),
-]
-
-
-class TagOut(Schema):
-    """A Tag's own fields."""
-
-    id: int
-    name: str
-    color: PaletteColor | None = Field(description="Null shows the Tag grey.")
-
-    @staticmethod
-    def resolve_color(tag: Tag) -> str | None:
-        """Return the colour key, or None for a grey Tag, which the model stores as ""."""
-        return tag.color or None
 
 
 class TaskOut(Schema):
-    """A Task as a list row shows it."""
+    """A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`."""
 
     id: int
     project_id: int
+    parent_id: int | None = Field(description="Null for a root Task.")
+    position: str = Field(description="Sorts the Task among its siblings, byte by byte.")
+    depth: int = Field(description="0 for a root Task, up to 3 for the deepest Subtask.")
+    parent_title: str | None = Field(description="The parent's title, for a breadcrumb.")
     title: str
     status: Task.Status
     priority: Task.Priority = Field(description="0 is no Priority; 1 (P1) is the most urgent.")
     blocked_reason: str = Field(description="Why a Blocked Task waits; empty otherwise.")
     completed_at: datetime | None = Field(description="When it was Completed or marked Won't do.")
+    pinned_at: datetime | None = Field(description="When it was pinned; null when it isn't.")
     due_date: date | None
     due_time: time | None = Field(description="Null for an all-day Task.")
     start_date: date | None = Field(description="Set for a range, which ends on the due date.")
@@ -60,10 +56,21 @@ class TaskOut(Schema):
     )
 
 
+class TaskAncestorOut(Schema):
+    """A Task above another in the tree, as a breadcrumb links to it."""
+
+    id: int
+    title: str
+
+
 class TaskDetailOut(TaskOut):
-    """A Task as the detail drawer shows it."""
+    """A Task as the detail drawer shows it, with where it sits in the tree and what's under it."""
 
     description: str = Field(description="Markdown, as the user wrote it.")
+    ancestors: list[TaskAncestorOut] = Field(description="From the root down to the parent.")
+    subtasks: list[TaskOut] = Field(
+        description="Every Subtask below, whatever its Status, as flat rows in manual order.",
+    )
 
 
 class TaskListOut(Schema):
@@ -79,7 +86,14 @@ class TaskIn(Schema):
     """A new Task from Quick add."""
 
     title: Title
-    project_id: int | None = Field(default=None, description="Defaults to the Inbox.")
+    project_id: int | None = Field(
+        default=None,
+        description="Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.",
+    )
+    parent_id: int | None = Field(
+        default=None,
+        description="Makes the Task the last Subtask of this one; reopens it if it's Closed.",
+    )
     tags: list[TagName] = Field(
         default_factory=list,
         description="Tag names, in any case; Tags the user doesn't have yet are created.",
@@ -140,6 +154,10 @@ class TaskPatchIn(Schema):
         description="Only a Blocked Task can have one; send an empty string to clear it.",
     )
     priority: Task.Priority | None = None
+    pinned: bool | None = Field(
+        default=None,
+        description="Pin the Task to the top of its lists, or unpin it.",
+    )
     dates: TaskDatesIn | None = Field(
         default=None,
         description="Replaces all of the Task's dates; null removes them.",
@@ -191,11 +209,18 @@ class DatesChangedData(Schema):
 
 
 class StatusChangedData(Schema):
-    """The Status before and after a change, and the Blocked reason it was given, if any."""
+    """The Status before and after a change, the Blocked reason it was given, and any cascade.
+
+    A change the user made to a relative names that relative: `via_parent` when closing a
+    parent closed this Task, `via_subtask` when reopening a Subtask reopened it.
+    """
 
     old: Task.Status
     new: Task.Status
     blocked_reason: str
+    via_parent: str | None = Field(default=None, description="The Closed parent's title.")
+    via_subtask: str | None = Field(default=None, description="The reopened Subtask's title.")
+    closed_subtasks: int = Field(default=0, description="How many Subtasks closed with it.")
 
 
 class PriorityChangedData(Schema):
@@ -275,44 +300,22 @@ class PriorityChangedActivityOut(Schema):
     data: PriorityChangedData
 
 
-class TagData(Schema):
-    """The Tag an event is about, by the name it had."""
-
-    name: str
-
-
-class TagAddedActivityOut(Schema):
-    """A Tag was put on the Task."""
+class PinnedActivityOut(Schema):
+    """The Task was pinned."""
 
     id: int
-    kind: Literal["tag_added"]
+    kind: Literal["pinned"]
     at: datetime
-    data: TagData
+    data: NoActivityData
 
 
-class TagRemovedActivityOut(Schema):
-    """A Tag was taken off the Task, or deleted."""
+class UnpinnedActivityOut(Schema):
+    """The Task was unpinned."""
 
     id: int
-    kind: Literal["tag_removed"]
+    kind: Literal["unpinned"]
     at: datetime
-    data: TagData
-
-
-class TagsMergedData(Schema):
-    """The Tags of a merge, by the names they had."""
-
-    from_tag: str
-    into_tag: str
-
-
-class TagsMergedActivityOut(Schema):
-    """One of the Task's Tags was merged into another."""
-
-    id: int
-    kind: Literal["tags_merged"]
-    at: datetime
-    data: TagsMergedData
+    data: NoActivityData
 
 
 class AttachmentData(Schema):
@@ -345,6 +348,8 @@ TaskActivityOut = Annotated[
     | DescriptionEditedActivityOut
     | StatusChangedActivityOut
     | PriorityChangedActivityOut
+    | PinnedActivityOut
+    | UnpinnedActivityOut
     | AttachmentAddedActivityOut
     | AttachmentRemovedActivityOut
     | DatesChangedActivityOut
@@ -385,6 +390,7 @@ class ProjectOut(Schema):
     icon: Project.Icon
     folder_id: int | None
     is_inbox: bool
+    is_archived: bool = Field(description="Archived Projects are read-only.")
 
 
 class ProjectIn(Schema):
@@ -461,42 +467,6 @@ class SidebarFolderOut(FolderOut):
     projects: list[SidebarProjectOut]
 
 
-class TagIn(Schema):
-    """A new Tag."""
-
-    name: TagName
-    color: PaletteColor | None = Field(default=None, description="Grey when left out.")
-
-
-class TagPatchIn(Schema):
-    """The fields of a Tag to change; fields left out stay as they are."""
-
-    name: TagName | None = None
-    color: PaletteColor | None = Field(default=None, description="Null makes the Tag grey.")
-
-
-class TagMoveIn(Schema):
-    """Where a Tag goes in the user's order."""
-
-    after_id: int | None = Field(
-        default=None,
-        description="The Tag it now follows; first when null, last when it isn't there.",
-    )
-
-
-class TagMergeIn(Schema):
-    """The Tag to merge into."""
-
-    into_id: int
-
-
-class SidebarTagOut(TagOut):
-    """A Tag as the sidebar lists it."""
-
-    open_count: int = Field(description="Open and Blocked Tasks with the Tag.")
-    task_count: int = Field(description="Tasks with the Tag that aren't in Trash, closed too.")
-
-
 class SidebarOut(Schema):
     """Everything the sidebar shows."""
 
@@ -505,3 +475,4 @@ class SidebarOut(Schema):
         Field(description="Folders and ungrouped Projects in the user's order.")
     )
     tags: list[SidebarTagOut] = Field(description="In the user's order.")
+    archived: list[SidebarProjectOut] = Field(description="Archived Projects, by name.")

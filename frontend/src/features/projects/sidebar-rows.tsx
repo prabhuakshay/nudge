@@ -1,5 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import {
+  Archive,
+  ArchiveRestore,
   ChevronDown,
   ChevronRight,
   Ellipsis,
@@ -27,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { ProjectIcon } from "./project-icon";
 import {
   useDeleteFolder,
+  useSetArchived,
   useUpdateFolder,
   type SidebarFolder,
   type SidebarItem,
@@ -78,6 +81,7 @@ export function ProjectRow({
   onEdit: () => void;
   onMove: (placement: Placement) => void;
 }) {
+  const setArchived = useSetArchived();
   const last = (siblings: SidebarItem[]) => {
     const item = siblings.filter((sibling) => sibling.id !== project.id).at(-1);
     return item ? { kind: item.kind, id: item.id } : null;
@@ -134,6 +138,46 @@ export function ProjectRow({
             ))}
           </DropdownMenuSubContent>
         </DropdownMenuSub>
+        <DropdownMenuItem
+          onSelect={() => {
+            setArchived(project, true);
+          }}
+        >
+          <Archive aria-hidden /> Archive
+        </DropdownMenuItem>
+      </RowMenu>
+    </div>
+  );
+}
+
+/** An archived Project in the sidebar: a muted link to its read-only list, and its menu. */
+export function ArchivedProjectRow({
+  project,
+  onNavigate,
+}: {
+  project: SidebarProject;
+  onNavigate?: () => void;
+}) {
+  const setArchived = useSetArchived();
+  return (
+    <div className={cn(SIDEBAR_ROW, "font-medium has-[a[data-status=active]]:bg-primary-soft")}>
+      <Link
+        to="/projects/$projectId"
+        params={{ projectId: String(project.id) }}
+        onClick={onNavigate}
+        className="flex min-w-0 flex-1 items-center gap-2.5 self-stretch rounded-md outline-none focus-visible:ring-2 focus-visible:ring-ring data-[status=active]:text-primary"
+      >
+        <ProjectIcon project={project} className="opacity-60" />
+        <span className="truncate">{project.name}</span>
+      </Link>
+      <RowMenu label={`${project.name} options`}>
+        <DropdownMenuItem
+          onSelect={() => {
+            setArchived(project, false);
+          }}
+        >
+          <ArchiveRestore aria-hidden /> Unarchive
+        </DropdownMenuItem>
       </RowMenu>
     </div>
   );

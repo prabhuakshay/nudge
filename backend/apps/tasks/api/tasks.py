@@ -1,4 +1,4 @@
-"""Task endpoints: list a Project's or Tag's Tasks, add, read and change one, read its history."""
+"""Task endpoints: list a Project's or Tag's Tasks; add, read, change or copy one; its history."""
 
 from __future__ import annotations
 
@@ -7,12 +7,15 @@ from typing import TYPE_CHECKING
 from ninja import Router, Status
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import services, tags
+from apps.tasks import services, tags, tree
 from apps.tasks.api import signed_in_user
+from apps.tasks.archive import ArchivedProjectError
+from apps.tasks.models import Tag
 from apps.tasks.pagination import InvalidCursorError
 from apps.tasks.schemas import (
     AffectedTaskOut,
     TaskActivityListOut,
+    TaskAncestorOut,
     TaskChangeOut,
     TaskDetailOut,
     TaskIn,
@@ -25,7 +28,7 @@ if TYPE_CHECKING:
     from django.http import HttpRequest
 
     from apps.accounts.models import User
-    from apps.tasks.models import Project, Tag
+    from apps.tasks.models import Project, Task
 
 router = Router()
 
@@ -75,10 +78,15 @@ def list_tasks(
     if isinstance(found, Status):
         return found
     if not closed:
-        items = [TaskOut.from_orm(task) for task in services.open_tasks(found)]
+        rows = tags.open_tasks(found) if isinstance(found, Tag) else services.open_tasks(found)
+        items = [TaskOut.from_orm(task) for task in rows]
         return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=None))
     try:
-        page = services.closed_tasks(found, cursor)
+        page = (
+            tags.closed_tasks(found, cursor)
+            if isinstance(found, Tag)
+            else services.closed_tasks(found, cursor)
+        )
     except InvalidCursorError as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     items = [TaskOut.from_orm(task) for task in page.items]
@@ -87,15 +95,32 @@ def list_tasks(
 
 @router.post(
     "",
-    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut},
+    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
     summary="Add a Task",
 )
 def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[ErrorOut]:
     """Add a Task first in its Project, or in the Inbox when no Project is given.
 
-    Tags named in `tags` that the user doesn't have yet are created with the Task.
+    With `parent_id` it is added last under that Task instead, which reopens the parent and its
+    ancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are
+    created with the Task.
     """
     user = signed_in_user(request)
+    if task.parent_id is not None:
+        return _create_subtask(user, task.parent_id, task.title)
+    target = _target(user, task)
+    if isinstance(target, Status):
+        return target
+    project, picked = target
+    try:
+        created = tags.create_tagged_task(project, task.title, tags=picked, tag_names=task.tags)
+    except ArchivedProjectError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    return Status(_HTTP_CREATED, TaskOut.from_orm(created))
+
+
+def _target(user: User, task: TaskIn) -> tuple[Project, list[Tag]] | Status[ErrorOut]:
+    """Return the Project and picked Tags of a new Task, or a 404 if either isn't the user's."""
     project = (
         services.inbox(user)
         if task.project_id is None
@@ -106,8 +131,30 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
     picked = tags.owned_tags(user, task.tag_ids)
     if picked is None:
         return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
-    created = services.create_task(project, task.title, tags=picked, tag_names=task.tags)
-    return Status(_HTTP_CREATED, TaskOut.from_orm(created))
+    return project, picked
+
+
+def _create_subtask(user: User, parent_id: int, title: str) -> Status[TaskOut] | Status[ErrorOut]:
+    parent = services.live_task(user, parent_id)
+    if parent is None:
+        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    try:
+        change = services.create_subtask(parent, title)
+    except (services.TaskRuleError, ArchivedProjectError) as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    return Status(_HTTP_CREATED, TaskOut.from_orm(change.task))
+
+
+def _detail(task: Task) -> TaskDetailOut:
+    """Return the Task as the drawer shows it: its fields, its ancestors and its Subtasks."""
+    return TaskDetailOut(
+        **TaskOut.from_orm(task).model_dump(),
+        description=task.description,
+        ancestors=[
+            TaskAncestorOut(id=above.pk, title=above.title) for above in tree.ancestors(task)
+        ],
+        subtasks=[TaskOut.from_orm(below) for below in tree.descendants(task)],
+    )
 
 
 @router.get(
@@ -120,7 +167,7 @@ def get_task(request: HttpRequest, task_id: int) -> Status[TaskDetailOut] | Stat
     task = services.live_task(signed_in_user(request), task_id)
     if task is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    return Status(_HTTP_OK, TaskDetailOut.from_orm(task))
+    return Status(_HTTP_OK, _detail(task))
 
 
 @router.patch(
@@ -143,19 +190,36 @@ def update_task(
     if isinstance(edit, Status):
         return edit
     try:
-        change = services.update_task(user, task_id, edit)
-    except services.TaskRuleError as error:
+        change = tags.update_tagged_task(user, task_id, *edit)
+    except (services.TaskRuleError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
-    return Status(
-        _HTTP_OK, TaskChangeOut(task=TaskDetailOut.from_orm(change.task), affected=affected)
-    )
+    return Status(_HTTP_OK, TaskChangeOut(task=_detail(change.task), affected=affected))
 
 
-def _edit(user: User, patch: TaskPatchIn) -> services.TaskEdit | Status[ErrorOut]:
-    """Return the edit the patch asks for, or a 404 if it names another user's Project or Tag."""
+@router.post(
+    "/{int:task_id}/duplicate",
+    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    summary="Duplicate a Task",
+)
+def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Status[ErrorOut]:
+    """Add an open copy of a Task right after it, with its title, Description and Priority."""
+    try:
+        copy = services.duplicate_task(signed_in_user(request), task_id)
+    except ArchivedProjectError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    if copy is None:
+        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    return Status(_HTTP_CREATED, TaskOut.from_orm(copy))
+
+
+def _edit(
+    user: User,
+    patch: TaskPatchIn,
+) -> tuple[services.TaskEdit, list[Tag] | None] | Status[ErrorOut]:
+    """Return the edit and Tags the patch asks for, or a 404 for another user's Project or Tag."""
     project = None
     if patch.project_id is not None:
         project = services.live_project(user, patch.project_id)
@@ -164,16 +228,17 @@ def _edit(user: User, patch: TaskPatchIn) -> services.TaskEdit | Status[ErrorOut
     picked = None if patch.tag_ids is None else tags.owned_tags(user, patch.tag_ids)
     if patch.tag_ids is not None and picked is None:
         return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
-    return services.TaskEdit(
+    edit = services.TaskEdit(
         title=patch.title,
         description=patch.description,
         status=patch.status,
         blocked_reason=patch.blocked_reason,
         priority=patch.priority,
+        pinned=patch.pinned,
         dates=_dates(patch),
         project=project,
-        tags=picked,
     )
+    return edit, picked
 
 
 def _dates(patch: TaskPatchIn) -> services.TaskDates | None:

@@ -3,11 +3,13 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FolderX } from "lucide-react";
 
 import { EmptyState } from "@/components/layout/empty-state";
-import { allProjects } from "@/features/projects/projects";
+import { findProject } from "@/features/projects/projects";
+import { validateTaskSearch } from "@/features/tasks/open-task";
 import { TaskList } from "@/features/tasks/task-list";
 import { sidebarQuery } from "@/features/tasks/tasks";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
+  validateSearch: validateTaskSearch,
   loader: ({ context }) => context.queryClient.query(sidebarQuery),
   component: ProjectPage,
 });
@@ -15,7 +17,7 @@ export const Route = createFileRoute("/_app/projects/$projectId")({
 function ProjectPage() {
   const { projectId } = Route.useParams();
   const { data } = useSuspenseQuery(sidebarQuery);
-  const project = allProjects(data).find((candidate) => String(candidate.id) === projectId);
+  const project = findProject(data, Number(projectId));
   if (!project) {
     return (
       <EmptyState
@@ -25,6 +27,6 @@ function ProjectPage() {
       />
     );
   }
-  // Keyed so switching Projects starts with a closed drawer and a collapsed Closed group.
+  // Keyed so switching Projects starts with a collapsed Closed group.
   return <TaskList key={project.id} project={project} />;
 }

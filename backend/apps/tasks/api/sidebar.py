@@ -10,7 +10,8 @@ from apps.core.palette import PaletteColor
 from apps.tasks import projects, tags
 from apps.tasks.api import signed_in_user
 from apps.tasks.models import Folder, Project
-from apps.tasks.schemas import SidebarFolderOut, SidebarOut, SidebarProjectOut, SidebarTagOut
+from apps.tasks.schemas import SidebarFolderOut, SidebarOut, SidebarProjectOut
+from apps.tasks.tag_schemas import SidebarTagOut
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -27,6 +28,7 @@ def _project_out(project: Project, sidebar: projects.Sidebar) -> SidebarProjectO
         icon=Project.Icon(project.icon),
         folder_id=project.folder_id,
         is_inbox=project.is_inbox,
+        is_archived=project.is_archived,
         open_count=sidebar.open_counts.get(project.pk, 0),
     )
 
@@ -46,13 +48,24 @@ def _item_out(
     )
 
 
+def _tag_out(found: tags.SidebarTag) -> SidebarTagOut:
+    return SidebarTagOut(
+        id=found.tag.pk,
+        name=found.tag.name,
+        color=PaletteColor(found.tag.color) if found.tag.color else None,
+        open_count=found.open_count,
+        task_count=found.task_count,
+    )
+
+
 @router.get("", response=SidebarOut, summary="Get the sidebar")
 def sidebar(request: HttpRequest) -> SidebarOut:
-    """Return the Inbox, Folders and ungrouped Projects, then Tags, in order, with Task counts."""
+    """Return the Inbox, Folders and ungrouped Projects in order, archived Projects, then Tags."""
     user = signed_in_user(request)
     found = projects.sidebar(user)
     return SidebarOut(
         inbox=_project_out(found.inbox, found),
         items=[_item_out(item, found) for item in found.items],
-        tags=[SidebarTagOut.from_orm(tag) for tag in tags.sidebar_tags(user)],
+        archived=[_project_out(project, found) for project in found.archived],
+        tags=[_tag_out(found) for found in tags.sidebar_tags(user)],
     )

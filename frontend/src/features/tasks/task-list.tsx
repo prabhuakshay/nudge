@@ -1,84 +1,66 @@
 import { useInfiniteQuery, useQuery, type UseInfiniteQueryResult } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, CircleCheck, ListTodo } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleCheck, ListTodo, Pin } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ArchivedNotice } from "@/features/projects/archived-notice";
 import { ProjectHeader } from "@/features/projects/project-header";
-import { ProjectIcon } from "@/features/projects/project-icon";
-import { allProjects } from "@/features/projects/projects";
-import { groupByProject } from "@/features/tags/group-by-project";
-import { TagHeader } from "@/features/tags/tag-header";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
+import { ExpandCollapse } from "./expand-collapse";
+import { useOpenTask } from "./open-task";
 import { QuickAddCard } from "./quick-add-card";
 import { TaskDetail } from "./task-detail";
-import { GRID, TaskRow, type OpenTask, type ToggleStatus } from "./task-row";
 import { isClosed } from "./task-properties";
 import {
-  closedTasksQuery,
-  openTasksQuery,
-  sidebarQuery,
-  useSetTaskStatus,
-  type Sidebar,
-  type SidebarProject,
-  type SidebarTag,
-  type Task,
-} from "./tasks";
+  GRID,
+  TreeRows,
+  type RowContext,
+  type ToggleCollapsed,
+  type ToggleStatus,
+} from "./task-row";
+import { parentsOf, treeRows, treesWhere, type TreeRow } from "./task-tree";
+import { closedTasksQuery, openTasksQuery, useSetTaskStatus, type SidebarProject } from "./tasks";
 
-/** The list to show: one Project's Tasks, or one Tag's Tasks across Projects. */
-export type TaskListProps = { project: SidebarProject } | { tag: SidebarTag };
-
-/**
- * What a list shows its Tasks from, and the Project a Task opened from it falls back to. A Tag's
- * list falls back to the Inbox, which is also where its Quick add files new Tasks.
- */
-function listSource(props: TaskListProps, sidebar?: Sidebar) {
-  if ("project" in props) {
-    const { project } = props;
-    return { tag: null, project, source: { project: project.id }, label: project.name };
-  }
-  const { tag } = props;
-  return { tag, project: sidebar?.inbox, source: { tag: tag.id }, label: `#${tag.name}` };
-}
-
-/** A group of open Tasks under its own heading. */
-type Section = { key: string | number; icon: ReactNode; label: string; tasks: Task[] };
-
-/** A Project's open Tasks in one section; a Tag's in one section per Project, in sidebar order. */
-function openSections(open: Task[], tag: SidebarTag | null, sidebar?: Sidebar): Section[] {
-  if (tag && sidebar && open.length > 0) {
-    return groupByProject(open, allProjects(sidebar)).map(({ project, tasks }) => ({
-      key: project.id,
-      icon: <ProjectIcon project={project} className="size-3.5" />,
-      label: project.name,
-      tasks,
-    }));
-  }
-  const icon = <ListTodo className="size-3.5 text-muted-foreground" aria-hidden />;
-  return [{ key: "tasks", icon, label: "Tasks", tasks: open }];
-}
+/** How far each level of Subtasks steps in, in pixels; nesting eats width, so less on phones. */
+const INDENT = 22;
+const PHONE_INDENT = 20;
 
 /**
- * A Project's or Tag's Tasks as a table: the page header, Quick add, then the open Tasks and a
- * collapsed Closed group. A Tag's open Tasks are grouped by Project in sidebar order. On phones
- * the table collapses into stacked rows. Clicking a row opens the Task in the drawer.
+ * A Project's Tasks as a table: the page header, Quick add, then the pinned Task trees, the other
+ * open trees and a collapsed Closed group. Subtasks nest under their parent and fold away from
+ * its chevron. On phones the table collapses into stacked rows. Clicking a row opens the Task in
+ * the drawer, and the URL's `?task=` follows the open Task. An archived Project's list is
+ * read-only: a notice replaces Quick add and every control that changes a Task is disabled.
  */
-export function TaskList(props: TaskListProps) {
-  const { data: sidebar } = useQuery(sidebarQuery);
-  const { tag, project, source, label } = listSource(props, sidebar);
-  const { data: open = [] } = useQuery(openTasksQuery(source));
-  const sections = openSections(open, tag, sidebar);
+export function TaskList({ project }: { project: SidebarProject }) {
+  const { data: open = [] } = useQuery(openTasksQuery({ project: project.id }));
+  const pinned = useMemo(() => treesWhere(open, (root) => root.pinned_at !== null), [open]);
+  const unpinned = useMemo(() => treesWhere(open, (root) => root.pinned_at === null), [open]);
   const [showClosed, setShowClosed] = useState(false);
-  const closed = useInfiniteQuery({ ...closedTasksQuery(source), enabled: showClosed });
+  const closed = useInfiniteQuery({
+    ...closedTasksQuery({ project: project.id }),
+    enabled: showClosed,
+  });
   const closedTasks = useMemo(
     () => (showClosed ? (closed.data?.pages.flatMap((page) => page.items) ?? []) : []),
     [showClosed, closed.data],
   );
+  const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set());
+  const pinnedRows = useMemo(() => treeRows(pinned, collapsed), [pinned, collapsed]);
+  const openRows = useMemo(() => treeRows(unpinned, collapsed), [unpinned, collapsed]);
+  const closedRows = useMemo(() => treeRows(closedTasks, collapsed), [closedTasks, collapsed]);
+  const parents = useMemo(() => parentsOf([...open, ...closedTasks]), [open, closedTasks]);
+  // J/K step through every Task in outline order, folded or not, as in the prototype.
   const order = useMemo(
-    () => [...sections.flatMap((section) => section.tasks), ...closedTasks].map((task) => task.id),
-    [sections, closedTasks],
+    () =>
+      [pinned, unpinned, closedTasks].flatMap((rows) => treeRows(rows).map((row) => row.task.id)),
+    [pinned, unpinned, closedTasks],
   );
-  const [openId, setOpenId] = useState<number | null>(null);
+  const { openTaskId: openId, setOpenTask: setOpenId } = useOpenTask();
+  const indent = useMediaQuery("(min-width: 1024px)") ? INDENT : PHONE_INDENT;
+  const touch = useMediaQuery("(pointer: coarse)");
   const { mutate: setStatus } = useSetTaskStatus();
   // Stable, so memoized rows don't re-render when the list does.
   const toggle = useCallback<ToggleStatus>(
@@ -87,102 +69,139 @@ export function TaskList(props: TaskListProps) {
     },
     [setStatus],
   );
+  const toggleCollapsed = useCallback<ToggleCollapsed>((taskId) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (!next.delete(taskId)) next.add(taskId);
+      return next;
+    });
+  }, []);
+  const context = useMemo<RowContext>(
+    () => ({
+      openId,
+      collapsed,
+      indent,
+      contextMenu: !touch && !project.is_archived,
+      onToggle: toggle,
+      onOpen: setOpenId,
+      onToggleCollapsed: toggleCollapsed,
+    }),
+    [openId, collapsed, indent, touch, project.is_archived, toggle, toggleCollapsed, setOpenId],
+  );
 
   return (
     // `data-wide` lets the app shell drop its reading width for this table.
     <div data-wide className="mx-auto w-full max-w-6xl">
-      {"project" in props ? (
-        <ProjectHeader project={props.project} />
+      <ProjectHeader project={project}>
+        {parents.length > 0 && (
+          <ExpandCollapse
+            onExpand={() => {
+              setCollapsed(new Set());
+            }}
+            onCollapse={() => {
+              setCollapsed(new Set(parents));
+            }}
+          />
+        )}
+      </ProjectHeader>
+
+      {project.is_archived ? (
+        <ArchivedNotice project={project} />
       ) : (
-        <TagHeader tag={props.tag} />
+        <QuickAddCard projectId={project.id} />
       )}
 
-      {project && <QuickAddCard projectId={project.id} tagId={tag?.id} />}
-
-      <div
-        role="treegrid"
-        aria-label={`${label} tasks`}
-        className="rounded-xl border border-border bg-surface shadow-sm"
-      >
+      {/* A disabled fieldset disables every control inside, while rows still open the drawer. */}
+      <fieldset disabled={project.is_archived} className="min-w-0">
         <div
-          role="row"
-          className={cn(
-            GRID,
-            "sticky top-14 z-10 hidden h-9 items-center rounded-t-xl border-b border-border bg-surface-muted/95 pr-2 pl-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur",
-          )}
+          role="treegrid"
+          aria-label={`${project.name} tasks`}
+          className="rounded-xl border border-border bg-surface shadow-sm"
         >
-          <span role="columnheader" className="pl-7">
-            Title
-          </span>
-          <span role="columnheader" className="px-2">
-            Status
-          </span>
-          <span role="columnheader" className="px-2">
-            Priority
-          </span>
-          <span role="columnheader" className="px-2">
-            Due
-          </span>
-          <span role="columnheader" className="hidden px-2 xl:block">
-            Tags
-          </span>
-          <span role="columnheader" className="px-2 text-right">
-            Activity
-          </span>
-        </div>
+          <TableHeader />
 
-        {sections.map((section) => (
+          {pinnedRows.length > 0 && (
+            <Group
+              icon={<Pin className="size-3.5 text-primary" aria-hidden />}
+              label="Pinned"
+              count={pinnedRows.filter((row) => row.level === 0).length}
+            >
+              <TreeRows rows={pinnedRows} context={context} />
+            </Group>
+          )}
+
           <Group
-            key={section.key}
-            icon={section.icon}
-            label={section.label}
-            count={section.tasks.length}
+            icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
+            label="Tasks"
+            count={openRows.filter((row) => row.level === 0).length}
           >
-            {section.tasks.length === 0 ? (
+            {unpinned.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm text-muted-foreground">
                 Nothing left here. Add a task above.
               </p>
             ) : (
-              section.tasks.map((task) => (
-                <TaskRow
-                  key={task.id}
-                  task={task}
-                  selected={task.id === openId}
-                  onToggle={toggle}
-                  onOpen={setOpenId}
-                />
-              ))
+              <TreeRows rows={openRows} context={context} />
             )}
           </Group>
-        ))}
 
-        <ClosedGroup
-          query={closed}
-          tasks={closedTasks}
-          expanded={showClosed}
-          onExpandedChange={setShowClosed}
-          openId={openId}
-          onToggle={toggle}
-          onOpen={setOpenId}
-        />
-      </div>
+          <ClosedGroup
+            query={closed}
+            rows={closedRows}
+            expanded={showClosed}
+            onExpandedChange={setShowClosed}
+            context={context}
+          />
+        </div>
+      </fieldset>
 
-      {project && (
-        <TaskDetail
-          taskId={openId}
-          project={project}
-          order={order}
-          onOpen={setOpenId}
-          onClose={() => {
-            setOpenId(null);
-          }}
-        />
-      )}
+      <TaskDetail
+        taskId={openId}
+        project={project}
+        order={order}
+        onOpen={setOpenId}
+        onClose={() => {
+          setOpenId(null);
+        }}
+      />
     </div>
   );
 }
 
-function Group({
+/** The table's column headings, from `lg`; Tags get a column from `xl`. */
+export function TableHeader() {
+  return (
+    <div
+      role="row"
+      className={cn(
+        GRID,
+        "sticky top-14 z-10 hidden h-9 items-center rounded-t-xl border-b border-border bg-surface-muted/95 pr-2 pl-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur",
+      )}
+    >
+      <span role="columnheader" className="pl-[54px]">
+        Title
+      </span>
+      <span role="columnheader" className="px-2">
+        Status
+      </span>
+      <span role="columnheader" className="px-2">
+        Priority
+      </span>
+      <span role="columnheader" className="px-2">
+        Due
+      </span>
+      <span role="columnheader" className="hidden px-2 xl:block">
+        Tags
+      </span>
+      <span role="columnheader" className="px-2 text-right">
+        Activity
+      </span>
+      <span role="columnheader" aria-label="Actions" />
+    </div>
+  );
+}
+
+/** A titled section of the table, with a count of its Tasks. */
+export function Group({
   icon,
   label,
   count,
@@ -208,22 +227,18 @@ function Group({
 }
 
 /** Closed Tasks stay out of the way, and aren't fetched, until the group is opened. */
-function ClosedGroup({
+export function ClosedGroup({
   query: closed,
-  tasks,
+  rows,
   expanded,
   onExpandedChange,
-  openId,
-  onToggle,
-  onOpen,
+  context,
 }: {
   query: UseInfiniteQueryResult;
-  tasks: Task[];
+  rows: TreeRow[];
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
-  openId: number | null;
-  onToggle: ToggleStatus;
-  onOpen: OpenTask;
+  context: RowContext;
 }) {
   return (
     <section aria-label="Closed">
@@ -248,16 +263,8 @@ function ClosedGroup({
       </button>
       {expanded && (
         <div className="border-t border-border/60 pb-1">
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              selected={task.id === openId}
-              onToggle={onToggle}
-              onOpen={onOpen}
-            />
-          ))}
-          {closed.isSuccess && tasks.length === 0 && (
+          <TreeRows rows={rows} context={context} />
+          {closed.isSuccess && rows.length === 0 && (
             <p className="px-4 py-4 text-center text-sm text-muted-foreground">
               Nothing closed yet.
             </p>

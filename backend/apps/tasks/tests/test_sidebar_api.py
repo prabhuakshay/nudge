@@ -47,10 +47,12 @@ def test_sidebar_shows_the_users_inbox_with_its_open_task_count(
             "icon": "inbox",
             "folder_id": None,
             "is_inbox": True,
+            "is_archived": False,
             "open_count": 1,
         },
         "items": [],
         "tags": [],
+        "archived": [],
     }
 
 
@@ -99,6 +101,7 @@ def test_sidebar_lists_folders_and_ungrouped_projects_in_order_with_counts(
             "icon": "briefcase",
             "folder_id": None,
             "is_inbox": False,
+            "is_archived": False,
             "open_count": 2,
         },
         {
@@ -115,6 +118,7 @@ def test_sidebar_lists_folders_and_ungrouped_projects_in_order_with_counts(
                     "icon": "dumbbell",
                     "folder_id": folder.pk,
                     "is_inbox": False,
+                    "is_archived": False,
                     "open_count": 0,
                 },
             ],

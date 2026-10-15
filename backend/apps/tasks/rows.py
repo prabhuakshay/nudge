@@ -1,0 +1,51 @@
+"""How Tasks are read for a list: each row carries Tags, Attachment count, depth and overdue."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from django.db.models import Case, Count, OuterRef, Q, Subquery, When
+from django.db.models.functions import Coalesce
+from django.utils import timezone
+
+from apps.accounts.services import local_zone
+from apps.tasks.models import Attachment
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
+    from apps.accounts.models import User
+    from apps.tasks.models import Task
+
+
+def with_counts(tasks: QuerySet[Task]) -> QuerySet[Task]:
+    """Annotate each Task with `attachment_count`."""
+    # A subquery rather than a join: grouping would drop the model's default ordering.
+    attachments = (
+        Attachment.objects.filter(task=OuterRef("pk"))
+        .order_by()
+        .values("task")
+        .annotate(count=Count("pk"))
+        .values("count")
+    )
+    return tasks.annotate(attachment_count=Coalesce(Subquery(attachments), 0))
+
+
+def with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
+    """Annotate each Task with `is_overdue`, judged by the user's clock right now.
+
+    Times are floating, so the comparison is on the user's local date and time: an all-day Task
+    is overdue once its day ends, a timed one once its time passes, a range once its end passes.
+    """
+    now = timezone.now().astimezone(local_zone(user))
+    overdue = Q(completed_at__isnull=True) & (
+        Q(due_date__lt=now.date()) | Q(due_date=now.date(), due_time__lt=now.time())
+    )
+    return tasks.annotate(is_overdue=Case(When(overdue, then=True), default=False))
+
+
+def as_rows(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
+    """Return the Tasks with everything a list row shows, judged by the user's clock."""
+    # Three hops reach a root from the deepest Subtask, so a row's depth costs no queries.
+    tasks = tasks.select_related("parent__parent__parent").prefetch_related("tags")
+    return with_overdue(with_counts(tasks), user)

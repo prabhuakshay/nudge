@@ -12,6 +12,7 @@ function project(id: number, name: string): SidebarProject {
     icon: "list",
     folder_id: null,
     is_inbox: false,
+    is_archived: false,
     open_count: 0,
   };
 }

@@ -167,7 +167,7 @@ def test_move_cannot_reach_another_users_tag(client: Client, grace: User) -> Non
 @pytest.mark.django_db
 def test_delete_removes_the_tag_from_every_task_for_good(client: Client, ada: User) -> None:
     work, home = tags.create_tag(ada, "work"), tags.create_tag(ada, "home")
-    task = services.create_task(services.inbox(ada), "Report", tags=[work, home])
+    task = tags.create_tagged_task(services.inbox(ada), "Report", tags=[work, home])
 
     response = client.delete(f"/api/v1/tags/{work.pk}")
 
@@ -193,8 +193,8 @@ def test_merge_moves_tasks_onto_the_target_and_deletes_the_source(
     ada: User,
 ) -> None:
     job, work = tags.create_tag(ada, "job"), tags.create_tag(ada, "work")
-    only_job = services.create_task(services.inbox(ada), "Report", tags=[job])
-    both = services.create_task(services.inbox(ada), "Review", tags=[job, work])
+    only_job = tags.create_tagged_task(services.inbox(ada), "Report", tags=[job])
+    both = tags.create_tagged_task(services.inbox(ada), "Review", tags=[job, work])
 
     response = _post(client, f"/api/v1/tags/{job.pk}/merge", {"into_id": work.pk})
 

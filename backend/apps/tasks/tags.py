@@ -8,14 +8,19 @@ add finds the Tag the user already has.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Q
+from django.db.models import Count
 from fractional_indexing import generate_key_between
 
 from apps.accounts.models import User
-from apps.tasks.models import OPEN_STATUSES, Tag, Task, TaskActivity
+from apps.tasks import services
+from apps.tasks.archive import active_tasks
+from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Project, Tag, Task, TaskActivity
+from apps.tasks.pagination import Page, newest_first
+from apps.tasks.rows import as_rows
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -182,11 +187,49 @@ def _event(task: Task, kind: TaskActivity.Kind, data: dict[str, str]) -> TaskAct
     return TaskActivity(task=task, kind=kind, data=data)
 
 
-def retag(task: Task, tags: list[Tag]) -> list[TaskActivity]:
-    """Give the Task exactly these Tags; return unsaved Activity events, one per change.
+def create_tagged_task(
+    project: Project,
+    title: str,
+    *,
+    tags: Iterable[Tag] = (),
+    tag_names: Iterable[str] = (),
+) -> Task:
+    """Create a Task as `services.create_task` does, with Tags, in one transaction.
 
-    Call it inside the transaction that saves the events.
+    It gets `tags` and the owner's Tags called `tag_names`, which are created if they're new.
+
+    Raises:
+        ArchivedProjectError: The Project is archived.
     """
+    with transaction.atomic():
+        task = services.create_task(project, title)
+        task.tags.add(*tags, *tags_named(project.owner, tag_names))
+    return task
+
+
+def update_tagged_task(
+    user: User,
+    task_id: int,
+    edit: services.TaskEdit,
+    tags: list[Tag] | None,
+) -> services.TaskChange | None:
+    """Change a Task as `services.update_task` does and give it exactly `tags`, unless None.
+
+    Both happen in one transaction, and each Tag put on or taken off is logged in Activity.
+
+    Raises:
+        TaskRuleError: The edit breaks a Task rule.
+        ArchivedProjectError: The Task is in an archived Project, or would move into one.
+    """
+    with transaction.atomic():
+        change = services.update_task(user, task_id, edit)
+        if change is not None and tags is not None:
+            TaskActivity.objects.bulk_create(_retag(change.task, tags))
+    return change
+
+
+def _retag(task: Task, tags: list[Tag]) -> list[TaskActivity]:
+    """Give the Task exactly these Tags; return unsaved Activity events, one per change."""
     current = set(task.tags.all())
     wanted = set(tags)
     added = sorted(wanted - current, key=lambda found: (found.position, found.pk))
@@ -199,14 +242,59 @@ def retag(task: Task, tags: list[Tag]) -> list[TaskActivity]:
     ]
 
 
-def sidebar_tags(user: User) -> QuerySet[Tag]:
-    """Return the user's Tags in order, each with `open_count` and `task_count` annotated.
+@dataclass(frozen=True)
+class SidebarTag:
+    """A Tag as the sidebar lists it, with its Task counts."""
 
-    `task_count` counts every Task that isn't in Trash, closed ones too, because that's how many
-    Tasks merging or deleting the Tag touches.
+    tag: Tag
+    open_count: int
+    task_count: int
+
+
+def _counts_by_tag(tasks: QuerySet[Task]) -> dict[int, int]:
+    return dict(
+        tasks.filter(tags__isnull=False)
+        .values("tags")
+        .annotate(count=Count("pk"))
+        .values_list("tags", "count"),
+    )
+
+
+def sidebar_tags(user: User) -> list[SidebarTag]:
+    """Return the user's Tags in order, each with its open and total Task counts.
+
+    The open count leaves out archived Projects, like every view that spans Projects. The total
+    counts every Task that isn't in Trash, because that's how many merging or deleting touches.
     """
-    in_use = Q(tasks__deleted_at__isnull=True, tasks__project__deleted_at__isnull=True)
-    return user.tags.annotate(
-        open_count=Count("tasks", filter=in_use & Q(tasks__status__in=OPEN_STATUSES)),
-        task_count=Count("tasks", filter=in_use),
-    ).order_by("position", "id")
+    open_counts = _counts_by_tag(active_tasks(user).filter(status__in=OPEN_STATUSES))
+    totals = _counts_by_tag(
+        user.tasks.filter(deleted_at__isnull=True, project__deleted_at__isnull=True),
+    )
+    return [
+        SidebarTag(
+            tag=found, open_count=open_counts.get(found.pk, 0), task_count=totals.get(found.pk, 0)
+        )
+        for found in user.tags.all()
+    ]
+
+
+def _tagged(tag: Tag) -> QuerySet[Task]:
+    return as_rows(active_tasks(tag.owner).filter(tags=tag), tag.owner)
+
+
+def open_tasks(tag: Tag) -> QuerySet[Task]:
+    """Return the Tag's open and Blocked Tasks, Subtasks too, flat and in manual order.
+
+    Tasks in archived Projects are left out. A Subtask shows whatever its parent's Status, so the
+    list says which Task it belongs to with its parent's title.
+    """
+    return _tagged(tag).filter(status__in=OPEN_STATUSES)
+
+
+def closed_tasks(tag: Tag, cursor: str | None = None) -> Page[Task]:
+    """Return a page of the Tag's Closed Tasks, flat, most recently completed first.
+
+    Raises:
+        InvalidCursorError: The cursor wasn't one this function returned.
+    """
+    return newest_first(_tagged(tag).filter(status__in=CLOSED_STATUSES), "completed_at", cursor)

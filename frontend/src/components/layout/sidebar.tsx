@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/brand/logo";
 import type { User } from "@/features/auth/session";
 
+import { Clock } from "./clock";
 import { NAV_ITEMS } from "./nav-items";
 import { UserAvatar } from "./user-avatar";
 
@@ -10,8 +11,9 @@ import { UserAvatar } from "./user-avatar";
 export function Sidebar({ user }: { user: User }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-72 shrink-0 flex-col border-r border-border bg-surface lg:flex">
-      <div className="px-6 pt-6 pb-8">
+      <div className="flex flex-col gap-2 px-6 pt-6 pb-8">
         <Logo />
+        <Clock />
       </div>
 
       <nav aria-label="Views" className="flex flex-col gap-1 px-3">

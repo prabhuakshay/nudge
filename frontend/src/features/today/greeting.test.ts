@@ -1,4 +1,4 @@
-import { formatLongDate, greetingFor } from "./greeting";
+import { greetingFor } from "./greeting";
 
 describe("greetingFor", () => {
   it.each([
@@ -10,11 +10,5 @@ describe("greetingFor", () => {
     [23, "Good evening"],
   ])("at %i:00 says %s", (hour, expected) => {
     expect(greetingFor(new Date(2026, 9, 15, hour))).toBe(expected);
-  });
-});
-
-describe("formatLongDate", () => {
-  it("includes the weekday, day and month", () => {
-    expect(formatLongDate(new Date(2026, 9, 15), "en-GB")).toBe("Thursday 15 October");
   });
 });

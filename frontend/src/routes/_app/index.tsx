@@ -3,7 +3,7 @@ import { CalendarCheck } from "lucide-react";
 
 import { EmptyState } from "@/components/layout/empty-state";
 import { PageHeader } from "@/components/layout/page-header";
-import { formatLongDate, greetingFor } from "@/features/today/greeting";
+import { greetingFor } from "@/features/today/greeting";
 
 export const Route = createFileRoute("/_app/")({
   component: TodayPage,
@@ -17,7 +17,6 @@ function TodayPage() {
   return (
     <>
       <PageHeader
-        eyebrow={formatLongDate(now)}
         title="Today"
         description={firstName ? `${greetingFor(now)}, ${firstName}.` : `${greetingFor(now)}.`}
       />

@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 
 import { INBOX, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import type { TaskDetail } from "./tasks";
 
@@ -16,7 +17,7 @@ const EMPTY_LISTS = new Set<string | undefined>(["attachments", "comments"]);
 function mockApi(tasks: TaskDetail[]) {
   let nextId = 100;
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     const [, id, action] = /\/tasks\/(\d+)(?:\/(\w+))?$/.exec(url.pathname) ?? [];
     const found = tasks.find((item) => item.id === Number(id));
@@ -69,7 +70,7 @@ function list(tasks: TaskDetail[], url: URL) {
 
 function requests(fetchSpy: ReturnType<typeof mockApi>) {
   return fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET")
     .map((request) => `${request.method} ${new URL(request.url).pathname}`);
 }
@@ -271,7 +272,7 @@ describe("The open Task in the URL", () => {
 
     await screen.findByText("Buy milk");
     expect(screen.queryByRole("dialog", { name: "Task details" })).not.toBeInTheDocument();
-    const urls = fetchSpy.mock.calls.map(([input]) => new URL((input as Request).url).pathname);
+    const urls = fetchSpy.mock.calls.map(([input]) => new URL(requestOf(input).url).pathname);
     expect(urls).not.toContain("/api/v1/tasks/milk");
   });
 });

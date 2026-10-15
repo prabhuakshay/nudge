@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { GARDEN, INBOX, json, renderListRoute, WORK } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import type { SearchResult } from "./search";
 import { SearchView } from "./search-view";
@@ -16,7 +17,7 @@ function result(overrides: Partial<SearchResult> = {}): SearchResult {
 /** A stand-in server answering searches with the given results, whatever the words. */
 function mockApi(results: SearchResult[]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-    const url = new URL((input as Request).url);
+    const url = new URL(requestOf(input).url);
     if (url.pathname.endsWith("/sidebar")) {
       return json({ inbox: INBOX, items: [WORK], archived: [GARDEN], people: [] });
     }
@@ -30,7 +31,7 @@ function mockApi(results: SearchResult[]) {
 
 function searches(fetchSpy: ReturnType<typeof mockApi>) {
   return fetchSpy.mock.calls
-    .map(([input]) => new URL((input as Request).url))
+    .map(([input]) => new URL(requestOf(input).url))
     .filter((url) => url.pathname.endsWith("/tasks/search"))
     .map((url) => url.searchParams.get("q"));
 }

@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 
 import { bulkRequests, json, mockApi, patches, renderList, task } from "@/test/drawer";
+import { requestOf } from "@/test/fetch";
 
 function row(title: string) {
   const found = screen
@@ -26,7 +27,7 @@ function mockBulk(affected: Affected = [], movedFrom: Place[] = []) {
   const fetchSpy = mockApi([MILK(), RENT(), BOOKS()]);
   const tasksApi = fetchSpy.getMockImplementation();
   fetchSpy.mockImplementation((input, init) => {
-    const request = input as Request;
+    const request = requestOf(input);
     if (new URL(request.url).pathname.endsWith("/tasks/bulk")) {
       return json({ affected, moved_from: movedFrom });
     }
@@ -164,7 +165,7 @@ describe("the N selected bar", () => {
 
     await vi.waitFor(() => {
       const restored = fetchSpy.mock.calls
-        .map(([input]) => new URL((input as Request).url).pathname)
+        .map(([input]) => new URL(requestOf(input).url).pathname)
         .filter((path) => path.endsWith("/restore"));
       expect(restored).toEqual([
         "/api/v1/tasks/1/restore",

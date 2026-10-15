@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 
 import { INBOX, json, renderListRoute } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import type { ScheduleView } from "./schedule";
 import { ScheduleList } from "./schedule-list";
@@ -10,9 +11,9 @@ import type { Task } from "./tasks";
 const task = makeTask;
 
 /** A stand-in server: a view's open Tasks, the Tasks closed today, and Task creation. */
-function mockApi({ open = [] as Task[], closed = [] as Task[] } = {}) {
+function mockApi({ open = [], closed = [] }: { open?: Task[]; closed?: Task[] } = {}) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     if (request.method === "POST") {
       const body = (await request.clone().json()) as { title: string };
@@ -30,7 +31,7 @@ function mockApi({ open = [] as Task[], closed = [] as Task[] } = {}) {
 
 async function requestsTo(fetchSpy: ReturnType<typeof mockApi>, method: string) {
   const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method === method);
   return Promise.all(
     requests.map(async (request) => {
@@ -84,9 +85,10 @@ describe("ScheduleList", () => {
     expect(await requestsTo(fetchSpy, "GET")).toContain("/api/v1/tasks?view=today");
     expect(titlesIn("Overdue")).toEqual(["Pay rent"]);
     expect(titlesIn("Today")).toEqual(["Book the van", "Buy milk"]);
-    const subtask = screen.getByText("Book the van").closest("[role=row]");
+    const subtask = screen.getByText("Book the van").closest<HTMLElement>("[role=row]");
+    if (!subtask) throw new Error("No row for the Subtask.");
     expect(subtask).toHaveAttribute("aria-level", "1");
-    expect(within(subtask as HTMLElement).getByText("Move house")).toBeInTheDocument();
+    expect(within(subtask).getByText("Move house")).toBeInTheDocument();
   });
 
   it("shows Pinned Tasks in their own group first", async () => {

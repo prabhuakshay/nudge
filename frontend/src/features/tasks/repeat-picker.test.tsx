@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 
 import { INBOX, bulkRequests, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import type { TaskDetail } from "./tasks";
 
@@ -13,7 +14,7 @@ const task = makeTask;
  */
 function mockApi(saved: TaskDetail) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     if (request.method === "PATCH") {
       save(saved, (await request.clone().json()) as Partial<TaskDetail>);
@@ -40,7 +41,7 @@ function save(saved: TaskDetail, { status, ...fields }: Partial<TaskDetail>) {
 
 async function patches(fetchSpy: ReturnType<typeof mockApi>) {
   const sent = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method === "PATCH");
   return Promise.all(sent.map(async (request) => (await request.json()) as unknown));
 }

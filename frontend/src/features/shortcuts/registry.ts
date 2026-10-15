@@ -78,6 +78,7 @@ export type ShortcutId = keyof typeof SHORTCUTS;
 
 /** The shortcuts of one scope, in the order the registry lists them. */
 export function shortcutsIn(scope: ShortcutScope): (Shortcut & { id: ShortcutId })[] {
+  // `Object.entries` types keys as strings; these are exactly SHORTCUTS' ids.
   return (Object.entries(SHORTCUTS) as [ShortcutId, Shortcut][])
     .filter(([, shortcut]) => shortcut.scope === scope)
     .map(([id, shortcut]) => ({ id, ...shortcut }));

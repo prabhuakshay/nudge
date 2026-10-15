@@ -3,6 +3,7 @@ import { screen, within } from "@testing-library/react";
 import type { Task } from "@/features/tasks/tasks";
 import { INBOX, renderListRoute, WORK } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import type { Person } from "./people";
 import { PersonTasks } from "./person-tasks";
@@ -19,7 +20,7 @@ function json(body: unknown) {
 /** A stand-in server: the sidebar with the address book, and the Tasks that mention Priya. */
 function mockApi(open: Task[], closed: Task[] = []) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-    const url = new URL((input as Request).url);
+    const url = new URL(requestOf(input).url);
     if (url.pathname.endsWith("/sidebar")) {
       return json({ inbox: INBOX, items: [WORK], people: [PRIYA] });
     }

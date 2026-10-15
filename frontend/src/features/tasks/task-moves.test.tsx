@@ -2,6 +2,7 @@ import { screen } from "@testing-library/react";
 
 import { GARDEN, INBOX, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import { moveRow, type Placement } from "./task-drag";
 import type { Task } from "./tasks";
@@ -19,7 +20,7 @@ function seed(): Task[] {
 /** A stand-in server that lists the rows and makes moves, or refuses them with `refusal`. */
 function mockApi(rows: Task[] = seed(), refusal?: string) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     if (url.pathname.endsWith("/move")) {
       if (refusal) return json({ detail: refusal }, 422);
@@ -40,7 +41,7 @@ function mockApi(rows: Task[] = seed(), refusal?: string) {
 
 async function moves(fetchSpy: ReturnType<typeof mockApi>) {
   const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method === "POST");
   return Promise.all(
     requests.map(async (request) => [

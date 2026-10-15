@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
+import { requestOf } from "@/test/fetch";
 
 import type { Sidebar, SidebarFolder, SidebarProject } from "./projects";
 import { SidebarProjects } from "./sidebar-projects";
@@ -76,7 +77,7 @@ function withoutDeletedProject(sidebar: Sidebar, request: Request): Sidebar {
 function mockApi() {
   let sidebar = SIDEBAR;
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     if (request.method === "GET") return json(sidebar);
     if (request.method === "PATCH" && request.url.includes("/folders/")) {
       const change = (await request.clone().json()) as Partial<SidebarFolder>;
@@ -97,7 +98,7 @@ function mockApi() {
 
 async function writes(fetchSpy: ReturnType<typeof mockApi>) {
   const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET");
   return Promise.all(
     requests.map(async (request) => {

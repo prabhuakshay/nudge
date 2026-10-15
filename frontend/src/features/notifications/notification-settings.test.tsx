@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { requestOf } from "@/test/fetch";
 import { NotificationSettings } from "./notification-settings";
 import type * as push from "./push";
 import { disablePush, enablePush, PushError, type PushStatus } from "./push";
@@ -82,7 +83,7 @@ describe("NotificationSettings", () => {
     await user.click(screen.getByRole("button", { name: "Send" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("Sent");
-    const request = fetchSpy.mock.calls[0]?.[0] as Request;
+    const request = requestOf(fetchSpy.mock.calls[0]?.[0]);
     expect(new URL(request.url).pathname).toBe("/api/v1/notifications/test");
   });
 

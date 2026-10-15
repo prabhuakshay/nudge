@@ -19,6 +19,7 @@ import type { SidebarTag } from "@/features/tags/tags";
 import type { Comment } from "@/features/tasks/comments";
 import type { SidebarProject, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "./fetch";
 
 /* A stand-in server and a rendered list for the tasks feature's tests, shared by their files. */
 
@@ -87,7 +88,7 @@ export function mockApi(
   const activity = [...history];
   const tags = [...TAGS];
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     const sidebarOrTag = await sidebarAndTags(request, tags);
     if (sidebarOrTag) return sidebarOrTag;
@@ -164,7 +165,7 @@ function applyPatch(found: TaskDetail, change: Partial<TaskDetail>, activity: Ta
 
 export async function patches(fetchSpy: ReturnType<typeof mockApi>) {
   const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method === "PATCH");
   return Promise.all(
     requests.map(async (request) => [
@@ -177,7 +178,7 @@ export async function patches(fetchSpy: ReturnType<typeof mockApi>) {
 /** The bodies of the `POST /tasks/bulk` requests sent, in order. */
 export async function bulkRequests(fetchSpy: MockInstance<typeof fetch>) {
   const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => new URL(request.url).pathname.endsWith("/tasks/bulk"));
   return Promise.all(requests.map(async (request) => (await request.json()) as unknown));
 }

@@ -1,6 +1,7 @@
 import { QueryClient } from "@tanstack/react-query";
 
 import { sessionQuery } from "@/features/auth/session";
+import { requestOf } from "@/test/fetch";
 
 import { adoptBrowserTimeZone } from "./time-zone";
 
@@ -41,7 +42,7 @@ describe("adoptBrowserTimeZone", () => {
 
     expect(user).toEqual(saved);
     expect(queryClient.getQueryData(sessionQuery.queryKey)).toEqual(saved);
-    const request = fetch.mock.calls[0]?.[0] as Request; // The API client always passes a Request.
+    const request = requestOf(fetch.mock.calls[0]?.[0]);
     expect(request.method).toBe("PUT");
     expect(request.url).toMatch(/\/api\/v1\/auth\/time-zone$/);
     expect(await request.json()).toEqual({ time_zone: "Asia/Kolkata" });

@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { json, minutesAgo, PRIYA } from "@/test/drawer";
+import { requestOf } from "@/test/fetch";
 
 import { CommentComposer, Comments } from "./comment-section";
 import type { Comment } from "./comments";
@@ -25,7 +26,7 @@ function comment(overrides: Partial<Comment>): Comment {
 function mockApi(stored: Comment[]) {
   let nextId = 100;
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     if (url.pathname.endsWith("/sidebar")) return json({ people: [PRIYA] });
     if (url.pathname.endsWith("/session")) {
@@ -56,7 +57,7 @@ function mockApi(stored: Comment[]) {
 
 async function writes(fetchSpy: ReturnType<typeof mockApi>) {
   const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET");
   return Promise.all(
     requests.map(async (request) => {

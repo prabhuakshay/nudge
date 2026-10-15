@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 
 import { INBOX, json, renderListRoute } from "@/test/drawer";
+import { requestOf } from "@/test/fetch";
 
 import { TrashList } from "./trash-list";
 import type { TrashedProject, TrashedRow, TrashedTask } from "./trash";
@@ -36,7 +37,7 @@ function trashedProject(overrides: Partial<TrashedProject> = {}): TrashedProject
 
 function mockApi(rows: TrashedRow[]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     if (url.pathname.endsWith("/trash") && request.method === "DELETE") {
       rows.splice(0);
@@ -92,7 +93,7 @@ describe("The Trash", () => {
     expect(await screen.findByText("Restored to Inbox")).toBeInTheDocument();
     expect(await screen.findByText("Trash is empty")).toBeInTheDocument();
     const posts = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => request.method === "POST")
       .map((request) => new URL(request.url).pathname);
     expect(posts).toEqual(["/api/v1/tasks/4/restore"]);
@@ -119,7 +120,7 @@ describe("The Trash", () => {
     });
     expect(screen.getByRole("button", { name: "Restore “Pay rent”" })).toBeInTheDocument();
     const posts = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => request.method === "POST")
       .map((request) => new URL(request.url).pathname);
     expect(posts).toEqual(["/api/v1/projects/4/restore"]);
@@ -140,7 +141,7 @@ describe("The Trash", () => {
     expect(await screen.findByText("Deleted “Move house” forever")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Restore “Move house”" })).not.toBeInTheDocument();
     const deletes = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => new URL(request.url).pathname === "/api/v1/trash/delete");
     expect(deletes).toHaveLength(1);
     expect(await deletes[0]?.json()).toEqual({ task_ids: [4], project_ids: [] });
@@ -158,7 +159,7 @@ describe("The Trash", () => {
     expect(await screen.findByText("Deleted “Home” forever")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Restore “Pay rent”" })).toBeVisible();
     const deletes = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => new URL(request.url).pathname === "/api/v1/trash/delete");
     expect(await deletes[0]?.json()).toEqual({ task_ids: [], project_ids: [4] });
   });
@@ -172,7 +173,7 @@ describe("The Trash", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Restore “Move house”" })).toBeVisible();
-    const methods = fetchSpy.mock.calls.map(([input]) => (input as Request).method);
+    const methods = fetchSpy.mock.calls.map(([input]) => requestOf(input).method);
     expect(methods).not.toContain("POST");
   });
 
@@ -188,7 +189,7 @@ describe("The Trash", () => {
     expect(await screen.findByText("Trash is empty")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Empty Trash" })).not.toBeInTheDocument();
     const deletes = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => request.method === "DELETE")
       .map((request) => new URL(request.url).pathname);
     expect(deletes).toEqual(["/api/v1/trash"]);
@@ -214,7 +215,7 @@ describe("The Trash", () => {
     ]);
     expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
     const posts = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => request.method === "POST")
       .map((request) => new URL(request.url).pathname);
     expect(posts).toEqual(["/api/v1/projects/4/restore", "/api/v1/tasks/4/restore"]);
@@ -240,7 +241,7 @@ describe("The Trash", () => {
       "Select “Pay rent”",
     ]);
     const deletes = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => new URL(request.url).pathname === "/api/v1/trash/delete");
     expect(await deletes[0]?.json()).toEqual({ task_ids: [5], project_ids: [4] });
   });

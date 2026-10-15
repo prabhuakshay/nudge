@@ -3,6 +3,7 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
+import { requestOf } from "@/test/fetch";
 import type { Person } from "./people";
 import { SidebarPeople } from "./sidebar-people";
 
@@ -37,7 +38,7 @@ function json(body: unknown, status = 200) {
 /** A stand-in server: the sidebar with the People for reads, and an echo of every write. */
 function mockApi(people: Person[] = [AL, ALICE]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     if (request.method === "GET") return json({ people });
     if (request.method === "DELETE") return json(null, 204);
     const body = (await request.clone().json()) as object;
@@ -47,7 +48,7 @@ function mockApi(people: Person[] = [AL, ALICE]) {
 
 async function writes(fetchSpy: ReturnType<typeof mockApi>) {
   const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET");
   return Promise.all(
     requests.map(async (request) => [

@@ -103,6 +103,7 @@ export function closedPagesQuery(source: ListSource) {
       }
       return data;
     },
+    // Widened so later pages' cursors, which are strings, fit the same parameter.
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.next_cursor,
   });
@@ -137,6 +138,7 @@ export function taskActivityQuery(taskId: number) {
       }
       return data;
     },
+    // Widened so later pages' cursors, which are strings, fit the same parameter.
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.next_cursor,
   });

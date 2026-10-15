@@ -83,7 +83,8 @@ export function TaskDetail(props: TaskDetailProps) {
           showClose={false}
           aria-describedby={undefined}
           onOpenAutoFocus={(event) => {
-            // Focus the drawer itself, not its first field, so J/K work straight away.
+            // Focus the drawer itself, not its first field, so J/K work straight away. The event's
+            // target is typed as a bare EventTarget, but it is the drawer's element.
             event.preventDefault();
             (event.currentTarget as HTMLElement | null)?.focus();
           }}

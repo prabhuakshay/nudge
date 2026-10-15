@@ -2,6 +2,7 @@ import { screen, within } from "@testing-library/react";
 
 import { INBOX, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import type { TaskDetail } from "./tasks";
 
@@ -10,7 +11,7 @@ const task = makeTask;
 /** A stand-in server holding one Task, which saves PATCHed dates to it. */
 function mockApi(saved: TaskDetail) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     if (request.method === "PATCH") {
       const { dates } = (await request.clone().json()) as { dates: Partial<TaskDetail> | null };
@@ -32,7 +33,7 @@ function mockApi(saved: TaskDetail) {
 
 async function patchedDates(fetchSpy: ReturnType<typeof mockApi>) {
   const patches = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method === "PATCH");
   return Promise.all(patches.map(async (request) => (await request.json()) as unknown));
 }

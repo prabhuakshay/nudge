@@ -13,6 +13,7 @@ import { validateTaskSearch } from "@/features/tasks/open-task";
 import type { Task } from "@/features/tasks/tasks";
 import { INBOX, json, TAGS, WORK } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import { TagTaskList } from "./tag-task-list";
 
@@ -21,7 +22,7 @@ const [WORK_TAG] = TAGS as [(typeof TAGS)[number]];
 /** A stand-in server with the open Tasks for the Tag, to which a created Task is added. */
 function mockApi(open: Task[]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     if (url.pathname === "/api/v1/sidebar") {
       return json({ inbox: INBOX, items: [WORK], archived: [], tags: TAGS });
@@ -81,7 +82,7 @@ describe("A Tag's list", () => {
       .getAllByRole("region")
       .map((region) => region.getAttribute("aria-label"));
     expect(regions.slice(0, 2)).toEqual(["Inbox", "Work"]);
-    const lists = fetchSpy.mock.calls.map(([request]) => new URL((request as Request).url).search);
+    const lists = fetchSpy.mock.calls.map(([request]) => new URL(requestOf(request).url).search);
     expect(lists).toContain(`?tag=${String(WORK_TAG.id)}`);
   });
 
@@ -119,7 +120,7 @@ describe("A Tag's list", () => {
 
     expect(await screen.findByText("Plan")).toBeInTheDocument();
     const created = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .find((request) => request.method === "POST");
     expect(created && (await created.json())).toEqual({
       title: "Plan",

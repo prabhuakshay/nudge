@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { requestOf } from "@/test/fetch";
 
 import { ActivityFeed } from "./activity-feed";
 
@@ -181,7 +182,7 @@ describe("ActivityFeed", () => {
 
   it("loads older events a page at a time", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-      const cursor = new URL((input as Request).url).searchParams.get("cursor");
+      const cursor = new URL(requestOf(input).url).searchParams.get("cursor");
       const page =
         cursor === "next"
           ? { items: [OLDER], next_cursor: null, count: 2 }

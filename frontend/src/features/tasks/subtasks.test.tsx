@@ -3,6 +3,7 @@ import type userEvent from "@testing-library/user-event";
 
 import { INBOX, bulkRequests, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import { isClosed } from "./task-properties";
 import type { Task, TaskDetail } from "./tasks";
@@ -41,7 +42,7 @@ function seed(): Task[] {
 function mockApi(rows: Task[] = seed()) {
   const server = fakeServer(rows);
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     const task = server.byId(Number(url.pathname.split("/").at(-1)));
     if (url.pathname.endsWith("/tasks/bulk")) return json({ affected: [] });
@@ -236,7 +237,7 @@ describe("Subtasks in the drawer", () => {
     );
 
     const post = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .find((request) => request.method === "POST");
     expect(await post?.json()).toEqual({ title: "Oat milk", parent_id: 2 });
     expect(await within(drawer).findByText("Oat milk")).toBeInTheDocument();
@@ -254,7 +255,7 @@ describe("Subtasks in the drawer", () => {
 
     await vi.waitFor(async () => {
       const post = fetchSpy.mock.calls
-        .map(([input]) => input as Request)
+        .map(([input]) => requestOf(input))
         .find((request) => request.method === "POST");
       expect(await post?.clone().json()).toEqual({
         title: "Oat milk ~Work",
@@ -280,7 +281,7 @@ describe("Subtasks in the drawer", () => {
 
     await vi.waitFor(async () => {
       const post = fetchSpy.mock.calls
-        .map(([input]) => input as Request)
+        .map(([input]) => requestOf(input))
         .find((request) => request.method === "POST");
       expect(await post?.clone().json()).toEqual({
         title: "Check the fridge every monday",

@@ -4,6 +4,7 @@ import { GARDEN, INBOX, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
 
 import type { TaskDetail } from "@/features/tasks/tasks";
+import { requestOf } from "@/test/fetch";
 
 const task = makeTask;
 
@@ -25,7 +26,7 @@ function others(url: URL, action: string | undefined) {
 function mockApi(tasks: TaskDetail[], restoredTo = INBOX) {
   const trashed: TaskDetail[] = [];
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     const [, id, action] = /\/tasks\/(\d+)(?:\/(\w+))?$/.exec(url.pathname) ?? [];
     const found = tasks.find((item) => item.id === Number(id));
@@ -51,7 +52,7 @@ function mockApi(tasks: TaskDetail[], restoredTo = INBOX) {
 
 function writes(fetchSpy: ReturnType<typeof mockApi>) {
   return fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET")
     .map((request) => `${request.method} ${new URL(request.url).pathname}`);
 }

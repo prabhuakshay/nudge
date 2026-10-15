@@ -2,16 +2,14 @@ import { screen, within } from "@testing-library/react";
 
 import { INBOX, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import type { Task } from "./tasks";
 
 const task = makeTask;
 
 /** A small stand-in for the server: open Tasks, pages of Closed ones, and Task creation. */
-function mockApi({
-  open = [] as Task[],
-  closedPages = [] as Task[][],
-}: { open?: Task[]; closedPages?: Task[][] } = {}) {
+function mockApi({ open = [], closedPages = [] }: { open?: Task[]; closedPages?: Task[][] } = {}) {
   let nextId = 100;
   const known = new Map<number, Task>();
   const save = (id: number, change: Partial<Task>) => {
@@ -27,7 +25,7 @@ function mockApi({
     return { before, changed };
   };
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     if (url.pathname.endsWith("/tasks/bulk")) {
       const { action } = (await request.clone().json()) as {
@@ -68,7 +66,7 @@ function closedPage(url: URL, closedPages: Task[][]) {
 
 function requests(fetchSpy: ReturnType<typeof mockApi>) {
   return fetchSpy.mock.calls.map(([input]) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     return `${request.method} ${url.pathname}${url.search}`;
   });
@@ -190,7 +188,7 @@ describe("TaskList", () => {
     await user.click(await screen.findByRole("checkbox", { name: "Reopen “Paid rent”" }));
 
     const patch = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .find((request) => request.method === "PATCH");
     expect(await patch?.json()).toEqual({ status: "open" });
   });
@@ -224,9 +222,9 @@ describe("TaskList", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     const bodies = await Promise.all(
       fetchSpy.mock.calls
-        .map(([input]) => input as Request)
+        .map(([input]) => requestOf(input))
         .filter((request) => request.method === "PATCH")
-        .map((request) => request.json() as Promise<unknown>),
+        .map(async (request): Promise<unknown> => request.json()),
     );
     expect(bodies).toEqual([{ status: "blocked" }, { priority: 2 }]);
   });

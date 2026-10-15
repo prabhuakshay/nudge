@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { sessionQuery, type User } from "@/features/auth/session";
+import { requestOf } from "@/test/fetch";
 
 import { TimeZoneBanner } from "./time-zone-banner";
 
@@ -70,7 +71,7 @@ describe("TimeZoneBanner", () => {
     await userEvent.setup().click(screen.getByRole("button", { name: "Switch" }));
 
     expect(screen.queryByRole("region", { name: "Time zone" })).not.toBeInTheDocument();
-    const request = fetch.mock.calls[0]?.[0] as Request; // The API client always passes a Request.
+    const request = requestOf(fetch.mock.calls[0]?.[0]);
     expect(request.method).toBe("PUT");
     expect(await request.json()).toEqual({ time_zone: "Europe/London" });
   });

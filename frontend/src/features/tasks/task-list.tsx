@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { DueCell } from "./date-triggers";
+import { DueBadge } from "./due-badge";
 import { QuickAddCard } from "./quick-add-card";
 import { StatusBadge } from "./status-badge";
 import { TaskCheckbox } from "./task-checkbox";
@@ -20,7 +22,7 @@ import {
 } from "./tasks";
 
 /** One grid for the header and every row, so the columns line up from `lg`. */
-const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem]";
+const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_8.75rem]";
 
 type ToggleStatus = (task: Task) => void;
 type OpenTask = (taskId: number) => void;
@@ -85,6 +87,9 @@ export function TaskList({ project }: { project: SidebarProject }) {
           </span>
           <span role="columnheader" className="px-2">
             Status
+          </span>
+          <span role="columnheader" className="px-2">
+            Due
           </span>
         </div>
 
@@ -265,7 +270,7 @@ const TaskRow = memo(function TaskRow({
       }}
       className={cn(
         GRID,
-        "flex min-h-11 cursor-pointer items-center border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors outline-none last:border-b-0 lg:min-h-10 lg:py-0",
+        "group/row flex min-h-11 cursor-pointer items-center border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors outline-none last:border-b-0 lg:min-h-10 lg:py-0",
         "focus-visible:bg-primary-soft/50 focus-visible:shadow-[inset_2px_0_0_var(--primary)]",
         selected
           ? "bg-primary-soft/50 shadow-[inset_2px_0_0_var(--primary)]"
@@ -279,18 +284,27 @@ const TaskRow = memo(function TaskRow({
             onToggle(task);
           }}
         />
-        <span
-          data-task-title
-          className={cn(
-            "min-w-0 truncate text-sm",
-            completed ? "text-muted-foreground line-through" : "font-semibold",
-          )}
-        >
-          {task.title}
-        </span>
+        <div className="min-w-0">
+          <span
+            data-task-title
+            className={cn(
+              "block truncate text-sm",
+              completed ? "text-muted-foreground line-through" : "font-semibold",
+            )}
+          >
+            {task.title}
+          </span>
+          {/* Phones have no columns, so a meta line under the title carries the date. */}
+          <div className="flex items-center gap-2.5 empty:hidden lg:hidden">
+            <DueBadge task={task} />
+          </div>
+        </div>
       </div>
       <div role="gridcell" className="hidden min-w-0 px-2 lg:block">
         <StatusBadge status={task.status} />
+      </div>
+      <div role="gridcell" className="hidden min-w-0 lg:block">
+        <DueCell task={task} />
       </div>
     </div>
   );

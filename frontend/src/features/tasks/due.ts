@@ -96,10 +96,18 @@ function startsLate({ due_date, due_time, start_date, start_time }: Dates): bool
  * dropped. Clearing the due date clears everything.
  */
 export function changeDates(dates: Dates, change: Partial<Dates>): Dates {
-  const next = { ...dates, ...change };
+  const { due_date, due_time, start_date, start_time } = dates;
+  const next = { due_date, due_time, start_date, start_time, ...change };
   if (next.due_date === null) return NO_DATES;
   if (next.start_date === null) return { ...next, start_time: null };
-  const start_time = next.due_time === null ? null : (next.start_time ?? next.due_time);
-  const settled = { ...next, start_time };
+  const startTime = next.due_time === null ? null : (next.start_time ?? next.due_time);
+  const settled = { ...next, start_time: startTime };
   return startsLate(settled) ? { ...settled, start_date: null, start_time: null } : settled;
+}
+
+/** What a screen reader hears for a Task's dates, since colour alone can't say it's overdue. */
+export function dueName(dates: Dates & Pick<Task, "is_overdue">, now: Date): string {
+  if (dates.due_date === null) return "none";
+  const label = dueLabel(dates, now);
+  return dates.is_overdue ? `${label}, overdue` : label;
 }

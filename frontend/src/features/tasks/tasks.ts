@@ -102,14 +102,21 @@ export function taskActivityQuery(taskId: number) {
   });
 }
 
-/** The text fields the drawer edits in place. */
-export type TaskTextChange = { id: number } & Partial<Pick<TaskDetail, "title" | "description">>;
+/** A Task's dates as the API takes them; null removes them all. */
+export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
 
-/** Save a Task's title or Description. The drawer shows the change before the server answers. */
+/** The fields the drawer and the list's cells edit in place. */
+export type TaskChange = { id: number } & Partial<Pick<TaskDetail, "title" | "description">> & {
+    dates?: DatesIn;
+  };
+
+const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
+
+/** Save a Task's title, Description or dates. The drawer shows the change before the server answers. */
 export function useUpdateTask() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...change }: TaskTextChange) => {
+    mutationFn: async ({ id, ...change }: TaskChange) => {
       const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
         params: { path: { task_id: id } },
         body: change,
@@ -119,10 +126,11 @@ export function useUpdateTask() {
       }
       return data;
     },
-    onMutate: async ({ id, ...change }) => {
+    onMutate: async ({ id, dates, ...change }) => {
       const detailKey = taskQuery(id).queryKey;
       await queryClient.cancelQueries({ queryKey: detailKey });
-      queryClient.setQueryData(detailKey, (task) => task && { ...task, ...change });
+      const flatDates = dates === undefined ? {} : { ...UNDATED, ...dates };
+      queryClient.setQueryData(detailKey, (task) => task && { ...task, ...change, ...flatDates });
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),

@@ -10,6 +10,7 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { ActivityFeed } from "./activity-feed";
+import { DateChip } from "./date-triggers";
 import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
 import { taskActivityQuery, taskQuery, useSetTaskStatus, type TaskDetail as Task } from "./tasks";
@@ -171,6 +172,10 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
             className="mt-1 size-[22px] rounded-md"
           />
           <TitleField task={task} className="flex-1 sm:text-[22px] sm:leading-snug" />
+        </div>
+
+        <div className="flex flex-wrap gap-2 px-5 pt-4 sm:px-6">
+          <DateChip task={task} />
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="mt-5">

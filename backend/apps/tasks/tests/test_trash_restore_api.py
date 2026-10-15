@@ -25,6 +25,10 @@ def _restore(client: Client, task: Task) -> Response:
     return client.post(f"/api/v1/tasks/{task.pk}/restore")
 
 
+def _set_status(client: Client, task: Task, status: str) -> None:
+    client.patch(f"/api/v1/tasks/{task.pk}", {"status": status}, content_type="application/json")
+
+
 def _inbox_titles(client: Client, user: User, *, roots: bool = False) -> list[str]:
     response = client.get(f"/api/v1/tasks?project={services.inbox(user).pk}")
     items = response.json()["items"]
@@ -179,3 +183,19 @@ def test_restoring_under_a_closed_parent_reopens_it(client: Client, ada: User) -
     _restore(client, pack)
 
     assert client.get(f"/api/v1/tasks/{task.pk}").json()["status"] == "open"
+
+
+@pytest.mark.django_db
+def test_restoring_a_closed_subtask_leaves_its_closed_parent_closed(
+    client: Client,
+    ada: User,
+) -> None:
+    task = services.create_task(services.inbox(ada), "Move house")
+    pack = _subtask(task, "Pack")
+    _set_status(client, pack, "completed")
+    _delete(client, pack)
+    _set_status(client, task, "completed")
+
+    _restore(client, pack)
+
+    assert client.get(f"/api/v1/tasks/{task.pk}").json()["status"] == "completed"

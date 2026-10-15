@@ -9,14 +9,13 @@ writes one row for it plus, across Projects, the Project of each Subtask.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 from django.db import transaction
 from fractional_indexing import generate_key_between
 
 from apps.tasks import repeat
 from apps.tasks.archive import ensure_writable
-from apps.tasks.models import MAX_DEPTH, OPEN_STATUSES, Project, Task, TaskActivity
+from apps.tasks.models import MAX_DEPTH, Project, Task, TaskActivity
 from apps.tasks.rows import as_rows
 from apps.tasks.services import TaskChange, TaskRuleError
 from apps.tasks.tree import (
@@ -26,9 +25,6 @@ from apps.tasks.tree import (
     moved_event,
     reopen_ancestors,
 )
-
-if TYPE_CHECKING:
-    from apps.tasks.tree import AffectedTask
 
 
 @dataclass(frozen=True)
@@ -91,9 +87,7 @@ def move_task(task: Task, destination: Destination) -> TaskChange:
         if relocated:
             events.append(moved_event(task, from_project, from_parent))
         TaskActivity.objects.bulk_create(events)
-        affected: list[AffectedTask] = []
-        if task.status in OPEN_STATUSES:
-            affected = reopen_ancestors(task)
+        affected = reopen_ancestors(task)
     fresh = as_rows(Task.objects.filter(pk=task.pk), task.owner).get()
     return TaskChange(task=fresh, affected=affected)
 

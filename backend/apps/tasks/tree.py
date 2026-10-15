@@ -134,8 +134,10 @@ def _close_descendants(task: Task) -> list[AffectedTask]:
 
 
 def reopen_ancestors(task: Task) -> list[AffectedTask]:
-    """Reopen every Closed ancestor of an open Task."""
-    affected = []
+    """Reopen every Closed ancestor of the Task, if the Task is open; a Closed one opens no work."""
+    affected: list[AffectedTask] = []
+    if task.status not in OPEN_STATUSES:
+        return affected
     ancestor = task.parent
     while ancestor is not None:
         if ancestor.status in CLOSED_STATUSES:

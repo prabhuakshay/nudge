@@ -37,4 +37,27 @@ describe("ActivityFeed", () => {
     expect(screen.queryByRole("button", { name: "Show older activity" })).not.toBeInTheDocument();
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
+
+  it("says which Projects a Task moved between", async () => {
+    const moved = {
+      id: 3,
+      kind: "moved",
+      at: "2026-10-15T09:00:00Z",
+      data: { from_project: "Inbox", to_project: "Work" },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: [moved], next_cursor: null, count: 1 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <ActivityFeed taskId={1} />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Moved from “Inbox” to “Work”")).toBeInTheDocument();
+  });
 });

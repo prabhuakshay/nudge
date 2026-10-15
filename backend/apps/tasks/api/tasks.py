@@ -107,12 +107,19 @@ def update_task(
     patch: TaskPatchIn,
 ) -> Status[TaskChangeOut] | Status[ErrorOut]:
     """Change a Task's fields, returning it and every Task whose Status changed."""
+    user = signed_in_user(request)
+    project = None
+    if patch.project_id is not None:
+        project = services.live_project(user, patch.project_id)
+        if project is None:
+            return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
     change = services.update_task(
-        signed_in_user(request),
+        user,
         task_id,
         title=patch.title,
         description=patch.description,
         status=patch.status,
+        project=project,
     )
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)

@@ -15,6 +15,8 @@ function describe(event: TaskActivity): string {
       return `Renamed from “${event.data.old}” to “${event.data.new}”`;
     case "description_edited":
       return "Edited the description";
+    case "moved":
+      return `Moved from “${event.data.from_project}” to “${event.data.to_project}”`;
   }
 }
 

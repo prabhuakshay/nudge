@@ -14,6 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 from fractional_indexing import generate_key_between
 
+from apps.core.palette import PaletteColor
 from apps.tasks.models import INBOX_NAME, Project, Task, TaskActivity
 from apps.tasks.pagination import Page, newest_first
 
@@ -33,7 +34,13 @@ class TaskChange:
 
 def create_inbox(user: User) -> Project:
     """Create the user's Inbox."""
-    return Project.objects.create(owner=user, name=INBOX_NAME, is_inbox=True)
+    return Project.objects.create(
+        owner=user,
+        name=INBOX_NAME,
+        color=PaletteColor.BLUE,
+        icon=Project.Icon.INBOX,
+        is_inbox=True,
+    )
 
 
 def inbox(user: User) -> Project:
@@ -55,11 +62,6 @@ def open_tasks(project: Project) -> QuerySet[Task]:
     return _live_tasks(project).filter(status=Task.Status.OPEN)
 
 
-def open_task_count(project: Project) -> int:
-    """Return how many open Tasks the Project holds."""
-    return open_tasks(project).count()
-
-
 def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
     """Return a page of the Project's Closed Tasks, most recently completed first.
 
@@ -70,18 +72,22 @@ def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
     return newest_first(closed, "completed_at", cursor)
 
 
+def _first_position(project: Project) -> str:
+    """Return a key before every Task in the Project. Call it inside a transaction."""
+    # Locking the Project serialises inserts into it, so two Tasks never get the same key.
+    Project.objects.select_for_update().get(pk=project.pk)
+    first = project.tasks.order_by("position", "id").values_list("position", flat=True).first()
+    return str(generate_key_between(None, first))
+
+
 def create_task(project: Project, title: str) -> Task:
     """Create a Task in the Project, first among its Tasks, owned by the Project's owner."""
     with transaction.atomic():
-        # Locking the Project serialises inserts into it, so two Tasks never get the same key.
-        Project.objects.select_for_update().get(pk=project.pk)
-        first = project.tasks.order_by("position", "id").values_list("position", flat=True).first()
-        position = str(generate_key_between(None, first))
         task = Task.objects.create(
             owner_id=project.owner_id,
             project=project,
             title=title,
-            position=position,
+            position=_first_position(project),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
         return task
@@ -92,17 +98,19 @@ def live_task(user: User, task_id: int) -> Task | None:
     return user.tasks.filter(pk=task_id, deleted_at__isnull=True).first()
 
 
-def update_task(
+def update_task(  # noqa: PLR0913 - one keyword per field a PATCH can change
     user: User,
     task_id: int,
     *,
     title: str | None = None,
     description: str | None = None,
     status: Task.Status | None = None,
+    project: Project | None = None,
 ) -> TaskChange | None:
     """Change the given fields of one of the user's Tasks; return None if it isn't theirs.
 
-    Completing a Task records when; reopening it clears that.
+    Completing a Task records when; reopening it clears that. Moving it to another of the user's
+    Projects puts it first there.
     """
     task = live_task(user, task_id)
     if task is None:
@@ -130,10 +138,23 @@ def update_task(
         task.completed_at = timezone.now() if status == Task.Status.COMPLETED else None
         changed += ["status", "completed_at"]
     with transaction.atomic():
+        if project is not None and project.pk != task.project_id:
+            events.append(_moved(task, project))
+            task.position = _first_position(project)
+            task.project = project
+            changed += ["project", "position"]
         if changed:
             task.save(update_fields=[*changed, "updated_at"])
         TaskActivity.objects.bulk_create(events)
     return TaskChange(task=task, affected=affected)
+
+
+def _moved(task: Task, project: Project) -> TaskActivity:
+    return TaskActivity(
+        task=task,
+        kind=TaskActivity.Kind.MOVED,
+        data={"from_project": task.project.name, "to_project": project.name},
+    )
 
 
 def task_activity(task: Task, cursor: str | None = None) -> Page[TaskActivity]:

@@ -3,9 +3,18 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { TaskList } from "./task-list";
-import type { Task } from "./tasks";
+import type { SidebarProject, Task } from "./tasks";
 
-const INBOX = { id: 7, name: "Inbox", open_count: 2 };
+const INBOX: SidebarProject = {
+  kind: "project",
+  id: 7,
+  name: "Inbox",
+  color: "blue",
+  icon: "inbox",
+  folder_id: null,
+  is_inbox: true,
+  open_count: 2,
+};
 
 function task(overrides: Partial<Task>): Task {
   return {

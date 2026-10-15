@@ -268,6 +268,72 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/sidebar": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the sidebar
+     * @description Return the user's Inbox with its open Task count.
+     */
+    get: operations["apps_tasks_api_sidebar_sidebar"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Project's Tasks
+     * @description Return a Project's open Tasks in manual order, or, with `closed`, a page of Closed ones.
+     *
+     *     Closed Tasks come most recently completed first, in pages; open Tasks come all at once.
+     */
+    get: operations["apps_tasks_api_tasks_list_tasks"];
+    put?: never;
+    /**
+     * Add a Task
+     * @description Add a Task first in its Project, or in the Inbox when no Project is given.
+     */
+    post: operations["apps_tasks_api_tasks_create_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Change a Task
+     * @description Change a Task's fields, returning it and every Task whose Status changed.
+     */
+    patch: operations["apps_tasks_api_tasks_update_task"];
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -414,6 +480,107 @@ export interface components {
     PushUnsubscribeIn: {
       /** Endpoint */
       endpoint: string;
+    };
+    /**
+     * SidebarOut
+     * @description Everything the sidebar shows.
+     */
+    SidebarOut: {
+      inbox: components["schemas"]["SidebarProjectOut"];
+    };
+    /**
+     * SidebarProjectOut
+     * @description A Project as the sidebar lists it.
+     */
+    SidebarProjectOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** Open Count */
+      open_count: number;
+    };
+    /**
+     * Status
+     * @description Where a Task stands.
+     * @enum {string}
+     */
+    Status: "open" | "completed";
+    /**
+     * TaskListOut
+     * @description Tasks for a list, and the cursor for the next page when the list is paginated.
+     */
+    TaskListOut: {
+      /** Items */
+      items: components["schemas"]["TaskOut"][];
+      /**
+       * Next Cursor
+       * @description Pass as `cursor` to get the next page; null on the last page.
+       */
+      next_cursor: string | null;
+    };
+    /**
+     * TaskOut
+     * @description A Task as a list row shows it.
+     */
+    TaskOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** Completed At */
+      completed_at: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /**
+     * TaskIn
+     * @description A new Task from Quick add.
+     */
+    TaskIn: {
+      /** Title */
+      title: string;
+      /**
+       * Project Id
+       * @description Defaults to the Inbox.
+       */
+      project_id?: number | null;
+    };
+    /**
+     * AffectedTaskOut
+     * @description A Task whose Status a change touched, with its Status before, so the client can undo.
+     */
+    AffectedTaskOut: {
+      /** Id */
+      id: number;
+      prior_status: components["schemas"]["Status"];
+    };
+    /**
+     * TaskChangeOut
+     * @description A changed Task and every Task whose Status the change touched.
+     */
+    TaskChangeOut: {
+      task: components["schemas"]["TaskOut"];
+      /** Affected */
+      affected: components["schemas"]["AffectedTaskOut"][];
+    };
+    /**
+     * TaskPatchIn
+     * @description The fields of a Task to change; fields left out stay as they are.
+     */
+    TaskPatchIn: {
+      status?: components["schemas"]["Status"] | null;
     };
   };
   responses: never;
@@ -756,6 +923,136 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  apps_tasks_api_sidebar_sidebar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SidebarOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_list_tasks: {
+    parameters: {
+      query: {
+        project: number;
+        closed?: boolean;
+        cursor?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskListOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_create_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_update_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskChangeOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
       };
     };
   };

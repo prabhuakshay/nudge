@@ -54,6 +54,20 @@ describe("TaskDetail", () => {
     expect(title).not.toHaveFocus();
   });
 
+  it("never reads Quick add tokens in an edited title", async () => {
+    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
+    const user = renderList();
+    const drawer = await openTask(user, "Buy milk");
+    const title = await within(drawer).findByRole("textbox", { name: "Title" });
+
+    await user.clear(title);
+    await user.type(title, "Buy milk #dairy !1 ~Work{Enter}");
+
+    expect(await patches(fetchSpy)).toEqual([
+      ["/api/v1/tasks/1", { title: "Buy milk #dairy !1 ~Work" }],
+    ]);
+  });
+
   it("puts a cleared title back instead of saving it", async () => {
     const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
     const user = renderList();

@@ -6,7 +6,14 @@ import { toast } from "sonner";
 import { api } from "@/api/client";
 
 import { moveRow, type Placement } from "./task-drag";
-import { DETAIL_KEY, OPEN_KEY, refreshTasks, type Task, type TaskDetail } from "./tasks";
+import {
+  DETAIL_KEY,
+  OPEN_KEY,
+  refreshTasks,
+  type NewTask,
+  type Task,
+  type TaskDetail,
+} from "./tasks";
 
 /** A Task to move, and where it goes in its Project's tree. */
 export type TaskMove = Placement & { taskId: number };
@@ -84,15 +91,15 @@ export function useDuplicateTask() {
 }
 
 /**
- * Add a Subtask last under a Task. The server reopens the parent if it was Closed, so every list
+ * Add a Subtask last under a Task, with its Priority and Tags. The server reopens the parent if it was Closed, so every list
  * and drawer refetches.
  */
 export function useCreateSubtask(parentId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (title: string) => {
+    mutationFn: async (subtask: Omit<NewTask, "parent_id" | "project_id" | "dates">) => {
       const { data } = await api.POST("/api/v1/tasks", {
-        body: { title, parent_id: parentId },
+        body: { ...subtask, parent_id: parentId },
       });
       if (!data) {
         throw new Error("Could not add the subtask.");

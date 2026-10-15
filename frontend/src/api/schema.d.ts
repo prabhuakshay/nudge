@@ -1008,7 +1008,11 @@ export interface paths {
     get: operations["apps_tasks_api_trash_list_trash"];
     put?: never;
     post?: never;
-    delete?: never;
+    /**
+     * Empty the Trash
+     * @description Delete everything in the Trash for good.
+     */
+    delete: operations["apps_tasks_api_trash_empty_trash"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1028,6 +1032,26 @@ export interface paths {
      * @description Bring back a Task with everything deleted along with it, and say where it went.
      */
     post: operations["apps_tasks_api_trash_restore_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/trash/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Delete Tasks in Trash forever
+     * @description Delete the given Trash units for good; nothing goes if any id isn't in the user's Trash.
+     */
+    post: operations["apps_tasks_api_trash_delete_forever"];
     delete?: never;
     options?: never;
     head?: never;
@@ -1255,6 +1279,12 @@ export interface components {
       fire_at: string | null;
     };
     /**
+     * RepeatFrom
+     * @description What a repeating Task's next Occurrence counts from.
+     * @enum {string}
+     */
+    RepeatFrom: "due" | "completion" | "calendar";
+    /**
      * Status
      * @description Where a Task stands.
      * @enum {string}
@@ -1354,6 +1384,13 @@ export interface components {
       start_date: string | null;
       /** Start Time */
       start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
       /**
        * Is Overdue
        * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
@@ -1470,6 +1507,13 @@ export interface components {
       start_date: string | null;
       /** Start Time */
       start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
       /**
        * Is Overdue
        * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
@@ -1945,6 +1989,8 @@ export interface components {
       parent_id?: number | null;
       /** @description Dates the Task from the start, such as today in Today. Not for a Subtask. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
+      /** @description 1 (P1) is the most urgent; left out, the Task has no Priority. */
+      priority?: components["schemas"]["Priority"] | null;
       /**
        * Tags
        * @description Tag names, in any case; Tags the user doesn't have yet are created.
@@ -1993,6 +2039,12 @@ export interface components {
        * @description Moves the Task first into it.
        */
       project_id?: number | null;
+      /**
+       * Repeat Rule
+       * @description Makes a dated top-level Task repeat, as an RFC 5545 RRULE; an empty string stops it. Closing a repeating Task moves it on to its next Occurrence instead; setting the Status it had before, straight after, undoes that.
+       */
+      repeat_rule?: string | null;
+      repeat_from?: components["schemas"]["RepeatFrom"] | null;
       /**
        * Tag Ids
        * @description Replaces all of its Tags.
@@ -2302,6 +2354,105 @@ export interface components {
       all_day: boolean;
     };
     /**
+     * RepeatAdvancedActivityOut
+     * @description Closing the repeating Task moved it on to its next Occurrence.
+     */
+    RepeatAdvancedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_advanced";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatAdvancedData"];
+    };
+    /**
+     * RepeatAdvancedData
+     * @description Which Occurrence was closed, how, and the one the Task moved on to.
+     */
+    RepeatAdvancedData: {
+      /**
+       * Action
+       * @description Skipped is Won't do.
+       * @enum {string}
+       */
+      action: "completed" | "skipped";
+      /**
+       * Occurrence
+       * Format: date
+       */
+      occurrence: string;
+      /**
+       * Next
+       * Format: date
+       */
+      next: string;
+    };
+    /**
+     * RepeatChangedActivityOut
+     * @description The Task's Repeat was set, changed or stopped.
+     */
+    RepeatChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatChangedData"];
+    };
+    /**
+     * RepeatChangedData
+     * @description The Repeat before and after a change; null when the Task didn't or doesn't repeat.
+     */
+    RepeatChangedData: {
+      old: components["schemas"]["RepeatData"] | null;
+      new: components["schemas"]["RepeatData"] | null;
+    };
+    /**
+     * RepeatData
+     * @description A Task's Repeat at one moment, as a change recorded it.
+     */
+    RepeatData: {
+      /**
+       * Rule
+       * @description An RFC 5545 RRULE.
+       */
+      rule: string;
+      repeat_from: components["schemas"]["RepeatFrom"];
+    };
+    /**
+     * RepeatRemovedActivityOut
+     * @description The Task stopped repeating because it lost its due date or became a Subtask.
+     */
+    RepeatRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatData"];
+    };
+    /**
      * RestoredActivityOut
      * @description The Task was restored from Trash.
      */
@@ -2463,6 +2614,9 @@ export interface components {
         | components["schemas"]["RemindersChangedActivityOut"]
         | components["schemas"]["MovedActivityOut"]
         | components["schemas"]["PersonMergedActivityOut"]
+        | components["schemas"]["RepeatChangedActivityOut"]
+        | components["schemas"]["RepeatRemovedActivityOut"]
+        | components["schemas"]["RepeatAdvancedActivityOut"]
         | components["schemas"]["TagAddedActivityOut"]
         | components["schemas"]["TagRemovedActivityOut"]
         | components["schemas"]["TagsMergedActivityOut"]
@@ -2628,6 +2782,13 @@ export interface components {
       /** Start Time */
       start_time: string | null;
       /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
+      /**
        * Is Overdue
        * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
        */
@@ -2777,6 +2938,17 @@ export interface components {
     TaskRestoreOut: {
       task: components["schemas"]["TaskOut"];
       project: components["schemas"]["ProjectOut"];
+    };
+    /**
+     * TrashDeleteIn
+     * @description The trashed Tasks whose units to delete for good.
+     */
+    TrashDeleteIn: {
+      /**
+       * Task Ids
+       * @description Trashed Tasks; each takes the whole unit it went to Trash with.
+       */
+      task_ids: number[];
     };
   };
   responses: never;
@@ -4711,6 +4883,24 @@ export interface operations {
       };
     };
   };
+  apps_tasks_api_trash_empty_trash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   apps_tasks_api_trash_restore_task: {
     parameters: {
       query?: never;
@@ -4730,6 +4920,37 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["TaskRestoreOut"];
         };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_trash_delete_forever: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TrashDeleteIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Not Found */
       404: {

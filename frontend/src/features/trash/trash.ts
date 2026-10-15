@@ -74,6 +74,46 @@ export function useRestoreTask() {
   });
 }
 
+/** Delete Trash units for good: each id takes the whole unit it went to Trash with. */
+export function useDeleteForever() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (taskIds: number[]) => {
+      const { error } = await api.POST("/api/v1/trash/delete", { body: { task_ids: taskIds } });
+      if (error) {
+        throw new Error("Could not delete the task.");
+      }
+    },
+    onMutate: async (taskIds) => {
+      await queryClient.cancelQueries(trashQuery);
+      queryClient.setQueryData(trashQuery.queryKey, (rows) =>
+        rows?.filter((row) => !taskIds.includes(row.id)),
+      );
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => queryClient.invalidateQueries(trashQuery),
+  });
+}
+
+/** Delete everything in the Trash for good. */
+export function useEmptyTrash() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { response } = await api.DELETE("/api/v1/trash");
+      if (!response.ok) {
+        throw new Error("Could not empty the Trash.");
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries(trashQuery);
+      queryClient.setQueryData(trashQuery.queryKey, []);
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => queryClient.invalidateQueries(trashQuery),
+  });
+}
+
 /**
  * Move a Task and its Subtasks to Trash, then offer Undo in a toast. It leaves every list and
  * drawer before the server answers.

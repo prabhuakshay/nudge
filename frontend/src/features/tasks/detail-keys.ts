@@ -75,6 +75,8 @@ export function backOutOfField(event: KeyboardEvent) {
   const field = event.target;
   if (!(field instanceof HTMLElement) || !inTextField(field)) return;
   event.preventDefault();
+  // A filled Quick add field, such as Add subtask, first closes its picker or clears itself.
+  if (field instanceof HTMLInputElement && field.role === "combobox" && field.value) return;
   // After the field's own Esc handler, which runs next and may put its saved value back.
   queueMicrotask(() => {
     field.closest<HTMLElement>("[role=dialog]")?.focus();

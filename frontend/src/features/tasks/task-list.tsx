@@ -109,7 +109,7 @@ export function TaskList({ project }: { project: SidebarProject }) {
       {project.is_archived ? (
         <ArchivedNotice project={project} />
       ) : (
-        <QuickAddCard projectId={project.id} />
+        <QuickAddCard view={{ kind: "project", project }} />
       )}
 
       {/* A disabled fieldset disables every control inside, while rows still open the drawer. */}

@@ -101,7 +101,7 @@ describe("A Tag's list", () => {
     const fetchSpy = mockApi([]);
     const user = renderTagList();
 
-    await user.type(await screen.findByRole("textbox", { name: "New task" }), "Plan{Enter}");
+    await user.type(await screen.findByRole("combobox", { name: "New task" }), "Plan{Enter}");
 
     expect(await screen.findByText("Plan")).toBeInTheDocument();
     const created = fetchSpy.mock.calls

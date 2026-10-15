@@ -1,23 +1,23 @@
 import type { components } from "@/api/schema";
-import { plainMentions } from "@/features/people/mentions";
 import { toastWithUndo } from "@/lib/undo-toast";
 
-import { statusMessage } from "./task-properties";
-import type { TaskChange, TaskStatus } from "./tasks";
+import { statusToast } from "./repeat";
+import type { Task, TaskChange, TaskStatus } from "./tasks";
 
 type AffectedTask = components["schemas"]["AffectedTaskOut"];
 
 /**
- * Report a Status change in a toast with Undo. Undo gives every Task the change touched back the
- * Status and Blocked reason it had, as the server reported them, through `update`.
+ * Report a Status change to `task`, as the server returned it, in a toast with Undo. Undo gives
+ * every Task the change touched back the Status and Blocked reason it had, as the server reported
+ * them, through `update`; for a repeating Task that moved on, that takes it back.
  */
 export function offerStatusUndo(
   update: (change: TaskChange) => void,
-  title: string,
+  task: Task,
   status: TaskStatus,
   affected: AffectedTask[],
 ) {
-  toastWithUndo(statusMessage(plainMentions(title), status, affected.length - 1), () => {
+  toastWithUndo(statusToast(task, status, affected.length - 1), () => {
     for (const prior of affected) {
       update({
         id: prior.id,

@@ -49,7 +49,7 @@ export function TagTaskList({ tag }: { tag: SidebarTag }) {
     <div data-wide className="mx-auto w-full max-w-6xl">
       <TagHeader tag={tag} />
 
-      {sidebar && <QuickAddCard projectId={sidebar.inbox.id} tagId={tag.id} />}
+      <QuickAddCard view={{ kind: "tag", tag }} />
 
       <div
         role="treegrid"

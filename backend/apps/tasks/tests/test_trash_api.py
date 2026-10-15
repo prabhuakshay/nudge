@@ -9,7 +9,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from apps.tasks import projects, services, tags
+from apps.tasks import project_trash, projects, services, tags, trash
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 
@@ -58,6 +58,21 @@ def test_every_trash_endpoint_requires_a_session(method: str, path: str) -> None
     response = getattr(Client(), method)(path)
 
     assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_the_trash_never_lists_another_users_tasks_or_projects(
+    client: Client,
+    ada: User,
+    grace: User,
+) -> None:
+    trash.trash_task(grace, services.create_task(services.inbox(grace), "Grace's task").pk)
+    project_trash.trash_project(grace, projects.create_project(grace, "Grace's project").pk)
+    trash.trash_task(ada, services.create_task(services.inbox(ada), "Pay rent").pk)
+
+    rows = _trash(client)
+
+    assert [row.get("title", row.get("name")) for row in rows] == ["Pay rent"]
 
 
 @pytest.mark.django_db

@@ -33,7 +33,7 @@ export function NotificationCenter() {
         >
           <Bell aria-hidden />
           {unread > 0 && (
-            <span className="absolute top-2 right-2 size-2 rounded-full bg-accent ring-2 ring-surface" />
+            <span className="absolute top-[calc(50%-0.5rem)] right-[calc(50%-0.5rem)] size-2 rounded-full bg-accent ring-2 ring-surface" />
           )}
         </Button>
       </PopoverTrigger>

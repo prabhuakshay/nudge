@@ -2,9 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { Logo } from "@/components/brand/logo";
 import type { User } from "@/features/auth/session";
-import { NotificationCenter } from "@/features/notifications/notification-center";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
-import { ThemeToggle } from "@/features/theme/theme-toggle";
 
 import { NAV_ITEMS } from "./nav-items";
 import { UserAvatar } from "./user-avatar";
@@ -13,15 +11,11 @@ import { UserAvatar } from "./user-avatar";
 export function Sidebar({ user }: { user: User }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface lg:flex">
-      <div className="flex items-center justify-between px-4 pt-5 pb-5">
-        <Logo />
-        <div className="flex items-center">
-          <NotificationCenter />
-          <ThemeToggle />
-        </div>
+      <div className="flex h-14 shrink-0 items-center border-b border-border px-4">
+        <Logo className="h-11" />
       </div>
 
-      <nav aria-label="Views" className="flex flex-col gap-0.5 px-2">
+      <nav aria-label="Views" className="flex flex-col gap-0.5 px-2 pt-3">
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
           <Link
             key={to}

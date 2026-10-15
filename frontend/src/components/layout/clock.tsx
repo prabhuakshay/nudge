@@ -7,7 +7,10 @@ const TIME_FORMAT = new Intl.DateTimeFormat(undefined, {
   second: "2-digit",
 });
 
-/** The current date and time to the second, floating faintly in the bottom-right corner. */
+/**
+ * The current date and time to the second: a faint pill floating above the bottom navigation on
+ * phones, plain text in the top bar from the `lg` breakpoint.
+ */
 export function Clock() {
   const [now, setNow] = useState(() => new Date());
 
@@ -34,7 +37,7 @@ export function Clock() {
   return (
     <time
       dateTime={now.toISOString()}
-      className="pointer-events-none fixed right-3 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-20 rounded-full border border-border bg-surface/70 px-2.5 py-1 text-[11px] text-muted-foreground tabular-nums opacity-60 shadow-sm backdrop-blur lg:right-4 lg:bottom-4"
+      className="pointer-events-none fixed right-3 bottom-[calc(4.25rem+env(safe-area-inset-bottom))] z-20 rounded-full border border-border bg-surface/70 px-2.5 py-1 text-[11px] text-muted-foreground tabular-nums opacity-60 shadow-sm backdrop-blur lg:static lg:border-0 lg:bg-transparent lg:p-0 lg:text-sm lg:opacity-100 lg:shadow-none lg:backdrop-blur-none"
     >
       {date} ·{" "}
       {timeParts.map(({ type, value }, index) => (

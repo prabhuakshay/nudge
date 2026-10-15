@@ -17,9 +17,9 @@ export function LogoMark({ className }: { className?: string }) {
 /** Mark and wordmark side by side, as the brand's horizontal lockup. */
 export function Logo({ className }: { className?: string }) {
   return (
-    <span className={cn("inline-flex", className)}>
-      <img src={lockup} alt="Nudge" className="h-9 dark:hidden" />
-      <img src={lockupOnDark} alt="Nudge" className="hidden h-9 dark:block" />
+    <span className={cn("inline-flex h-9", className)}>
+      <img src={lockup} alt="Nudge" className="h-full dark:hidden" />
+      <img src={lockupOnDark} alt="Nudge" className="hidden h-full dark:block" />
     </span>
   );
 }

@@ -12,8 +12,9 @@ import { Sidebar } from "./sidebar";
 import { UserAvatar } from "./user-avatar";
 
 /**
- * The signed-in layout. Mobile gets a top bar and bottom navigation; from the `lg`
- * breakpoint the navigation moves into a permanent sidebar.
+ * The signed-in layout. A top bar holds notifications and the theme switch everywhere. Mobile
+ * adds the logo and account there plus bottom navigation; from the `lg` breakpoint those move
+ * into a permanent sidebar.
  */
 export function AppShell({ user, children }: { user: User; children: ReactNode }) {
   return (
@@ -21,26 +22,34 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
       <Sidebar user={user} />
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-20 flex h-12 items-center justify-between border-b border-border bg-background/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
-          <LogoMark className="size-7" />
+        <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)] lg:px-8">
+          <span className="lg:hidden">
+            <LogoMark className="size-8" />
+          </span>
+          {/* On phones the clock is fixed to the viewport, so the top bar must not use backdrop-blur:
+              a backdrop filter would trap fixed children inside the bar. */}
+          <Clock />
           <div className="flex items-center gap-1">
             <NotificationCenter />
             <ThemeToggle />
             <SettingsDialog user={user}>
-              <button type="button" aria-label="Settings" className="rounded-full">
+              <button
+                type="button"
+                aria-label="Settings"
+                className="flex size-11 items-center justify-center rounded-full lg:hidden"
+              >
                 <UserAvatar user={user} />
               </button>
             </SettingsDialog>
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pt-8 lg:pb-8">
+        <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pt-6 lg:pb-8">
           {children}
         </main>
       </div>
 
       <BottomNav />
-      <Clock />
     </div>
   );
 }

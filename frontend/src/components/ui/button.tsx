@@ -16,7 +16,8 @@ const buttonVariants = cva(
       size: {
         md: "h-9 px-3.5",
         lg: "h-10 px-4",
-        icon: "size-9",
+        // 44px is the minimum comfortable touch target; pointers get the denser size.
+        icon: "size-11 lg:size-9",
       },
     },
     defaultVariants: { variant: "primary", size: "md" },

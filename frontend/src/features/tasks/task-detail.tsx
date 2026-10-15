@@ -1,18 +1,30 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, Inbox, X } from "lucide-react";
+import { ChevronDown, ChevronUp, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ProjectIcon } from "@/features/projects/project-icon";
+import { ProjectPicker } from "@/features/projects/project-picker";
+import { allProjects } from "@/features/projects/projects";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { ActivityFeed } from "./activity-feed";
 import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
-import { taskActivityQuery, taskQuery, useSetTaskStatus, type TaskDetail as Task } from "./tasks";
+import {
+  sidebarQuery,
+  taskActivityQuery,
+  taskQuery,
+  useMoveTaskToProject,
+  useSetTaskStatus,
+  type SidebarProject,
+  type TaskDetail as Task,
+} from "./tasks";
 
 /** The bottom sheet opens at 60% of the screen and drags up to all of it. */
 const PEEK = 0.6;
@@ -21,8 +33,8 @@ const SNAP_POINTS = [PEEK, 1];
 type TaskDetailProps = {
   /** The open Task, or null when the drawer is closed. */
   taskId: number | null;
-  /** The list the Task was opened from, for the header and for stepping. */
-  project: { id: number; name: string };
+  /** The list the Task was opened from. */
+  project: SidebarProject;
   /** Task ids in the list's current order, so J/K step the way the list reads. */
   order: number[];
   onOpen: (taskId: number) => void;
@@ -106,6 +118,10 @@ function isEditing(target: EventTarget | null) {
 
 function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps & { task: Task }) {
   const { mutate: setStatus } = useSetTaskStatus(project.id);
+  const { data: sidebar } = useQuery(sidebarQuery);
+  const taskProject =
+    (sidebar && allProjects(sidebar).find((candidate) => candidate.id === task.project_id)) ??
+    project;
   const [tab, setTab] = useState("details");
   const { data: activity } = useInfiniteQuery(taskActivityQuery(task.id));
   const activityCount = activity?.pages[0]?.count;
@@ -131,8 +147,8 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-1 border-b border-border px-3 sm:px-4">
         <p className="flex min-w-0 flex-1 items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-          <Inbox className="size-3.5 shrink-0" aria-hidden />
-          <span className="truncate">{project.name}</span>
+          <ProjectIcon project={taskProject} className="size-3.5" />
+          <span className="truncate">{taskProject.name}</span>
         </p>
         <HeaderButton
           label="Previous task"
@@ -173,6 +189,10 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
           <TitleField task={task} className="flex-1 sm:text-[22px] sm:leading-snug" />
         </div>
 
+        <div className="flex flex-wrap gap-2 px-5 pt-3 sm:px-6">
+          <ProjectChip task={task} project={taskProject} />
+        </div>
+
         <Tabs value={tab} onValueChange={setTab} className="mt-5">
           <div className="sticky top-0 z-10 bg-surface px-5 sm:px-6">
             <TabsList variant="underline" className="w-full justify-start gap-6">
@@ -206,6 +226,31 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
         </Tabs>
       </div>
     </div>
+  );
+}
+
+/** The Task's Project as a chip; picking another Project moves the Task there. */
+function ProjectChip({ task, project }: { task: Task; project: SidebarProject }) {
+  const { mutate: moveTask } = useMoveTaskToProject();
+  return (
+    <ProjectPicker
+      currentId={task.project_id}
+      onSelect={(target) => {
+        moveTask(
+          { id: task.id, projectId: target.id },
+          { onSuccess: () => toast(`Moved to ${target.name}`) },
+        );
+      }}
+    >
+      <button
+        type="button"
+        aria-label={`Project: ${project.name}. Move to another project`}
+        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs font-semibold text-foreground transition-colors hover:bg-surface-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+      >
+        <ProjectIcon project={project} className="size-3.5" />
+        {project.name}
+      </button>
+    </ProjectPicker>
   );
 }
 

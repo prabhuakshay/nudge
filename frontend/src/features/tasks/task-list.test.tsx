@@ -60,7 +60,7 @@ function mockApi({
       return json({ task: task({ id, status: body.status }), affected: [] });
     }
     if (url.pathname === "/api/v1/sidebar") {
-      return json({ inbox: { ...INBOX, open_count: open.length } });
+      return json({ inbox: { ...INBOX, open_count: open.length }, items: [] });
     }
     if (url.searchParams.get("closed") === "true") {
       const page = Number(url.searchParams.get("cursor") ?? 0);

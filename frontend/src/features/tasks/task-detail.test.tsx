@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -16,6 +16,14 @@ const INBOX: SidebarProject = {
   folder_id: null,
   is_inbox: true,
   open_count: 3,
+};
+const WORK: SidebarProject = {
+  ...INBOX,
+  id: 8,
+  name: "Work",
+  color: "violet",
+  icon: "briefcase",
+  is_inbox: false,
 };
 
 function task(overrides: Partial<TaskDetail>): TaskDetail {
@@ -54,6 +62,9 @@ function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = input as Request;
     const url = new URL(request.url);
+    if (url.pathname.endsWith("/sidebar")) {
+      return json({ inbox: INBOX, items: [WORK] });
+    }
     if (url.pathname.endsWith("/activity")) {
       return json({ items: activity, next_cursor: null, count: activity.length });
     }
@@ -128,8 +139,28 @@ describe("TaskDetail", () => {
     const drawer = await openTask(user, "Buy milk");
 
     expect(within(drawer).getByRole("textbox", { name: "Title" })).toHaveValue("Buy milk");
-    expect(within(drawer).getByText("Inbox")).toBeInTheDocument();
+    expect(
+      within(drawer).getByRole("button", { name: "Project: Inbox. Move to another project" }),
+    ).toBeInTheDocument();
     expect(await within(drawer).findByText("litres")).toContainHTML("<strong>litres</strong>");
+  });
+
+  it("moves the Task to the Project picked from its Project chip", async () => {
+    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
+    const user = renderList();
+    const drawer = await openTask(user, "Buy milk");
+
+    await user.click(
+      within(drawer).getByRole("button", { name: "Project: Inbox. Move to another project" }),
+    );
+    await user.click(await screen.findByRole("option", { name: "Work" }));
+
+    await waitFor(async () => {
+      expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { project_id: 8 }]]);
+    });
+    expect(
+      await within(drawer).findByRole("button", { name: "Project: Work. Move to another project" }),
+    ).toBeInTheDocument();
   });
 
   it("leaves the drawer closed when the row's checkbox is clicked", async () => {

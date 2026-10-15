@@ -16,7 +16,7 @@ export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"]
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 
-/** The sidebar: the Inbox and its open count. Every Task change invalidates it. */
+/** The sidebar: the Inbox, Folders and Projects with open counts. Task changes invalidate it. */
 export const sidebarQuery = queryOptions({
   queryKey: ["sidebar"],
   queryFn: async (): Promise<Sidebar> => {
@@ -171,6 +171,29 @@ export function useSetTaskStatus(projectId: number) {
         await queryClient.cancelQueries({ queryKey: openKey });
         queryClient.setQueryData(openKey, (tasks) => tasks?.filter((task) => task.id !== id));
       }
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+        queryClient.invalidateQueries(sidebarQuery),
+      ]),
+  });
+}
+
+/** Move a Task to another Project, where it goes first. Both lists and the sidebar refresh. */
+export function useMoveTaskToProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, projectId }: { id: number; projectId: number }) => {
+      const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
+        params: { path: { task_id: id } },
+        body: { project_id: projectId },
+      });
+      if (!data) {
+        throw new Error("Could not move the task.");
+      }
+      return data;
     },
     onError: (error) => toast.error(error.message),
     onSettled: () =>

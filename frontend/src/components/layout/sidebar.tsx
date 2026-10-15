@@ -5,7 +5,6 @@ import type { User } from "@/features/auth/session";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
 import { ThemeToggle } from "@/features/theme/theme-toggle";
 
-import { CurrentDate } from "./current-date";
 import { NAV_ITEMS } from "./nav-items";
 import { UserAvatar } from "./user-avatar";
 
@@ -13,12 +12,9 @@ import { UserAvatar } from "./user-avatar";
 export function Sidebar({ user }: { user: User }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface lg:flex">
-      <div className="flex flex-col gap-1 px-4 pt-5 pb-5">
-        <div className="flex items-center justify-between">
-          <Logo />
-          <ThemeToggle />
-        </div>
-        <CurrentDate />
+      <div className="flex items-center justify-between px-4 pt-5 pb-5">
+        <Logo />
+        <ThemeToggle />
       </div>
 
       <nav aria-label="Views" className="flex flex-col gap-0.5 px-2">

@@ -4,6 +4,7 @@ import { AutosizeTextarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
 import { Markdown } from "./markdown";
+import { isClosed } from "./task-properties";
 import { useUpdateTask, type TaskDetail } from "./tasks";
 
 /** The title as a borderless field that grows with it. Saves on blur or Enter, like TickTick. */
@@ -33,7 +34,7 @@ export function TitleField({ task, className }: { task: TaskDetail; className?: 
       }}
       className={cn(
         "min-h-0 rounded-none border-0 bg-transparent p-0 text-xl leading-snug font-bold shadow-none focus-visible:outline-none sm:text-xl",
-        task.status === "completed" && "text-muted-foreground line-through decoration-2",
+        isClosed(task.status) && "text-muted-foreground line-through decoration-2",
         className,
       )}
     />

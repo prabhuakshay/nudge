@@ -7,20 +7,22 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 import { QuickAddCard } from "./quick-add-card";
-import { StatusBadge } from "./status-badge";
+import { PriorityCell, StatusCell } from "./task-cells";
 import { TaskCheckbox } from "./task-checkbox";
 import { TaskDetail } from "./task-detail";
+import { PriorityFlag } from "./task-priority";
+import { isClosed } from "./task-properties";
+import { BlockedNote, StatusBadge } from "./task-status";
 import {
   closedTasksQuery,
   openTasksQuery,
   useSetTaskStatus,
   type SidebarProject,
   type Task,
-  type TaskStatus,
 } from "./tasks";
 
 /** One grid for the header and every row, so the columns line up from `lg`. */
-const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem]";
+const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem]";
 
 type ToggleStatus = (task: Task) => void;
 type OpenTask = (taskId: number) => void;
@@ -43,12 +45,11 @@ export function TaskList({ project }: { project: SidebarProject }) {
     [open, closedTasks],
   );
   const [openId, setOpenId] = useState<number | null>(null);
-  const { mutate: setStatus } = useSetTaskStatus(project.id);
+  const { mutate: setStatus } = useSetTaskStatus();
   // Stable, so memoized rows don't re-render when the list does.
   const toggle = useCallback<ToggleStatus>(
     (task) => {
-      const status: TaskStatus = task.status === "open" ? "completed" : "open";
-      setStatus({ id: task.id, status });
+      setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
     },
     [setStatus],
   );
@@ -85,6 +86,9 @@ export function TaskList({ project }: { project: SidebarProject }) {
           </span>
           <span role="columnheader" className="px-2">
             Status
+          </span>
+          <span role="columnheader" className="px-2">
+            Priority
           </span>
         </div>
 
@@ -232,8 +236,9 @@ function ClosedGroup({
 }
 
 /**
- * One Task in the table. A click anywhere on it, or Enter, opens the Task; the checkbox keeps its
- * own action. Memoized so a change to one row leaves the others alone.
+ * One Task in the table. A click anywhere on it, or Enter, opens the Task; the checkbox and the
+ * cell pickers keep their own action. On phones the cells fold into a meta line under the title.
+ * Memoized so a change to one row leaves the others alone.
  */
 const TaskRow = memo(function TaskRow({
   task,
@@ -246,7 +251,8 @@ const TaskRow = memo(function TaskRow({
   onToggle: ToggleStatus;
   onOpen: OpenTask;
 }) {
-  const completed = task.status === "completed";
+  const closed = isClosed(task.status);
+  const blocked = task.status === "blocked";
   return (
     <div
       role="row"
@@ -254,8 +260,11 @@ const TaskRow = memo(function TaskRow({
       data-task-id={task.id}
       aria-level={1}
       aria-selected={selected}
-      onClick={() => {
-        onOpen(task.id);
+      onClick={(event) => {
+        // Clicks in a picker's menu reach the row through React's tree, not the page's.
+        if (event.target instanceof Node && event.currentTarget.contains(event.target)) {
+          onOpen(task.id);
+        }
       }}
       onKeyDown={(event) => {
         if (event.key === "Enter" && event.target === event.currentTarget) {
@@ -265,7 +274,7 @@ const TaskRow = memo(function TaskRow({
       }}
       className={cn(
         GRID,
-        "flex min-h-11 cursor-pointer items-center border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors outline-none last:border-b-0 lg:min-h-10 lg:py-0",
+        "group/row flex min-h-11 cursor-pointer flex-col justify-center gap-1 border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors outline-none last:border-b-0 lg:min-h-10 lg:items-center lg:gap-0 lg:py-0",
         "focus-visible:bg-primary-soft/50 focus-visible:shadow-[inset_2px_0_0_var(--primary)]",
         selected
           ? "bg-primary-soft/50 shadow-[inset_2px_0_0_var(--primary)]"
@@ -279,18 +288,31 @@ const TaskRow = memo(function TaskRow({
             onToggle(task);
           }}
         />
-        <span
-          data-task-title
-          className={cn(
-            "min-w-0 truncate text-sm",
-            completed ? "text-muted-foreground line-through" : "font-semibold",
-          )}
-        >
-          {task.title}
-        </span>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <span
+            data-task-title
+            className={cn(
+              "min-w-0 truncate text-sm",
+              closed ? "text-muted-foreground line-through" : "font-semibold",
+            )}
+          >
+            {task.title}
+          </span>
+          {blocked && <BlockedNote task={task} className="hidden lg:flex" />}
+        </div>
       </div>
-      <div role="gridcell" className="hidden min-w-0 px-2 lg:block">
-        <StatusBadge status={task.status} />
+
+      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 pl-7 empty:hidden lg:hidden">
+        {task.status === "wont_do" && <StatusBadge status={task.status} />}
+        {blocked && <BlockedNote task={task} className="max-w-full" />}
+        <PriorityFlag priority={task.priority} />
+      </div>
+
+      <div role="gridcell" className="hidden min-w-0 lg:block">
+        <StatusCell task={task} />
+      </div>
+      <div role="gridcell" className="hidden min-w-0 lg:block">
+        <PriorityCell task={task} />
       </div>
     </div>
   );

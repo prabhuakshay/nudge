@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { activityTime, exactTime } from "./activity-time";
-import { PRIORITY_LABEL, STATUS_VERB } from "./task-properties";
+import { PRIORITY, STATUS_VERB } from "./task-properties";
 import { taskActivityQuery, type TaskActivity } from "./tasks";
 
 /** What an event says happened, in the user's words rather than the API's. */
@@ -21,7 +21,7 @@ function describe(event: TaskActivity): string {
       return reason ? `${STATUS_VERB[status]}: “${reason}”` : STATUS_VERB[status];
     }
     case "priority_changed":
-      return `Changed priority from ${PRIORITY_LABEL[event.data.old].short} to ${PRIORITY_LABEL[event.data.new].short}`;
+      return `Changed priority from ${PRIORITY[event.data.old].short} to ${PRIORITY[event.data.new].short}`;
   }
 }
 

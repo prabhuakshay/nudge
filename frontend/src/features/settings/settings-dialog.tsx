@@ -1,5 +1,5 @@
 import * as Tabs from "@radix-ui/react-tabs";
-import { UserRound, X } from "lucide-react";
+import { Bell, UserRound, X } from "lucide-react";
 import { type ReactNode, useState } from "react";
 
 import { UserAvatar } from "@/components/layout/user-avatar";
@@ -15,8 +15,14 @@ import { ChangePasswordForm } from "@/features/auth/change-password-form";
 import { EditNameForm } from "@/features/auth/edit-name-form";
 import type { User } from "@/features/auth/session";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { NotificationSettings } from "@/features/notifications/notification-settings";
 
-const TABS = [{ value: "account", label: "Account", icon: UserRound }] as const;
+import { SettingsGroup, SettingsRow } from "./settings-layout";
+
+const TABS = [
+  { value: "account", label: "Account", icon: UserRound },
+  { value: "notifications", label: "Notifications", icon: Bell },
+] as const;
 
 type SettingsDialogProps = {
   user: User;
@@ -57,6 +63,12 @@ export function SettingsDialog({ user, children }: SettingsDialogProps) {
             >
               <AccountTab user={user} />
             </Tabs.Content>
+            <Tabs.Content
+              value="notifications"
+              className="flex flex-col gap-4 focus-visible:outline-none"
+            >
+              <NotificationSettings />
+            </Tabs.Content>
           </div>
         </Tabs.Root>
 
@@ -85,19 +97,19 @@ function AccountTab({ user }: { user: User }) {
         <p className="max-w-full truncate font-semibold">{user.full_name || user.email}</p>
       </div>
 
-      <Group>
-        <Row label="Email">
+      <SettingsGroup>
+        <SettingsRow label="Email">
           <span className="truncate text-muted-foreground">{user.email}</span>
-        </Row>
-        <Row label="Name">
+        </SettingsRow>
+        <SettingsRow label="Name">
           <span className="mr-4 truncate text-muted-foreground">{user.full_name || "Not set"}</span>
           <ActionDialog action="Edit" title="Edit name">
             {(close) => (
               <EditNameForm fullName={user.full_name} onSuccess={close} onCancel={close} />
             )}
           </ActionDialog>
-        </Row>
-        <Row label="Password">
+        </SettingsRow>
+        <SettingsRow label="Password">
           {passwordChanged && (
             <span role="status" className="mr-4 text-muted-foreground">
               Changed
@@ -114,14 +126,14 @@ function AccountTab({ user }: { user: User }) {
               />
             )}
           </ActionDialog>
-        </Row>
-      </Group>
+        </SettingsRow>
+      </SettingsGroup>
 
-      <Group>
-        <Row label="Sign out of this device">
+      <SettingsGroup>
+        <SettingsRow label="Sign out of this device">
           <SignOutButton />
-        </Row>
-      </Group>
+        </SettingsRow>
+      </SettingsGroup>
     </>
   );
 }
@@ -156,19 +168,5 @@ function ActionDialog({ action, title, children }: ActionDialogProps) {
         })}
       </DialogContent>
     </Dialog>
-  );
-}
-
-/** A rounded block of settings rows, like a grouped table on iOS. */
-function Group({ children }: { children: ReactNode }) {
-  return <div className="rounded-lg bg-surface-muted">{children}</div>;
-}
-
-function Row({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 text-sm">
-      <span className="font-medium">{label}</span>
-      <div className="flex min-w-0 items-center">{children}</div>
-    </div>
   );
 }

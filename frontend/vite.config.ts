@@ -83,6 +83,8 @@ export default defineConfig(({ mode }) => {
         injectManifest: {
           globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
         },
+        // Push notifications need a service worker, so the dev server runs one too.
+        devOptions: { enabled: true, type: "module" },
       }),
     ],
     resolve: {

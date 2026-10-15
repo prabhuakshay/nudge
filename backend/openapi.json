@@ -204,6 +204,253 @@
           }
         ]
       }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "apps_notifications_api_notifications",
+        "summary": "List notifications",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationListOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the user's latest notifications and their unread count.",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}/read": {
+      "post": {
+        "operationId": "apps_notifications_api_mark_read",
+        "summary": "Mark a notification as read",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "schema": {
+              "title": "Notification Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Mark one notification as read.",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "post": {
+        "operationId": "apps_notifications_api_mark_all_read",
+        "summary": "Mark all as read",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Mark every notification as read.",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}": {
+      "delete": {
+        "operationId": "apps_notifications_api_dismiss",
+        "summary": "Dismiss a notification",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "schema": {
+              "title": "Notification Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Remove one notification from the notification center.",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/test": {
+      "post": {
+        "operationId": "apps_notifications_api_send_test",
+        "summary": "Send a test notification",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Notify the user, to check that notifications reach their devices.",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/push": {
+      "get": {
+        "operationId": "apps_notifications_api_push_config",
+        "summary": "Get push settings",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PushConfigOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the key browsers need to subscribe, if the server has push set up.",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/push/subscriptions": {
+      "post": {
+        "operationId": "apps_notifications_api_subscribe",
+        "summary": "Register a browser for push",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Push the user's notifications to this browser.",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushSubscriptionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_notifications_api_unsubscribe",
+        "summary": "Unregister a browser from push",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Stop pushing the user's notifications to this browser.",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PushUnsubscribeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -344,6 +591,153 @@
           "full_name"
         ],
         "title": "ProfileIn",
+        "type": "object"
+      },
+      "NotificationListOut": {
+        "description": "The latest notifications and how many of all the user's notifications are unread.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/NotificationOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "unread_count": {
+            "title": "Unread Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "unread_count"
+        ],
+        "title": "NotificationListOut",
+        "type": "object"
+      },
+      "NotificationOut": {
+        "description": "A notification as the notification center shows it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "url": {
+            "description": "Path in the app to open, or empty.",
+            "title": "Url",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "read_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Read At"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "body",
+          "url",
+          "created_at",
+          "read_at"
+        ],
+        "title": "NotificationOut",
+        "type": "object"
+      },
+      "PushConfigOut": {
+        "description": "What a browser needs to subscribe to push.",
+        "properties": {
+          "public_key": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The server's VAPID public key, or null when push isn't set up.",
+            "title": "Public Key"
+          }
+        },
+        "required": [
+          "public_key"
+        ],
+        "title": "PushConfigOut",
+        "type": "object"
+      },
+      "PushKeysIn": {
+        "description": "The browser's keys for encrypting pushes to it.",
+        "properties": {
+          "p256dh": {
+            "maxLength": 200,
+            "title": "P256Dh",
+            "type": "string"
+          },
+          "auth": {
+            "maxLength": 100,
+            "title": "Auth",
+            "type": "string"
+          }
+        },
+        "required": [
+          "p256dh",
+          "auth"
+        ],
+        "title": "PushKeysIn",
+        "type": "object"
+      },
+      "PushSubscriptionIn": {
+        "description": "A browser's push subscription, as `PushSubscription.toJSON()` returns it.",
+        "properties": {
+          "endpoint": {
+            "maxLength": 2048,
+            "title": "Endpoint",
+            "type": "string"
+          },
+          "keys": {
+            "$ref": "#/components/schemas/PushKeysIn"
+          }
+        },
+        "required": [
+          "endpoint",
+          "keys"
+        ],
+        "title": "PushSubscriptionIn",
+        "type": "object"
+      },
+      "PushUnsubscribeIn": {
+        "description": "The endpoint of the browser to stop pushing to.",
+        "properties": {
+          "endpoint": {
+            "title": "Endpoint",
+            "type": "string"
+          }
+        },
+        "required": [
+          "endpoint"
+        ],
+        "title": "PushUnsubscribeIn",
         "type": "object"
       }
     },

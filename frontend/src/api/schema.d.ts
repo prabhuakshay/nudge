@@ -124,6 +124,150 @@ export interface paths {
     patch: operations["apps_accounts_api_profile"];
     trace?: never;
   };
+  "/api/v1/notifications": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List notifications
+     * @description Return the user's latest notifications and their unread count.
+     */
+    get: operations["apps_notifications_api_notifications"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/{notification_id}/read": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Mark a notification as read
+     * @description Mark one notification as read.
+     */
+    post: operations["apps_notifications_api_mark_read"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/read-all": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Mark all as read
+     * @description Mark every notification as read.
+     */
+    post: operations["apps_notifications_api_mark_all_read"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/{notification_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Dismiss a notification
+     * @description Remove one notification from the notification center.
+     */
+    delete: operations["apps_notifications_api_dismiss"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/test": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Send a test notification
+     * @description Notify the user, to check that notifications reach their devices.
+     */
+    post: operations["apps_notifications_api_send_test"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/push": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get push settings
+     * @description Return the key browsers need to subscribe, if the server has push set up.
+     */
+    get: operations["apps_notifications_api_push_config"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/push/subscriptions": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Register a browser for push
+     * @description Push the user's notifications to this browser.
+     */
+    post: operations["apps_notifications_api_subscribe"];
+    /**
+     * Unregister a browser from push
+     * @description Stop pushing the user's notifications to this browser.
+     */
+    delete: operations["apps_notifications_api_unsubscribe"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -198,6 +342,78 @@ export interface components {
     ProfileIn: {
       /** Full Name */
       full_name: string;
+    };
+    /**
+     * NotificationListOut
+     * @description The latest notifications and how many of all the user's notifications are unread.
+     */
+    NotificationListOut: {
+      /** Items */
+      items: components["schemas"]["NotificationOut"][];
+      /** Unread Count */
+      unread_count: number;
+    };
+    /**
+     * NotificationOut
+     * @description A notification as the notification center shows it.
+     */
+    NotificationOut: {
+      /** Id */
+      id: number;
+      /** Title */
+      title: string;
+      /** Body */
+      body: string;
+      /**
+       * Url
+       * @description Path in the app to open, or empty.
+       */
+      url: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /** Read At */
+      read_at: string | null;
+    };
+    /**
+     * PushConfigOut
+     * @description What a browser needs to subscribe to push.
+     */
+    PushConfigOut: {
+      /**
+       * Public Key
+       * @description The server's VAPID public key, or null when push isn't set up.
+       */
+      public_key: string | null;
+    };
+    /**
+     * PushKeysIn
+     * @description The browser's keys for encrypting pushes to it.
+     */
+    PushKeysIn: {
+      /** P256Dh */
+      p256dh: string;
+      /** Auth */
+      auth: string;
+    };
+    /**
+     * PushSubscriptionIn
+     * @description A browser's push subscription, as `PushSubscription.toJSON()` returns it.
+     */
+    PushSubscriptionIn: {
+      /** Endpoint */
+      endpoint: string;
+      keys: components["schemas"]["PushKeysIn"];
+    };
+    /**
+     * PushUnsubscribeIn
+     * @description The endpoint of the browser to stop pushing to.
+     */
+    PushUnsubscribeIn: {
+      /** Endpoint */
+      endpoint: string;
     };
   };
   responses: never;
@@ -360,6 +576,186 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["UserOut"];
         };
+      };
+    };
+  };
+  apps_notifications_api_notifications: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationListOut"];
+        };
+      };
+    };
+  };
+  apps_notifications_api_mark_read: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_notifications_api_mark_all_read: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  apps_notifications_api_dismiss: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_notifications_api_send_test: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["NotificationOut"];
+        };
+      };
+    };
+  };
+  apps_notifications_api_push_config: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PushConfigOut"];
+        };
+      };
+    };
+  };
+  apps_notifications_api_subscribe: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PushSubscriptionIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  apps_notifications_api_unsubscribe: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PushUnsubscribeIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
     };
   };

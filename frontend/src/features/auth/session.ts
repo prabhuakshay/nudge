@@ -2,6 +2,7 @@ import { queryOptions, useMutation, useQueryClient, type QueryClient } from "@ta
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
+import { disablePush } from "@/features/notifications/push";
 
 export type User = components["schemas"]["UserOut"];
 export type Credentials = components["schemas"]["LoginIn"];
@@ -63,11 +64,17 @@ export function useLogin() {
   });
 }
 
-/** Sign out and drop every cached query, since all of it belonged to this user. */
+/**
+ * Stop push to this browser, sign out and drop every cached query, since all of it belonged to
+ * this user. Push goes first so whoever uses the browser next doesn't get this user's
+ * notifications.
+ */
 export function useLogout() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async () => {
+      // Signing out must work even when the push service or the browser's push support fails.
+      await disablePush().catch(() => undefined);
       await api.POST("/api/v1/auth/logout");
     },
     onSettled: () => {

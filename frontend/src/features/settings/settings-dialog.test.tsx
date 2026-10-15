@@ -48,6 +48,16 @@ describe("SettingsDialog", () => {
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
   });
 
+  it("has a notifications tab", async () => {
+    const user = renderDialog();
+    await user.click(screen.getByRole("button", { name: "Open settings" }));
+
+    await user.click(screen.getByRole("tab", { name: "Notifications" }));
+
+    expect(screen.getByText("Push notifications on this device")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
+  });
+
   it("closes with Escape", async () => {
     const user = renderDialog();
     await user.click(screen.getByRole("button", { name: "Open settings" }));

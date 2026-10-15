@@ -85,7 +85,7 @@ In development (`compose.dev.yaml`), Django's runserver, the worker and Vite all
 - Sign-in page and responsive app shell (done: bottom navigation on phones, sidebar from `lg`)
 
 ### How Nudge differs from TickTick
-- Self-host friendly notifications: Web Push (installable PWA), email, and Apprise/ntfy.
+- Self-host friendly notifications: Web Push (installable PWA), email, and Apprise/ntfy. (Web Push done: notification center, per-device push setting, test notification; VAPID keys from `.env`.)
 - Read-only iCal feed so tasks appear in any calendar app. Two-way CalDAV later.
 - Offline-ready data model from day one (see rules below), with full offline mode later.
 

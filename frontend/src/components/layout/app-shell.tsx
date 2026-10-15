@@ -2,6 +2,7 @@ import type { ReactNode } from "react";
 
 import { LogoMark } from "@/components/brand/logo";
 import type { User } from "@/features/auth/session";
+import { NotificationCenter } from "@/features/notifications/notification-center";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
 import { ThemeToggle } from "@/features/theme/theme-toggle";
 
@@ -22,6 +23,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
         <header className="sticky top-0 z-20 flex h-12 items-center justify-between border-b border-border bg-background/95 px-4 pt-[env(safe-area-inset-top)] backdrop-blur lg:hidden">
           <LogoMark className="size-7" />
           <div className="flex items-center gap-1">
+            <NotificationCenter />
             <ThemeToggle />
             <SettingsDialog user={user}>
               <button type="button" aria-label="Settings" className="rounded-full">

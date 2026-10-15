@@ -17,6 +17,7 @@ backend/media/
 
 # Frontend build output and caches
 frontend/dist/
+frontend/dev-dist/
 frontend/.vite/
 frontend/.tanstack/
 frontend/*.tsbuildinfo

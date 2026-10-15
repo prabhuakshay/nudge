@@ -58,6 +58,7 @@ INSTALLED_APPS = [
     "procrastinate.contrib.django",
     "apps.core",
     "apps.accounts",
+    "apps.notifications",
 ]
 
 MIDDLEWARE = [
@@ -218,6 +219,15 @@ MAILERS = {
 }
 DEFAULT_FROM_EMAIL = env.str("NUDGE_DEFAULT_FROM_EMAIL", default="Nudge <nudge@localhost>")
 SERVER_EMAIL = DEFAULT_FROM_EMAIL
+
+# ---------------------------------------------------------------- push notifications
+
+# VAPID keys identify this server to browsers' push services. Push stays off until both are set;
+# `python manage.py generate_vapid_keys` creates a pair.
+VAPID_PUBLIC_KEY = env.str("NUDGE_VAPID_PUBLIC_KEY", default="")
+VAPID_PRIVATE_KEY = env.str("NUDGE_VAPID_PRIVATE_KEY", default="")
+# How push services can reach whoever runs this server: a mailto: or https: URL.
+VAPID_SUBJECT = env.str("NUDGE_VAPID_SUBJECT", default=PUBLIC_URL)
 
 # ---------------------------------------------------------------- logging
 

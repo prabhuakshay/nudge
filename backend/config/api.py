@@ -15,6 +15,7 @@ from ninja.security import django_auth
 
 from apps.accounts.api import router as accounts_router
 from apps.core.api import router as core_router
+from apps.notifications.api import router as notifications_router
 
 api = NinjaAPI(
     title="Nudge API",
@@ -27,3 +28,4 @@ api = NinjaAPI(
 
 api.add_router("/", core_router, tags=["core"])
 api.add_router("/auth", accounts_router, tags=["auth"])
+api.add_router("/notifications", notifications_router, tags=["notifications"])

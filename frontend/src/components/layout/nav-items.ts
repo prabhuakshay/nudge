@@ -6,9 +6,9 @@ export type NavItem = {
   icon: LucideIcon;
 };
 
-/** Smart views shown in the sidebar on desktop and the bottom bar on mobile. */
+/** Smart views shown in the sidebar on desktop and the bottom bar on mobile. The Inbox comes first. */
 export const NAV_ITEMS: readonly NavItem[] = [
-  { to: "/", label: "Today", icon: CalendarCheck },
   { to: "/inbox", label: "Inbox", icon: Inbox },
+  { to: "/", label: "Today", icon: CalendarCheck },
   { to: "/upcoming", label: "Upcoming", icon: CalendarDays },
 ];

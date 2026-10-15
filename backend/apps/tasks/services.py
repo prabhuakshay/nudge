@@ -1,0 +1,142 @@
+"""Business rules for Projects and Tasks: the Inbox, ordering, listing and completing.
+
+Every function takes the user first and reaches Projects and Tasks through that user's related
+managers, so another user's ids behave as if they don't exist.
+"""
+
+from __future__ import annotations
+
+import base64
+import binascii
+from dataclasses import dataclass
+from datetime import datetime
+from typing import TYPE_CHECKING
+
+from django.db import transaction
+from django.utils import timezone
+from fractional_indexing import generate_key_between
+
+from apps.tasks.models import INBOX_NAME, Project, Task
+
+if TYPE_CHECKING:
+    from django.db.models import QuerySet
+
+    from apps.accounts.models import User
+
+CLOSED_PAGE_SIZE = 50
+
+
+class InvalidCursorError(ValueError):
+    """A pagination cursor that this server didn't hand out."""
+
+
+@dataclass(frozen=True)
+class ClosedPage:
+    """One page of Closed Tasks and the cursor for the next, if there is one."""
+
+    tasks: list[Task]
+    next_cursor: str | None
+
+
+@dataclass(frozen=True)
+class TaskChange:
+    """A Task after a change, and the Tasks whose Status it changed, with their prior Status."""
+
+    task: Task
+    affected: list[tuple[int, Task.Status]]
+
+
+def create_inbox(user: User) -> Project:
+    """Create the user's Inbox."""
+    return Project.objects.create(owner=user, name=INBOX_NAME, is_inbox=True)
+
+
+def inbox(user: User) -> Project:
+    """Return the user's Inbox."""
+    return user.projects.get(is_inbox=True)
+
+
+def live_project(user: User, project_id: int) -> Project | None:
+    """Return one of the user's Projects that isn't in Trash, or None."""
+    return user.projects.filter(pk=project_id, deleted_at__isnull=True).first()
+
+
+def _live_tasks(project: Project) -> QuerySet[Task]:
+    return project.tasks.filter(deleted_at__isnull=True)
+
+
+def open_tasks(project: Project) -> QuerySet[Task]:
+    """Return the Project's open Tasks in the user's manual order."""
+    return _live_tasks(project).filter(status=Task.Status.OPEN)
+
+
+def open_task_count(project: Project) -> int:
+    """Return how many open Tasks the Project holds."""
+    return open_tasks(project).count()
+
+
+def closed_tasks(project: Project, cursor: str | None = None) -> ClosedPage:
+    """Return a page of the Project's Closed Tasks, most recently completed first.
+
+    Raises:
+        InvalidCursorError: The cursor wasn't one this function returned.
+    """
+    tasks = _live_tasks(project).exclude(status=Task.Status.OPEN).order_by("-completed_at", "-id")
+    if cursor is not None:
+        completed_at, task_id = _decode_cursor(cursor)
+        tasks = tasks.filter(completed_at__lte=completed_at).exclude(
+            completed_at=completed_at,
+            pk__gte=task_id,
+        )
+    page = list(tasks[: CLOSED_PAGE_SIZE + 1])
+    if len(page) <= CLOSED_PAGE_SIZE:
+        return ClosedPage(tasks=page, next_cursor=None)
+    last = page[CLOSED_PAGE_SIZE - 1]
+    return ClosedPage(tasks=page[:CLOSED_PAGE_SIZE], next_cursor=_encode_cursor(last))
+
+
+def _encode_cursor(task: Task) -> str:
+    assert task.completed_at is not None  # noqa: S101 - only Closed Tasks are paginated
+    raw = f"{task.completed_at.isoformat()}|{task.pk}"
+    return base64.urlsafe_b64encode(raw.encode()).decode()
+
+
+def _decode_cursor(cursor: str) -> tuple[datetime, int]:
+    try:
+        completed_at, task_id = base64.urlsafe_b64decode(cursor).decode().split("|")
+        return datetime.fromisoformat(completed_at), int(task_id)
+    except (binascii.Error, UnicodeDecodeError, ValueError) as error:
+        message = "The cursor is not valid."
+        raise InvalidCursorError(message) from error
+
+
+def create_task(project: Project, title: str) -> Task:
+    """Create a Task in the Project, first among its Tasks, owned by the Project's owner."""
+    with transaction.atomic():
+        # Locking the Project serialises inserts into it, so two Tasks never get the same key.
+        Project.objects.select_for_update().get(pk=project.pk)
+        first = project.tasks.order_by("position", "id").values_list("position", flat=True).first()
+        position = str(generate_key_between(None, first))
+        return Task.objects.create(
+            owner_id=project.owner_id,
+            project=project,
+            title=title,
+            position=position,
+        )
+
+
+def update_task(user: User, task_id: int, status: Task.Status | None = None) -> TaskChange | None:
+    """Change one of the user's Tasks; return None if it isn't theirs.
+
+    Completing a Task records when; reopening it clears that.
+    """
+    task = user.tasks.filter(pk=task_id, deleted_at__isnull=True).first()
+    if task is None:
+        return None
+    if status is None or task.status == status:
+        return TaskChange(task=task, affected=[])
+    prior = Task.Status(task.status)
+    task.status = status
+    task.completed_at = timezone.now() if status == Task.Status.COMPLETED else None
+    task.save(update_fields=["status", "completed_at", "updated_at"])
+    return TaskChange(task=task, affected=[(task.pk, prior)])

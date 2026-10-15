@@ -489,6 +489,222 @@
           }
         ]
       }
+    },
+    "/api/v1/sidebar": {
+      "get": {
+        "operationId": "apps_tasks_api_sidebar_sidebar",
+        "summary": "Get the sidebar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SidebarOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the user's Inbox with its open Task count.",
+        "tags": [
+          "sidebar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks": {
+      "get": {
+        "operationId": "apps_tasks_api_tasks_list_tasks",
+        "summary": "List a Project's Tasks",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "schema": {
+              "title": "Project",
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "closed",
+            "schema": {
+              "default": false,
+              "title": "Closed",
+              "type": "boolean"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskListOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return a Project's open Tasks in manual order, or, with `closed`, a page of Closed ones.\n\nClosed Tasks come most recently completed first, in pages; open Tasks come all at once.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_tasks_api_tasks_create_task",
+        "summary": "Add a Task",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add a Task first in its Project, or in the Inbox when no Project is given.",
+        "tags": [
+          "tasks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_tasks_update_task",
+        "summary": "Change a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskChangeOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change a Task's fields, returning it and every Task whose Status changed.",
+        "tags": [
+          "tasks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -797,6 +1013,219 @@
           "endpoint"
         ],
         "title": "PushUnsubscribeIn",
+        "type": "object"
+      },
+      "SidebarOut": {
+        "description": "Everything the sidebar shows.",
+        "properties": {
+          "inbox": {
+            "$ref": "#/components/schemas/SidebarProjectOut"
+          }
+        },
+        "required": [
+          "inbox"
+        ],
+        "title": "SidebarOut",
+        "type": "object"
+      },
+      "SidebarProjectOut": {
+        "description": "A Project as the sidebar lists it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "open_count"
+        ],
+        "title": "SidebarProjectOut",
+        "type": "object"
+      },
+      "Status": {
+        "description": "Where a Task stands.",
+        "enum": [
+          "open",
+          "completed"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "TaskListOut": {
+        "description": "Tasks for a list, and the cursor for the next page when the list is paginated.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "TaskListOut",
+        "type": "object"
+      },
+      "TaskOut": {
+        "description": "A Task as a list row shows it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title",
+          "status",
+          "completed_at",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TaskOut",
+        "type": "object"
+      },
+      "TaskIn": {
+        "description": "A new Task from Quick add.",
+        "properties": {
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the Inbox.",
+            "title": "Project Id"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "TaskIn",
+        "type": "object"
+      },
+      "AffectedTaskOut": {
+        "description": "A Task whose Status a change touched, with its Status before, so the client can undo.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "prior_status": {
+            "$ref": "#/components/schemas/Status"
+          }
+        },
+        "required": [
+          "id",
+          "prior_status"
+        ],
+        "title": "AffectedTaskOut",
+        "type": "object"
+      },
+      "TaskChangeOut": {
+        "description": "A changed Task and every Task whose Status the change touched.",
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/TaskOut"
+          },
+          "affected": {
+            "items": {
+              "$ref": "#/components/schemas/AffectedTaskOut"
+            },
+            "title": "Affected",
+            "type": "array"
+          }
+        },
+        "required": [
+          "task",
+          "affected"
+        ],
+        "title": "TaskChangeOut",
+        "type": "object"
+      },
+      "TaskPatchIn": {
+        "description": "The fields of a Task to change; fields left out stay as they are.",
+        "properties": {
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Status"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "TaskPatchIn",
         "type": "object"
       }
     },

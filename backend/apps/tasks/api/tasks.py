@@ -9,6 +9,7 @@ from ninja import Router, Status
 from apps.accounts.schemas import ErrorOut
 from apps.tasks import services
 from apps.tasks.api import signed_in_user
+from apps.tasks.pagination import InvalidCursorError
 from apps.tasks.schemas import (
     AffectedTaskOut,
     TaskChangeOut,
@@ -56,9 +57,9 @@ def list_tasks(
         return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=None))
     try:
         page = services.closed_tasks(found, cursor)
-    except services.InvalidCursorError as error:
+    except InvalidCursorError as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
-    items = [TaskOut.from_orm(task) for task in page.tasks]
+    items = [TaskOut.from_orm(task) for task in page.items]
     return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=page.next_cursor))
 
 

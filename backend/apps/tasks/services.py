@@ -6,10 +6,7 @@ managers, so another user's ids behave as if they don't exist.
 
 from __future__ import annotations
 
-import base64
-import binascii
 from dataclasses import dataclass
-from datetime import datetime
 from typing import TYPE_CHECKING
 
 from django.db import transaction
@@ -17,25 +14,12 @@ from django.utils import timezone
 from fractional_indexing import generate_key_between
 
 from apps.tasks.models import INBOX_NAME, Project, Task
+from apps.tasks.pagination import Page, newest_first
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from apps.accounts.models import User
-
-CLOSED_PAGE_SIZE = 50
-
-
-class InvalidCursorError(ValueError):
-    """A pagination cursor that this server didn't hand out."""
-
-
-@dataclass(frozen=True)
-class ClosedPage:
-    """One page of Closed Tasks and the cursor for the next, if there is one."""
-
-    tasks: list[Task]
-    next_cursor: str | None
 
 
 @dataclass(frozen=True)
@@ -75,39 +59,14 @@ def open_task_count(project: Project) -> int:
     return open_tasks(project).count()
 
 
-def closed_tasks(project: Project, cursor: str | None = None) -> ClosedPage:
+def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
     """Return a page of the Project's Closed Tasks, most recently completed first.
 
     Raises:
         InvalidCursorError: The cursor wasn't one this function returned.
     """
-    tasks = _live_tasks(project).exclude(status=Task.Status.OPEN).order_by("-completed_at", "-id")
-    if cursor is not None:
-        completed_at, task_id = _decode_cursor(cursor)
-        tasks = tasks.filter(completed_at__lte=completed_at).exclude(
-            completed_at=completed_at,
-            pk__gte=task_id,
-        )
-    page = list(tasks[: CLOSED_PAGE_SIZE + 1])
-    if len(page) <= CLOSED_PAGE_SIZE:
-        return ClosedPage(tasks=page, next_cursor=None)
-    last = page[CLOSED_PAGE_SIZE - 1]
-    return ClosedPage(tasks=page[:CLOSED_PAGE_SIZE], next_cursor=_encode_cursor(last))
-
-
-def _encode_cursor(task: Task) -> str:
-    assert task.completed_at is not None  # noqa: S101 - only Closed Tasks are paginated
-    raw = f"{task.completed_at.isoformat()}|{task.pk}"
-    return base64.urlsafe_b64encode(raw.encode()).decode()
-
-
-def _decode_cursor(cursor: str) -> tuple[datetime, int]:
-    try:
-        completed_at, task_id = base64.urlsafe_b64decode(cursor).decode().split("|")
-        return datetime.fromisoformat(completed_at), int(task_id)
-    except (binascii.Error, UnicodeDecodeError, ValueError) as error:
-        message = "The cursor is not valid."
-        raise InvalidCursorError(message) from error
+    closed = _live_tasks(project).exclude(status=Task.Status.OPEN)
+    return newest_first(closed, "completed_at", cursor)
 
 
 def create_task(project: Project, title: str) -> Task:

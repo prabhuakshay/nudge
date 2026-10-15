@@ -452,6 +452,74 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/people": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List People
+     * @description Return the user's People, A to Z.
+     */
+    get: operations["apps_tasks_api_people_list_people"];
+    put?: never;
+    /**
+     * Add a Person
+     * @description Add a Person to the address book.
+     */
+    post: operations["apps_tasks_api_people_create_person"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/people/{person_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Person
+     * @description Delete a Person for good; their Mentions become plain `@Name` text.
+     */
+    delete: operations["apps_tasks_api_people_delete_person"];
+    options?: never;
+    head?: never;
+    /**
+     * Change a Person
+     * @description Rename or recolour a Person. A rename shows in every Mention of them.
+     */
+    patch: operations["apps_tasks_api_people_update_person"];
+    trace?: never;
+  };
+  "/api/v1/people/{person_id}/merge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Merge a Person into another
+     * @description Fold a Person into another: their Mentions move over and they are deleted.
+     */
+    post: operations["apps_tasks_api_people_merge_person"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/sidebar": {
     parameters: {
       query?: never;
@@ -480,10 +548,12 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * List a Project's Tasks
-     * @description Return a Project's open Tasks in manual order, or, with `closed`, a page of Closed ones.
+     * List a Project's or a Person's Tasks
+     * @description Return the open Tasks of a Project or Person, or, with `closed`, a page of Closed ones.
      *
-     *     Closed Tasks come most recently completed first, in pages; open Tasks come all at once.
+     *     A Project's Tasks come in manual order. A Person's are the Tasks that mention them, flat, in
+     *     each Project's manual order. Closed Tasks come most recently completed first, in pages; open
+     *     Tasks come all at once.
      */
     get: operations["apps_tasks_api_tasks_list_tasks"];
     put?: never;
@@ -1007,6 +1077,50 @@ export interface components {
        * @description The top level when left out.
        */
       folder_id?: number | null;
+    };
+    /**
+     * PersonOut
+     * @description A Person in the user's address book.
+     */
+    PersonOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      color: components["schemas"]["PaletteColor"];
+    };
+    /**
+     * PersonIn
+     * @description A new Person.
+     */
+    PersonIn: {
+      /**
+       * Name
+       * @description Unique among the user's People, ignoring case.
+       */
+      name: string;
+      /** @description Random when left out. */
+      color?: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * PersonPatchIn
+     * @description The fields of a Person to change; fields left out stay as they are.
+     */
+    PersonPatchIn: {
+      /**
+       * Name
+       * @description Rewrites every Mention.
+       */
+      name?: string | null;
+      color?: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * PersonMergeIn
+     * @description The Person to fold another into.
+     */
+    PersonMergeIn: {
+      /** Into Id */
+      into_id: number;
     };
     /**
      * SidebarFolderOut
@@ -1548,6 +1662,35 @@ export interface components {
      */
     NoActivityData: Record<string, never>;
     /**
+     * PersonMergedActivityOut
+     * @description A Person the Task mentioned was merged into another.
+     */
+    PersonMergedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "person_merged";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["PersonMergedData"];
+    };
+    /**
+     * PersonMergedData
+     * @description The People merged, by their names at the time: `from_person` was folded into `to_person`.
+     */
+    PersonMergedData: {
+      /** From Person */
+      from_person: string;
+      /** To Person */
+      to_person: string;
+    };
+    /**
      * PinnedActivityOut
      * @description The Task was pinned.
      */
@@ -1659,6 +1802,7 @@ export interface components {
         | components["schemas"]["AttachmentRemovedActivityOut"]
         | components["schemas"]["DatesChangedActivityOut"]
         | components["schemas"]["MovedActivityOut"]
+        | components["schemas"]["PersonMergedActivityOut"]
       )[];
       /**
        * Next Cursor
@@ -2446,6 +2590,176 @@ export interface operations {
       };
     };
   };
+  apps_tasks_api_people_list_people: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonOut"][];
+        };
+      };
+    };
+  };
+  apps_tasks_api_people_create_person: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PersonIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_people_delete_person: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        person_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_people_update_person: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        person_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PersonPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_people_merge_person: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        person_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PersonMergeIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
   apps_tasks_api_sidebar_sidebar: {
     parameters: {
       query?: never;
@@ -2468,8 +2782,9 @@ export interface operations {
   };
   apps_tasks_api_tasks_list_tasks: {
     parameters: {
-      query: {
-        project: number;
+      query?: {
+        project?: number | null;
+        person?: number | null;
         closed?: boolean;
         cursor?: string | null;
       };

@@ -8,8 +8,8 @@ from typing import TYPE_CHECKING
 import pytest
 from django.db import IntegrityError, transaction
 
-from apps.tasks import projects, services
-from apps.tasks.models import Attachment, Task
+from apps.tasks import people, projects, services
+from apps.tasks.models import Attachment, Task, TaskMention
 
 if TYPE_CHECKING:
     from apps.accounts.models import User
@@ -26,6 +26,16 @@ def test_a_project_and_a_task_read_as_their_name_and_title(ada: User) -> None:
 @pytest.mark.django_db
 def test_a_folder_reads_as_its_name(ada: User) -> None:
     assert str(projects.create_folder(ada, "Personal")) == "Personal"
+
+
+@pytest.mark.django_db
+def test_a_person_and_a_mention_read_as_who_is_mentioned_where(ada: User) -> None:
+    priya = people.create_person(ada, "Priya")
+    task = services.create_task(services.inbox(ada), f"Call [@Priya](person:{priya.pk})")
+
+    mention = TaskMention.objects.get(task=task)
+
+    assert (str(priya), str(mention)) == ("Priya", f"Priya in Call [@Priya](person:{priya.pk})")
 
 
 @pytest.mark.django_db

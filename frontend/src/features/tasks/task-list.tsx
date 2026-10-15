@@ -115,30 +115,7 @@ export function TaskList({ project }: { project: SidebarProject }) {
           aria-label={`${project.name} tasks`}
           className="rounded-xl border border-border bg-surface shadow-sm"
         >
-          <div
-            role="row"
-            className={cn(
-              GRID,
-              "sticky top-14 z-10 hidden h-9 items-center rounded-t-xl border-b border-border bg-surface-muted/95 pr-2 pl-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur",
-            )}
-          >
-            <span role="columnheader" className="pl-[54px]">
-              Title
-            </span>
-            <span role="columnheader" className="px-2">
-              Status
-            </span>
-            <span role="columnheader" className="px-2">
-              Priority
-            </span>
-            <span role="columnheader" className="px-2">
-              Due
-            </span>
-            <span role="columnheader" className="px-2 text-right">
-              Activity
-            </span>
-            <span role="columnheader" aria-label="Actions" />
-          </div>
+          <TaskTableHeader />
 
           {pinnedRows.length > 0 && (
             <Group
@@ -187,7 +164,38 @@ export function TaskList({ project }: { project: SidebarProject }) {
   );
 }
 
-function Group({
+/** The table's column headings, shown from `lg` where the rows become a grid. */
+export function TaskTableHeader() {
+  return (
+    <div
+      role="row"
+      className={cn(
+        GRID,
+        "sticky top-14 z-10 hidden h-9 items-center rounded-t-xl border-b border-border bg-surface-muted/95 pr-2 pl-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur",
+      )}
+    >
+      <span role="columnheader" className="pl-[54px]">
+        Title
+      </span>
+      <span role="columnheader" className="px-2">
+        Status
+      </span>
+      <span role="columnheader" className="px-2">
+        Priority
+      </span>
+      <span role="columnheader" className="px-2">
+        Due
+      </span>
+      <span role="columnheader" className="px-2 text-right">
+        Activity
+      </span>
+      <span role="columnheader" aria-label="Actions" />
+    </div>
+  );
+}
+
+/** A titled section of the table, with a count of the Tasks in it. */
+export function Group({
   icon,
   label,
   count,
@@ -213,7 +221,7 @@ function Group({
 }
 
 /** Closed Tasks stay out of the way, and aren't fetched, until the group is opened. */
-function ClosedGroup({
+export function ClosedGroup({
   query: closed,
   rows,
   expanded,

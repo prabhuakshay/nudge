@@ -1,6 +1,8 @@
-import { ChevronDown, ChevronRight, Paperclip } from "lucide-react";
+import { ChevronDown, ChevronRight, CornerDownRight, Paperclip } from "lucide-react";
 import { memo } from "react";
 
+import { MentionText } from "@/features/people/mention-text";
+import { plainMentions } from "@/features/people/mentions";
 import { cn } from "@/lib/utils";
 
 import { CountIcon } from "./count-icon";
@@ -137,7 +139,7 @@ const TaskRow = memo(function TaskRow({
           <span className="-mr-1 flex w-5 shrink-0 justify-center">
             {subtasks.total > 0 && (
               <CollapseToggle
-                title={task.title}
+                title={plainMentions(task.title)}
                 collapsed={collapsed}
                 onToggle={() => {
                   onToggleCollapsed(task.id);
@@ -160,8 +162,15 @@ const TaskRow = memo(function TaskRow({
                 !closed && (level === 0 ? "font-semibold" : "font-medium"),
               )}
             >
-              {task.title}
+              <MentionText text={task.title} />
             </span>
+            {level === 0 && task.parent_title !== null && (
+              <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+                <CornerDownRight className="size-3 shrink-0" aria-hidden />
+                <span className="sr-only">Subtask of</span>
+                <span className="truncate">{plainMentions(task.parent_title)}</span>
+              </span>
+            )}
             {blocked && <BlockedNote task={task} className="hidden lg:flex" />}
           </div>
           <TaskActionsMenu task={task} className="-my-2 lg:hidden" />

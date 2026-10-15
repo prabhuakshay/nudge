@@ -5,6 +5,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, loadEnv } from "vite";
+import { VitePWA } from "vite-plugin-pwa";
 
 // The repository root holds the single .env file shared with the backend.
 const envDir = path.resolve(import.meta.dirname, "..");
@@ -36,7 +37,22 @@ export default defineConfig(({ mode }) => {
 
   return {
     envDir,
-    plugins: [tanstackRouter({ target: "react", autoCodeSplitting: true }), react(), tailwindcss()],
+    plugins: [
+      tanstackRouter({ target: "react", autoCodeSplitting: true }),
+      react(),
+      tailwindcss(),
+      VitePWA({
+        strategies: "injectManifest",
+        srcDir: "src",
+        filename: "sw.ts",
+        injectRegister: "script-defer",
+        // The manifest is generated with the rest of the brand assets in branding/.
+        manifest: false,
+        injectManifest: {
+          globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,webmanifest}"],
+        },
+      }),
+    ],
     resolve: {
       alias: { "@": path.resolve(import.meta.dirname, "src") },
     },

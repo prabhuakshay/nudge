@@ -1,6 +1,8 @@
 {
+  "id": "/",
   "name": "Nudge",
   "short_name": "Nudge",
+  "description": "Small pushes, things get done.",
   "icons": [
     {
       "src": "/android-chrome-192.png",

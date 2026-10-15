@@ -231,13 +231,15 @@ png(icon, "favicon/android-chrome-192.png", 192)
 png(icon, "favicon/android-chrome-512.png", 512)
 png(maskable, "favicon/maskable-512.png", 512)
 write("favicon/site.webmanifest", json.dumps({
-    "name": "Nudge", "short_name": "Nudge",
+    "id": "/", "name": "Nudge", "short_name": "Nudge",
+    "description": "Small pushes, things get done.",
     "icons": [
         {"src": "/android-chrome-192.png", "sizes": "192x192", "type": "image/png"},
         {"src": "/android-chrome-512.png", "sizes": "512x512", "type": "image/png"},
         {"src": "/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable"},
     ],
     "theme_color": C["blue"], "background_color": C["paper"], "display": "standalone",
+    "start_url": "/", "scope": "/",
 }, indent=2) + "\n")
 write("favicon/head-snippet.html", f'''<link rel="icon" href="/favicon.ico" sizes="48x48">
 <link rel="icon" href="/favicon.svg" type="image/svg+xml">

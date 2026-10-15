@@ -21,7 +21,7 @@ from fractional_indexing import generate_key_between, generate_n_keys_between
 
 from apps.accounts.models import User
 from apps.core.palette import PaletteColor
-from apps.tasks.models import Folder, Project, Task
+from apps.tasks.models import OPEN_STATUSES, Folder, Project
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -121,7 +121,7 @@ def sidebar(user: User) -> Sidebar:
     items: list[Folder | Project] = [*user.folders.all(), *ungrouped]
     items.sort(key=lambda item: (item.position, item.pk))
     open_counts = dict(
-        user.tasks.filter(deleted_at__isnull=True, status=Task.Status.OPEN)
+        user.tasks.filter(deleted_at__isnull=True, status__in=OPEN_STATUSES)
         .values("project")
         .annotate(count=Count("pk"))
         .values_list("project", "count"),

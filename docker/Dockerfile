@@ -69,6 +69,9 @@ COPY --from=backend-build /opt/venv /opt/venv
 COPY --from=backend-build /app /app
 COPY docker/entrypoint.sh /usr/local/bin/nudge-entrypoint
 COPY docker/healthcheck.py /usr/local/bin/nudge-healthcheck
+# Compose mounts the media volume here. A new volume copies this folder's owner, so the
+# unprivileged user can write Attachments to it.
+RUN mkdir -p /app/backend/media/uploads && chown -R nudge:nudge /app/backend/media
 USER nudge
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
     CMD ["python", "/usr/local/bin/nudge-healthcheck"]

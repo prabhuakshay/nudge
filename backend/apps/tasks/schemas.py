@@ -1,4 +1,4 @@
-"""Request and response shapes for the Task, Activity, Project, Folder and sidebar endpoints."""
+"""Request and response shapes for the endpoints of the tasks app."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from apps.core.palette import PaletteColor  # noqa: TC001 - Pydantic needs the t
 from apps.tasks.models import Project, Task
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
 
 
@@ -22,9 +23,15 @@ class TaskOut(Schema):
     project_id: int
     title: str
     status: Task.Status
-    completed_at: datetime | None
+    priority: Task.Priority = Field(description="0 is no Priority; 1 (P1) is the most urgent.")
+    blocked_reason: str = Field(description="Why a Blocked Task waits; empty otherwise.")
+    completed_at: datetime | None = Field(description="When it was Completed or marked Won't do.")
     created_at: datetime
     updated_at: datetime
+    attachment_count: int = Field(
+        default=0,
+        description="How many Attachments the Task has. A Task just added has none.",
+    )
 
 
 class TaskDetailOut(TaskOut):
@@ -54,7 +61,15 @@ class TaskPatchIn(Schema):
 
     title: Title | None = None
     description: str | None = Field(default=None, description="Markdown.")
-    status: Task.Status | None = None
+    status: Task.Status | None = Field(
+        default=None,
+        description="Changing it clears the Blocked reason unless one is given with it.",
+    )
+    blocked_reason: BlockedReason | None = Field(
+        default=None,
+        description="Only a Blocked Task can have one; send an empty string to clear it.",
+    )
+    priority: Task.Priority | None = None
     project_id: int | None = Field(default=None, description="Moves the Task first into it.")
 
 
@@ -63,6 +78,7 @@ class AffectedTaskOut(Schema):
 
     id: int
     prior_status: Task.Status
+    prior_blocked_reason: str
 
 
 class TaskChangeOut(Schema):
@@ -81,6 +97,21 @@ class TitleChangedData(Schema):
 
     old: str
     new: str
+
+
+class StatusChangedData(Schema):
+    """The Status before and after a change, and the Blocked reason it was given, if any."""
+
+    old: Task.Status
+    new: Task.Status
+    blocked_reason: str
+
+
+class PriorityChangedData(Schema):
+    """The Priority before and after a change."""
+
+    old: Task.Priority
+    new: Task.Priority
 
 
 class CreatedActivityOut(Schema):
@@ -126,8 +157,57 @@ class MovedActivityOut(Schema):
     data: MovedData
 
 
+class StatusChangedActivityOut(Schema):
+    """The Task's Status changed."""
+
+    id: int
+    kind: Literal["status_changed"]
+    at: datetime
+    data: StatusChangedData
+
+
+class PriorityChangedActivityOut(Schema):
+    """The Task's Priority changed."""
+
+    id: int
+    kind: Literal["priority_changed"]
+    at: datetime
+    data: PriorityChangedData
+
+
+class AttachmentData(Schema):
+    """The Attachment an event is about, by the name it had."""
+
+    name: str
+
+
+class AttachmentAddedActivityOut(Schema):
+    """A file was attached to the Task."""
+
+    id: int
+    kind: Literal["attachment_added"]
+    at: datetime
+    data: AttachmentData
+
+
+class AttachmentRemovedActivityOut(Schema):
+    """An Attachment was deleted from the Task."""
+
+    id: int
+    kind: Literal["attachment_removed"]
+    at: datetime
+    data: AttachmentData
+
+
 TaskActivityOut = Annotated[
-    CreatedActivityOut | TitleChangedActivityOut | DescriptionEditedActivityOut | MovedActivityOut,
+    CreatedActivityOut
+    | TitleChangedActivityOut
+    | DescriptionEditedActivityOut
+    | StatusChangedActivityOut
+    | PriorityChangedActivityOut
+    | AttachmentAddedActivityOut
+    | AttachmentRemovedActivityOut
+    | MovedActivityOut,
     Field(discriminator="kind"),
 ]
 
@@ -140,6 +220,16 @@ class TaskActivityListOut(Schema):
         description="Pass as `cursor` to get the next page; null on the last page.",
     )
     count: int = Field(description="How many events the whole history holds.")
+
+
+class AttachmentOut(Schema):
+    """A file attached to a Task. Its bytes come from the download endpoint."""
+
+    id: int
+    name: str = Field(description="The file's name as it was uploaded.")
+    size: int = Field(description="In bytes.")
+    content_type: str = Field(description="Chosen by the server from the file's name.")
+    created_at: datetime
 
 
 class ProjectOut(Schema):

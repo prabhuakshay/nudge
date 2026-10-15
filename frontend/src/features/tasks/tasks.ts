@@ -3,16 +3,21 @@ import {
   queryOptions,
   useMutation,
   useQueryClient,
+  type QueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 
+import { isClosed, STATUS_VERB } from "./task-properties";
+
 export type Task = components["schemas"]["TaskOut"];
 export type TaskDetail = components["schemas"]["TaskDetailOut"];
 export type TaskStatus = components["schemas"]["Status"];
+export type TaskPriority = components["schemas"]["Priority"];
 export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"][number];
+export type Attachment = components["schemas"]["AttachmentOut"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 
@@ -30,11 +35,13 @@ export const sidebarQuery = queryOptions({
 
 /** The key prefix of every Task list, so one invalidation refreshes them all. */
 const TASKS_KEY = ["tasks"] as const;
+/** The key prefix of every open-Task list, so a change can show in all of them at once. */
+const OPEN_KEY = [...TASKS_KEY, "open"] as const;
 
 /** A Project's open Tasks, in the user's manual order. */
 export function openTasksQuery(projectId: number) {
   return queryOptions({
-    queryKey: [...TASKS_KEY, projectId, "open"],
+    queryKey: [...OPEN_KEY, projectId],
     queryFn: async (): Promise<Task[]> => {
       const { data } = await api.GET("/api/v1/tasks", {
         params: { query: { project: projectId } },
@@ -50,7 +57,7 @@ export function openTasksQuery(projectId: number) {
 /** A Project's Closed Tasks, most recently completed first, a page at a time. */
 export function closedTasksQuery(projectId: number) {
   return infiniteQueryOptions({
-    queryKey: [...TASKS_KEY, projectId, "closed"],
+    queryKey: [...TASKS_KEY, "closed", projectId],
     queryFn: async ({ pageParam }) => {
       const { data } = await api.GET("/api/v1/tasks", {
         params: {
@@ -101,30 +108,163 @@ export function taskActivityQuery(taskId: number) {
   });
 }
 
-/** The text fields the drawer edits in place. */
-export type TaskTextChange = { id: number } & Partial<Pick<TaskDetail, "title" | "description">>;
-
-/** Save a Task's title or Description. The drawer shows the change before the server answers. */
-export function useUpdateTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, ...change }: TaskTextChange) => {
-      const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
-        params: { path: { task_id: id } },
-        body: change,
+/** A Task's Attachments, oldest first. Uploads and deletes add Activity, so it shares their key. */
+export function attachmentsQuery(taskId: number) {
+  return queryOptions({
+    queryKey: [...TASKS_KEY, "attachments", taskId],
+    queryFn: async (): Promise<Attachment[]> => {
+      const { data } = await api.GET("/api/v1/tasks/{task_id}/attachments", {
+        params: { path: { task_id: taskId } },
       });
       if (!data) {
-        throw new Error("Could not save the task.");
+        throw new Error("Could not load the attachments.");
       }
       return data;
     },
-    onMutate: async ({ id, ...change }) => {
-      const detailKey = taskQuery(id).queryKey;
-      await queryClient.cancelQueries({ queryKey: detailKey });
-      queryClient.setQueryData(detailKey, (task) => task && { ...task, ...change });
+  });
+}
+
+/** Where the browser fetches an Attachment's bytes: inline for images and PDFs, else a download. */
+export function attachmentUrl(attachmentId: number) {
+  return `/api/v1/attachments/${String(attachmentId)}/download`;
+}
+
+/** Upload one file to a Task. Several files go up one request each. */
+export function useUploadAttachment(taskId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const { data, error } = await api.POST("/api/v1/tasks/{task_id}/attachments", {
+        params: { path: { task_id: taskId } },
+        // The schema types a file as a string (OpenAPI's binary format); the File goes as is.
+        body: { file: file as unknown as string },
+        bodySerializer: (body) => {
+          const form = new FormData();
+          form.append("file", body.file);
+          return form;
+        },
+      });
+      if (error) {
+        // The server explains a refusal, such as a file over the size limit.
+        throw new Error(error.detail);
+      }
+      return data;
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+  });
+}
+
+/** Delete an Attachment for good. It leaves the drawer before the server answers. */
+export function useDeleteAttachment(taskId: number) {
+  const queryClient = useQueryClient();
+  const key = attachmentsQuery(taskId).queryKey;
+  return useMutation({
+    mutationFn: async (attachmentId: number) => {
+      const { response } = await api.DELETE("/api/v1/attachments/{attachment_id}", {
+        params: { path: { attachment_id: attachmentId } },
+      });
+      if (!response.ok) {
+        throw new Error("Could not delete the attachment.");
+      }
+    },
+    onMutate: async (attachmentId) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      queryClient.setQueryData(key, (items) => items?.filter((item) => item.id !== attachmentId));
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+  });
+}
+
+/** A change to a Task: the fields to set, which are all left as they are when absent. */
+export type TaskChange = { id: number } & Partial<
+  Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason">
+>;
+
+async function patchTask({ id, ...change }: TaskChange) {
+  const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
+    params: { path: { task_id: id } },
+    body: change,
+  });
+  if (!data) {
+    throw new Error("Could not save the task.");
+  }
+  return data;
+}
+
+/** The Task as the server will return it after the change, for showing the change straight away. */
+function withChange<T extends Task>(task: T, change: TaskChange): T {
+  const leavesStatus = change.status !== undefined && change.status !== task.status;
+  // The server drops the Blocked reason on any Status change, unless the change sets one.
+  return { ...task, ...(leavesStatus && { blocked_reason: "" }), ...change };
+}
+
+/** Show a change in the drawer and in every open list before the server answers. */
+async function showChange(queryClient: QueryClient, change: TaskChange) {
+  const detailKey = taskQuery(change.id).queryKey;
+  await queryClient.cancelQueries({ queryKey: detailKey });
+  await queryClient.cancelQueries({ queryKey: OPEN_KEY });
+  queryClient.setQueryData(detailKey, (task) => task && withChange(task, change));
+  queryClient.setQueriesData<Task[]>({ queryKey: OPEN_KEY }, (tasks) =>
+    tasks?.flatMap((task) => {
+      if (task.id !== change.id) return [task];
+      const changed = withChange(task, change);
+      return isClosed(changed.status) ? [] : [changed];
+    }),
+  );
+}
+
+/** Refetch everything a Task change can touch: the lists, the drawer, Activity and counts. */
+function refresh(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+    queryClient.invalidateQueries(sidebarQuery),
+  ]);
+}
+
+/** Change a Task's fields. The drawer and the lists show the change before the server answers. */
+export function useUpdateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: patchTask,
+    onMutate: (change) => showChange(queryClient, change),
+    onError: (error) => toast.error(error.message),
+    onSettled: () => refresh(queryClient),
+  });
+}
+
+/**
+ * Set a Task's Status, then offer Undo in a toast. Undo gives every Task the change touched back
+ * the Status and Blocked reason it had, as the server reported them.
+ */
+export function useSetTaskStatus() {
+  const queryClient = useQueryClient();
+  const { mutate: update } = useUpdateTask();
+  return useMutation({
+    mutationFn: ({ task, status }: { task: Task; status: TaskStatus }) =>
+      patchTask({ id: task.id, status }),
+    onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
+    onSuccess: ({ affected }, { task, status }) => {
+      toast(`${STATUS_VERB[status]} “${task.title}”`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            for (const prior of affected) {
+              update({
+                id: prior.id,
+                status: prior.prior_status,
+                ...(prior.prior_status === "blocked" && {
+                  blocked_reason: prior.prior_blocked_reason,
+                }),
+              });
+            }
+          },
+        },
+      });
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => refresh(queryClient),
   });
 }
 
@@ -148,36 +288,6 @@ export function useCreateTask(projectId: number) {
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries(sidebarQuery),
-  });
-}
-
-/** Complete or reopen a Task. Completing takes it out of the open list straight away. */
-export function useSetTaskStatus(projectId: number) {
-  const queryClient = useQueryClient();
-  const openKey = openTasksQuery(projectId).queryKey;
-  return useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: TaskStatus }) => {
-      const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
-        params: { path: { task_id: id } },
-        body: { status },
-      });
-      if (!data) {
-        throw new Error("Could not update the task.");
-      }
-      return data;
-    },
-    onMutate: async ({ id, status }) => {
-      if (status !== "open") {
-        await queryClient.cancelQueries({ queryKey: openKey });
-        queryClient.setQueryData(openKey, (tasks) => tasks?.filter((task) => task.id !== id));
-      }
-    },
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
-        queryClient.invalidateQueries(sidebarQuery),
-      ]),
   });
 }
 

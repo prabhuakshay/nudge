@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import ClassVar, override
 
 from django.conf import settings
@@ -149,6 +150,9 @@ class Task(models.Model):
 
     `position` is a fractional-indexing key: a new Task gets a key between its neighbours, so
     reordering writes one row. Keys compare byte by byte, hence the C collation.
+
+    Completed and Won't do are Closed and record when in `completed_at`. Blocked is still open
+    work, and only a Blocked Task keeps a `blocked_reason`.
     """
 
     class Status(models.TextChoices):
@@ -156,6 +160,17 @@ class Task(models.Model):
 
         OPEN = "open", "Open"
         COMPLETED = "completed", "Completed"
+        WONT_DO = "wont_do", "Won't do"
+        BLOCKED = "blocked", "Blocked"
+
+    class Priority(models.IntegerChoices):
+        """How urgent a Task is; P1 is the most urgent."""
+
+        NONE = 0, "None"
+        P1 = 1, "P1"
+        P2 = 2, "P2"
+        P3 = 3, "P3"
+        P4 = 4, "P4"
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -167,6 +182,8 @@ class Task(models.Model):
     title = models.CharField(max_length=500)
     description = models.TextField(blank=True, default="")
     status = models.CharField(max_length=16, choices=Status, default=Status.OPEN)
+    blocked_reason = models.TextField(blank=True, default="")
+    priority = models.PositiveSmallIntegerField(choices=Priority, default=Priority.NONE)
     completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
@@ -182,9 +199,13 @@ class Task(models.Model):
         ]
         constraints: ClassVar = [
             models.CheckConstraint(
-                condition=Q(status="open", completed_at__isnull=True)
-                | Q(status="completed", completed_at__isnull=False),
+                condition=Q(status__in=["open", "blocked"], completed_at__isnull=True)
+                | Q(status__in=["completed", "wont_do"], completed_at__isnull=False),
                 name="tasks_task_completed_at_matches_status",
+            ),
+            models.CheckConstraint(
+                condition=Q(status="blocked") | Q(blocked_reason=""),
+                name="tasks_task_blocked_reason_needs_blocked",
             ),
         ]
 
@@ -192,6 +213,11 @@ class Task(models.Model):
     def __str__(self) -> str:
         """Return the title, which is what the user sees in every list."""
         return self.title
+
+
+# Blocked work is still to be done, so it sorts and counts with open Tasks.
+OPEN_STATUSES = (Task.Status.OPEN, Task.Status.BLOCKED)
+CLOSED_STATUSES = (Task.Status.COMPLETED, Task.Status.WONT_DO)
 
 
 class TaskActivity(models.Model):
@@ -206,6 +232,10 @@ class TaskActivity(models.Model):
         CREATED = "created", "Created"
         TITLE_CHANGED = "title_changed", "Title changed"
         DESCRIPTION_EDITED = "description_edited", "Description edited"
+        STATUS_CHANGED = "status_changed", "Status changed"
+        PRIORITY_CHANGED = "priority_changed", "Priority changed"
+        ATTACHMENT_ADDED = "attachment_added", "Attachment added"
+        ATTACHMENT_REMOVED = "attachment_removed", "Attachment removed"
         MOVED = "moved", "Moved"
 
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="activity")
@@ -225,3 +255,33 @@ class TaskActivity(models.Model):
     def __str__(self) -> str:
         """Return what happened, which is how the admin lists events."""
         return self.get_kind_display()
+
+
+def _attachment_key(attachment: Attachment, _filename: str) -> str:
+    """Return a fresh storage key, so a file's name never reaches the file system."""
+    return f"attachments/{attachment.task.owner_id}/{uuid.uuid4().hex}"
+
+
+class Attachment(models.Model):
+    """A file uploaded against a Task.
+
+    The original name lives only here; the stored file is named by a generated key. Deleting an
+    Attachment is for good: the service removes its file once the deletion commits.
+    """
+
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="attachments")
+    name = models.CharField(max_length=255)
+    size = models.PositiveBigIntegerField()
+    content_type = models.CharField(max_length=255)
+    file = models.FileField(upload_to=_attachment_key, max_length=255)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        """Model options."""
+
+        ordering = ("created_at", "id")
+
+    @override
+    def __str__(self) -> str:
+        """Return the file's original name, which is how the user knows it."""
+        return self.name

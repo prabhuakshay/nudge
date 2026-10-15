@@ -52,9 +52,12 @@ def test_create_adds_a_trimmed_task_to_the_inbox(client: Client, ada: User) -> N
         "project_id": services.inbox(ada).pk,
         "title": "Buy milk",
         "status": "open",
+        "priority": 0,
+        "blocked_reason": "",
         "completed_at": None,
         "created_at": body["created_at"],
         "updated_at": body["updated_at"],
+        "attachment_count": 0,
     }
 
 
@@ -99,7 +102,7 @@ def test_a_new_task_goes_first_in_its_project(client: Client, ada: User) -> None
 def test_list_shows_only_open_tasks_by_default(client: Client, ada: User) -> None:
     services.create_task(services.inbox(ada), "Open one")
     done = services.create_task(services.inbox(ada), "Done one")
-    services.update_task(ada, done.pk, status=Task.Status.COMPLETED)
+    services.update_task(ada, done.pk, services.TaskEdit(status=Task.Status.COMPLETED))
 
     response = client.get(f"/api/v1/tasks?project={services.inbox(ada).pk}")
 
@@ -120,7 +123,7 @@ def test_closed_tasks_are_newest_completed_first(client: Client, ada: User) -> N
     start = datetime(2026, 10, 1, 9, tzinfo=UTC)
     for title, day in (("Oldest", 0), ("Newest", 2), ("Middle", 1)):
         task = services.create_task(services.inbox(ada), title)
-        services.update_task(ada, task.pk, status=Task.Status.COMPLETED)
+        services.update_task(ada, task.pk, services.TaskEdit(status=Task.Status.COMPLETED))
         Task.objects.filter(pk=task.pk).update(completed_at=start + timedelta(days=day))
     services.create_task(services.inbox(ada), "Still open")
 
@@ -133,7 +136,7 @@ def test_closed_tasks_are_newest_completed_first(client: Client, ada: User) -> N
 def test_closed_tasks_come_in_pages_of_fifty(client: Client, ada: User) -> None:
     for number in range(55):
         task = services.create_task(services.inbox(ada), f"Task {number}")
-        services.update_task(ada, task.pk, status=Task.Status.COMPLETED)
+        services.update_task(ada, task.pk, services.TaskEdit(status=Task.Status.COMPLETED))
     project = services.inbox(ada).pk
 
     first = client.get(f"/api/v1/tasks?project={project}&closed=true")
@@ -169,13 +172,15 @@ def test_completing_a_task_closes_it(client: Client, ada: User) -> None:
     body = response.json()
     assert body["task"]["status"] == "completed"
     assert body["task"]["completed_at"] is not None
-    assert body["affected"] == [{"id": task.pk, "prior_status": "open"}]
+    assert body["affected"] == [
+        {"id": task.pk, "prior_status": "open", "prior_blocked_reason": ""},
+    ]
 
 
 @pytest.mark.django_db
 def test_reopening_a_task_clears_its_completion_time(client: Client, ada: User) -> None:
     task = services.create_task(services.inbox(ada), "Buy milk")
-    services.update_task(ada, task.pk, status=Task.Status.COMPLETED)
+    services.update_task(ada, task.pk, services.TaskEdit(status=Task.Status.COMPLETED))
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -186,7 +191,9 @@ def test_reopening_a_task_clears_its_completion_time(client: Client, ada: User) 
     body = response.json()
     assert body["task"]["status"] == "open"
     assert body["task"]["completed_at"] is None
-    assert body["affected"] == [{"id": task.pk, "prior_status": "completed"}]
+    assert body["affected"] == [
+        {"id": task.pk, "prior_status": "completed", "prior_blocked_reason": ""},
+    ]
 
 
 @pytest.mark.django_db
@@ -327,3 +334,184 @@ def test_patch_cannot_rename_another_users_task(client: Client, grace: User) -> 
     task.refresh_from_db()
     assert task.title == "Grace's"
     assert task.description == ""
+
+
+@pytest.mark.django_db
+def test_blocking_a_task_keeps_its_reason_and_leaves_it_open(client: Client, ada: User) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+
+    response = client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"status": "blocked", "blocked_reason": "  Waiting on review  "},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["task"]["status"] == "blocked"
+    assert body["task"]["blocked_reason"] == "Waiting on review"
+    assert body["task"]["completed_at"] is None
+    assert body["affected"] == [
+        {"id": task.pk, "prior_status": "open", "prior_blocked_reason": ""},
+    ]
+
+
+@pytest.mark.django_db
+def test_leaving_blocked_clears_the_reason_and_reports_it_for_undo(
+    client: Client,
+    ada: User,
+) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+    services.update_task(
+        ada,
+        task.pk,
+        services.TaskEdit(status=Task.Status.BLOCKED, blocked_reason="Waiting on review"),
+    )
+
+    response = client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"status": "completed"},
+        content_type="application/json",
+    )
+
+    body = response.json()
+    assert body["task"]["blocked_reason"] == ""
+    assert body["affected"] == [
+        {"id": task.pk, "prior_status": "blocked", "prior_blocked_reason": "Waiting on review"},
+    ]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("before", list(Task.Status))
+@pytest.mark.parametrize("after", list(Task.Status))
+def test_any_status_can_go_to_any_other(
+    client: Client,
+    ada: User,
+    before: Task.Status,
+    after: Task.Status,
+) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+    services.update_task(ada, task.pk, services.TaskEdit(status=before))
+
+    response = client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"status": after},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    body = response.json()["task"]
+    assert body["status"] == after
+    closed = after in {Task.Status.COMPLETED, Task.Status.WONT_DO}
+    assert (body["completed_at"] is not None) == closed
+
+
+@pytest.mark.django_db
+def test_wont_do_and_blocked_sort_with_closed_and_open_tasks(client: Client, ada: User) -> None:
+    inbox = services.inbox(ada)
+    skipped = services.create_task(inbox, "Skipped")
+    services.update_task(ada, skipped.pk, services.TaskEdit(status=Task.Status.WONT_DO))
+    waiting = services.create_task(inbox, "Waiting")
+    services.update_task(ada, waiting.pk, services.TaskEdit(status=Task.Status.BLOCKED))
+    services.create_task(inbox, "Open")
+
+    open_response = client.get(f"/api/v1/tasks?project={inbox.pk}")
+    closed_response = client.get(f"/api/v1/tasks?project={inbox.pk}&closed=true")
+
+    assert _titles(open_response) == ["Open", "Waiting"]
+    assert _titles(closed_response) == ["Skipped"]
+
+
+@pytest.mark.django_db
+def test_a_blocked_reason_needs_a_blocked_task(client: Client, ada: User) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+
+    response = client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"blocked_reason": "Waiting on review"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Only a Blocked task can have a Blocked reason."}
+    task.refresh_from_db()
+    assert task.blocked_reason == ""
+
+
+@pytest.mark.django_db
+def test_patch_edits_the_reason_of_a_blocked_task(client: Client, ada: User) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+    services.update_task(ada, task.pk, services.TaskEdit(status=Task.Status.BLOCKED))
+
+    response = client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"blocked_reason": "Waiting on review"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["task"]["blocked_reason"] == "Waiting on review"
+    assert response.json()["affected"] == []
+
+
+@pytest.mark.django_db
+def test_patch_rejects_an_overlong_blocked_reason(client: Client, ada: User) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+
+    response = client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"status": "blocked", "blocked_reason": "x" * 501},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("priority", [1, 2, 3, 4, 0])
+def test_patch_sets_the_priority(client: Client, ada: User, priority: int) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+
+    response = client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"priority": priority},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 200
+    assert response.json()["task"]["priority"] == priority
+    assert response.json()["affected"] == []
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("priority", [-1, 5])
+def test_patch_rejects_an_unknown_priority(client: Client, ada: User, priority: int) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+
+    response = client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"priority": priority},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_patch_cannot_change_another_users_priority_or_status(
+    client: Client,
+    grace: User,
+) -> None:
+    task = services.create_task(services.inbox(grace), "Grace's")
+
+    response = client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"priority": 1, "status": "blocked", "blocked_reason": "Mine now"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 404
+    task.refresh_from_db()
+    assert task.priority == Task.Priority.NONE
+    assert task.status == Task.Status.OPEN
+    assert task.blocked_reason == ""

@@ -478,6 +478,9 @@ export interface paths {
     /**
      * Change a Task
      * @description Change a Task's fields, returning it and every Task whose Status changed.
+     *
+     *     Each changed Task comes with its Status and Blocked reason from before, so the client can
+     *     offer Undo without the server keeping anything.
      */
     patch: operations["apps_tasks_api_tasks_update_task"];
     trace?: never;
@@ -497,6 +500,70 @@ export interface paths {
     put?: never;
     post?: never;
     delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/attachments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Task's Attachments
+     * @description Return a Task's Attachments, oldest first.
+     */
+    get: operations["apps_tasks_api_attachments_list_attachments"];
+    put?: never;
+    /**
+     * Attach a file to a Task
+     * @description Store one file against a Task, up to the configured size.
+     */
+    post: operations["apps_tasks_api_attachments_upload_attachment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/attachments/{attachment_id}/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download an Attachment
+     * @description Send an Attachment's bytes, inline for images and PDFs and as a download otherwise.
+     */
+    get: operations["apps_tasks_api_attachments_download_attachment"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/attachments/{attachment_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete an Attachment
+     * @description Delete an Attachment and its file for good.
+     */
+    delete: operations["apps_tasks_api_attachments_delete_attachment"];
     options?: never;
     head?: never;
     patch?: never;
@@ -882,11 +949,17 @@ export interface components {
       open_count: number;
     };
     /**
+     * Priority
+     * @description How urgent a Task is; P1 is the most urgent.
+     * @enum {integer}
+     */
+    Priority: 0 | 1 | 2 | 3 | 4;
+    /**
      * Status
      * @description Where a Task stands.
      * @enum {string}
      */
-    Status: "open" | "completed";
+    Status: "open" | "completed" | "wont_do" | "blocked";
     /**
      * TaskListOut
      * @description Tasks for a list, and the cursor for the next page when the list is paginated.
@@ -912,7 +985,17 @@ export interface components {
       /** Title */
       title: string;
       status: components["schemas"]["Status"];
-      /** Completed At */
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
       completed_at: string | null;
       /**
        * Created At
@@ -924,6 +1007,12 @@ export interface components {
        * Format: date-time
        */
       updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
     };
     /**
      * TaskIn
@@ -950,7 +1039,17 @@ export interface components {
       /** Title */
       title: string;
       status: components["schemas"]["Status"];
-      /** Completed At */
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
       completed_at: string | null;
       /**
        * Created At
@@ -962,6 +1061,12 @@ export interface components {
        * Format: date-time
        */
       updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
       /**
        * Description
        * @description Markdown, as the user wrote it.
@@ -976,6 +1081,8 @@ export interface components {
       /** Id */
       id: number;
       prior_status: components["schemas"]["Status"];
+      /** Prior Blocked Reason */
+      prior_blocked_reason: string;
     };
     /**
      * TaskChangeOut
@@ -998,12 +1105,65 @@ export interface components {
        * @description Markdown.
        */
       description?: string | null;
+      /** @description Changing it clears the Blocked reason unless one is given with it. */
       status?: components["schemas"]["Status"] | null;
+      /**
+       * Blocked Reason
+       * @description Only a Blocked Task can have one; send an empty string to clear it.
+       */
+      blocked_reason?: string | null;
+      priority?: components["schemas"]["Priority"] | null;
       /**
        * Project Id
        * @description Moves the Task first into it.
        */
       project_id?: number | null;
+    };
+    /**
+     * AttachmentAddedActivityOut
+     * @description A file was attached to the Task.
+     */
+    AttachmentAddedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "attachment_added";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["AttachmentData"];
+    };
+    /**
+     * AttachmentData
+     * @description The Attachment an event is about, by the name it had.
+     */
+    AttachmentData: {
+      /** Name */
+      name: string;
+    };
+    /**
+     * AttachmentRemovedActivityOut
+     * @description An Attachment was deleted from the Task.
+     */
+    AttachmentRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "attachment_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["AttachmentData"];
     };
     /**
      * CreatedActivityOut
@@ -1078,6 +1238,62 @@ export interface components {
      */
     NoActivityData: Record<string, never>;
     /**
+     * PriorityChangedActivityOut
+     * @description The Task's Priority changed.
+     */
+    PriorityChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "priority_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["PriorityChangedData"];
+    };
+    /**
+     * PriorityChangedData
+     * @description The Priority before and after a change.
+     */
+    PriorityChangedData: {
+      old: components["schemas"]["Priority"];
+      new: components["schemas"]["Priority"];
+    };
+    /**
+     * StatusChangedActivityOut
+     * @description The Task's Status changed.
+     */
+    StatusChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "status_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["StatusChangedData"];
+    };
+    /**
+     * StatusChangedData
+     * @description The Status before and after a change, and the Blocked reason it was given, if any.
+     */
+    StatusChangedData: {
+      old: components["schemas"]["Status"];
+      new: components["schemas"]["Status"];
+      /** Blocked Reason */
+      blocked_reason: string;
+    };
+    /**
      * TaskActivityListOut
      * @description A page of a Task's history, newest first.
      */
@@ -1087,6 +1303,10 @@ export interface components {
         | components["schemas"]["CreatedActivityOut"]
         | components["schemas"]["TitleChangedActivityOut"]
         | components["schemas"]["DescriptionEditedActivityOut"]
+        | components["schemas"]["StatusChangedActivityOut"]
+        | components["schemas"]["PriorityChangedActivityOut"]
+        | components["schemas"]["AttachmentAddedActivityOut"]
+        | components["schemas"]["AttachmentRemovedActivityOut"]
         | components["schemas"]["MovedActivityOut"]
       )[];
       /**
@@ -1128,6 +1348,34 @@ export interface components {
       old: string;
       /** New */
       new: string;
+    };
+    /**
+     * AttachmentOut
+     * @description A file attached to a Task. Its bytes come from the download endpoint.
+     */
+    AttachmentOut: {
+      /** Id */
+      id: number;
+      /**
+       * Name
+       * @description The file's name as it was uploaded.
+       */
+      name: string;
+      /**
+       * Size
+       * @description In bytes.
+       */
+      size: number;
+      /**
+       * Content Type
+       * @description Chosen by the server from the file's name.
+       */
+      content_type: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
     };
   };
   responses: never;
@@ -1905,6 +2153,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorOut"];
         };
       };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
     };
   };
   apps_tasks_api_tasks_list_activity: {
@@ -1940,6 +2197,147 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_list_attachments: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AttachmentOut"][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_upload_attachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /**
+           * File
+           * Format: binary
+           */
+          file: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AttachmentOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_download_attachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The file's bytes. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": unknown;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_delete_attachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

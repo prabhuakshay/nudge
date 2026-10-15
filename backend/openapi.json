@@ -1102,9 +1102,19 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
           }
         },
-        "description": "Change a Task's fields, returning it and every Task whose Status changed.",
+        "description": "Change a Task's fields, returning it and every Task whose Status changed.\n\nEach changed Task comes with its Status and Blocked reason from before, so the client can\noffer Undo without the server keeping anything.",
         "tags": [
           "tasks"
         ],
@@ -1191,6 +1201,220 @@
         "description": "Return a page of a Task's history, newest first, with the number of events in all.",
         "tags": [
           "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/attachments": {
+      "post": {
+        "operationId": "apps_tasks_api_attachments_upload_attachment",
+        "summary": "Attach a file to a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Store one file against a Task, up to the configured size.",
+        "tags": [
+          "attachments"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "title": "File",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "apps_tasks_api_attachments_list_attachments",
+        "summary": "List a Task's Attachments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AttachmentOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return a Task's Attachments, oldest first.",
+        "tags": [
+          "attachments"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/attachments/{attachment_id}/download": {
+      "get": {
+        "operationId": "apps_tasks_api_attachments_download_attachment",
+        "summary": "Download an Attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "schema": {
+              "title": "Attachment Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The file's bytes.",
+            "content": {
+              "application/octet-stream": {}
+            }
+          }
+        },
+        "description": "Send an Attachment's bytes, inline for images and PDFs and as a download otherwise.",
+        "tags": [
+          "attachments"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/attachments/{attachment_id}": {
+      "delete": {
+        "operationId": "apps_tasks_api_attachments_delete_attachment",
+        "summary": "Delete an Attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "schema": {
+              "title": "Attachment Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete an Attachment and its file for good.",
+        "tags": [
+          "attachments"
         ],
         "security": [
           {
@@ -1973,11 +2197,25 @@
         "title": "SidebarProjectOut",
         "type": "object"
       },
+      "Priority": {
+        "description": "How urgent a Task is; P1 is the most urgent.",
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "title": "Priority",
+        "type": "integer"
+      },
       "Status": {
         "description": "Where a Task stands.",
         "enum": [
           "open",
-          "completed"
+          "completed",
+          "wont_do",
+          "blocked"
         ],
         "title": "Status",
         "type": "string"
@@ -2030,6 +2268,15 @@
           "status": {
             "$ref": "#/components/schemas/Status"
           },
+          "priority": {
+            "$ref": "#/components/schemas/Priority",
+            "description": "0 is no Priority; 1 (P1) is the most urgent."
+          },
+          "blocked_reason": {
+            "description": "Why a Blocked Task waits; empty otherwise.",
+            "title": "Blocked Reason",
+            "type": "string"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -2040,6 +2287,7 @@
                 "type": "null"
               }
             ],
+            "description": "When it was Completed or marked Won't do.",
             "title": "Completed At"
           },
           "created_at": {
@@ -2051,6 +2299,12 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "attachment_count": {
+            "default": 0,
+            "description": "How many Attachments the Task has. A Task just added has none.",
+            "title": "Attachment Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -2058,6 +2312,8 @@
           "project_id",
           "title",
           "status",
+          "priority",
+          "blocked_reason",
           "completed_at",
           "created_at",
           "updated_at"
@@ -2111,6 +2367,15 @@
           "status": {
             "$ref": "#/components/schemas/Status"
           },
+          "priority": {
+            "$ref": "#/components/schemas/Priority",
+            "description": "0 is no Priority; 1 (P1) is the most urgent."
+          },
+          "blocked_reason": {
+            "description": "Why a Blocked Task waits; empty otherwise.",
+            "title": "Blocked Reason",
+            "type": "string"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -2121,6 +2386,7 @@
                 "type": "null"
               }
             ],
+            "description": "When it was Completed or marked Won't do.",
             "title": "Completed At"
           },
           "created_at": {
@@ -2133,6 +2399,12 @@
             "title": "Updated At",
             "type": "string"
           },
+          "attachment_count": {
+            "default": 0,
+            "description": "How many Attachments the Task has. A Task just added has none.",
+            "title": "Attachment Count",
+            "type": "integer"
+          },
           "description": {
             "description": "Markdown, as the user wrote it.",
             "title": "Description",
@@ -2144,6 +2416,8 @@
           "project_id",
           "title",
           "status",
+          "priority",
+          "blocked_reason",
           "completed_at",
           "created_at",
           "updated_at",
@@ -2161,11 +2435,16 @@
           },
           "prior_status": {
             "$ref": "#/components/schemas/Status"
+          },
+          "prior_blocked_reason": {
+            "title": "Prior Blocked Reason",
+            "type": "string"
           }
         },
         "required": [
           "id",
-          "prior_status"
+          "prior_status",
+          "prior_blocked_reason"
         ],
         "title": "AffectedTaskOut",
         "type": "object"
@@ -2227,6 +2506,30 @@
               {
                 "type": "null"
               }
+            ],
+            "description": "Changing it clears the Blocked reason unless one is given with it."
+          },
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only a Blocked Task can have one; send an empty string to clear it.",
+            "title": "Blocked Reason"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Priority"
+              },
+              {
+                "type": "null"
+              }
             ]
           },
           "project_id": {
@@ -2243,6 +2546,80 @@
           }
         },
         "title": "TaskPatchIn",
+        "type": "object"
+      },
+      "AttachmentAddedActivityOut": {
+        "description": "A file was attached to the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "attachment_added",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttachmentData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "AttachmentAddedActivityOut",
+        "type": "object"
+      },
+      "AttachmentData": {
+        "description": "The Attachment an event is about, by the name it had.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AttachmentData",
+        "type": "object"
+      },
+      "AttachmentRemovedActivityOut": {
+        "description": "An Attachment was deleted from the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "attachment_removed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttachmentData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "AttachmentRemovedActivityOut",
         "type": "object"
       },
       "CreatedActivityOut": {
@@ -2360,6 +2737,105 @@
         "title": "NoActivityData",
         "type": "object"
       },
+      "PriorityChangedActivityOut": {
+        "description": "The Task's Priority changed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "priority_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PriorityChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "PriorityChangedActivityOut",
+        "type": "object"
+      },
+      "PriorityChangedData": {
+        "description": "The Priority before and after a change.",
+        "properties": {
+          "old": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "new": {
+            "$ref": "#/components/schemas/Priority"
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "PriorityChangedData",
+        "type": "object"
+      },
+      "StatusChangedActivityOut": {
+        "description": "The Task's Status changed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "status_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/StatusChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "StatusChangedActivityOut",
+        "type": "object"
+      },
+      "StatusChangedData": {
+        "description": "The Status before and after a change, and the Blocked reason it was given, if any.",
+        "properties": {
+          "old": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "new": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "blocked_reason": {
+            "title": "Blocked Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "old",
+          "new",
+          "blocked_reason"
+        ],
+        "title": "StatusChangedData",
+        "type": "object"
+      },
       "TaskActivityListOut": {
         "description": "A page of a Task's history, newest first.",
         "properties": {
@@ -2367,9 +2843,13 @@
             "items": {
               "discriminator": {
                 "mapping": {
+                  "attachment_added": "#/components/schemas/AttachmentAddedActivityOut",
+                  "attachment_removed": "#/components/schemas/AttachmentRemovedActivityOut",
                   "created": "#/components/schemas/CreatedActivityOut",
                   "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
                   "moved": "#/components/schemas/MovedActivityOut",
+                  "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
+                  "status_changed": "#/components/schemas/StatusChangedActivityOut",
                   "title_changed": "#/components/schemas/TitleChangedActivityOut"
                 },
                 "propertyName": "kind"
@@ -2383,6 +2863,18 @@
                 },
                 {
                   "$ref": "#/components/schemas/DescriptionEditedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/StatusChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/PriorityChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/AttachmentAddedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/AttachmentRemovedActivityOut"
                 },
                 {
                   "$ref": "#/components/schemas/MovedActivityOut"
@@ -2465,6 +2957,44 @@
           "new"
         ],
         "title": "TitleChangedData",
+        "type": "object"
+      },
+      "AttachmentOut": {
+        "description": "A file attached to a Task. Its bytes come from the download endpoint.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "description": "The file's name as it was uploaded.",
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "description": "In bytes.",
+            "title": "Size",
+            "type": "integer"
+          },
+          "content_type": {
+            "description": "Chosen by the server from the file's name.",
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "size",
+          "content_type",
+          "created_at"
+        ],
+        "title": "AttachmentOut",
         "type": "object"
       }
     },

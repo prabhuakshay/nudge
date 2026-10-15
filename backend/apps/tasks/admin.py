@@ -29,7 +29,7 @@ class ProjectAdmin(admin.ModelAdmin[Project]):
 class TaskAdmin(admin.ModelAdmin[Task]):
     """Tasks, for looking into a user's report of a problem."""
 
-    list_display = ("title", "owner", "project", "status", "created_at")
-    list_filter = ("status",)
+    list_display = ("title", "owner", "project", "status", "priority", "created_at")
+    list_filter = ("status", "priority")
     search_fields = ("title", "owner__email")
     raw_id_fields = ("owner", "project")

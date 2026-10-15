@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { activityTime, exactTime } from "./activity-time";
+import { PRIORITY, STATUS_VERB } from "./task-properties";
 import { taskActivityQuery, type TaskActivity } from "./tasks";
 
 /** What an event says happened, in the user's words rather than the API's. */
@@ -15,6 +16,16 @@ function describe(event: TaskActivity): string {
       return `Renamed from “${event.data.old}” to “${event.data.new}”`;
     case "description_edited":
       return "Edited the description";
+    case "status_changed": {
+      const { new: status, blocked_reason: reason } = event.data;
+      return reason ? `${STATUS_VERB[status]}: “${reason}”` : STATUS_VERB[status];
+    }
+    case "priority_changed":
+      return `Changed priority from ${PRIORITY[event.data.old].short} to ${PRIORITY[event.data.new].short}`;
+    case "attachment_added":
+      return `Attached “${event.data.name}”`;
+    case "attachment_removed":
+      return `Deleted the attachment “${event.data.name}”`;
     case "moved":
       return `Moved from “${event.data.from_project}” to “${event.data.to_project}”`;
   }

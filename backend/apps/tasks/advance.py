@@ -67,6 +67,8 @@ class Advance:
         _shift(task, days)
         task.status, task.blocked_reason, task.repeat_rule = Task.Status.OPEN, "", self.rule
         task.save(update_fields=[*_DATE_FIELDS, "status", "blocked_reason", "repeat_rule"])
+        # A snooze belongs to the Occurrence that fired it, which is over now.
+        task.reminders.update(snoozed_until=None)
         subtasks = [_start_over(subtask, task, days) for subtask in _subtasks(task)]
         undo: _Undo = {
             "status": prior.prior_status,

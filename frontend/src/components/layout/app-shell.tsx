@@ -47,7 +47,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
             </div>
           </header>
 
-          <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-4 pb-24 sm:px-6 lg:px-8 lg:pt-6 lg:pb-8">
+          <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-4 pb-24 has-[[data-wide]]:max-w-none sm:px-6 lg:px-8 lg:pt-6 lg:pb-8">
             {children}
           </main>
         </div>

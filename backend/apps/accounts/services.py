@@ -53,6 +53,13 @@ def set_time_zone(user: User, time_zone: str) -> User:
     return user
 
 
+def set_single_key_shortcuts(user: User, *, enabled: bool) -> User:
+    """Turn the user's single-key shortcuts on or off."""
+    user.single_key_shortcuts = enabled
+    user.save(update_fields=["single_key_shortcuts"])
+    return user
+
+
 def local_zone(user: User) -> ZoneInfo:
     """Return the zone the user's clock times are in: theirs, or the server's until it's set."""
     return ZoneInfo(user.time_zone or settings.TIME_ZONE)

@@ -15,6 +15,9 @@ class UserOut(Schema):
     email: str
     full_name: str
     time_zone: str = Field(description="IANA time zone name, or empty when not set yet.")
+    single_key_shortcuts: bool = Field(
+        description="Whether shortcuts of one unmodified key, such as C, are on."
+    )
 
 
 class SessionOut(Schema):
@@ -55,6 +58,12 @@ class TimeZoneIn(Schema):
             message = "Not a known IANA time zone name."
             raise ValueError(message)
         return value
+
+
+class ShortcutsIn(Schema):
+    """Whether the user wants single-key shortcuts on."""
+
+    single_key: bool
 
 
 class ErrorOut(Schema):

@@ -144,6 +144,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/shortcuts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Set keyboard shortcuts
+     * @description Turn the signed-in user's single-key shortcuts on or off and return the updated user.
+     */
+    put: operations["apps_accounts_api_shortcuts"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/notifications": {
     parameters: {
       query?: never;
@@ -1013,6 +1033,11 @@ export interface components {
        * @description IANA time zone name, or empty when not set yet.
        */
       time_zone: string;
+      /**
+       * Single Key Shortcuts
+       * @description Whether shortcuts of one unmodified key, such as C, are on.
+       */
+      single_key_shortcuts: boolean;
     };
     /**
      * ErrorOut
@@ -1060,6 +1085,14 @@ export interface components {
        * @description IANA time zone name, such as Europe/London.
        */
       time_zone: string;
+    };
+    /**
+     * ShortcutsIn
+     * @description Whether the user wants single-key shortcuts on.
+     */
+    ShortcutsIn: {
+      /** Single Key */
+      single_key: boolean;
     };
     /**
      * NotificationListOut
@@ -2796,6 +2829,30 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["TimeZoneIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserOut"];
+        };
+      };
+    };
+  };
+  apps_accounts_api_shortcuts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ShortcutsIn"];
       };
     };
     responses: {

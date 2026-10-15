@@ -243,6 +243,44 @@
         ]
       }
     },
+    "/api/v1/auth/shortcuts": {
+      "put": {
+        "operationId": "apps_accounts_api_shortcuts",
+        "summary": "Set keyboard shortcuts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Turn the signed-in user's single-key shortcuts on or off and return the updated user.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortcutsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "apps_notifications_api_notifications",
@@ -2840,13 +2878,19 @@
             "description": "IANA time zone name, or empty when not set yet.",
             "title": "Time Zone",
             "type": "string"
+          },
+          "single_key_shortcuts": {
+            "description": "Whether shortcuts of one unmodified key, such as C, are on.",
+            "title": "Single Key Shortcuts",
+            "type": "boolean"
           }
         },
         "required": [
           "id",
           "email",
           "full_name",
-          "time_zone"
+          "time_zone",
+          "single_key_shortcuts"
         ],
         "title": "UserOut",
         "type": "object"
@@ -2931,6 +2975,20 @@
           "time_zone"
         ],
         "title": "TimeZoneIn",
+        "type": "object"
+      },
+      "ShortcutsIn": {
+        "description": "Whether the user wants single-key shortcuts on.",
+        "properties": {
+          "single_key": {
+            "title": "Single Key",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "single_key"
+        ],
+        "title": "ShortcutsIn",
         "type": "object"
       },
       "NotificationListOut": {

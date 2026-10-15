@@ -20,6 +20,7 @@ const ada = {
   email: "ada@example.com",
   full_name: "Ada Lovelace",
   time_zone: "Europe/London",
+  single_key_shortcuts: true,
 };
 
 describe("Sidebar", () => {

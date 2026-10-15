@@ -1,5 +1,6 @@
 import { Check, CircleSlash } from "lucide-react";
 
+import { plainMentions } from "@/features/people/mentions";
 import { cn } from "@/lib/utils";
 
 import { isClosed, PRIORITY } from "./task-properties";
@@ -25,7 +26,7 @@ export function TaskCheckbox({
       type="button"
       role="checkbox"
       aria-checked={closed}
-      aria-label={closed ? `Reopen “${task.title}”` : `Complete “${task.title}”`}
+      aria-label={`${closed ? "Reopen" : "Complete"} “${plainMentions(task.title)}”`}
       onClick={(event) => {
         // The row behind it opens the Task; the checkbox only toggles it.
         event.stopPropagation();

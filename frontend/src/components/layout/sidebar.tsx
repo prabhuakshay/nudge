@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/brand/logo";
 import type { User } from "@/features/auth/session";
 import { SidebarArchived } from "@/features/projects/sidebar-archived";
+import { SidebarPeople } from "@/features/people/sidebar-people";
 import { SidebarProjects } from "@/features/projects/sidebar-projects";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
 import { sidebarQuery, type Sidebar as SidebarData } from "@/features/tasks/tasks";
@@ -54,7 +55,7 @@ function navCount(sidebar: SidebarData, to: NavItem["to"]) {
 }
 
 /**
- * The views, then the user's Projects: the body of the desktop sidebar and of the phone menu.
+ * The views, then the user's Projects and People: the body of the desktop sidebar and of the phone menu.
  * `onNavigate` runs when a link is followed, so the phone menu can close.
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -92,6 +93,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       </div>
       <div className="mt-3">
         <SidebarArchived onNavigate={onNavigate} />
+      </div>
+
+      <div className="mt-5">
+        <SidebarPeople onNavigate={onNavigate} />
       </div>
     </>
   );

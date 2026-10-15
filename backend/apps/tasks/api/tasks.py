@@ -1,16 +1,18 @@
-"""Task endpoints: list a Project's Tasks, add, read, change and duplicate one, read its history."""
+"""Task endpoints: list a Project's or Person's Tasks, add, read, change and duplicate one."""
 
 from __future__ import annotations
 
+from functools import partial
 from typing import TYPE_CHECKING
 
-from ninja import Router, Status
+from ninja import Query, Router, Status
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import schedule, services, tree
+from apps.tasks import people, schedule, services, tree
 from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
-from apps.tasks.pagination import InvalidCursorError
+from apps.tasks.mentions import MentionError
+from apps.tasks.pagination import InvalidCursorError, Page
 from apps.tasks.schemas import (
     AffectedTaskOut,
     TaskActivityListOut,
@@ -19,6 +21,7 @@ from apps.tasks.schemas import (
     TaskDetailOut,
     TaskIn,
     TaskListOut,
+    TaskListQuery,
     TaskOut,
     TaskPatchIn,
 )
@@ -30,7 +33,6 @@ if TYPE_CHECKING:
 
     from apps.accounts.models import User
     from apps.tasks.models import Task
-    from apps.tasks.pagination import Page
 
 router = Router()
 
@@ -40,77 +42,78 @@ _HTTP_NOT_FOUND = 404
 _HTTP_UNPROCESSABLE = 422
 _PROJECT_NOT_FOUND = ErrorOut(detail="Project not found.")
 _TASK_NOT_FOUND = ErrorOut(detail="Task not found.")
-_PROJECT_OR_VIEW = ErrorOut(detail="Give either a project or a view.")
+_PERSON_NOT_FOUND = ErrorOut(detail="Person not found.")
+_ONE_SOURCE = ErrorOut(detail="Give one of project, person or view.")
 
 
 @router.get(
     "",
     response={_HTTP_OK: TaskListOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
-    summary="List a Project's or a view's Tasks",
+    summary="List a Project's, a Person's or a view's Tasks",
 )
 def list_tasks(
     request: HttpRequest,
-    project: int | None = None,
-    view: schedule.View | None = None,
-    *,
-    closed: bool = False,
-    cursor: str | None = None,
+    query: Query[TaskListQuery],
 ) -> Status[TaskListOut] | Status[ErrorOut]:
-    """Return the open Tasks of a Project or of a view, or, with `closed`, a page of Closed ones.
+    """Return the open Tasks of a Project, Person or view, or, with `closed`, a page of Closed ones.
 
-    A Project lists its trees in manual order. Today and Upcoming list flat rows by date, with
-    Overdue first in Today; Today's Closed Tasks are those closed today. Closed Tasks come most
-    recently completed first, in pages; open Tasks come all at once.
+    A Project's Tasks come in manual order. A Person's are the Tasks that mention them, flat, in
+    each Project's manual order. Today and Upcoming list flat rows by date, with Overdue first in
+    Today; Today's Closed Tasks are those closed today, and Upcoming has none. Closed Tasks come
+    most recently completed first, in pages; open Tasks come all at once.
     """
-    user = signed_in_user(request)
-    if view is not None and project is None:
-        return _view_tasks(user, view, closed=closed, cursor=cursor)
-    if project is not None and view is None:
-        return _project_tasks(user, project, closed=closed, cursor=cursor)
-    return Status(_HTTP_UNPROCESSABLE, _PROJECT_OR_VIEW)
-
-
-def _project_tasks(
-    user: User,
-    project_id: int,
-    *,
-    closed: bool,
-    cursor: str | None,
-) -> Status[TaskListOut] | Status[ErrorOut]:
-    project = services.live_project(user, project_id)
-    if project is None:
-        return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
-    if not closed:
-        return _list(services.open_tasks(project))
-    return _page(lambda: services.closed_tasks(project, cursor))
-
-
-def _view_tasks(
-    user: User,
-    view: schedule.View,
-    *,
-    closed: bool,
-    cursor: str | None,
-) -> Status[TaskListOut] | Status[ErrorOut]:
-    if not closed:
-        return _list(schedule.view_tasks(user, view))
-    if view is not schedule.View.TODAY:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail="Only Today lists Closed tasks."))
-    return _page(lambda: schedule.closed_today(user, cursor))
-
-
-def _list(tasks: Iterable[Task]) -> Status[TaskListOut]:
-    items = [TaskOut.from_orm(task) for task in tasks]
-    return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=None))
-
-
-def _page(read: Callable[[], Page[Task]]) -> Status[TaskListOut] | Status[ErrorOut]:
+    source = _list_source(signed_in_user(request), query)
+    if isinstance(source, Status):
+        return source
+    open_tasks, closed_page = source
+    if not query.closed:
+        items = [TaskOut.from_orm(task) for task in open_tasks()]
+        return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=None))
     try:
-        page = read()
+        page = closed_page(query.cursor)
     except InvalidCursorError as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     items = [TaskOut.from_orm(task) for task in page.items]
     return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=page.next_cursor))
+
+
+type _ListSource = tuple[Callable[[], Iterable[Task]], Callable[[str | None], Page[Task]]]
+
+
+def _list_source(user: User, query: TaskListQuery) -> _ListSource | Status[ErrorOut]:
+    """Return how to read the open Tasks and a page of Closed ones of the list asked for."""
+    if query.view is not None:
+        return _view_source(user, query.view)
+    if query.person is not None:
+        return _person_source(user, query.person)
+    if query.project is not None:
+        return _project_source(user, query.project)
+    return Status(_HTTP_UNPROCESSABLE, _ONE_SOURCE)
+
+
+def _person_source(user: User, person: int) -> _ListSource | Status[ErrorOut]:
+    found = people.person(user, person)
+    if found is None:
+        return Status(_HTTP_NOT_FOUND, _PERSON_NOT_FOUND)
+    return partial(people.open_tasks, found), partial(people.closed_tasks, found)
+
+
+def _view_source(user: User, view: schedule.View) -> _ListSource:
+    open_tasks = partial(schedule.view_tasks, user, view)
+    if view is schedule.View.TODAY:
+        return open_tasks, partial(schedule.closed_today, user)
+    return open_tasks, _nothing_closed
+
+
+def _nothing_closed(_cursor: str | None) -> Page[Task]:
+    return Page(items=[], next_cursor=None)
+
+
+def _project_source(user: User, project: int) -> _ListSource | Status[ErrorOut]:
+    found = services.live_project(user, project)
+    if found is None:
+        return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+    return partial(services.open_tasks, found), partial(services.closed_tasks, found)
 
 
 @router.post(
@@ -136,7 +139,7 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
     try:
         created = services.create_task(project, task.title, _dates(task))
-    except ArchivedProjectError as error:
+    except (MentionError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, TaskOut.from_orm(created))
 
@@ -147,7 +150,7 @@ def _create_subtask(user: User, parent_id: int, title: str) -> Status[TaskOut] |
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     try:
         change = services.create_subtask(parent, title)
-    except (services.TaskRuleError, ArchivedProjectError) as error:
+    except (services.TaskRuleError, MentionError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, TaskOut.from_orm(change.task))
 
@@ -210,7 +213,7 @@ def update_task(
     )
     try:
         change = services.update_task(user, task_id, edit)
-    except (services.TaskRuleError, ArchivedProjectError) as error:
+    except (services.TaskRuleError, MentionError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)

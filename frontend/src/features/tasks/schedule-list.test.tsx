@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 
-import { INBOX, json, renderPage } from "@/test/drawer";
+import { INBOX, json, renderListRoute } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
 
 import type { ScheduleView } from "./schedule";
@@ -43,7 +43,7 @@ async function requestsTo(fetchSpy: ReturnType<typeof mockApi>, method: string) 
 }
 
 function renderView(view: ScheduleView) {
-  return renderPage(<ScheduleList view={view} inbox={INBOX} timeZone="Europe/London" />).user;
+  return renderListRoute(<ScheduleList view={view} inbox={INBOX} timeZone="Europe/London" />).user;
 }
 
 function titlesIn(group: string) {

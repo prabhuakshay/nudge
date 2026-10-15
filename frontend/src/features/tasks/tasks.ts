@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
+import { plainMentions } from "@/features/people/mentions";
 
 import type { ScheduleView } from "./schedule";
 import { statusMessage } from "./task-properties";
@@ -37,9 +38,9 @@ export const sidebarQuery = queryOptions({
 });
 
 /** The key prefix of every Task list, so one invalidation refreshes them all. */
-const TASKS_KEY = ["tasks"] as const;
+export const TASKS_KEY = ["tasks"] as const;
 /** The key prefix of every open-Task list, so a change can show in all of them at once. */
-const OPEN_KEY = [...TASKS_KEY, "open"] as const;
+export const OPEN_KEY = [...TASKS_KEY, "open"] as const;
 /** The key prefix of every drawer's Task, so a change can show in a parent's Subtasks too. */
 const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
 
@@ -304,7 +305,7 @@ export function useSetTaskStatus() {
       patchTask({ id: task.id, status }),
     onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
     onSuccess: ({ affected }, { task, status }) => {
-      toast(statusMessage(task.title, status, affected.length - 1), {
+      toast(statusMessage(plainMentions(task.title), status, affected.length - 1), {
         action: {
           label: "Undo",
           onClick: () => {

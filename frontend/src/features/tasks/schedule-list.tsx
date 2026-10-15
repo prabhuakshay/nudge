@@ -10,9 +10,9 @@ import { QuickAddCard } from "./quick-add-card";
 import { useRowContext } from "./row-context";
 import { addDays, todayIn, upcomingGroups, type ScheduleView } from "./schedule";
 import { TaskDetail } from "./task-detail";
-import { ClosedGroup, Group, TableHeader } from "./task-list";
+import { ClosedGroup, Group, TaskTableHeader } from "./task-list";
 import { TreeRows, type RowContext } from "./task-row";
-import type { TreeRow } from "./task-tree";
+import { flatRows } from "./task-tree";
 import {
   closedTodayQuery,
   viewTasksQuery,
@@ -29,11 +29,6 @@ const TITLES: Record<ScheduleView, { title: string; icon: LucideIcon; tone: stri
 /** Folding is for trees; these lists are flat, so nothing is ever folded. */
 const NONE_FOLDED: ReadonlySet<number> = new Set();
 const ignoreFold = () => undefined;
-
-/** Flat rows: every Task at the top level, whether or not its parent is listed too. */
-function flatRows(tasks: Task[]): TreeRow[] {
-  return tasks.map((task) => ({ task, level: 0, subtasks: { done: 0, total: 0 } }));
-}
 
 /**
  * Today or Upcoming as a table, its Tasks picked by date on the server. Today shows Overdue,
@@ -91,7 +86,7 @@ export function ScheduleList({
         aria-label={`${title} tasks`}
         className="rounded-xl border border-border bg-surface shadow-sm"
       >
-        <TableHeader />
+        <TaskTableHeader />
         {view === "today" ? (
           <>
             <TodayGroups tasks={tasks} context={context} />

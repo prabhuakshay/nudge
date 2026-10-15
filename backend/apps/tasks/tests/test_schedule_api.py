@@ -234,19 +234,26 @@ def test_today_lists_tasks_closed_today_newest_first(
 
 
 @pytest.mark.django_db
-def test_closed_tasks_come_only_from_today(client: Client) -> None:
-    response = client.get("/api/v1/tasks?view=upcoming&closed=true")
+def test_upcoming_has_no_closed_tasks(
+    client: Client,
+    kolkata: User,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    early = _task(kolkata, "Done early", _due(20))
+    services.update_task(kolkata, early.pk, services.TaskEdit(status=Task.Status.COMPLETED))
 
-    assert response.status_code == 422
+    freeze_time(NOON)
+
+    assert _view(client, "upcoming", closed=True) == []
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     "query",
-    ["", "?view=today&project=1", "?view=someday"],
-    ids=["neither", "both", "unknown view"],
+    ["", "?view=today&project=1", "?view=today&person=1", "?view=someday"],
+    ids=["neither", "project and view", "person and view", "unknown view"],
 )
-def test_a_list_needs_either_a_project_or_a_known_view(client: Client, query: str) -> None:
+def test_a_list_needs_one_project_person_or_known_view(client: Client, query: str) -> None:
     response = client.get(f"/api/v1/tasks{query}")
 
     assert response.status_code == 422

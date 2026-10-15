@@ -13,6 +13,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { validateTaskSearch } from "@/features/tasks/open-task";
 import { TaskList } from "@/features/tasks/task-list";
+import type { Person } from "@/features/people/people";
 import type { SidebarProject, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
 import { makeTask } from "@/test/tasks";
 
@@ -50,6 +51,8 @@ export const GARDEN: SidebarProject = {
 
 export const task = makeTask;
 
+export const PRIYA: Person = { id: 1, name: "Priya", color: "violet" };
+
 /** A JSON response, as the mocked `fetch` returns it. */
 export function json(body: unknown, status = 200) {
   return Promise.resolve(
@@ -80,6 +83,7 @@ export function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
       return json({ items: activity, next_cursor: null, count: activity.length });
     }
     if (url.pathname.endsWith("/attachments")) return json([]);
+    if (url.pathname.endsWith("/people")) return json([PRIYA]);
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);
     if (request.method === "PATCH" && found) {
@@ -125,20 +129,17 @@ export async function patches(fetchSpy: ReturnType<typeof mockApi>) {
  * Returns the router, to read the URL, and a user to drive the page.
  */
 export function renderTaskList({ url = "/", project = INBOX } = {}) {
-  return renderPage(<TaskList project={project} />, url);
+  return renderListRoute(<TaskList project={project} />, { url });
 }
 
-/**
- * Render a list page at `url` in a router of its own, with the tooltips and toasts the app shell
- * gives it. Returns the router, to read the URL, and a user to drive the page.
- */
-export function renderPage(page: ReactNode, url = "/") {
+/** Render a list at a route that takes `?task=`, as every list route does, with a fresh cache. */
+export function renderListRoute(list: ReactNode, { url = "/" } = {}) {
   const user = userEvent.setup();
   const rootRoute = createRootRoute({
     validateSearch: validateTaskSearch,
     component: () => (
       <TooltipProvider>
-        {page}
+        {list}
         <Toaster />
       </TooltipProvider>
     ),

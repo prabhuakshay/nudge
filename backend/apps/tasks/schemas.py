@@ -10,10 +10,21 @@ from pydantic import StringConstraints, field_validator, model_validator
 
 from apps.core.palette import PaletteColor  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.tasks.models import Project, Task
+from apps.tasks.schedule import View  # noqa: TC001 - Pydantic needs the type at runtime
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+# These characters would break a Mention token, `[@Name](person:<id>)`, written around the name.
+PersonName = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=64,
+        pattern=r"^[^@\[\]()]+$",
+    ),
+]
 
 
 class TaskOut(Schema):
@@ -62,6 +73,23 @@ class TaskDetailOut(TaskOut):
     subtasks: list[TaskOut] = Field(
         description="Every Subtask below, whatever its Status, as flat rows in manual order.",
     )
+
+
+class TaskListQuery(Schema):
+    """Which Tasks to list: one Project's, one Person's or one view's, open or Closed."""
+
+    project: int | None = None
+    person: int | None = None
+    view: View | None = Field(default=None, description="Today or Upcoming, picked by date.")
+    closed: bool = Field(default=False, description="List Closed Tasks, a page at a time.")
+    cursor: str | None = Field(default=None, description="From the previous page of Closed ones.")
+
+    @model_validator(mode="after")
+    def _at_most_one_source(self) -> Self:
+        if sum(source is not None for source in (self.project, self.person, self.view)) > 1:
+            message = "Give only one of project, person or view."
+            raise ValueError(message)
+        return self
 
 
 class TaskListOut(Schema):
@@ -262,6 +290,22 @@ class MovedData(Schema):
     to_project: str
 
 
+class PersonMergedData(Schema):
+    """The People merged, by their names at the time: `from_person` was folded into `to_person`."""
+
+    from_person: str
+    to_person: str
+
+
+class PersonMergedActivityOut(Schema):
+    """A Person the Task mentioned was merged into another."""
+
+    id: int
+    kind: Literal["person_merged"]
+    at: datetime
+    data: PersonMergedData
+
+
 class MovedActivityOut(Schema):
     """The Task moved to another Project."""
 
@@ -342,7 +386,8 @@ TaskActivityOut = Annotated[
     | AttachmentAddedActivityOut
     | AttachmentRemovedActivityOut
     | DatesChangedActivityOut
-    | MovedActivityOut,
+    | MovedActivityOut
+    | PersonMergedActivityOut,
     Field(discriminator="kind"),
 ]
 
@@ -463,3 +508,31 @@ class SidebarOut(Schema):
     archived: list[SidebarProjectOut] = Field(description="Archived Projects, by name.")
     today_count: int = Field(description="Open Tasks in Today, Overdue ones included.")
     upcoming_count: int = Field(description="Open Tasks in Upcoming.")
+
+
+class PersonOut(Schema):
+    """A Person in the user's address book."""
+
+    id: int
+    name: str
+    color: PaletteColor
+
+
+class PersonIn(Schema):
+    """A new Person."""
+
+    name: PersonName = Field(description="Unique among the user's People, ignoring case.")
+    color: PaletteColor | None = Field(default=None, description="Random when left out.")
+
+
+class PersonPatchIn(Schema):
+    """The fields of a Person to change; fields left out stay as they are."""
+
+    name: PersonName | None = Field(default=None, description="Rewrites every Mention.")
+    color: PaletteColor | None = None
+
+
+class PersonMergeIn(Schema):
+    """The Person to fold another into."""
+
+    into_id: int

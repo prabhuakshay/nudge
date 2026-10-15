@@ -143,6 +143,9 @@ filterwarnings = [
 [tool.pytest_env]
 NUDGE_SECRET_KEY = "test-only-secret-key"
 NUDGE_DEBUG = "false"
+# Push stays off unless a test sets keys itself, whatever a developer's .env holds.
+NUDGE_VAPID_PUBLIC_KEY = ""
+NUDGE_VAPID_PRIVATE_KEY = ""
 
 [tool.coverage.run]
 branch = true

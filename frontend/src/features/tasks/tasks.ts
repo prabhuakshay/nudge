@@ -12,6 +12,7 @@ import type { components } from "@/api/schema";
 export type Task = components["schemas"]["TaskOut"];
 export type TaskDetail = components["schemas"]["TaskDetailOut"];
 export type TaskStatus = components["schemas"]["Status"];
+export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"][number];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 
@@ -79,6 +80,24 @@ export function taskQuery(taskId: number) {
       }
       return data;
     },
+  });
+}
+
+/** A Task's history, newest first, a page at a time. Task changes add to it, so it shares their key. */
+export function taskActivityQuery(taskId: number) {
+  return infiniteQueryOptions({
+    queryKey: [...TASKS_KEY, "activity", taskId],
+    queryFn: async ({ pageParam }) => {
+      const { data } = await api.GET("/api/v1/tasks/{task_id}/activity", {
+        params: { path: { task_id: taskId }, query: { ...(pageParam && { cursor: pageParam }) } },
+      });
+      if (!data) {
+        throw new Error("Could not load the task's activity.");
+      }
+      return data;
+    },
+    initialPageParam: null as string | null,
+    getNextPageParam: (page) => page.next_cursor,
   });
 }
 

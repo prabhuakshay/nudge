@@ -170,6 +170,9 @@ class Task(models.Model):
     Completed and Won't do are Closed and record when in `completed_at`. Blocked is still open
     work, and only a Blocked Task keeps a `blocked_reason`. A pinned Task records when in
     `pinned_at` and lists above the rest, oldest pin first.
+
+    A Task in Trash records when in `deleted_at`. Everything one delete sent to Trash shares a
+    `trash_unit`, so the Trash lists it as one row and restores it as one.
     """
 
     class Status(models.TextChoices):
@@ -217,6 +220,7 @@ class Task(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    trash_unit = models.UUIDField(null=True, blank=True, db_index=True)
 
     class Meta:
         """Model options."""
@@ -308,6 +312,8 @@ class TaskActivity(models.Model):
         MOVED = "moved", "Moved"
         PERSON_MERGED = "person_merged", "Person merged"
         REMINDERS_CHANGED = "reminders_changed", "Reminders changed"
+        TRASHED = "trashed", "Moved to Trash"
+        RESTORED = "restored", "Restored"
 
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="activity")
     kind = models.CharField(max_length=32, choices=Kind)

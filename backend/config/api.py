@@ -24,6 +24,7 @@ from apps.tasks.api.people import router as people_router
 from apps.tasks.api.projects import router as projects_router
 from apps.tasks.api.sidebar import router as sidebar_router
 from apps.tasks.api.tasks import router as tasks_router
+from apps.tasks.api.trash import router as trash_router
 
 api = NinjaAPI(
     title="Nudge API",
@@ -45,3 +46,4 @@ api.add_router("/tasks", tasks_router, tags=["tasks"])
 api.add_router("/", attachments_router, tags=["attachments"])
 api.add_router("/", comments_router, tags=["comments"])
 api.add_router("/calendar", calendar_router, tags=["calendar"])
+api.add_router("/", trash_router, tags=["trash"])

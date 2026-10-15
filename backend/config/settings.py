@@ -181,6 +181,9 @@ FILE_UPLOAD_TEMP_DIR = MEDIA_ROOT / "uploads"
 # The largest Attachment, in bytes. Keep the proxy's request body limit a little above it.
 ATTACHMENT_MAX_SIZE = env.int("NUDGE_ATTACHMENT_MAX_SIZE", default=25 * 1024 * 1024)
 
+# How many days deleted Tasks and Projects wait in Trash before they are gone for good.
+TRASH_RETENTION_DAYS = env.int("NUDGE_TRASH_RETENTION_DAYS", default=365)
+
 # The built React app. WhiteNoise serves its files from the site root; `apps.core.views.spa`
 # returns its index.html for every other non-API path, `/` included, so client-side routing
 # works and index.html is never cached.

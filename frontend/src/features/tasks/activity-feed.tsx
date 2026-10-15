@@ -46,6 +46,8 @@ const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string }
   reminders_changed: (data) => describeRemindersChange(data),
   moved: (data) => describeMove(data),
   person_merged: (data) => `Merged @${data.from_person} into @${data.to_person}`,
+  trashed: () => "Moved to Trash",
+  restored: () => "Restored from Trash",
 };
 
 function describe<K extends keyof ActivityData>(event: { kind: K; data: ActivityData[K] }) {

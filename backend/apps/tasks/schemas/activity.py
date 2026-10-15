@@ -190,6 +190,24 @@ class AttachmentRemovedActivityOut(Schema):
     data: AttachmentData
 
 
+class TrashedActivityOut(Schema):
+    """The Task was moved to Trash."""
+
+    id: int
+    kind: Literal["trashed"]
+    at: datetime
+    data: NoActivityData
+
+
+class RestoredActivityOut(Schema):
+    """The Task was restored from Trash."""
+
+    id: int
+    kind: Literal["restored"]
+    at: datetime
+    data: NoActivityData
+
+
 TaskActivityOut = Annotated[
     CreatedActivityOut
     | TitleChangedActivityOut
@@ -203,7 +221,9 @@ TaskActivityOut = Annotated[
     | DatesChangedActivityOut
     | RemindersChangedActivityOut
     | MovedActivityOut
-    | PersonMergedActivityOut,
+    | PersonMergedActivityOut
+    | TrashedActivityOut
+    | RestoredActivityOut,
     Field(discriminator="kind"),
 ]
 

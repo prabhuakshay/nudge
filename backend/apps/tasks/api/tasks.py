@@ -1,4 +1,4 @@
-"""Task endpoints: list a Project's or Person's Tasks; add, read, change, move, duplicate one."""
+"""Task endpoints: list a Project's, Person's or view's Tasks; add, read, change or delete one."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from ninja import Query, Router, Status
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import moves, people, schedule, services, tree
+from apps.tasks import moves, people, schedule, services, trash, tree
 from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.dates import TaskDates
@@ -43,6 +43,7 @@ router = Router()
 
 _HTTP_OK = 200
 _HTTP_CREATED = 201
+_HTTP_NO_CONTENT = 204
 _HTTP_NOT_FOUND = 404
 _HTTP_UNPROCESSABLE = 422
 _PROJECT_NOT_FOUND = ErrorOut(detail="Project not found.")
@@ -233,6 +234,22 @@ def update_task(
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
     return Status(_HTTP_OK, TaskChangeOut(task=_detail(change.task), affected=affected))
+
+
+@router.delete(
+    "/{int:task_id}",
+    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    summary="Move a Task to Trash",
+)
+def delete_task(request: HttpRequest, task_id: int) -> Status[None] | Status[ErrorOut]:
+    """Send a Task and its Subtasks to Trash as one unit, which `restore` brings back."""
+    try:
+        trashed = trash.trash_task(signed_in_user(request), task_id)
+    except ArchivedProjectError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    if not trashed:
+        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    return Status(_HTTP_NO_CONTENT, None)
 
 
 @router.post(

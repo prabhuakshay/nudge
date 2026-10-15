@@ -58,6 +58,8 @@ describe("PropertyChips", () => {
     const drawer = await openTask(user, "Buy milk");
 
     await user.click(within(drawer).getByRole("button", { name: "Priority: No priority" }));
+    // Each Priority shows what to type for it in Quick add.
+    expect(screen.getByRole("menuitemradio", { name: "Priority 1" })).toHaveTextContent("!1");
     await user.click(screen.getByRole("menuitemradio", { name: /Priority 1/ }));
 
     const chip = await within(drawer).findByRole("button", { name: "Priority: Priority 1" });

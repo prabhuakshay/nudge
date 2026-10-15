@@ -825,6 +825,220 @@
           }
         ]
       }
+    },
+    "/api/v1/tasks/{task_id}/attachments": {
+      "post": {
+        "operationId": "apps_tasks_api_attachments_upload_attachment",
+        "summary": "Attach a file to a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Store one file against a Task, up to the configured size.",
+        "tags": [
+          "attachments"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "title": "File",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "apps_tasks_api_attachments_list_attachments",
+        "summary": "List a Task's Attachments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AttachmentOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return a Task's Attachments, oldest first.",
+        "tags": [
+          "attachments"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/attachments/{attachment_id}/download": {
+      "get": {
+        "operationId": "apps_tasks_api_attachments_download_attachment",
+        "summary": "Download an Attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "schema": {
+              "title": "Attachment Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The file's bytes.",
+            "content": {
+              "application/octet-stream": {}
+            }
+          }
+        },
+        "description": "Send an Attachment's bytes, inline for images and PDFs and as a download otherwise.",
+        "tags": [
+          "attachments"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/attachments/{attachment_id}": {
+      "delete": {
+        "operationId": "apps_tasks_api_attachments_delete_attachment",
+        "summary": "Delete an Attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "schema": {
+              "title": "Attachment Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete an Attachment and its file for good.",
+        "tags": [
+          "attachments"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1250,6 +1464,12 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "attachment_count": {
+            "default": 0,
+            "description": "How many Attachments the Task has. A Task just added has none.",
+            "title": "Attachment Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -1331,6 +1551,12 @@
             "format": "date-time",
             "title": "Updated At",
             "type": "string"
+          },
+          "attachment_count": {
+            "default": 0,
+            "description": "How many Attachments the Task has. A Task just added has none.",
+            "title": "Attachment Count",
+            "type": "integer"
           },
           "description": {
             "description": "Markdown, as the user wrote it.",
@@ -1432,6 +1658,80 @@
         "title": "TaskPatchIn",
         "type": "object"
       },
+      "AttachmentAddedActivityOut": {
+        "description": "A file was attached to the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "attachment_added",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttachmentData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "AttachmentAddedActivityOut",
+        "type": "object"
+      },
+      "AttachmentData": {
+        "description": "The Attachment an event is about, by the name it had.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AttachmentData",
+        "type": "object"
+      },
+      "AttachmentRemovedActivityOut": {
+        "description": "An Attachment was deleted from the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "attachment_removed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttachmentData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "AttachmentRemovedActivityOut",
+        "type": "object"
+      },
       "CreatedActivityOut": {
         "description": "The Task was created.",
         "properties": {
@@ -1505,6 +1805,8 @@
             "items": {
               "discriminator": {
                 "mapping": {
+                  "attachment_added": "#/components/schemas/AttachmentAddedActivityOut",
+                  "attachment_removed": "#/components/schemas/AttachmentRemovedActivityOut",
                   "created": "#/components/schemas/CreatedActivityOut",
                   "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
                   "title_changed": "#/components/schemas/TitleChangedActivityOut"
@@ -1520,6 +1822,12 @@
                 },
                 {
                   "$ref": "#/components/schemas/DescriptionEditedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/AttachmentAddedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/AttachmentRemovedActivityOut"
                 }
               ]
             },
@@ -1599,6 +1907,44 @@
           "new"
         ],
         "title": "TitleChangedData",
+        "type": "object"
+      },
+      "AttachmentOut": {
+        "description": "A file attached to a Task. Its bytes come from the download endpoint.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "description": "The file's name as it was uploaded.",
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "description": "In bytes.",
+            "title": "Size",
+            "type": "integer"
+          },
+          "content_type": {
+            "description": "Chosen by the server from the file's name.",
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "size",
+          "content_type",
+          "created_at"
+        ],
+        "title": "AttachmentOut",
         "type": "object"
       }
     },

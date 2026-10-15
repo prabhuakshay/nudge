@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import ClassVar, override
 
 from django.conf import settings
@@ -109,6 +110,8 @@ class TaskActivity(models.Model):
         CREATED = "created", "Created"
         TITLE_CHANGED = "title_changed", "Title changed"
         DESCRIPTION_EDITED = "description_edited", "Description edited"
+        ATTACHMENT_ADDED = "attachment_added", "Attachment added"
+        ATTACHMENT_REMOVED = "attachment_removed", "Attachment removed"
 
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="activity")
     kind = models.CharField(max_length=32, choices=Kind)
@@ -127,3 +130,33 @@ class TaskActivity(models.Model):
     def __str__(self) -> str:
         """Return what happened, which is how the admin lists events."""
         return self.get_kind_display()
+
+
+def _attachment_key(attachment: Attachment, _filename: str) -> str:
+    """Return a fresh storage key, so a file's name never reaches the file system."""
+    return f"attachments/{attachment.task.owner_id}/{uuid.uuid4().hex}"
+
+
+class Attachment(models.Model):
+    """A file uploaded against a Task.
+
+    The original name lives only here; the stored file is named by a generated key. Deleting an
+    Attachment is for good: the service removes its file once the deletion commits.
+    """
+
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="attachments")
+    name = models.CharField(max_length=255)
+    size = models.PositiveBigIntegerField()
+    content_type = models.CharField(max_length=255)
+    file = models.FileField(upload_to=_attachment_key, max_length=255)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        """Model options."""
+
+        ordering = ("created_at", "id")
+
+    @override
+    def __str__(self) -> str:
+        """Return the file's original name, which is how the user knows it."""
+        return self.name

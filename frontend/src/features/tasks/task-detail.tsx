@@ -10,6 +10,7 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { ActivityFeed } from "./activity-feed";
+import { Attachments } from "./attachments";
 import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
 import { taskActivityQuery, taskQuery, useSetTaskStatus, type TaskDetail as Task } from "./tasks";
@@ -186,7 +187,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
             </TabsList>
           </div>
 
-          <TabsContent value="details" className="px-5 py-5 sm:px-6">
+          <TabsContent value="details" className="space-y-7 px-5 py-5 sm:px-6">
             <section aria-labelledby="task-description">
               <h3
                 id="task-description"
@@ -198,6 +199,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
                 <DescriptionField task={task} />
               </div>
             </section>
+            <Attachments taskId={task.id} />
           </TabsContent>
 
           <TabsContent value="activity" className="px-5 py-5 sm:px-6">

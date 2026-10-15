@@ -15,6 +15,10 @@ function describe(event: TaskActivity): string {
       return `Renamed from “${event.data.old}” to “${event.data.new}”`;
     case "description_edited":
       return "Edited the description";
+    case "attachment_added":
+      return `Attached “${event.data.name}”`;
+    case "attachment_removed":
+      return `Deleted the attachment “${event.data.name}”`;
   }
 }
 

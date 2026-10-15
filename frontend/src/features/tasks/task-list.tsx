@@ -1,11 +1,12 @@
 import { useInfiniteQuery, useQuery, type UseInfiniteQueryResult } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, CircleCheck, Inbox, ListTodo } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleCheck, Inbox, ListTodo, Paperclip } from "lucide-react";
 import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+import { CountIcon } from "./count-icon";
 import { QuickAddCard } from "./quick-add-card";
 import { StatusBadge } from "./status-badge";
 import { TaskCheckbox } from "./task-checkbox";
@@ -20,7 +21,7 @@ import {
 } from "./tasks";
 
 /** One grid for the header and every row, so the columns line up from `lg`. */
-const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem]";
+const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_6.5rem]";
 
 type ToggleStatus = (task: Task) => void;
 type OpenTask = (taskId: number) => void;
@@ -85,6 +86,9 @@ export function TaskList({ project }: { project: SidebarProject }) {
           </span>
           <span role="columnheader" className="px-2">
             Status
+          </span>
+          <span role="columnheader" className="px-2 text-right">
+            Activity
           </span>
         </div>
 
@@ -288,10 +292,21 @@ const TaskRow = memo(function TaskRow({
         >
           {task.title}
         </span>
+        {/* Phones have no Activity column, so the counts follow the title. */}
+        <span className="ml-auto flex shrink-0 items-center gap-2.5 pr-1 lg:hidden">
+          <ActivityCounts task={task} />
+        </span>
       </div>
       <div role="gridcell" className="hidden min-w-0 px-2 lg:block">
         <StatusBadge status={task.status} />
       </div>
+      <div role="gridcell" className="hidden min-w-0 items-center justify-end gap-2 pr-1 lg:flex">
+        <ActivityCounts task={task} />
+      </div>
     </div>
   );
 });
+
+function ActivityCounts({ task }: { task: Task }) {
+  return <CountIcon icon={Paperclip} count={task.attachment_count} label="attachments" />;
+}

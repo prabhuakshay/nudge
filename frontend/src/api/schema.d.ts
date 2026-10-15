@@ -378,6 +378,70 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/tasks/{task_id}/attachments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Task's Attachments
+     * @description Return a Task's Attachments, oldest first.
+     */
+    get: operations["apps_tasks_api_attachments_list_attachments"];
+    put?: never;
+    /**
+     * Attach a file to a Task
+     * @description Store one file against a Task, up to the configured size.
+     */
+    post: operations["apps_tasks_api_attachments_upload_attachment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/attachments/{attachment_id}/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download an Attachment
+     * @description Send an Attachment's bytes, inline for images and PDFs and as a download otherwise.
+     */
+    get: operations["apps_tasks_api_attachments_download_attachment"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/attachments/{attachment_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete an Attachment
+     * @description Delete an Attachment and its file for good.
+     */
+    delete: operations["apps_tasks_api_attachments_delete_attachment"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -603,6 +667,12 @@ export interface components {
        * Format: date-time
        */
       updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
     };
     /**
      * TaskIn
@@ -642,6 +712,12 @@ export interface components {
        */
       updated_at: string;
       /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
        * Description
        * @description Markdown, as the user wrote it.
        */
@@ -678,6 +754,52 @@ export interface components {
        */
       description?: string | null;
       status?: components["schemas"]["Status"] | null;
+    };
+    /**
+     * AttachmentAddedActivityOut
+     * @description A file was attached to the Task.
+     */
+    AttachmentAddedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "attachment_added";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["AttachmentData"];
+    };
+    /**
+     * AttachmentData
+     * @description The Attachment an event is about, by the name it had.
+     */
+    AttachmentData: {
+      /** Name */
+      name: string;
+    };
+    /**
+     * AttachmentRemovedActivityOut
+     * @description An Attachment was deleted from the Task.
+     */
+    AttachmentRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "attachment_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["AttachmentData"];
     };
     /**
      * CreatedActivityOut
@@ -732,6 +854,8 @@ export interface components {
         | components["schemas"]["CreatedActivityOut"]
         | components["schemas"]["TitleChangedActivityOut"]
         | components["schemas"]["DescriptionEditedActivityOut"]
+        | components["schemas"]["AttachmentAddedActivityOut"]
+        | components["schemas"]["AttachmentRemovedActivityOut"]
       )[];
       /**
        * Next Cursor
@@ -772,6 +896,34 @@ export interface components {
       old: string;
       /** New */
       new: string;
+    };
+    /**
+     * AttachmentOut
+     * @description A file attached to a Task. Its bytes come from the download endpoint.
+     */
+    AttachmentOut: {
+      /** Id */
+      id: number;
+      /**
+       * Name
+       * @description The file's name as it was uploaded.
+       */
+      name: string;
+      /**
+       * Size
+       * @description In bytes.
+       */
+      size: number;
+      /**
+       * Content Type
+       * @description Chosen by the server from the file's name.
+       */
+      content_type: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
     };
   };
   responses: never;
@@ -1335,6 +1487,147 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_list_attachments: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AttachmentOut"][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_upload_attachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /**
+           * File
+           * Format: binary
+           */
+          file: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AttachmentOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_download_attachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The file's bytes. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": unknown;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_delete_attachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

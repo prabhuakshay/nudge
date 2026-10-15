@@ -19,6 +19,7 @@ function task(overrides: Partial<TaskDetail>): TaskDetail {
     completed_at: null,
     created_at: "2026-10-15T09:00:00Z",
     updated_at: "2026-10-15T09:00:00Z",
+    attachment_count: 0,
     ...overrides,
   };
 }
@@ -47,6 +48,9 @@ function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
     const url = new URL(request.url);
     if (url.pathname.endsWith("/activity")) {
       return json({ items: activity, next_cursor: null, count: activity.length });
+    }
+    if (url.pathname.endsWith("/attachments")) {
+      return json([]);
     }
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);

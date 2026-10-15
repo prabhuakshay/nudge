@@ -37,4 +37,26 @@ describe("ActivityFeed", () => {
     expect(screen.queryByRole("button", { name: "Show older activity" })).not.toBeInTheDocument();
     expect(fetchSpy).toHaveBeenCalledTimes(2);
   });
+
+  it("names the file in Attachment events", async () => {
+    const events = [
+      { id: 2, kind: "attachment_removed", at: NEWER.at, data: { name: "old.pdf" } },
+      { id: 1, kind: "attachment_added", at: OLDER.at, data: { name: "receipt.png" } },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 2 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <ActivityFeed taskId={1} />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Deleted the attachment “old.pdf”")).toBeInTheDocument();
+    expect(screen.getByText("Attached “receipt.png”")).toBeInTheDocument();
+  });
 });

@@ -168,6 +168,15 @@ STORAGES = {
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
+# Uploaded files (Attachments). Never served from a public URL: only the owner-checked download
+# endpoint reads them. In Docker this is the `media` volume, shared by the web and the worker.
+MEDIA_ROOT = Path(env.path("NUDGE_MEDIA_ROOT", default=BASE_DIR / "media"))
+# Big uploads are spooled to disk while they arrive. Keep them on the media volume: the
+# container's /tmp is RAM, and a read-only container has nowhere else to write.
+FILE_UPLOAD_TEMP_DIR = MEDIA_ROOT / "uploads"
+# The largest Attachment, in bytes. Keep the proxy's request body limit a little above it.
+ATTACHMENT_MAX_SIZE = env.int("NUDGE_ATTACHMENT_MAX_SIZE", default=25 * 1024 * 1024)
+
 # The built React app. WhiteNoise serves its files from the site root; `apps.core.views.spa`
 # returns its index.html for every other non-API path, `/` included, so client-side routing
 # works and index.html is never cached.

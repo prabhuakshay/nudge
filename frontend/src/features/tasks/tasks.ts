@@ -13,6 +13,7 @@ export type Task = components["schemas"]["TaskOut"];
 export type TaskDetail = components["schemas"]["TaskDetailOut"];
 export type TaskStatus = components["schemas"]["Status"];
 export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"][number];
+export type Attachment = components["schemas"]["AttachmentOut"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 
@@ -98,6 +99,75 @@ export function taskActivityQuery(taskId: number) {
     },
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.next_cursor,
+  });
+}
+
+/** A Task's Attachments, oldest first. Uploads and deletes add Activity, so it shares their key. */
+export function attachmentsQuery(taskId: number) {
+  return queryOptions({
+    queryKey: [...TASKS_KEY, "attachments", taskId],
+    queryFn: async (): Promise<Attachment[]> => {
+      const { data } = await api.GET("/api/v1/tasks/{task_id}/attachments", {
+        params: { path: { task_id: taskId } },
+      });
+      if (!data) {
+        throw new Error("Could not load the attachments.");
+      }
+      return data;
+    },
+  });
+}
+
+/** Where the browser fetches an Attachment's bytes: inline for images and PDFs, else a download. */
+export function attachmentUrl(attachmentId: number) {
+  return `/api/v1/attachments/${String(attachmentId)}/download`;
+}
+
+/** Upload one file to a Task. Several files go up one request each. */
+export function useUploadAttachment(taskId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const { data, error } = await api.POST("/api/v1/tasks/{task_id}/attachments", {
+        params: { path: { task_id: taskId } },
+        // The schema types a file as a string (OpenAPI's binary format); the File goes as is.
+        body: { file: file as unknown as string },
+        bodySerializer: (body) => {
+          const form = new FormData();
+          form.append("file", body.file);
+          return form;
+        },
+      });
+      if (error) {
+        // The server explains a refusal, such as a file over the size limit.
+        throw new Error(error.detail);
+      }
+      return data;
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+  });
+}
+
+/** Delete an Attachment for good. It leaves the drawer before the server answers. */
+export function useDeleteAttachment(taskId: number) {
+  const queryClient = useQueryClient();
+  const key = attachmentsQuery(taskId).queryKey;
+  return useMutation({
+    mutationFn: async (attachmentId: number) => {
+      const { response } = await api.DELETE("/api/v1/attachments/{attachment_id}", {
+        params: { path: { attachment_id: attachmentId } },
+      });
+      if (!response.ok) {
+        throw new Error("Could not delete the attachment.");
+      }
+    },
+    onMutate: async (attachmentId) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      queryClient.setQueryData(key, (items) => items?.filter((item) => item.id !== attachmentId));
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
   });
 }
 

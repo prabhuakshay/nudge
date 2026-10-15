@@ -45,7 +45,8 @@ def set_time_zone(user: User, time_zone: str) -> User:
     """Save the user's IANA time zone.
 
     Clock times on tasks are floating in this zone, so they keep their wall-clock value: a task
-    due at 09:00 is still due at 09:00 in the new zone.
+    due at 09:00 is still due at 09:00 in the new zone. Their Reminders move with them; the tasks
+    app reschedules them when the zone is saved.
     """
     user.time_zone = time_zone
     user.save(update_fields=["time_zone"])

@@ -10,6 +10,7 @@ from django.test import Client
 
 from apps.accounts.services import set_time_zone
 from apps.tasks import projects, services
+from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
@@ -27,15 +28,15 @@ def kolkata(ada: User) -> User:
     return set_time_zone(ada, "Asia/Kolkata")
 
 
-def _task(user: User, title: str, dates: services.TaskDates | None = None) -> Task:
+def _task(user: User, title: str, dates: TaskDates | None = None) -> Task:
     task = services.create_task(services.inbox(user), title)
     if dates is not None:
         services.update_task(user, task.pk, services.TaskEdit(dates=dates))
     return task
 
 
-def _due(day: int, hour: int | None = None) -> services.TaskDates:
-    return services.TaskDates(
+def _due(day: int, hour: int | None = None) -> TaskDates:
+    return TaskDates(
         due_date=date(2026, 10, day),
         due_time=None if hour is None else time(hour),
     )
@@ -88,7 +89,7 @@ def test_today_lists_overdue_then_due_today_then_ranges_that_include_today(
     _task(
         kolkata,
         "Trip",
-        services.TaskDates(start_date=date(2026, 10, 14), due_date=date(2026, 10, 17)),
+        TaskDates(start_date=date(2026, 10, 14), due_date=date(2026, 10, 17)),
     )
     _task(kolkata, "Two days late", _due(13))
     _task(kolkata, "This morning", _due(15, 9))
@@ -136,11 +137,11 @@ def test_upcoming_lists_later_tasks_day_by_day_from_the_day_each_starts(
     kolkata: User,
     freeze_time: Callable[[datetime], None],
 ) -> None:
-    _task(kolkata, "Next month", services.TaskDates(due_date=date(2026, 11, 20)))
+    _task(kolkata, "Next month", TaskDates(due_date=date(2026, 11, 20)))
     _task(
         kolkata,
         "Conference",
-        services.TaskDates(start_date=date(2026, 10, 17), due_date=date(2026, 10, 19)),
+        TaskDates(start_date=date(2026, 10, 17), due_date=date(2026, 10, 19)),
     )
     _task(kolkata, "Tomorrow", _due(16))
     _task(kolkata, "Due today", _due(15))

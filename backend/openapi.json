@@ -3408,6 +3408,37 @@
         "title": "TaskIn",
         "type": "object"
       },
+      "ReminderOut": {
+        "description": "One of a Task's Reminders.",
+        "properties": {
+          "offset": {
+            "description": "Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.",
+            "maximum": 525600,
+            "minimum": -525600,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "fire_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it fires next; null when it won't: the Task is Closed or archived, or the time has passed.",
+            "title": "Fire At"
+          }
+        },
+        "required": [
+          "offset",
+          "fire_at"
+        ],
+        "title": "ReminderOut",
+        "type": "object"
+      },
       "TaskAncestorOut": {
         "description": "A Task above another in the tree, as a breadcrumb links to it.",
         "properties": {
@@ -3605,6 +3636,14 @@
             },
             "title": "Subtasks",
             "type": "array"
+          },
+          "reminders": {
+            "description": "Earliest offset first.",
+            "items": {
+              "$ref": "#/components/schemas/ReminderOut"
+            },
+            "title": "Reminders",
+            "type": "array"
           }
         },
         "required": [
@@ -3629,7 +3668,8 @@
           "updated_at",
           "description",
           "ancestors",
-          "subtasks"
+          "subtasks",
+          "reminders"
         ],
         "title": "TaskDetailOut",
         "type": "object"
@@ -3761,7 +3801,25 @@
                 "type": "null"
               }
             ],
-            "description": "Replaces all of the Task's dates; null removes them."
+            "description": "Replaces all of the Task's dates; null removes them and its Reminders."
+          },
+          "reminders": {
+            "anyOf": [
+              {
+                "items": {
+                  "description": "Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.",
+                  "maximum": 525600,
+                  "minimum": -525600,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.",
+            "title": "Reminders"
           },
           "project_id": {
             "anyOf": [
@@ -4276,6 +4334,67 @@
         "title": "PriorityChangedData",
         "type": "object"
       },
+      "RemindersChangedActivityOut": {
+        "description": "The Task's Reminders were added, changed or removed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "reminders_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RemindersChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RemindersChangedActivityOut",
+        "type": "object"
+      },
+      "RemindersChangedData": {
+        "description": "The Reminders before and after a change, as offsets in minutes.",
+        "properties": {
+          "old": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Old",
+            "type": "array"
+          },
+          "new": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "New",
+            "type": "array"
+          },
+          "all_day": {
+            "description": "Whether the offsets count from the start of a day.",
+            "title": "All Day",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "old",
+          "new",
+          "all_day"
+        ],
+        "title": "RemindersChangedData",
+        "type": "object"
+      },
       "StatusChangedActivityOut": {
         "description": "The Task's Status changed.",
         "properties": {
@@ -4374,6 +4493,7 @@
                   "person_merged": "#/components/schemas/PersonMergedActivityOut",
                   "pinned": "#/components/schemas/PinnedActivityOut",
                   "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
+                  "reminders_changed": "#/components/schemas/RemindersChangedActivityOut",
                   "status_changed": "#/components/schemas/StatusChangedActivityOut",
                   "title_changed": "#/components/schemas/TitleChangedActivityOut",
                   "unpinned": "#/components/schemas/UnpinnedActivityOut"
@@ -4410,6 +4530,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/DatesChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RemindersChangedActivityOut"
                 },
                 {
                   "$ref": "#/components/schemas/MovedActivityOut"

@@ -11,6 +11,7 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { plainMentions } from "@/features/people/mentions";
 
+import { remindersAfter } from "./reminders";
 import type { ScheduleView } from "./schedule";
 import { statusMessage } from "./task-properties";
 import { openTrees } from "./task-tree";
@@ -22,6 +23,7 @@ export type TaskPriority = components["schemas"]["Priority"];
 export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"][number];
 export type Attachment = components["schemas"]["AttachmentOut"];
 export type DatesChange = components["schemas"]["DatesChangedData"];
+export type RemindersChange = components["schemas"]["RemindersChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 
@@ -213,11 +215,12 @@ export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
 
 /**
  * A change to a Task: the fields to set, which are all left as they are when absent. `dates`
- * replaces all four date fields at once.
+ * replaces all four date fields at once, and removing them removes the Reminders. `reminders`
+ * replaces the Reminders, as offsets in minutes.
  */
 export type TaskChange = { id: number; pinned?: boolean } & Partial<
   Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason">
-> & { dates?: DatesIn };
+> & { dates?: DatesIn; reminders?: number[] };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
@@ -233,7 +236,10 @@ async function patchTask({ id, ...change }: TaskChange) {
 }
 
 /** The Task as the server will return it after the change, for showing the change straight away. */
-function withChange<T extends Task>(task: T, { pinned, dates, ...change }: TaskChange): T {
+function withChange<T extends Task>(
+  task: T,
+  { pinned, dates, reminders, ...change }: TaskChange,
+): T {
   const leavesStatus = change.status !== undefined && change.status !== task.status;
   return {
     ...task,
@@ -242,6 +248,8 @@ function withChange<T extends Task>(task: T, { pinned, dates, ...change }: TaskC
     pinned_at: pinnedAt(task, pinned),
     ...change,
     ...(dates !== undefined && { ...UNDATED, ...dates }),
+    // Only the drawer's Task carries its Reminders; list rows don't.
+    ...("reminders" in task && remindersAfter(reminders, dates)),
   };
 }
 

@@ -9,6 +9,7 @@ import pytest
 
 from apps.accounts.services import set_time_zone
 from apps.tasks import services
+from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
@@ -19,7 +20,7 @@ if TYPE_CHECKING:
     from apps.accounts.models import User
 
 
-def _task(user: User, dates: services.TaskDates) -> Task:
+def _task(user: User, dates: TaskDates) -> Task:
     task = services.create_task(services.inbox(user), "Dated")
     services.update_task(user, task.pk, services.TaskEdit(dates=dates))
     return task
@@ -53,7 +54,7 @@ def test_an_all_day_task_is_overdue_once_its_day_ends(
     *,
     overdue: bool,
 ) -> None:
-    task = _task(kolkata, services.TaskDates(due_date=date(2026, 10, 15)))
+    task = _task(kolkata, TaskDates(due_date=date(2026, 10, 15)))
 
     freeze_time(now)
 
@@ -77,7 +78,7 @@ def test_a_timed_task_is_overdue_once_its_time_passes(
     *,
     overdue: bool,
 ) -> None:
-    task = _task(kolkata, services.TaskDates(due_date=date(2026, 10, 15), due_time=time(9)))
+    task = _task(kolkata, TaskDates(due_date=date(2026, 10, 15), due_time=time(9)))
 
     freeze_time(now)
 
@@ -103,7 +104,7 @@ def test_a_range_is_overdue_only_after_its_end(
 ) -> None:
     task = _task(
         kolkata,
-        services.TaskDates(start_date=date(2026, 10, 14), due_date=date(2026, 10, 16)),
+        TaskDates(start_date=date(2026, 10, 14), due_date=date(2026, 10, 16)),
     )
 
     freeze_time(now)
@@ -135,7 +136,7 @@ def test_a_task_due_at_a_dst_change_is_not_overdue_before_it(
     day: date,
     now: datetime,
 ) -> None:
-    task = _task(london, services.TaskDates(due_date=day, due_time=time(1, 30)))
+    task = _task(london, TaskDates(due_date=day, due_time=time(1, 30)))
 
     freeze_time(now)
 
@@ -160,7 +161,7 @@ def test_a_task_due_at_a_dst_change_is_overdue_by_the_wall_clock(
     day: date,
     now: datetime,
 ) -> None:
-    task = _task(london, services.TaskDates(due_date=day, due_time=time(1, 30)))
+    task = _task(london, TaskDates(due_date=day, due_time=time(1, 30)))
 
     freeze_time(now)
 
@@ -184,7 +185,7 @@ def test_only_open_work_is_overdue(
     *,
     overdue: bool,
 ) -> None:
-    task = _task(kolkata, services.TaskDates(due_date=date(2026, 10, 1)))
+    task = _task(kolkata, TaskDates(due_date=date(2026, 10, 1)))
     services.update_task(kolkata, task.pk, services.TaskEdit(status=status))
 
     freeze_time(datetime(2026, 10, 15, tzinfo=UTC))
@@ -198,8 +199,8 @@ def test_list_rows_say_whether_they_are_overdue(
     kolkata: User,
     freeze_time: Callable[[datetime], None],
 ) -> None:
-    late = _task(kolkata, services.TaskDates(due_date=date(2026, 10, 14)))
-    _task(kolkata, services.TaskDates(due_date=date(2026, 10, 15)))
+    late = _task(kolkata, TaskDates(due_date=date(2026, 10, 14)))
+    _task(kolkata, TaskDates(due_date=date(2026, 10, 15)))
     services.create_task(services.inbox(kolkata), "Undated")
     freeze_time(datetime(2026, 10, 15, 12, tzinfo=UTC))
 

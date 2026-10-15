@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 from ninja import Field, Schema
 
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
+from apps.tasks.schemas.reminders import RemindersChangedActivityOut
 
 
 class NoActivityData(Schema):
@@ -200,6 +201,7 @@ TaskActivityOut = Annotated[
     | AttachmentAddedActivityOut
     | AttachmentRemovedActivityOut
     | DatesChangedActivityOut
+    | RemindersChangedActivityOut
     | MovedActivityOut
     | PersonMergedActivityOut,
     Field(discriminator="kind"),

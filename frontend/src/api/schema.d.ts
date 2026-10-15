@@ -1402,6 +1402,22 @@ export interface components {
       dates?: components["schemas"]["TaskDatesIn"] | null;
     };
     /**
+     * ReminderOut
+     * @description One of a Task's Reminders.
+     */
+    ReminderOut: {
+      /**
+       * Offset
+       * @description Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.
+       */
+      offset: number;
+      /**
+       * Fire At
+       * @description When it fires next; null when it won't: the Task is Closed or archived, or the time has passed.
+       */
+      fire_at: string | null;
+    };
+    /**
      * TaskAncestorOut
      * @description A Task above another in the tree, as a breadcrumb links to it.
      */
@@ -1510,6 +1526,11 @@ export interface components {
        * @description Every Subtask below, whatever its Status, as flat rows in manual order.
        */
       subtasks: components["schemas"]["TaskOut"][];
+      /**
+       * Reminders
+       * @description Earliest offset first.
+       */
+      reminders: components["schemas"]["ReminderOut"][];
     };
     /**
      * AffectedTaskOut
@@ -1556,8 +1577,13 @@ export interface components {
        * @description Pin the Task to the top of its lists, or unpin it.
        */
       pinned?: boolean | null;
-      /** @description Replaces all of the Task's dates; null removes them. */
+      /** @description Replaces all of the Task's dates; null removes them and its Reminders. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
+      /**
+       * Reminders
+       * @description Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.
+       */
+      reminders?: number[] | null;
       /**
        * Project Id
        * @description Moves the Task first into it.
@@ -1833,6 +1859,40 @@ export interface components {
       new: components["schemas"]["Priority"];
     };
     /**
+     * RemindersChangedActivityOut
+     * @description The Task's Reminders were added, changed or removed.
+     */
+    RemindersChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "reminders_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RemindersChangedData"];
+    };
+    /**
+     * RemindersChangedData
+     * @description The Reminders before and after a change, as offsets in minutes.
+     */
+    RemindersChangedData: {
+      /** Old */
+      old: number[];
+      /** New */
+      new: number[];
+      /**
+       * All Day
+       * @description Whether the offsets count from the start of a day.
+       */
+      all_day: boolean;
+    };
+    /**
      * StatusChangedActivityOut
      * @description The Task's Status changed.
      */
@@ -1897,6 +1957,7 @@ export interface components {
         | components["schemas"]["AttachmentAddedActivityOut"]
         | components["schemas"]["AttachmentRemovedActivityOut"]
         | components["schemas"]["DatesChangedActivityOut"]
+        | components["schemas"]["RemindersChangedActivityOut"]
         | components["schemas"]["MovedActivityOut"]
         | components["schemas"]["PersonMergedActivityOut"]
       )[];

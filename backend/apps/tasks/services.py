@@ -17,7 +17,9 @@ from django.utils import timezone
 from fractional_indexing import generate_key_between
 
 from apps.core.palette import PaletteColor
+from apps.tasks import reminders
 from apps.tasks.archive import ensure_writable
+from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import TEXT_FIELDS, check_mentions, sync_mentions
 from apps.tasks.models import (
     CLOSED_STATUSES,
@@ -41,7 +43,7 @@ from apps.tasks.tree import (
 )
 
 if TYPE_CHECKING:
-    from datetime import date, time
+    from datetime import timedelta
 
     from django.db.models import QuerySet
 
@@ -53,36 +55,11 @@ class TaskRuleError(Exception):
 
 
 @dataclass(frozen=True)
-class TaskDates:
-    """A Task's due date, time and range, as clock times in the owner's zone; all None = undated."""
-
-    due_date: date | None = None
-    due_time: time | None = None
-    start_date: date | None = None
-    start_time: time | None = None
-
-    @classmethod
-    def of(cls, task: Task) -> TaskDates:
-        """Return the Task's current dates."""
-        return cls(task.due_date, task.due_time, task.start_date, task.start_time)
-
-    def as_activity(self) -> dict[str, str | None] | None:
-        """Return the dates as Activity stores them: ISO strings, or None when undated."""
-        if self.due_date is None:
-            return None
-        return {
-            "due_date": self.due_date.isoformat(),
-            "due_time": None if self.due_time is None else self.due_time.isoformat("minutes"),
-            "start_date": None if self.start_date is None else self.start_date.isoformat(),
-            "start_time": None if self.start_time is None else self.start_time.isoformat("minutes"),
-        }
-
-
-@dataclass(frozen=True)
 class TaskEdit:
     """The fields of a Task to change; a field left as None stays as it is.
 
-    `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them.
+    `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them, and the
+    Reminders with them. `reminders` replaces the Reminders, as offsets.
     """
 
     title: str | None = None
@@ -92,6 +69,7 @@ class TaskEdit:
     priority: Task.Priority | None = None
     pinned: bool | None = None
     dates: TaskDates | None = None
+    reminders: list[timedelta] | None = None
     project: Project | None = None
 
 
@@ -289,6 +267,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     Raises:
         TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked, or pins a
             Subtask.
+        ReminderRuleError: The edit's Reminders break a Reminder rule.
         ArchivedProjectError: The Task is in an archived Project, or would move into one.
         MentionError: A text mentions a Person the user doesn't have.
     """
@@ -322,6 +301,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
         if moved:
             events.append(moved_event(task, from_project, from_parent))
         TaskActivity.objects.bulk_create(events)
+        reminders.replace(task, edit.reminders, dates_before)
     # Re-read, because a change of dates or Status can change whether the Task is overdue.
     fresh = as_rows(user.tasks.filter(pk=task.pk), user).get()
     return TaskChange(task=fresh, affected=affected + cascaded)

@@ -9,6 +9,7 @@ import { useOpenTask } from "./open-task";
 import { QuickAddCard } from "./quick-add-card";
 import { useRowContext } from "./row-context";
 import { addDays, todayIn, upcomingGroups, type ScheduleView } from "./schedule";
+import { SelectionBar } from "./selection-bar";
 import { TaskDetail } from "./task-detail";
 import { ClosedGroup, Group, TaskTableHeader } from "./task-list";
 import { TreeRows, type RowContext } from "./task-row";
@@ -98,6 +99,8 @@ export function ScheduleList({
           <UpcomingGroups tasks={tasks} today={today} context={context} />
         )}
       </div>
+
+      <SelectionBar tasks={[...tasks, ...closedTasks]} context={context} />
 
       <TaskDetail
         taskId={openTaskId}

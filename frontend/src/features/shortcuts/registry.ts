@@ -55,6 +55,9 @@ export const SHORTCUTS = {
   togglePin: { keys: ["p"], scope: "list", label: "Pin or unpin" },
   editTitle: { keys: ["e", "F2"], scope: "list", label: "Edit title" },
   deleteTask: { keys: ["Backspace", "Delete"], scope: "list", label: "Delete" },
+  selectUp: { keys: ["Shift+ArrowUp"], scope: "list", label: "Select the task above too" },
+  selectDown: { keys: ["Shift+ArrowDown"], scope: "list", label: "Select the task below too" },
+  clearSelection: { keys: ["Escape"], scope: "list", label: "Clear the selection" },
 
   previousTask: { keys: ["k", "ArrowUp"], scope: "detail", label: "Previous task" },
   nextTask: { keys: ["j", "ArrowDown"], scope: "detail", label: "Next task" },

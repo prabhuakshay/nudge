@@ -9,6 +9,7 @@ import { QuickAddCard } from "@/features/tasks/quick-add-card";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { ClosedGroup, Group, TaskTableHeader } from "@/features/tasks/task-list";
 import { useRowContext } from "@/features/tasks/row-context";
+import { SelectionBar } from "@/features/tasks/selection-bar";
 import { TreeRows } from "@/features/tasks/task-row";
 import { flatRows } from "@/features/tasks/task-tree";
 import { sidebarQuery, type SidebarProject, type Task } from "@/features/tasks/tasks";
@@ -102,6 +103,8 @@ export function PersonTasks({ person }: { person: Person }) {
           <TreeRows rows={closedRows} context={context} />
         </ClosedGroup>
       </div>
+
+      <SelectionBar tasks={[...open, ...closedRows.map((row) => row.task)]} context={context} />
 
       {sidebar && (
         <TaskDetail

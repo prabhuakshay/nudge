@@ -13,6 +13,7 @@ import { cn } from "@/lib/utils";
 import { ExpandCollapse } from "./expand-collapse";
 import { useOpenTask } from "./open-task";
 import { QuickAddCard } from "./quick-add-card";
+import { SelectionBar } from "./selection-bar";
 import { TaskDetail } from "./task-detail";
 import { useRowContext } from "./row-context";
 import type { Placement } from "./task-drag";
@@ -166,6 +167,8 @@ export function TaskList({ project }: { project: SidebarProject }) {
           <span>Drag a row sideways to change nesting</span>
         </p>
       )}
+
+      <SelectionBar tasks={[...open, ...closedTasks]} context={rowContext} />
 
       <TaskDetail
         taskId={openId}

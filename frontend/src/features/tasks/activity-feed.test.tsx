@@ -52,6 +52,26 @@ describe("ActivityFeed", () => {
     expect(await screen.findByText(text)).toBeInTheDocument();
   });
 
+  it.each([
+    [{ old: [], new: [-30, 0], all_day: false }, "Set reminders: 30 minutes before, On time"],
+    [
+      { old: [540], new: [-900], all_day: true },
+      "Changed reminders from On the day, 09:00 to 1 day before, 09:00",
+    ],
+    [{ old: [-5], new: [], all_day: false }, "Removed reminders (was 5 minutes before)"],
+  ])("describes a Reminders change %#", async (data, text) => {
+    const events = [{ id: 1, kind: "reminders_changed", at: at(15), data }];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 1 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    renderFeed();
+
+    expect(await screen.findByText(text)).toBeInTheDocument();
+  });
+
   it("describes Status and Priority changes, with a Blocked reason", async () => {
     const events = [
       {

@@ -10,6 +10,11 @@ from pydantic import StringConstraints, field_validator, model_validator
 
 from apps.core.palette import PaletteColor  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.tasks.models import Project, Task
+from apps.tasks.reminder_schemas import (
+    ReminderOffset,
+    ReminderOut,
+    RemindersChangedActivityOut,
+)
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
@@ -62,6 +67,7 @@ class TaskDetailOut(TaskOut):
     subtasks: list[TaskOut] = Field(
         description="Every Subtask below, whatever its Status, as flat rows in manual order.",
     )
+    reminders: list[ReminderOut] = Field(description="Earliest offset first.")
 
 
 class TaskListOut(Schema):
@@ -146,7 +152,11 @@ class TaskPatchIn(Schema):
     )
     dates: TaskDatesIn | None = Field(
         default=None,
-        description="Replaces all of the Task's dates; null removes them.",
+        description="Replaces all of the Task's dates; null removes them and its Reminders.",
+    )
+    reminders: list[ReminderOffset] | None = Field(
+        default=None,
+        description="Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.",
     )
     project_id: int | None = Field(default=None, description="Moves the Task first into it.")
 
@@ -338,6 +348,7 @@ TaskActivityOut = Annotated[
     | AttachmentAddedActivityOut
     | AttachmentRemovedActivityOut
     | DatesChangedActivityOut
+    | RemindersChangedActivityOut
     | MovedActivityOut,
     Field(discriminator="kind"),
 ]

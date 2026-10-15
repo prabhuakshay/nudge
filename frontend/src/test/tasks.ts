@@ -26,6 +26,7 @@ export function makeTask(overrides: Partial<TaskDetail> = {}): TaskDetail {
     attachment_count: 0,
     ancestors: [],
     subtasks: [],
+    reminders: [],
     ...overrides,
   };
 }

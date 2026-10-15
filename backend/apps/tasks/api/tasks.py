@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from ninja import Router, Status
@@ -12,6 +13,8 @@ from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.dates import TaskDates
 from apps.tasks.pagination import InvalidCursorError
+from apps.tasks.reminder_schemas import ReminderOut
+from apps.tasks.reminders import ReminderRuleError
 from apps.tasks.schemas import (
     AffectedTaskOut,
     TaskActivityListOut,
@@ -118,6 +121,7 @@ def _detail(task: Task) -> TaskDetailOut:
             TaskAncestorOut(id=above.pk, title=above.title) for above in tree.ancestors(task)
         ],
         subtasks=[TaskOut.from_orm(below) for below in tree.descendants(task)],
+        reminders=[ReminderOut.of(reminder) for reminder in task.reminders.all()],
     )
 
 
@@ -163,11 +167,14 @@ def update_task(
         priority=patch.priority,
         pinned=patch.pinned,
         dates=_dates(patch),
+        reminders=None
+        if patch.reminders is None
+        else [timedelta(minutes=offset) for offset in patch.reminders],
         project=project,
     )
     try:
         change = services.update_task(user, task_id, edit)
-    except (services.TaskRuleError, ArchivedProjectError) as error:
+    except (services.TaskRuleError, ReminderRuleError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)

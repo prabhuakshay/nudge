@@ -17,6 +17,7 @@ from django.utils import timezone
 from fractional_indexing import generate_key_between
 
 from apps.core.palette import PaletteColor
+from apps.tasks import reminders
 from apps.tasks.archive import ensure_writable
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import (
@@ -40,6 +41,8 @@ from apps.tasks.tree import (
 )
 
 if TYPE_CHECKING:
+    from datetime import timedelta
+
     from django.db.models import QuerySet
 
     from apps.accounts.models import User
@@ -53,7 +56,8 @@ class TaskRuleError(Exception):
 class TaskEdit:
     """The fields of a Task to change; a field left as None stays as it is.
 
-    `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them.
+    `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them, and the
+    Reminders with them. `reminders` replaces the Reminders, as offsets.
     """
 
     title: str | None = None
@@ -63,6 +67,7 @@ class TaskEdit:
     priority: Task.Priority | None = None
     pinned: bool | None = None
     dates: TaskDates | None = None
+    reminders: list[timedelta] | None = None
     project: Project | None = None
 
 
@@ -252,6 +257,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     Raises:
         TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked, or pins a
             Subtask.
+        ReminderRuleError: The edit's Reminders break a Reminder rule.
         ArchivedProjectError: The Task is in an archived Project, or would move into one.
     """
     task = live_task(user, task_id)
@@ -282,6 +288,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
         if moved:
             events.append(_moved(before["project_name"], task))
         TaskActivity.objects.bulk_create(events)
+        reminders.replace(task, edit.reminders, dates_before)
     # Re-read, because a change of dates or Status can change whether the Task is overdue.
     fresh = as_rows(user.tasks.filter(pk=task.pk), user).get()
     return TaskChange(task=fresh, affected=affected + cascaded)

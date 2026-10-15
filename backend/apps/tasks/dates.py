@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import date, datetime, time
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from datetime import date, time
-
     from apps.tasks.models import Task
 
 
@@ -35,3 +34,15 @@ class TaskDates:
             "start_date": None if self.start_date is None else self.start_date.isoformat(),
             "start_time": None if self.start_time is None else self.start_time.isoformat("minutes"),
         }
+
+    def anchor(self) -> datetime | None:
+        """Return the clock time Reminders count from: the start of a range, else the due.
+
+        An all-day Task counts from the start of its day. The result is naive, because it is a
+        clock time in the owner's zone. None when undated.
+        """
+        if self.due_date is None:
+            return None
+        if self.start_date is not None:
+            return datetime.combine(self.start_date, self.start_time or time.min)
+        return datetime.combine(self.due_date, self.due_time or time.min)

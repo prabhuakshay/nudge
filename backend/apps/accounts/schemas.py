@@ -26,6 +26,13 @@ class LoginIn(Schema):
     password: str
 
 
+class PasswordChangeIn(Schema):
+    """The current password, to confirm it's really the user, and the one replacing it."""
+
+    current_password: str
+    new_password: str
+
+
 class ErrorOut(Schema):
     """A human-readable error message."""
 

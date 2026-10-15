@@ -125,7 +125,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 SESSION_COOKIE_AGE = env.int("NUDGE_SESSION_COOKIE_AGE", default=60 * 60 * 24 * 14)
 
-# Failed and successful sign-in attempts allowed per client IP, e.g. "10/m" or "100/h".
+# Sign-in attempts allowed per client IP, and password changes per user, e.g. "10/m".
 LOGIN_RATE_LIMIT = env.str("NUDGE_LOGIN_RATE_LIMIT", default="10/m")
 
 # ---------------------------------------------------------------- security

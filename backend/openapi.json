@@ -125,6 +125,47 @@
           }
         ]
       }
+    },
+    "/api/v1/auth/password": {
+      "post": {
+        "operationId": "apps_accounts_api_password",
+        "summary": "Change password",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change the signed-in user's password, keeping this session and ending all others.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PasswordChangeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -231,6 +272,25 @@
           "password"
         ],
         "title": "LoginIn",
+        "type": "object"
+      },
+      "PasswordChangeIn": {
+        "description": "The current password, to confirm it's really the user, and the one replacing it.",
+        "properties": {
+          "current_password": {
+            "title": "Current Password",
+            "type": "string"
+          },
+          "new_password": {
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "current_password",
+          "new_password"
+        ],
+        "title": "PasswordChangeIn",
         "type": "object"
       }
     },

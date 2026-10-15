@@ -13,6 +13,8 @@ from apps.accounts.models import User
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
+    from django.test.client import _MonkeyPatchedWSGIResponse as Response
+
 PASSWORD = "an-unusual-passphrase"
 
 
@@ -134,3 +136,87 @@ def test_there_is_no_signup_endpoint() -> None:
     response = Client().post("/api/v1/auth/signup")
 
     assert response.status_code == 404
+
+
+NEW_PASSWORD = "a-fresh-passphrase"
+
+
+def change_password(client: Client, current: str, new: str) -> Response:
+    return client.post(
+        "/api/v1/auth/password",
+        {"current_password": current, "new_password": new},
+        content_type="application/json",
+        headers=csrf_headers(client),
+    )
+
+
+@pytest.mark.django_db
+def test_change_password_keeps_this_session_and_ends_others(browser: Client, ada: User) -> None:
+    other_device = Client()
+    other_device.force_login(ada)
+    browser.force_login(ada)
+    browser.get("/api/v1/auth/session")
+
+    response = change_password(browser, PASSWORD, NEW_PASSWORD)
+
+    assert response.status_code == 204
+    ada.refresh_from_db()
+    assert ada.check_password(NEW_PASSWORD)
+    assert browser.get("/api/v1/auth/session").json()["user"]["email"] == "ada@example.com"
+    assert other_device.get("/api/v1/auth/session").json() == {"user": None}
+
+
+@pytest.mark.django_db
+def test_change_password_rejects_wrong_current_password(browser: Client, ada: User) -> None:
+    browser.force_login(ada)
+    browser.get("/api/v1/auth/session")
+
+    response = change_password(browser, "wrong", NEW_PASSWORD)
+
+    assert response.status_code == 400
+    assert response.json() == {"detail": "Your current password is incorrect."}
+    ada.refresh_from_db()
+    assert ada.check_password(PASSWORD)
+
+
+@pytest.mark.django_db
+def test_change_password_enforces_password_rules(browser: Client, ada: User) -> None:
+    browser.force_login(ada)
+    browser.get("/api/v1/auth/session")
+
+    response = change_password(browser, PASSWORD, "short")
+
+    assert response.status_code == 400
+    assert "too short" in response.json()["detail"]
+
+
+@pytest.mark.django_db
+def test_change_password_requires_csrf_token(ada: User) -> None:
+    client = Client(enforce_csrf_checks=True)
+    client.force_login(ada)
+
+    response = client.post(
+        "/api/v1/auth/password",
+        {"current_password": PASSWORD, "new_password": NEW_PASSWORD},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 403
+
+
+@pytest.mark.django_db
+def test_change_password_requires_a_session(browser: Client) -> None:
+    response = change_password(browser, PASSWORD, NEW_PASSWORD)
+
+    assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_change_password_is_rate_limited(browser: Client, ada: User) -> None:
+    browser.force_login(ada)
+    browser.get("/api/v1/auth/session")
+
+    attempts = [change_password(browser, "wrong", NEW_PASSWORD).status_code for _ in range(11)]
+
+    assert attempts[:10] == [400] * 10
+    assert attempts[10] == 429

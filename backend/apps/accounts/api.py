@@ -1,4 +1,4 @@
-"""Sign-in, sign-out and session endpoints.
+"""Sign-in, sign-out, session and password endpoints.
 
 There is deliberately no sign-up endpoint: accounts are created by an administrator with
 `manage.py createsuperuser` or the Django admin.
@@ -14,11 +14,12 @@ from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from ninja import Router, Status
 from ninja.decorators import decorate_view
 from ninja.security import django_auth
-from ninja.throttling import AnonRateThrottle
+from ninja.throttling import AnonRateThrottle, UserRateThrottle
 
 from apps.accounts.managers import UserManager
 from apps.accounts.models import User
-from apps.accounts.schemas import ErrorOut, LoginIn, SessionOut, UserOut
+from apps.accounts.schemas import ErrorOut, LoginIn, PasswordChangeIn, SessionOut, UserOut
+from apps.accounts.services import PasswordChangeError, change_password
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -26,6 +27,7 @@ if TYPE_CHECKING:
 router = Router()
 
 _HTTP_NO_CONTENT = 204
+_HTTP_BAD_REQUEST = 400
 _HTTP_UNAUTHORIZED = 401
 
 
@@ -70,4 +72,23 @@ def login(request: HttpRequest, credentials: LoginIn) -> Status[UserOut] | Statu
 def logout(request: HttpRequest) -> Status[None]:
     """End the current session."""
     auth.logout(request)
+    return Status(_HTTP_NO_CONTENT, None)
+
+
+@router.post(
+    "/password",
+    response={_HTTP_NO_CONTENT: None, _HTTP_BAD_REQUEST: ErrorOut},
+    auth=django_auth,
+    throttle=[UserRateThrottle(settings.LOGIN_RATE_LIMIT)],
+    summary="Change password",
+)
+def password(request: HttpRequest, passwords: PasswordChangeIn) -> Status[None] | Status[ErrorOut]:
+    """Change the signed-in user's password, keeping this session and ending all others."""
+    user = request.user
+    assert isinstance(user, User)  # noqa: S101 - django_auth only lets signed-in users through
+    try:
+        change_password(user, passwords.current_password, passwords.new_password)
+    except PasswordChangeError as error:
+        return Status(_HTTP_BAD_REQUEST, ErrorOut(detail=str(error)))
+    auth.update_session_auth_hash(request, user)
     return Status(_HTTP_NO_CONTENT, None)

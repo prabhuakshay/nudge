@@ -5,10 +5,16 @@ import type { components } from "@/api/schema";
 
 export type User = components["schemas"]["UserOut"];
 export type Credentials = components["schemas"]["LoginIn"];
+export type PasswordChange = components["schemas"]["PasswordChangeIn"];
 
 /** Raised when the server rejects a sign-in attempt; `message` is safe to show the user. */
 export class LoginError extends Error {
   override name = "LoginError";
+}
+
+/** Raised when the server refuses a password change; `message` is safe to show the user. */
+export class PasswordChangeError extends Error {
+  override name = "PasswordChangeError";
 }
 
 const RATE_LIMITED = 429;
@@ -65,6 +71,23 @@ export function useLogout() {
     },
     onSettled: () => {
       queryClient.clear();
+    },
+  });
+}
+
+/** Change the signed-in user's password. The server keeps this session and ends all others. */
+export function useChangePassword() {
+  return useMutation({
+    mutationFn: async (passwords: PasswordChange): Promise<void> => {
+      const { error, response } = await api.POST("/api/v1/auth/password", { body: passwords });
+      if (response.status === RATE_LIMITED) {
+        throw new PasswordChangeError("Too many attempts. Wait a minute and try again.");
+      }
+      if (error) {
+        throw new PasswordChangeError(
+          "detail" in error ? error.detail : "Something went wrong. Try again.",
+        );
+      }
     },
   });
 }

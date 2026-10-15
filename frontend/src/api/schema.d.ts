@@ -84,6 +84,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/password": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Change password
+     * @description Change the signed-in user's password, keeping this session and ending all others.
+     */
+    post: operations["apps_accounts_api_password"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -140,6 +160,16 @@ export interface components {
       email: string;
       /** Password */
       password: string;
+    };
+    /**
+     * PasswordChangeIn
+     * @description The current password, to confirm it's really the user, and the one replacing it.
+     */
+    PasswordChangeIn: {
+      /** Current Password */
+      current_password: string;
+      /** New Password */
+      new_password: string;
     };
   };
   responses: never;
@@ -247,6 +277,37 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  apps_accounts_api_password: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PasswordChangeIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Bad Request */
+      400: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
       };
     };
   };

@@ -173,6 +173,12 @@ def _detail(task: Task) -> TaskDetailOut:
     )
 
 
+def task_change_out(change: services.TaskChange) -> TaskChangeOut:
+    """Return a change as the API shows it, with every Task whose Status changed, for Undo."""
+    affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
+    return TaskChangeOut(task=_detail(change.task), affected=affected)
+
+
 @router.get(
     "/{int:task_id}",
     response={_HTTP_OK: TaskDetailOut, _HTTP_NOT_FOUND: ErrorOut},
@@ -231,8 +237,7 @@ def update_task(
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
-    return Status(_HTTP_OK, TaskChangeOut(task=_detail(change.task), affected=affected))
+    return Status(_HTTP_OK, task_change_out(change))
 
 
 @router.post(
@@ -261,8 +266,7 @@ def move_task(
         change = moves.move_task(task, destination)
     except (services.TaskRuleError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
-    affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
-    return Status(_HTTP_OK, TaskChangeOut(task=_detail(change.task), affected=affected))
+    return Status(_HTTP_OK, task_change_out(change))
 
 
 def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:

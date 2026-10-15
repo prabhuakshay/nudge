@@ -288,6 +288,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/notifications/{notification_id}/complete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Complete a Task from its Reminder
+     * @description Complete the Task a Reminder notification is about, as ticking it off would.
+     */
+    post: operations["apps_tasks_api_reminder_actions_complete"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/{notification_id}/snooze": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Snooze a Reminder
+     * @description Fire a Reminder notification once more later, leaving its Task as it is.
+     */
+    post: operations["apps_tasks_api_reminder_actions_snooze"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/folders": {
     parameters: {
       query?: never;
@@ -940,6 +980,11 @@ export interface components {
        */
       url: string;
       /**
+       * Is Reminder
+       * @description Whether a Reminder sent it, so its Task can be completed or snoozed from it.
+       */
+      is_reminder: boolean;
+      /**
        * Created At
        * Format: date-time
        */
@@ -984,6 +1029,280 @@ export interface components {
     PushUnsubscribeIn: {
       /** Endpoint */
       endpoint: string;
+    };
+    /**
+     * AffectedTaskOut
+     * @description A Task whose Status a change touched, with its Status before, so the client can undo.
+     */
+    AffectedTaskOut: {
+      /** Id */
+      id: number;
+      prior_status: components["schemas"]["Status"];
+      /** Prior Blocked Reason */
+      prior_blocked_reason: string;
+    };
+    /**
+     * Priority
+     * @description How urgent a Task is; P1 is the most urgent.
+     * @enum {integer}
+     */
+    Priority: 0 | 1 | 2 | 3 | 4;
+    /**
+     * ReminderOut
+     * @description One of a Task's Reminders.
+     */
+    ReminderOut: {
+      /**
+       * Offset
+       * @description Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.
+       */
+      offset: number;
+      /**
+       * Fire At
+       * @description When it fires next; null when it won't: the Task is Closed or archived, or the time has passed.
+       */
+      fire_at: string | null;
+    };
+    /**
+     * Status
+     * @description Where a Task stands.
+     * @enum {string}
+     */
+    Status: "open" | "completed" | "wont_do" | "blocked";
+    /**
+     * TaskAncestorOut
+     * @description A Task above another in the tree, as a breadcrumb links to it.
+     */
+    TaskAncestorOut: {
+      /** Id */
+      id: number;
+      /** Title */
+      title: string;
+    };
+    /**
+     * TaskChangeOut
+     * @description A changed Task and every Task whose Status the change touched.
+     */
+    TaskChangeOut: {
+      task: components["schemas"]["TaskDetailOut"];
+      /** Affected */
+      affected: components["schemas"]["AffectedTaskOut"][];
+    };
+    /**
+     * TaskDetailOut
+     * @description A Task as the detail drawer shows it, with where it sits in the tree and what's under it.
+     */
+    TaskDetailOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
+      completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
+      /**
+       * Description
+       * @description Markdown, as the user wrote it.
+       */
+      description: string;
+      /**
+       * Ancestors
+       * @description From the root down to the parent.
+       */
+      ancestors: components["schemas"]["TaskAncestorOut"][];
+      /**
+       * Subtasks
+       * @description Every Subtask below, whatever its Status, as flat rows in manual order.
+       */
+      subtasks: components["schemas"]["TaskOut"][];
+      /**
+       * Reminders
+       * @description Earliest offset first.
+       */
+      reminders: components["schemas"]["ReminderOut"][];
+    };
+    /**
+     * TaskOut
+     * @description A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`.
+     */
+    TaskOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
+      completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
+    };
+    /**
+     * Snooze
+     * @description How long to snooze a Reminder for.
+     * @enum {string}
+     */
+    Snooze: "in_15_minutes" | "in_1_hour" | "in_3_hours" | "tomorrow_morning";
+    /**
+     * SnoozeIn
+     * @description When a snoozed Reminder should fire again.
+     */
+    SnoozeIn: {
+      /** @description Tomorrow morning is 09:00 in the user's time zone. */
+      until: components["schemas"]["Snooze"];
     };
     /**
      * FolderOut
@@ -1300,18 +1619,6 @@ export interface components {
      */
     View: "today" | "upcoming";
     /**
-     * Priority
-     * @description How urgent a Task is; P1 is the most urgent.
-     * @enum {integer}
-     */
-    Priority: 0 | 1 | 2 | 3 | 4;
-    /**
-     * Status
-     * @description Where a Task stands.
-     * @enum {string}
-     */
-    Status: "open" | "completed" | "wont_do" | "blocked";
-    /**
      * TaskListOut
      * @description Tasks for a list, and the cursor for the next page when the list is paginated.
      */
@@ -1323,97 +1630,6 @@ export interface components {
        * @description Pass as `cursor` to get the next page; null on the last page.
        */
       next_cursor: string | null;
-    };
-    /**
-     * TaskOut
-     * @description A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`.
-     */
-    TaskOut: {
-      /** Id */
-      id: number;
-      /** Project Id */
-      project_id: number;
-      /**
-       * Parent Id
-       * @description Null for a root Task.
-       */
-      parent_id: number | null;
-      /**
-       * Position
-       * @description Sorts the Task among its siblings, byte by byte.
-       */
-      position: string;
-      /**
-       * Depth
-       * @description 0 for a root Task, up to 3 for the deepest Subtask.
-       */
-      depth: number;
-      /**
-       * Parent Title
-       * @description The parent's title, for a breadcrumb.
-       */
-      parent_title: string | null;
-      /** Title */
-      title: string;
-      status: components["schemas"]["Status"];
-      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
-      priority: components["schemas"]["Priority"];
-      /**
-       * Blocked Reason
-       * @description Why a Blocked Task waits; empty otherwise.
-       */
-      blocked_reason: string;
-      /**
-       * Completed At
-       * @description When it was Completed or marked Won't do.
-       */
-      completed_at: string | null;
-      /**
-       * Pinned At
-       * @description When it was pinned; null when it isn't.
-       */
-      pinned_at: string | null;
-      /** Due Date */
-      due_date: string | null;
-      /**
-       * Due Time
-       * @description Null for an all-day Task.
-       */
-      due_time: string | null;
-      /**
-       * Start Date
-       * @description Set for a range, which ends on the due date.
-       */
-      start_date: string | null;
-      /** Start Time */
-      start_time: string | null;
-      /**
-       * Is Overdue
-       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
-       */
-      is_overdue: boolean;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /**
-       * Updated At
-       * Format: date-time
-       */
-      updated_at: string;
-      /**
-       * Attachment Count
-       * @description How many Attachments the Task has. A Task just added has none.
-       * @default 0
-       */
-      attachment_count: number;
-      /**
-       * Comment Count
-       * @description How many Comments the Task has. A Task just added has none.
-       * @default 0
-       */
-      comment_count: number;
     };
     /**
      * TaskDatesIn
@@ -1454,163 +1670,6 @@ export interface components {
       parent_id?: number | null;
       /** @description Dates the Task from the start, such as today in Today. Not for a Subtask. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
-    };
-    /**
-     * ReminderOut
-     * @description One of a Task's Reminders.
-     */
-    ReminderOut: {
-      /**
-       * Offset
-       * @description Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.
-       */
-      offset: number;
-      /**
-       * Fire At
-       * @description When it fires next; null when it won't: the Task is Closed or archived, or the time has passed.
-       */
-      fire_at: string | null;
-    };
-    /**
-     * TaskAncestorOut
-     * @description A Task above another in the tree, as a breadcrumb links to it.
-     */
-    TaskAncestorOut: {
-      /** Id */
-      id: number;
-      /** Title */
-      title: string;
-    };
-    /**
-     * TaskDetailOut
-     * @description A Task as the detail drawer shows it, with where it sits in the tree and what's under it.
-     */
-    TaskDetailOut: {
-      /** Id */
-      id: number;
-      /** Project Id */
-      project_id: number;
-      /**
-       * Parent Id
-       * @description Null for a root Task.
-       */
-      parent_id: number | null;
-      /**
-       * Position
-       * @description Sorts the Task among its siblings, byte by byte.
-       */
-      position: string;
-      /**
-       * Depth
-       * @description 0 for a root Task, up to 3 for the deepest Subtask.
-       */
-      depth: number;
-      /**
-       * Parent Title
-       * @description The parent's title, for a breadcrumb.
-       */
-      parent_title: string | null;
-      /** Title */
-      title: string;
-      status: components["schemas"]["Status"];
-      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
-      priority: components["schemas"]["Priority"];
-      /**
-       * Blocked Reason
-       * @description Why a Blocked Task waits; empty otherwise.
-       */
-      blocked_reason: string;
-      /**
-       * Completed At
-       * @description When it was Completed or marked Won't do.
-       */
-      completed_at: string | null;
-      /**
-       * Pinned At
-       * @description When it was pinned; null when it isn't.
-       */
-      pinned_at: string | null;
-      /** Due Date */
-      due_date: string | null;
-      /**
-       * Due Time
-       * @description Null for an all-day Task.
-       */
-      due_time: string | null;
-      /**
-       * Start Date
-       * @description Set for a range, which ends on the due date.
-       */
-      start_date: string | null;
-      /** Start Time */
-      start_time: string | null;
-      /**
-       * Is Overdue
-       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
-       */
-      is_overdue: boolean;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /**
-       * Updated At
-       * Format: date-time
-       */
-      updated_at: string;
-      /**
-       * Attachment Count
-       * @description How many Attachments the Task has. A Task just added has none.
-       * @default 0
-       */
-      attachment_count: number;
-      /**
-       * Comment Count
-       * @description How many Comments the Task has. A Task just added has none.
-       * @default 0
-       */
-      comment_count: number;
-      /**
-       * Description
-       * @description Markdown, as the user wrote it.
-       */
-      description: string;
-      /**
-       * Ancestors
-       * @description From the root down to the parent.
-       */
-      ancestors: components["schemas"]["TaskAncestorOut"][];
-      /**
-       * Subtasks
-       * @description Every Subtask below, whatever its Status, as flat rows in manual order.
-       */
-      subtasks: components["schemas"]["TaskOut"][];
-      /**
-       * Reminders
-       * @description Earliest offset first.
-       */
-      reminders: components["schemas"]["ReminderOut"][];
-    };
-    /**
-     * AffectedTaskOut
-     * @description A Task whose Status a change touched, with its Status before, so the client can undo.
-     */
-    AffectedTaskOut: {
-      /** Id */
-      id: number;
-      prior_status: components["schemas"]["Status"];
-      /** Prior Blocked Reason */
-      prior_blocked_reason: string;
-    };
-    /**
-     * TaskChangeOut
-     * @description A changed Task and every Task whose Status the change touched.
-     */
-    TaskChangeOut: {
-      task: components["schemas"]["TaskDetailOut"];
-      /** Affected */
-      affected: components["schemas"]["AffectedTaskOut"][];
     };
     /**
      * TaskPatchIn
@@ -2517,6 +2576,79 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  apps_tasks_api_reminder_actions_complete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskChangeOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_reminder_actions_snooze: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SnoozeIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
       };
     };
   };

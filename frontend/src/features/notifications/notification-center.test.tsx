@@ -14,6 +14,7 @@ function notification(overrides: Partial<Notification>): Notification {
     title: "Pay rent",
     body: "Due today",
     url: "/inbox",
+    is_reminder: false,
     created_at: new Date().toISOString(),
     read_at: null,
     ...overrides,

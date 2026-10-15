@@ -42,6 +42,12 @@ _Avoid_: Importance, level
 **Status**:
 Where a Task stands: Open, Completed, Won't do, or Blocked.
 
+**Closed**:
+A Task whose Status is Completed or Won't do. A Closed Task never has an open Subtask.
+
+**Pinned**:
+A root Task held at the top of every list it appears in.
+
 **Blocked reason**:
 The optional free-text reason a Blocked Task is waiting, which may mention a Person.
 

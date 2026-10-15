@@ -17,6 +17,7 @@ from typing import TYPE_CHECKING
 from django.db.models import Q
 from django.utils import timezone
 
+from apps.tasks import reminders
 from apps.tasks.models import CLOSED_STATUSES, MAX_DEPTH, OPEN_STATUSES, Task, TaskActivity
 from apps.tasks.rows import as_rows
 
@@ -92,13 +93,20 @@ def moved_event(task: Task, from_project: str, from_parent: str | None) -> TaskA
     return TaskActivity(task=task, kind=TaskActivity.Kind.MOVED, data=data)
 
 
+def move_descendants(task: Task, project: Project) -> None:
+    """Move every Subtask below the Task into the Project, in one write."""
+    below([task]).update(project=project)
+    # A bulk update skips the save signal that keeps Reminders on time, so do its work here.
+    reminders.reschedule(below([task]))
+
+
 def move_tree(task: Task, project: Project, position: str) -> list[str]:
     """Move the Task and its Subtasks into the Project, as a root at the position.
 
     Returns:
         The Task's fields that changed, for the caller to save.
     """
-    below([task]).update(project=project)
+    move_descendants(task, project)
     task.position = position
     task.project = project
     task.parent = None

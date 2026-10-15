@@ -173,6 +173,34 @@ describe("TaskDetail", () => {
     ]);
   });
 
+  it("ends the Details tab with the Comments it counts, and pins the composer below", async () => {
+    const at = minutesAgo(5);
+    const note = { task_id: 1, created_at: at, updated_at: at };
+    mockApi(
+      [task({ id: 1, title: "Buy milk" })],
+      [],
+      [
+        { ...note, id: 1, body: "Oat milk" },
+        { ...note, id: 2, body: "Two litres" },
+      ],
+    );
+    const user = renderList();
+
+    const drawer = await openTask(user, "Buy milk");
+
+    const details = await within(drawer).findByRole("tab", { name: "Details 2 comments" });
+    expect(
+      within(drawer)
+        .getAllByRole("article")
+        .map((card) => card.textContent),
+    ).toEqual([expect.stringContaining("Oat milk"), expect.stringContaining("Two litres")]);
+    expect(within(drawer).getByRole("textbox", { name: "Write a comment" })).toBeInTheDocument();
+    await user.click(within(drawer).getByRole("tab", { name: /Activity/ }));
+    expect(within(drawer).queryByRole("textbox", { name: "Write a comment" })).toBeNull();
+    await user.click(details);
+    expect(within(drawer).getByRole("textbox", { name: "Write a comment" })).toBeInTheDocument();
+  });
+
   it("counts a rename in the Activity tab straight away", async () => {
     mockApi(
       [task({ id: 1, title: "Buy milk" })],

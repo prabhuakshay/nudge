@@ -1,4 +1,4 @@
-import { ChevronDown, ChevronRight, CornerDownRight, Paperclip } from "lucide-react";
+import { ChevronDown, ChevronRight, CornerDownRight, MessageSquare, Paperclip } from "lucide-react";
 import { memo } from "react";
 
 import { TagBadge } from "@/features/tags/tag-badge";
@@ -297,11 +297,12 @@ function PhoneMeta({
   );
 }
 
-/** The Activity column: the Subtask ring and the Attachment count. */
+/** The Activity column: the Subtask ring and the Comment and Attachment counts. */
 function ActivityCounts({ task, subtasks }: { task: Task; subtasks: TreeRow["subtasks"] }) {
   return (
     <>
       <SubtaskCount {...subtasks} />
+      <CountIcon icon={MessageSquare} count={task.comment_count} label="comments" />
       <CountIcon icon={Paperclip} count={task.attachment_count} label="attachments" />
     </>
   );

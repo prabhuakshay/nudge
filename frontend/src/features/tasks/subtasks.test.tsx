@@ -52,7 +52,9 @@ function mockApi(rows: Task[] = seed()) {
     if (url.pathname.endsWith("/activity")) {
       return json({ items: [], next_cursor: null, count: 0 });
     }
-    if (url.pathname.endsWith("/attachments")) return json([]);
+    if (url.pathname.endsWith("/attachments") || url.pathname.endsWith("/comments")) {
+      return json([]);
+    }
     if (task) return json(server.detail(task));
     if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX, items: [], archived: [] });
     const closed = url.searchParams.get("closed") === "true";

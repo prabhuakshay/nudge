@@ -812,6 +812,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/tasks/{task_id}/comments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Task's Comments
+     * @description Return all of a Task's Comments, oldest first.
+     */
+    get: operations["apps_tasks_api_comments_list_comments"];
+    put?: never;
+    /**
+     * Comment on a Task
+     * @description Add a markdown Comment to a Task.
+     */
+    post: operations["apps_tasks_api_comments_add_comment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/comments/{comment_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Comment
+     * @description Delete a Comment for good.
+     */
+    delete: operations["apps_tasks_api_comments_delete_comment"];
+    options?: never;
+    head?: never;
+    /**
+     * Edit a Comment
+     * @description Replace a Comment's body.
+     */
+    patch: operations["apps_tasks_api_comments_edit_comment"];
+    trace?: never;
+  };
   "/api/v1/calendar/feed": {
     parameters: {
       query?: never;
@@ -1531,6 +1579,12 @@ export interface components {
        * @default 0
        */
       attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
     };
     /**
      * TaskDatesIn
@@ -1697,6 +1751,12 @@ export interface components {
        * @default 0
        */
       attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
       /**
        * Description
        * @description Markdown, as the user wrote it.
@@ -2316,6 +2376,39 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /**
+     * CommentOut
+     * @description A Comment on a Task. It was edited when `updated_at` differs from `created_at`.
+     */
+    CommentOut: {
+      /** Id */
+      id: number;
+      /** Task Id */
+      task_id: number;
+      /**
+       * Body
+       * @description Markdown, as the user wrote it.
+       */
+      body: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /**
+     * CommentIn
+     * @description A Comment's markdown body, which may hold Mention tokens of the user's People.
+     */
+    CommentIn: {
+      /** Body */
+      body: string;
     };
     /**
      * CalendarFeedOut
@@ -3816,6 +3909,163 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_comments_list_comments: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommentOut"][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_comments_add_comment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CommentIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommentOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_comments_delete_comment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        comment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_comments_edit_comment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        comment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CommentIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommentOut"];
+        };
       };
       /** @description Not Found */
       404: {

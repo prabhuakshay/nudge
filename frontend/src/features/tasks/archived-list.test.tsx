@@ -31,6 +31,20 @@ describe("An archived Project's list", () => {
     expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Copy link"]);
   });
 
+  it("shows a Task's Comments in the drawer without a way to change them", async () => {
+    const at = new Date().toISOString();
+    mockApi([BULBS], [], [{ id: 1, task_id: 1, body: "Tulips", created_at: at, updated_at: at }]);
+    renderList({ project: GARDEN });
+
+    fireEvent.click(await screen.findByText("Plant bulbs"));
+
+    const drawer = await screen.findByRole("dialog");
+    expect(await within(drawer).findByText("Tulips")).toBeInTheDocument();
+    expect(within(drawer).getByRole("button", { name: "Edit comment" })).toBeDisabled();
+    expect(within(drawer).getByRole("button", { name: "Delete comment" })).toBeDisabled();
+    expect(within(drawer).queryByRole("textbox", { name: "Write a comment" })).toBeNull();
+  });
+
   it("unarchives the Project from its banner", async () => {
     const fetchSpy = mockApi([BULBS]);
     const user = renderList({ project: GARDEN });

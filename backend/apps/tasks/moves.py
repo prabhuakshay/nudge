@@ -18,7 +18,13 @@ from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, OPEN_STATUSES, Project, Task, TaskActivity
 from apps.tasks.rows import as_rows
 from apps.tasks.services import TaskChange, TaskRuleError
-from apps.tasks.tree import ancestors, below, height, moved_event, reopen_ancestors
+from apps.tasks.tree import (
+    ancestors,
+    height,
+    move_descendants,
+    moved_event,
+    reopen_ancestors,
+)
 
 if TYPE_CHECKING:
     from apps.tasks.tree import AffectedTask
@@ -64,7 +70,7 @@ def move_task(task: Task, destination: Destination) -> TaskChange:
             task.pinned_at = None
             events.append(TaskActivity(task=task, kind=TaskActivity.Kind.UNPINNED))
         if project.pk != task.project_id:
-            below([task]).update(project=project)
+            move_descendants(task, project)
         relocated = project.pk != task.project_id or task.parent_id != _pk(parent)
         task.position = _key_after(project, parent, task, destination.after_id)
         task.project, task.parent = project, parent

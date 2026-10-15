@@ -10,6 +10,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
+        ('tasks', '0013_comment'),
         ('tasks', '0013_reminders'),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]

@@ -26,17 +26,17 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && (
         <p
           id={errorId}
           role="alert"
-          className="rounded-md bg-danger-soft px-4 py-3 text-sm font-medium text-danger"
+          className="rounded-md bg-danger-soft px-3 py-2 text-sm font-medium text-danger"
         >
           {error}
         </p>
       )}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="email">Email</Label>
         <Input
           id="email"
@@ -49,7 +49,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           aria-describedby={error ? errorId : undefined}
         />
       </div>
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-1.5">
         <Label htmlFor="password">Password</Label>
         <Input
           id="password"
@@ -61,7 +61,7 @@ export function LoginForm({ onSuccess }: LoginFormProps) {
           aria-describedby={error ? errorId : undefined}
         />
       </div>
-      <Button type="submit" size="lg" disabled={login.isPending} className="mt-2">
+      <Button type="submit" size="lg" disabled={login.isPending} className="mt-1">
         {login.isPending && <LoaderCircle className="animate-spin" aria-hidden />}
         {login.isPending ? "Signing in…" : "Sign in"}
       </Button>

@@ -15,10 +15,10 @@ function AccountPage() {
   return (
     <>
       <PageHeader title="Account" />
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-6">
         <Section title="Profile">
-          <div className="flex items-center gap-4 p-4">
-            <UserAvatar user={user} className="size-14 text-lg" />
+          <div className="flex items-center gap-3 px-4 py-3">
+            <UserAvatar user={user} className="size-11 text-base" />
             <div className="min-w-0">
               <p className="truncate font-semibold">{user.full_name || user.email}</p>
               {user.full_name && (
@@ -29,13 +29,13 @@ function AccountPage() {
         </Section>
 
         <Section title="Appearance">
-          <div className="p-4">
+          <div className="px-4 py-3">
             <ThemePicker />
           </div>
         </Section>
 
         <Section title="Session">
-          <div className="flex flex-wrap items-center justify-between gap-4 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
             <div className="min-w-0">
               <p className="font-semibold">Sign out of Nudge</p>
               <p className="text-sm text-muted-foreground">
@@ -56,7 +56,7 @@ function Section({ title, children }: { title: string; children: ReactNode }) {
     <section aria-labelledby={headingId}>
       <h2
         id={headingId}
-        className="mb-2 px-1 text-xs font-bold tracking-wider text-muted-foreground uppercase"
+        className="mb-1.5 px-1 text-xs font-bold tracking-wider text-muted-foreground uppercase"
       >
         {title}
       </h2>

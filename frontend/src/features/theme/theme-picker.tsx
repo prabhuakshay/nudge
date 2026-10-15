@@ -19,7 +19,7 @@ export function ThemePicker() {
       {OPTIONS.map(({ value, label, icon: Icon }) => (
         <label
           key={value}
-          className="flex h-10 cursor-pointer items-center justify-center gap-2 rounded-md text-sm font-semibold text-muted-foreground transition-colors has-checked:bg-surface has-checked:text-foreground has-checked:shadow-sm has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring"
+          className="flex h-8 cursor-pointer items-center justify-center gap-2 rounded-md text-sm font-semibold text-muted-foreground transition-colors has-checked:bg-surface has-checked:text-foreground has-checked:shadow-sm has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring"
         >
           <input
             type="radio"

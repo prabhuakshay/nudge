@@ -8,7 +8,7 @@ export function UserAvatar({ user, className }: { user: User; className?: string
     <span
       aria-hidden
       className={cn(
-        "inline-flex size-9 shrink-0 items-center justify-center rounded-full bg-primary-soft text-sm font-bold text-primary",
+        "inline-flex size-8 shrink-0 items-center justify-center rounded-full bg-primary-soft text-xs font-bold text-primary",
         className,
       )}
     >

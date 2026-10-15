@@ -15,9 +15,9 @@ export function BottomNav() {
             <Link
               to={to}
               activeOptions={{ exact: true }}
-              className="flex h-16 flex-col items-center justify-center gap-1 text-xs font-semibold text-muted-foreground data-[status=active]:text-primary"
+              className="flex h-14 flex-col items-center justify-center gap-0.5 text-xs font-semibold text-muted-foreground data-[status=active]:text-primary"
             >
-              <Icon className="size-6" aria-hidden />
+              <Icon className="size-5" aria-hidden />
               {label}
             </Link>
           </li>

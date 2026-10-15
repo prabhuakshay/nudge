@@ -21,7 +21,7 @@ export function Clock() {
   }, [now]);
 
   return (
-    <time dateTime={now.toISOString()} className="text-sm text-muted-foreground tabular-nums">
+    <time dateTime={now.toISOString()} className="text-xs text-muted-foreground tabular-nums">
       {formatLongDate(now)} · {formatTime(now)}
     </time>
   );

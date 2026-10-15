@@ -16,9 +16,9 @@ const buttonVariants = cva(
           "border border-border bg-surface text-danger hover:border-danger hover:bg-danger-soft",
       },
       size: {
-        md: "h-10 px-4",
-        lg: "h-12 px-5 text-base",
-        icon: "size-10",
+        md: "h-9 px-3.5",
+        lg: "h-10 px-4",
+        icon: "size-9",
       },
     },
     defaultVariants: { variant: "primary", size: "md" },

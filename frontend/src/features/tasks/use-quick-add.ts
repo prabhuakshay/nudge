@@ -109,27 +109,29 @@ function useWallClock(): Date {
  * the caret. Backspace right after a match, or `keep`, turns the match back into plain text.
  * Enter picks the picker's active row when it's open, and otherwise calls `onSubmit` with what was
  * typed and what it means; the input then starts over. `inputRef` is the input's, for putting the
- * caret after a pick.
+ * caret after a pick. `initialValue` starts the input with text already typed, caret at its end.
  */
 export function useQuickAdd({
   inputRef,
+  initialValue = "",
   allowProject = true,
   allowRepeat = true,
   onSubmit,
 }: {
   inputRef: RefObject<HTMLInputElement | null>;
+  initialValue?: string;
   allowProject?: boolean;
   allowRepeat?: boolean;
   onSubmit: (text: string, parsed: QuickAdd) => void;
 }) {
-  const [value, setValueState] = useState("");
-  const [caret, setCaret] = useState(0);
+  const [value, setValueState] = useState(initialValue);
+  const [caret, setCaret] = useState(initialValue.length);
   const [picked, setPicked] = useState<PickedName[]>([]);
   const [kept, setKept] = useState<ReadonlySet<string>>(new Set());
   const [active, setActive] = useState(0);
   const [pickerClosed, setPickerClosed] = useState(false);
   // Where the caret goes after a pick, applied before paint so typing on lands in the right place.
-  const pendingCaret = useRef<number | null>(null);
+  const pendingCaret = useRef<number | null>(initialValue ? initialValue.length : null);
   useLayoutEffect(() => {
     if (pendingCaret.current === null) return;
     inputRef.current?.setSelectionRange(pendingCaret.current, pendingCaret.current);

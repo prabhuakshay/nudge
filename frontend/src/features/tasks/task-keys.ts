@@ -69,10 +69,23 @@ export function useTaskKeys() {
 }
 
 let pending: { taskId: number; action: DetailAction } | null = null;
+const listeners = new Set<() => void>();
 
-/** Ask the drawer to do `action` when it next shows this Task, as a row's D does. */
+/**
+ * Ask the drawer to do `action` when it next shows this Task, as a row's D does, or straight away
+ * if it shows the Task already, as when the command bar asks.
+ */
 export function requestDetailAction(taskId: number, action: DetailAction) {
   pending = { taskId, action };
+  for (const listener of listeners) listener();
+}
+
+/** Call `listener` on each request to the drawer. Returns a function that stops it. */
+export function onDetailActionRequest(listener: () => void) {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
 }
 
 /** The action asked of the drawer for this Task, if any. */

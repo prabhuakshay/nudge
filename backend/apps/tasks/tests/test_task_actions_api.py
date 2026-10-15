@@ -156,3 +156,38 @@ def test_duplicate_another_users_task_is_not_found(client: Client, grace: User) 
 
     assert response.status_code == 404
     assert grace.tasks.count() == 1
+
+
+@pytest.mark.django_db
+def test_a_subtask_cannot_be_pinned(client: Client, ada: User) -> None:
+    root = services.create_task(services.inbox(ada), "Plan the trip")
+    subtask = services.create_subtask(root, "Book flights").task
+
+    response = _pin(client, subtask, pinned=True)
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Only a top-level task can be pinned."}
+    subtask.refresh_from_db()
+    assert subtask.pinned_at is None
+
+
+@pytest.mark.django_db
+def test_duplicating_a_subtask_puts_the_copy_after_it_under_a_reopened_parent(
+    client: Client,
+    ada: User,
+) -> None:
+    root = services.create_task(services.inbox(ada), "Plan the trip")
+    flights = services.create_subtask(root, "Book flights").task
+    services.create_subtask(root, "Book hotel")
+    services.update_task(ada, root.pk, services.TaskEdit(status=Task.Status.COMPLETED))
+
+    response = client.post(f"/api/v1/tasks/{flights.pk}/duplicate")
+
+    assert response.json()["parent_id"] == root.pk
+    rows = client.get(f"/api/v1/tasks?project={root.project_id}").json()["items"]
+    assert [(row["title"], row["status"]) for row in rows] == [
+        ("Plan the trip", "open"),
+        ("Book flights", "completed"),
+        ("Book flights", "open"),
+        ("Book hotel", "completed"),
+    ]

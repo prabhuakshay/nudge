@@ -7,39 +7,54 @@ import { ProjectHeader } from "@/features/projects/project-header";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
+import { ExpandCollapse } from "./expand-collapse";
 import { useOpenTask } from "./open-task";
 import { QuickAddCard } from "./quick-add-card";
 import { TaskDetail } from "./task-detail";
-import { GRID, TaskRow, type OpenTask, type ToggleStatus } from "./task-row";
 import { isClosed } from "./task-properties";
 import {
-  closedTasksQuery,
-  openTasksQuery,
-  useSetTaskStatus,
-  type SidebarProject,
-  type Task,
-} from "./tasks";
+  GRID,
+  TreeRows,
+  type RowContext,
+  type ToggleCollapsed,
+  type ToggleStatus,
+} from "./task-row";
+import { parentsOf, treeRows, treesWhere, type TreeRow } from "./task-tree";
+import { closedTasksQuery, openTasksQuery, useSetTaskStatus, type SidebarProject } from "./tasks";
+
+/** How far each level of Subtasks steps in, in pixels; nesting eats width, so less on phones. */
+const INDENT = 22;
+const PHONE_INDENT = 20;
 
 /**
- * A Project's Tasks as a table: the page header, Quick add, then the pinned Tasks, the other open
- * Tasks and a collapsed Closed group. On phones the table collapses into stacked rows. Clicking a
- * row opens the Task in the drawer, and the URL's `?task=` follows the open Task.
+ * A Project's Tasks as a table: the page header, Quick add, then the pinned Task trees, the other
+ * open trees and a collapsed Closed group. Subtasks nest under their parent and fold away from
+ * its chevron. On phones the table collapses into stacked rows. Clicking a row opens the Task in
+ * the drawer, and the URL's `?task=` follows the open Task.
  */
 export function TaskList({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));
-  const pinned = useMemo(() => open.filter((task) => task.pinned_at !== null), [open]);
-  const unpinned = useMemo(() => open.filter((task) => task.pinned_at === null), [open]);
+  const pinned = useMemo(() => treesWhere(open, (root) => root.pinned_at !== null), [open]);
+  const unpinned = useMemo(() => treesWhere(open, (root) => root.pinned_at === null), [open]);
   const [showClosed, setShowClosed] = useState(false);
   const closed = useInfiniteQuery({ ...closedTasksQuery(project.id), enabled: showClosed });
   const closedTasks = useMemo(
     () => (showClosed ? (closed.data?.pages.flatMap((page) => page.items) ?? []) : []),
     [showClosed, closed.data],
   );
+  const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set());
+  const pinnedRows = useMemo(() => treeRows(pinned, collapsed), [pinned, collapsed]);
+  const openRows = useMemo(() => treeRows(unpinned, collapsed), [unpinned, collapsed]);
+  const closedRows = useMemo(() => treeRows(closedTasks, collapsed), [closedTasks, collapsed]);
+  const parents = useMemo(() => parentsOf([...open, ...closedTasks]), [open, closedTasks]);
+  // J/K step through every Task in outline order, folded or not, as in the prototype.
   const order = useMemo(
-    () => [...pinned, ...unpinned, ...closedTasks].map((task) => task.id),
+    () =>
+      [pinned, unpinned, closedTasks].flatMap((rows) => treeRows(rows).map((row) => row.task.id)),
     [pinned, unpinned, closedTasks],
   );
   const { openTaskId: openId, setOpenTask: setOpenId } = useOpenTask();
+  const indent = useMediaQuery("(min-width: 1024px)") ? INDENT : PHONE_INDENT;
   const touch = useMediaQuery("(pointer: coarse)");
   const { mutate: setStatus } = useSetTaskStatus();
   // Stable, so memoized rows don't re-render when the list does.
@@ -49,11 +64,41 @@ export function TaskList({ project }: { project: SidebarProject }) {
     },
     [setStatus],
   );
+  const toggleCollapsed = useCallback<ToggleCollapsed>((taskId) => {
+    setCollapsed((current) => {
+      const next = new Set(current);
+      if (!next.delete(taskId)) next.add(taskId);
+      return next;
+    });
+  }, []);
+  const context = useMemo<RowContext>(
+    () => ({
+      openId,
+      collapsed,
+      indent,
+      touch,
+      onToggle: toggle,
+      onOpen: setOpenId,
+      onToggleCollapsed: toggleCollapsed,
+    }),
+    [openId, collapsed, indent, touch, toggle, toggleCollapsed, setOpenId],
+  );
 
   return (
     // `data-wide` lets the app shell drop its reading width for this table.
     <div data-wide className="mx-auto w-full max-w-6xl">
-      <ProjectHeader project={project} />
+      <ProjectHeader project={project}>
+        {parents.length > 0 && (
+          <ExpandCollapse
+            onExpand={() => {
+              setCollapsed(new Set());
+            }}
+            onCollapse={() => {
+              setCollapsed(new Set(parents));
+            }}
+          />
+        )}
+      </ProjectHeader>
 
       <QuickAddCard projectId={project.id} />
 
@@ -69,7 +114,7 @@ export function TaskList({ project }: { project: SidebarProject }) {
             "sticky top-14 z-10 hidden h-9 items-center rounded-t-xl border-b border-border bg-surface-muted/95 pr-2 pl-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur",
           )}
         >
-          <span role="columnheader" className="pl-7">
+          <span role="columnheader" className="pl-[54px]">
             Title
           </span>
           <span role="columnheader" className="px-2">
@@ -87,57 +132,36 @@ export function TaskList({ project }: { project: SidebarProject }) {
           <span role="columnheader" aria-label="Actions" />
         </div>
 
-        {pinned.length > 0 && (
+        {pinnedRows.length > 0 && (
           <Group
             icon={<Pin className="size-3.5 text-primary" aria-hidden />}
             label="Pinned"
-            count={pinned.length}
+            count={pinnedRows.filter((row) => row.level === 0).length}
           >
-            {pinned.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                selected={task.id === openId}
-                touch={touch}
-                onToggle={toggle}
-                onOpen={setOpenId}
-              />
-            ))}
+            <TreeRows rows={pinnedRows} context={context} />
           </Group>
         )}
 
         <Group
           icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
           label="Tasks"
-          count={unpinned.length}
+          count={openRows.filter((row) => row.level === 0).length}
         >
           {unpinned.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">
               Nothing left here. Add a task above.
             </p>
           ) : (
-            unpinned.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                selected={task.id === openId}
-                touch={touch}
-                onToggle={toggle}
-                onOpen={setOpenId}
-              />
-            ))
+            <TreeRows rows={openRows} context={context} />
           )}
         </Group>
 
         <ClosedGroup
           query={closed}
-          tasks={closedTasks}
+          rows={closedRows}
           expanded={showClosed}
           onExpandedChange={setShowClosed}
-          openId={openId}
-          touch={touch}
-          onToggle={toggle}
-          onOpen={setOpenId}
+          context={context}
         />
       </div>
 
@@ -182,22 +206,16 @@ function Group({
 /** Closed Tasks stay out of the way, and aren't fetched, until the group is opened. */
 function ClosedGroup({
   query: closed,
-  tasks,
+  rows,
   expanded,
   onExpandedChange,
-  openId,
-  touch,
-  onToggle,
-  onOpen,
+  context,
 }: {
   query: UseInfiniteQueryResult;
-  tasks: Task[];
+  rows: TreeRow[];
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
-  openId: number | null;
-  touch: boolean;
-  onToggle: ToggleStatus;
-  onOpen: OpenTask;
+  context: RowContext;
 }) {
   return (
     <section aria-label="Closed">
@@ -222,17 +240,8 @@ function ClosedGroup({
       </button>
       {expanded && (
         <div className="border-t border-border/60 pb-1">
-          {tasks.map((task) => (
-            <TaskRow
-              key={task.id}
-              task={task}
-              selected={task.id === openId}
-              touch={touch}
-              onToggle={onToggle}
-              onOpen={onOpen}
-            />
-          ))}
-          {closed.isSuccess && tasks.length === 0 && (
+          <TreeRows rows={rows} context={context} />
+          {closed.isSuccess && rows.length === 0 && (
             <p className="px-4 py-4 text-center text-sm text-muted-foreground">
               Nothing closed yet.
             </p>

@@ -155,6 +155,9 @@ def test_blocking_records_the_status_change_with_its_reason(client: Client, ada:
         "old": "open",
         "new": "blocked",
         "blocked_reason": "Waiting on review",
+        "via_parent": None,
+        "via_subtask": None,
+        "closed_subtasks": 0,
     }
 
 
@@ -170,7 +173,14 @@ def test_closing_records_the_status_change(client: Client, ada: User) -> None:
 
     newest = client.get(f"/api/v1/tasks/{task.pk}/activity").json()["items"][0]
     assert newest["kind"] == "status_changed"
-    assert newest["data"] == {"old": "open", "new": "wont_do", "blocked_reason": ""}
+    assert newest["data"] == {
+        "old": "open",
+        "new": "wont_do",
+        "blocked_reason": "",
+        "via_parent": None,
+        "via_subtask": None,
+        "closed_subtasks": 0,
+    }
 
 
 @pytest.mark.django_db

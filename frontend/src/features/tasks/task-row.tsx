@@ -1,42 +1,89 @@
-import { Paperclip } from "lucide-react";
+import { ChevronDown, ChevronRight, Paperclip } from "lucide-react";
 import { memo } from "react";
 
 import { cn } from "@/lib/utils";
 
 import { CountIcon } from "./count-icon";
 import { DueBadge } from "./due-badge";
+import { SubtaskCount } from "./subtask-count";
 import { TaskActionsMenu, TaskContextMenu } from "./task-actions";
 import { DueCell, PriorityCell, StatusCell } from "./task-cells";
 import { TaskCheckbox } from "./task-checkbox";
 import { PriorityFlag } from "./task-priority";
 import { isClosed } from "./task-properties";
 import { BlockedNote, StatusBadge } from "./task-status";
+import type { TreeRow } from "./task-tree";
 import type { Task } from "./tasks";
 
 /** One grid for the header and every row, so the columns line up from `lg`. */
 export const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_6.5rem_2.5rem]";
 
+/** How far a title sits from its row's edge: the chevron and checkbox with their gaps, in pixels. */
+const TITLE_INSET = 54;
+
 export type ToggleStatus = (task: Task) => void;
 export type OpenTask = (taskId: number) => void;
+export type ToggleCollapsed = (taskId: number) => void;
 
-/**
- * One Task in the table. A click anywhere on it, or Enter, opens the Task; the checkbox and the
- * cell pickers keep their own action. Right-click or the ⋯ button opens its actions. On phones
- * the cells fold into a meta line under the title. Memoized so a change to one row leaves the
- * others alone.
- */
-export const TaskRow = memo(function TaskRow({
-  task,
-  selected,
-  touch,
-  onToggle,
-  onOpen,
-}: {
-  task: Task;
-  selected: boolean;
+/** What every row needs from the list, bundled so rows stay memoizable. */
+export type RowContext = {
+  openId: number | null;
+  collapsed: ReadonlySet<number>;
+  indent: number;
+  /** On touch screens a long press is for scrolling, so rows have no context menu. */
   touch: boolean;
   onToggle: ToggleStatus;
   onOpen: OpenTask;
+  onToggleCollapsed: ToggleCollapsed;
+};
+
+/** Tree rows as table rows, each knowing whether its Subtasks are folded away. */
+export function TreeRows({ rows, context }: { rows: TreeRow[]; context: RowContext }) {
+  return rows.map(({ task, level, subtasks }) => (
+    <TaskRow
+      key={task.id}
+      task={task}
+      level={level}
+      subtasks={subtasks}
+      selected={task.id === context.openId}
+      collapsed={context.collapsed.has(task.id)}
+      indent={context.indent}
+      touch={context.touch}
+      onToggle={context.onToggle}
+      onOpen={context.onOpen}
+      onToggleCollapsed={context.onToggleCollapsed}
+    />
+  ));
+}
+
+/**
+ * One Task in the table, stepped in by its level. A click anywhere on it, or Enter, opens the
+ * Task; the chevron, checkbox and cell pickers keep their own action. Right-click or the ⋯ button
+ * opens its actions. On phones the cells fold into a meta line under the title. Memoized so a
+ * change to one row leaves the others alone.
+ */
+const TaskRow = memo(function TaskRow({
+  task,
+  level,
+  subtasks,
+  selected,
+  collapsed,
+  indent,
+  touch,
+  onToggle,
+  onOpen,
+  onToggleCollapsed,
+}: {
+  task: Task;
+  level: number;
+  subtasks: TreeRow["subtasks"];
+  selected: boolean;
+  collapsed: boolean;
+  indent: number;
+  touch: boolean;
+  onToggle: ToggleStatus;
+  onOpen: OpenTask;
+  onToggleCollapsed: ToggleCollapsed;
 }) {
   const closed = isClosed(task.status);
   const blocked = task.status === "blocked";
@@ -55,7 +102,8 @@ export const TaskRow = memo(function TaskRow({
         role="row"
         tabIndex={0}
         data-task-id={task.id}
-        aria-level={1}
+        aria-level={level + 1}
+        aria-expanded={subtasks.total > 0 ? !collapsed : undefined}
         aria-selected={selected}
         onClick={(event) => {
           // Clicks in a picker's menu reach the row through React's tree, not the page's.
@@ -78,7 +126,22 @@ export const TaskRow = memo(function TaskRow({
             : "hover:bg-surface-muted/60",
         )}
       >
-        <div role="gridcell" className="flex min-w-0 items-center gap-2.5">
+        <div
+          role="gridcell"
+          className="flex min-w-0 items-center gap-2.5"
+          style={{ paddingLeft: level * indent }}
+        >
+          <span className="-mr-1 flex w-5 shrink-0 justify-center">
+            {subtasks.total > 0 && (
+              <CollapseToggle
+                title={task.title}
+                collapsed={collapsed}
+                onToggle={() => {
+                  onToggleCollapsed(task.id);
+                }}
+              />
+            )}
+          </span>
           <TaskCheckbox
             task={task}
             onToggle={() => {
@@ -90,7 +153,8 @@ export const TaskRow = memo(function TaskRow({
               data-task-title
               className={cn(
                 "min-w-0 truncate text-sm",
-                closed ? "text-muted-foreground line-through" : "font-semibold",
+                closed && "text-muted-foreground line-through",
+                !closed && (level === 0 ? "font-semibold" : "font-medium"),
               )}
             >
               {task.title}
@@ -100,13 +164,7 @@ export const TaskRow = memo(function TaskRow({
           <TaskActionsMenu task={task} className="-my-2 lg:hidden" />
         </div>
 
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 pl-7 empty:hidden lg:hidden">
-          {task.status === "wont_do" && <StatusBadge status={task.status} />}
-          {blocked && <BlockedNote task={task} className="max-w-full" />}
-          <PriorityFlag priority={task.priority} />
-          <DueBadge task={task} />
-          <ActivityCounts task={task} />
-        </div>
+        <PhoneMeta task={task} subtasks={subtasks} inset={TITLE_INSET + level * indent} />
 
         <div role="gridcell" className="hidden min-w-0 lg:block">
           <StatusCell task={task} />
@@ -118,7 +176,7 @@ export const TaskRow = memo(function TaskRow({
           <DueCell task={task} />
         </div>
         <div role="gridcell" className="hidden min-w-0 items-center justify-end gap-2 pr-1 lg:flex">
-          <ActivityCounts task={task} />
+          <ActivityCounts task={task} subtasks={subtasks} />
         </div>
         {/* Its own column, shown on hover or focus, so it never covers a cell. */}
         <div
@@ -132,6 +190,64 @@ export const TaskRow = memo(function TaskRow({
   );
 });
 
-function ActivityCounts({ task }: { task: Task }) {
-  return <CountIcon icon={Paperclip} count={task.attachment_count} label="attachments" />;
+/** The chevron that folds a Task's Subtasks away in the list, or shows them again. */
+function CollapseToggle({
+  title,
+  collapsed,
+  onToggle,
+}: {
+  title: string;
+  collapsed: boolean;
+  onToggle: () => void;
+}) {
+  const Chevron = collapsed ? ChevronRight : ChevronDown;
+  return (
+    <button
+      type="button"
+      aria-label={`${collapsed ? "Expand" : "Collapse"} subtasks of “${title}”`}
+      aria-expanded={!collapsed}
+      onClick={(event) => {
+        // The row behind it opens the Task; the chevron only folds it.
+        event.stopPropagation();
+        onToggle();
+      }}
+      className="relative flex size-5 items-center justify-center rounded text-muted-foreground after:absolute after:-inset-2 after:content-[''] hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+    >
+      <Chevron className="size-4" aria-hidden />
+    </button>
+  );
+}
+
+/** The phone row's second line, under the title: what the table's cells show from `lg`. */
+function PhoneMeta({
+  task,
+  subtasks,
+  inset,
+}: {
+  task: Task;
+  subtasks: TreeRow["subtasks"];
+  inset: number;
+}) {
+  return (
+    <div
+      className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 empty:hidden lg:hidden"
+      style={{ paddingLeft: inset }}
+    >
+      {task.status === "wont_do" && <StatusBadge status={task.status} />}
+      {task.status === "blocked" && <BlockedNote task={task} className="max-w-full" />}
+      <PriorityFlag priority={task.priority} />
+      <DueBadge task={task} />
+      <ActivityCounts task={task} subtasks={subtasks} />
+    </div>
+  );
+}
+
+/** The Activity column: the Subtask ring and the Attachment count. */
+function ActivityCounts({ task, subtasks }: { task: Task; subtasks: TreeRow["subtasks"] }) {
+  return (
+    <>
+      <SubtaskCount {...subtasks} />
+      <CountIcon icon={Paperclip} count={task.attachment_count} label="attachments" />
+    </>
+  );
 }

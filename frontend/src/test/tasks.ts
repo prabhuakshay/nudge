@@ -1,10 +1,14 @@
 import type { TaskDetail } from "@/features/tasks/tasks";
 
-/** An open, undated Task in Project 7 as the API returns it, with the given fields changed. */
+/** An open, undated root Task in Project 7 as the API returns it, with the given fields changed. */
 export function makeTask(overrides: Partial<TaskDetail> = {}): TaskDetail {
   return {
     id: 1,
     project_id: 7,
+    parent_id: null,
+    position: "a0",
+    depth: 0,
+    parent_title: null,
     title: "Buy milk",
     description: "",
     status: "open",
@@ -20,6 +24,8 @@ export function makeTask(overrides: Partial<TaskDetail> = {}): TaskDetail {
     created_at: "2026-10-15T09:00:00Z",
     updated_at: "2026-10-15T09:00:00Z",
     attachment_count: 0,
+    ancestors: [],
+    subtasks: [],
     ...overrides,
   };
 }

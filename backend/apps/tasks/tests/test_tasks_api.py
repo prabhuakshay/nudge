@@ -50,6 +50,10 @@ def test_create_adds_a_trimmed_task_to_the_inbox(client: Client, ada: User) -> N
     assert body == {
         "id": body["id"],
         "project_id": services.inbox(ada).pk,
+        "parent_id": None,
+        "position": body["position"],
+        "depth": 0,
+        "parent_title": None,
         "title": "Buy milk",
         "status": "open",
         "priority": 0,

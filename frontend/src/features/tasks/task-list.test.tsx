@@ -68,7 +68,9 @@ function titlesIn(group: string) {
 
 describe("TaskList", () => {
   it("lists the open Tasks in the server's order with the open count", async () => {
-    mockApi({ open: [task({ id: 1, title: "Buy milk" }), task({ id: 2, title: "Call mum" })] });
+    mockApi({
+      open: [task({ id: 1, title: "Buy milk" }), task({ id: 2, title: "Call mum" })],
+    });
 
     renderList();
 

@@ -450,6 +450,9 @@ export interface paths {
     /**
      * Add a Task
      * @description Add a Task first in its Project, or in the Inbox when no Project is given.
+     *
+     *     With `parent_id` it is added last under that Task instead, which reopens the parent and its
+     *     ancestors if they are Closed.
      */
     post: operations["apps_tasks_api_tasks_create_task"];
     delete?: never;
@@ -995,13 +998,33 @@ export interface components {
     };
     /**
      * TaskOut
-     * @description A Task as a list row shows it.
+     * @description A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`.
      */
     TaskOut: {
       /** Id */
       id: number;
       /** Project Id */
       project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
       /** Title */
       title: string;
       status: components["schemas"]["Status"];
@@ -1067,19 +1090,54 @@ export interface components {
       title: string;
       /**
        * Project Id
-       * @description Defaults to the Inbox.
+       * @description Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.
        */
       project_id?: number | null;
+      /**
+       * Parent Id
+       * @description Makes the Task the last Subtask of this one; reopens it if it's Closed.
+       */
+      parent_id?: number | null;
+    };
+    /**
+     * TaskAncestorOut
+     * @description A Task above another in the tree, as a breadcrumb links to it.
+     */
+    TaskAncestorOut: {
+      /** Id */
+      id: number;
+      /** Title */
+      title: string;
     };
     /**
      * TaskDetailOut
-     * @description A Task as the detail drawer shows it.
+     * @description A Task as the detail drawer shows it, with where it sits in the tree and what's under it.
      */
     TaskDetailOut: {
       /** Id */
       id: number;
       /** Project Id */
       project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
       /** Title */
       title: string;
       status: components["schemas"]["Status"];
@@ -1140,6 +1198,16 @@ export interface components {
        * @description Markdown, as the user wrote it.
        */
       description: string;
+      /**
+       * Ancestors
+       * @description From the root down to the parent.
+       */
+      ancestors: components["schemas"]["TaskAncestorOut"][];
+      /**
+       * Subtasks
+       * @description Every Subtask below, whatever its Status, as flat rows in manual order.
+       */
+      subtasks: components["schemas"]["TaskOut"][];
     };
     /**
      * AffectedTaskOut
@@ -1443,13 +1511,32 @@ export interface components {
     };
     /**
      * StatusChangedData
-     * @description The Status before and after a change, and the Blocked reason it was given, if any.
+     * @description The Status before and after a change, the Blocked reason it was given, and any cascade.
+     *
+     *     A change the user made to a relative names that relative: `via_parent` when closing a
+     *     parent closed this Task, `via_subtask` when reopening a Subtask reopened it.
      */
     StatusChangedData: {
       old: components["schemas"]["Status"];
       new: components["schemas"]["Status"];
       /** Blocked Reason */
       blocked_reason: string;
+      /**
+       * Via Parent
+       * @description The Closed parent's title.
+       */
+      via_parent?: string | null;
+      /**
+       * Via Subtask
+       * @description The reopened Subtask's title.
+       */
+      via_subtask?: string | null;
+      /**
+       * Closed Subtasks
+       * @description How many Subtasks closed with it.
+       * @default 0
+       */
+      closed_subtasks: number;
     };
     /**
      * TaskActivityListOut
@@ -2260,6 +2347,15 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
         headers: {
           [name: string]: unknown;
         };

@@ -94,3 +94,43 @@ def test_patch_into_a_trashed_project_is_not_found(client: Client, ada: User) ->
     response = _patch(client, task.pk, {"project_id": trashed.pk})
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_moving_a_root_carries_its_subtasks(client: Client, ada: User) -> None:
+    work = projects.create_project(ada, "Work")
+    root = services.create_task(services.inbox(ada), "Plan launch")
+    child = services.create_subtask(root, "Write notes").task
+    services.create_subtask(child, "Outline")
+
+    _patch(client, root.pk, {"project_id": work.pk})
+
+    rows = client.get(f"/api/v1/tasks?project={work.pk}").json()["items"]
+    assert [(row["title"], row["depth"]) for row in rows] == [
+        ("Plan launch", 0),
+        ("Write notes", 1),
+        ("Outline", 2),
+    ]
+
+
+@pytest.mark.django_db
+def test_moving_a_subtask_makes_it_a_root_first_in_the_other_project(
+    client: Client,
+    ada: User,
+) -> None:
+    work = projects.create_project(ada, "Work")
+    services.create_task(work, "Already there")
+    root = services.create_task(services.inbox(ada), "Plan launch")
+    child = services.create_subtask(root, "Write notes").task
+    services.create_subtask(child, "Outline")
+
+    response = _patch(client, child.pk, {"project_id": work.pk})
+
+    assert response.json()["task"]["parent_id"] is None
+    rows = client.get(f"/api/v1/tasks?project={work.pk}").json()["items"]
+    assert [(row["title"], row["parent_title"]) for row in rows] == [
+        ("Write notes", None),
+        ("Already there", None),
+        ("Outline", "Write notes"),
+    ]
+    assert [t.title for t in services.open_tasks(services.inbox(ada))] == ["Plan launch"]

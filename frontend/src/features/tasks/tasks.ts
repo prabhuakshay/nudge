@@ -10,7 +10,8 @@ import { toast } from "sonner";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 
-import { isClosed, STATUS_VERB } from "./task-properties";
+import { statusMessage } from "./task-properties";
+import { openTrees } from "./task-tree";
 
 export type Task = components["schemas"]["TaskOut"];
 export type TaskDetail = components["schemas"]["TaskDetailOut"];
@@ -38,8 +39,10 @@ export const sidebarQuery = queryOptions({
 const TASKS_KEY = ["tasks"] as const;
 /** The key prefix of every open-Task list, so a change can show in all of them at once. */
 const OPEN_KEY = [...TASKS_KEY, "open"] as const;
+/** The key prefix of every drawer's Task, so a change can show in a parent's Subtasks too. */
+const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
 
-/** A Project's open Tasks, in the user's manual order. */
+/** A Project's open Tasks with every Subtask under them, as flat rows in manual order. */
 export function openTasksQuery(projectId: number) {
   return queryOptions({
     queryKey: [...OPEN_KEY, projectId],
@@ -55,7 +58,7 @@ export function openTasksQuery(projectId: number) {
   });
 }
 
-/** A Project's Closed Tasks, most recently completed first, a page at a time. */
+/** A Project's Closed Tasks with their Subtasks, most recently completed first, a page at a time. */
 export function closedTasksQuery(projectId: number) {
   return infiniteQueryOptions({
     queryKey: [...TASKS_KEY, "closed", projectId],
@@ -78,7 +81,7 @@ export function closedTasksQuery(projectId: number) {
 /** One Task with everything the drawer shows. Keyed under the Task lists so list changes refresh it. */
 export function taskQuery(taskId: number) {
   return queryOptions({
-    queryKey: [...TASKS_KEY, "detail", taskId],
+    queryKey: [...DETAIL_KEY, taskId],
     queryFn: async (): Promise<TaskDetail> => {
       const { data } = await api.GET("/api/v1/tasks/{task_id}", {
         params: { path: { task_id: taskId } },
@@ -221,23 +224,31 @@ function pinnedAt(task: Task, pinned: boolean | undefined) {
   return pinned ? new Date().toISOString() : null;
 }
 
-/** Show a change in the drawer and in every open list before the server answers. */
+/** The Task with the change applied if it's the one changed, else the Task as it is. */
+function applyTo<T extends Task>(task: T, change: TaskChange): T {
+  return task.id === change.id ? withChange(task, change) : task;
+}
+
+/** Show a change in every drawer and list before the server answers, dropping closed trees. */
 async function showChange(queryClient: QueryClient, change: TaskChange) {
-  const detailKey = taskQuery(change.id).queryKey;
-  await queryClient.cancelQueries({ queryKey: detailKey });
+  await queryClient.cancelQueries({ queryKey: DETAIL_KEY });
   await queryClient.cancelQueries({ queryKey: OPEN_KEY });
-  queryClient.setQueryData(detailKey, (task) => task && withChange(task, change));
-  queryClient.setQueriesData<Task[]>({ queryKey: OPEN_KEY }, (tasks) =>
-    tasks?.flatMap((task) => {
-      if (task.id !== change.id) return [task];
-      const changed = withChange(task, change);
-      return isClosed(changed.status) ? [] : [changed];
-    }),
+  queryClient.setQueriesData<TaskDetail>(
+    { queryKey: DETAIL_KEY },
+    (task) =>
+      task && {
+        ...applyTo(task, change),
+        subtasks: task.subtasks.map((subtask) => applyTo(subtask, change)),
+      },
+  );
+  queryClient.setQueriesData<Task[]>(
+    { queryKey: OPEN_KEY },
+    (tasks) => tasks && openTrees(tasks.map((task) => applyTo(task, change))),
   );
 }
 
 /** Refetch everything a Task change can touch: the lists, the drawer, Activity and counts. */
-function refresh(queryClient: QueryClient) {
+export function refreshTasks(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
     queryClient.invalidateQueries(sidebarQuery),
@@ -251,7 +262,7 @@ export function useUpdateTask() {
     mutationFn: patchTask,
     onMutate: (change) => showChange(queryClient, change),
     onError: (error) => toast.error(error.message),
-    onSettled: () => refresh(queryClient),
+    onSettled: () => refreshTasks(queryClient),
   });
 }
 
@@ -267,7 +278,7 @@ export function useSetTaskStatus() {
       patchTask({ id: task.id, status }),
     onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
     onSuccess: ({ affected }, { task, status }) => {
-      toast(`${STATUS_VERB[status]} “${task.title}”`, {
+      toast(statusMessage(task.title, status, affected.length - 1), {
         action: {
           label: "Undo",
           onClick: () => {
@@ -285,7 +296,7 @@ export function useSetTaskStatus() {
       });
     },
     onError: (error) => toast.error(error.message),
-    onSettled: () => refresh(queryClient),
+    onSettled: () => refreshTasks(queryClient),
   });
 }
 
@@ -309,42 +320,5 @@ export function useCreateTask(projectId: number) {
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries(sidebarQuery),
-  });
-}
-
-/** Move a Task to another Project, where it goes first. Both lists and the sidebar refresh. */
-export function useMoveTaskToProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, projectId }: { id: number; projectId: number }) => {
-      const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
-        params: { path: { task_id: id } },
-        body: { project_id: projectId },
-      });
-      if (!data) {
-        throw new Error("Could not move the task.");
-      }
-      return data;
-    },
-    onError: (error) => toast.error(error.message),
-    onSettled: () => refresh(queryClient),
-  });
-}
-
-/** Copy a Task to right after it, as the server places it. */
-export function useDuplicateTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (taskId: number) => {
-      const { data } = await api.POST("/api/v1/tasks/{task_id}/duplicate", {
-        params: { path: { task_id: taskId } },
-      });
-      if (!data) {
-        throw new Error("Could not duplicate the task.");
-      }
-      return data;
-    },
-    onError: (error) => toast.error(error.message),
-    onSettled: () => refresh(queryClient),
   });
 }

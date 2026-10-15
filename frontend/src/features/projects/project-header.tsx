@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -5,8 +7,17 @@ import { ProjectIcon } from "./project-icon";
 import { HUE } from "./project-style";
 import type { SidebarProject } from "./projects";
 
-/** A Project's page title: its icon on a tile of its colour, its name and its open count. */
-export function ProjectHeader({ project }: { project: SidebarProject }) {
+/**
+ * A Project's page title: its icon on a tile of its colour, its name and its open count, then
+ * any page actions passed as children.
+ */
+export function ProjectHeader({
+  project,
+  children,
+}: {
+  project: SidebarProject;
+  children?: ReactNode;
+}) {
   return (
     <header className="mb-4 flex items-center gap-2.5 sm:gap-3">
       <span
@@ -23,6 +34,7 @@ export function ProjectHeader({ project }: { project: SidebarProject }) {
       <Badge variant="secondary" className="shrink-0 tabular-nums">
         {project.open_count} open
       </Badge>
+      {children}
     </header>
   );
 }

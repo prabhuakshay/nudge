@@ -20,7 +20,8 @@ import { cn } from "@/lib/utils";
 
 import { useTaskLink } from "./open-task";
 import { isClosed } from "./task-properties";
-import { useDuplicateTask, useSetTaskStatus, useUpdateTask, type Task } from "./tasks";
+import { useDuplicateTask } from "./task-placement";
+import { useSetTaskStatus, useUpdateTask, type Task } from "./tasks";
 
 type TaskAction = { label: string; icon: LucideIcon; run: () => void };
 
@@ -41,14 +42,16 @@ function useTaskActions(task: Task): TaskAction[] {
   const taskLink = useTaskLink();
   const pinned = task.pinned_at !== null;
   const wontDo = task.status === "wont_do";
-  return [
-    {
-      label: pinned ? "Unpin" : "Pin to top",
-      icon: pinned ? PinOff : Pin,
-      run: () => {
-        update({ id: task.id, pinned: !pinned });
-      },
+  const pin: TaskAction = {
+    label: pinned ? "Unpin" : "Pin to top",
+    icon: pinned ? PinOff : Pin,
+    run: () => {
+      update({ id: task.id, pinned: !pinned });
     },
+  };
+  return [
+    // Only a root can be pinned: a Subtask shows under its parent.
+    ...(task.parent_id === null ? [pin] : []),
     {
       label: wontDo ? "Reopen" : "Won't do",
       icon: Ban,

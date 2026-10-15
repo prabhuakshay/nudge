@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
@@ -14,6 +14,7 @@ import { cn } from "@/lib/utils";
 import { ActivityFeed } from "./activity-feed";
 import { Attachments } from "./attachments";
 import { PropertyChips } from "./property-chips";
+import { SubtaskSection } from "./subtask-section";
 import { TaskActionsMenu } from "./task-actions";
 import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
@@ -158,10 +159,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-1 border-b border-border px-3 sm:px-4">
-        <p className="flex min-w-0 flex-1 items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-          <ProjectIcon project={taskProject} className="size-3.5" />
-          <span className="truncate">{taskProject.name}</span>
-        </p>
+        <Breadcrumb task={task} project={taskProject} onOpen={onOpen} />
         <HeaderButton
           label="Previous task"
           shortcut="K"
@@ -231,6 +229,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
                 <DescriptionField task={task} />
               </div>
             </section>
+            <SubtaskSection task={task} onOpen={onOpen} />
             <Attachments taskId={task.id} />
           </TabsContent>
 
@@ -240,6 +239,43 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
         </Tabs>
       </div>
     </div>
+  );
+}
+
+/** Where the Task lives: its Project, then each parent from the root down, each one a link. */
+function Breadcrumb({
+  task,
+  project,
+  onOpen,
+}: {
+  task: Task;
+  project: SidebarProject;
+  onOpen: (taskId: number) => void;
+}) {
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="flex min-w-0 flex-1 items-center gap-1 text-xs text-muted-foreground"
+    >
+      <span className="flex shrink-0 items-center gap-1.5 font-semibold">
+        <ProjectIcon project={project} className="size-3.5" />
+        {project.name}
+      </span>
+      {task.ancestors.map((ancestor) => (
+        <span key={ancestor.id} className="flex min-w-0 items-center gap-1">
+          <ChevronRight className="size-3 shrink-0 opacity-60" aria-hidden />
+          <button
+            type="button"
+            onClick={() => {
+              onOpen(ancestor.id);
+            }}
+            className="truncate rounded px-1 py-0.5 hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            {ancestor.title}
+          </button>
+        </span>
+      ))}
+    </nav>
   );
 }
 

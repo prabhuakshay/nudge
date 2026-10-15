@@ -40,7 +40,7 @@ export function NotificationCenter() {
       <PopoverContent
         align="end"
         aria-label="Notifications"
-        className="flex max-h-[min(32rem,calc(100dvh-5rem))] w-[min(22rem,calc(100vw-1rem))] flex-col"
+        className="flex max-h-[min(32rem,calc(100dvh-5rem))] w-[calc(100vw-1rem)] flex-col sm:w-[22rem]"
       >
         <NotificationPanel
           onOpenNotification={() => {

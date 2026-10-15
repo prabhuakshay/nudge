@@ -20,7 +20,7 @@ from apps.tasks import repeat, services
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Project, Tag, Task, TaskActivity
 from apps.tasks.pagination import Page, newest_first
-from apps.tasks.rows import as_rows
+from apps.tasks.rows import as_rows, unpinned
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -322,12 +322,12 @@ def _tagged(tag: Tag) -> QuerySet[Task]:
 
 
 def open_tasks(tag: Tag) -> QuerySet[Task]:
-    """Return the Tag's open and Blocked Tasks, Subtasks too, flat and in manual order.
+    """Return the Tag's open and Blocked Tasks, Subtasks too, flat: Pinned first, then manual order.
 
     Tasks in archived Projects are left out. A Subtask shows whatever its parent's Status, so the
     list says which Task it belongs to with its parent's title.
     """
-    return _tagged(tag).filter(status__in=OPEN_STATUSES)
+    return _tagged(tag).filter(status__in=OPEN_STATUSES).order_by(unpinned(), "position", "id")
 
 
 def closed_tasks(tag: Tag, cursor: str | None = None) -> Page[Task]:

@@ -18,7 +18,7 @@ from apps.accounts.services import local_zone
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Task
 from apps.tasks.pagination import Page, newest_first
-from apps.tasks.rows import as_rows, local_now
+from apps.tasks.rows import as_rows, local_now, unpinned
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -48,9 +48,9 @@ def _dated(user: User, view: View, today: date) -> QuerySet[Task]:
 def view_tasks(user: User, view: View) -> QuerySet[Task]:
     """Return the user's open Tasks in the view, in the order the view lists them.
 
-    Overdue Tasks come first, oldest first. Then Tasks go day by day, a range on the day it
-    starts or today if it already has. Within a day, timed Tasks come first by time, then all-day
-    Tasks by Priority, then manual order.
+    Pinned Tasks come first, then Overdue Tasks, oldest first. Then Tasks go day by day, a range
+    on the day it starts or today if it already has. Within a day, timed Tasks come first by time,
+    then all-day Tasks by Priority, then manual order.
     """
     today = local_now(user).date()
     starts = Coalesce("start_date", "due_date")
@@ -69,6 +69,7 @@ def view_tasks(user: User, view: View) -> QuerySet[Task]:
             ),
         )
         .order_by(
+            unpinned(),
             F("is_overdue").desc(),
             "day",
             F("clock").asc(nulls_last=True),

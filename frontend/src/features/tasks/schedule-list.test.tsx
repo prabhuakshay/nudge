@@ -89,6 +89,27 @@ describe("ScheduleList", () => {
     expect(within(subtask as HTMLElement).getByText("Move house")).toBeInTheDocument();
   });
 
+  it("shows Pinned Tasks in their own group first", async () => {
+    mockApi({
+      open: [
+        task({
+          id: 1,
+          title: "Pay rent",
+          due_date: "2026-10-15",
+          pinned_at: "2026-10-01T09:00:00Z",
+        }),
+        task({ id: 2, title: "Buy milk", due_date: "2026-10-15" }),
+      ],
+    });
+
+    renderView("today");
+
+    expect(await screen.findByText("Pay rent")).toBeInTheDocument();
+    expect(titlesIn("Pinned")).toEqual(["Pay rent"]);
+    expect(titlesIn("Today")).toEqual(["Buy milk"]);
+    expect(screen.getAllByRole("region")[0]).toHaveAccessibleName("Pinned");
+  });
+
   it("keeps the Tasks closed today folded away until asked", async () => {
     const fetchSpy = mockApi({
       closed: [task({ id: 4, title: "Call mum", status: "completed", due_date: "2026-10-15" })],
@@ -156,6 +177,7 @@ describe("ScheduleList", () => {
     expect(titlesIn("Tomorrow")).toEqual(["Dentist"]);
     expect(titlesIn("Sunday")).toEqual(["Hike"]);
     expect(titlesIn("November")).toEqual(["Renew passport"]);
+    expect(screen.queryByRole("region", { name: "Pinned" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Closed/ })).not.toBeInTheDocument();
   });
 });

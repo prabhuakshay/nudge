@@ -85,6 +85,20 @@ describe("A Tag's list", () => {
     expect(lists).toContain(`?tag=${String(WORK_TAG.id)}`);
   });
 
+  it("shows Pinned Tasks in their own group before the Projects", async () => {
+    mockApi([
+      makeTask({ id: 1, title: "Report", project_id: WORK.id }),
+      makeTask({ id: 2, title: "Email", project_id: WORK.id, pinned_at: "2026-10-01T09:00:00Z" }),
+    ]);
+
+    renderTagList();
+
+    expect(await screen.findByText("Email")).toBeInTheDocument();
+    expect(rowsIn("Pinned")).toEqual(["Email"]);
+    expect(rowsIn("Work")).toEqual(["Report"]);
+    expect(screen.getAllByRole("region")[0]).toHaveAccessibleName("Pinned");
+  });
+
   it("shows a Subtask flat, with its parent's title", async () => {
     mockApi([
       makeTask({ id: 3, title: "Write the post", parent_id: 1, parent_title: "Launch", depth: 1 }),

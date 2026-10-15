@@ -23,7 +23,7 @@ from apps.tasks.models import (
     TaskMention,
 )
 from apps.tasks.pagination import Page, newest_first
-from apps.tasks.rows import as_rows
+from apps.tasks.rows import as_rows, unpinned
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -153,8 +153,9 @@ def _mentioning(found: Person) -> QuerySet[Task]:
 
 
 def open_tasks(found: Person) -> QuerySet[Task]:
-    """Return the open and Blocked Tasks that mention the Person, in each Project's manual order."""
-    return _mentioning(found).filter(status__in=OPEN_STATUSES)
+    """Return the open and Blocked Tasks that mention the Person, Pinned first, else in order."""
+    open_tasks = _mentioning(found).filter(status__in=OPEN_STATUSES)
+    return open_tasks.order_by(unpinned(), "position", "id")
 
 
 def closed_tasks(found: Person, cursor: str | None = None) -> Page[Task]:

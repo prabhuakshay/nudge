@@ -12,7 +12,7 @@ import type { QuickAddView } from "./quick-add-view";
 import { useRowContext } from "./row-context";
 import { SelectionBar } from "./selection-bar";
 import { TaskDetail } from "./task-detail";
-import { ClosedGroup, Group, TaskTableHeader } from "./task-list";
+import { ClosedGroup, Group, PinnedGroup, TaskTableHeader } from "./task-groups";
 import { TreeRows } from "./task-row";
 import { flatRows } from "./task-tree";
 import { closedPagesQuery, sidebarQuery, type ListSource, type Task } from "./tasks";
@@ -23,7 +23,8 @@ const ignoreFold = () => undefined;
 
 /**
  * A list of Tasks across Projects, as a Tag or a Person shows them: the page header, Quick add,
- * the open Tasks grouped by Project in sidebar order, then a collapsed Closed group. Rows are
+ * the Pinned Tasks, the other open Tasks grouped by Project in sidebar order, then a collapsed
+ * Closed group. Rows are
  * flat, a Subtask naming its parent under its title. Clicking a row opens the Task in the drawer,
  * and the URL's `?task=` follows it.
  */
@@ -54,11 +55,14 @@ export function FlatTaskTable({
     () => (showClosed ? (closed.data?.pages.flatMap((page) => page.items) ?? []) : []),
     [showClosed, closed.data],
   );
-  const groups = useMemo(
-    () => (sidebar ? groupByProject(open, allProjects(sidebar)) : []),
-    [open, sidebar],
+  const pinned = useMemo(() => open.filter((task) => task.pinned_at !== null), [open]);
+  const groups = useMemo(() => {
+    const unpinned = open.filter((task) => task.pinned_at === null);
+    return sidebar ? groupByProject(unpinned, allProjects(sidebar)) : [];
+  }, [open, sidebar]);
+  const order = [...pinned, ...groups.flatMap((group) => group.tasks), ...closedTasks].map(
+    (task) => task.id,
   );
-  const order = [...groups.flatMap((group) => group.tasks), ...closedTasks].map((task) => task.id);
   const { openTaskId, setOpenTask } = useOpenTask();
   const context = useRowContext({ collapsed: NONE_FOLDED, onToggleCollapsed: ignoreFold });
 
@@ -76,7 +80,12 @@ export function FlatTaskTable({
       >
         <TaskTableHeader />
 
-        {groups.length === 0 ? (
+        {pinned.length > 0 && (
+          <PinnedGroup count={pinned.length}>
+            <TreeRows rows={flatRows(pinned)} context={context} />
+          </PinnedGroup>
+        )}
+        {groups.length === 0 && pinned.length === 0 ? (
           <Group
             icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
             label="Tasks"

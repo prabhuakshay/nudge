@@ -65,6 +65,12 @@ Backend commands outside Docker need `NUDGE_DEBUG=true` (or a `NUDGE_SECRET_KEY`
   - `schemas.py`: Ninja request/response schemas (`...In`, `...Out`).
   - `api.py`: thin HTTP layer exposing `router`, registered in `config/api.py`.
   - `tests/`: pytest, one file per module under test.
+- An app that outgrows one file per layer turns it into a package: `apps/tasks` has `models/`,
+  `schemas/` and `api/` (one module per model group, schema group or router; import from the
+  submodules, no re-exports) and one service module per feature beside `services.py`, such as
+  `creation.py`, `projects.py`, `tags.py`, `tree.py`, `trash.py` and `repeat.py`.
+- `apps/core/`: what every app shares: `ErrorOut`, `signed_in_user` (`auth.py`) and
+  `DomainRuleError` (`errors.py`), which the API answers with 422, so endpoints don't catch it.
 - `apps/tasks/` holds Tasks, Projects, Folders, Tags, People, Comments, Attachments, Activity and
   Reminders, with one router file per resource. Reminder delivery lives in `apps/notifications/`.
 - Return explicit status codes with `ninja.Status(code, body)`; errors use `ErrorOut`.

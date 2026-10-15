@@ -1,7 +1,7 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
 import { toast } from "sonner";
-import { afterEach } from "vitest";
+import { afterAll, afterEach } from "vitest";
 
 // jsdom has no pointer capture, which sonner and Radix call on pointer down.
 Element.prototype.setPointerCapture = () => undefined;
@@ -41,3 +41,11 @@ afterEach(() => {
   // Toasts live in sonner's module state, which a new Toaster replays; start each test without any.
   toast.dismiss();
 });
+
+/** The longest timer a component leaves running as it closes or unmounts: vaul's drawer close. */
+const LONGEST_UI_TIMER_MS = 500;
+
+// Unmounting leaves timers running: Radix hands focus back, sonner removes toasts, dnd-kit detaches
+// its listeners and vaul finishes closing a drawer. After a file's last test they would fire once
+// the environment is torn down and fail with "window is not defined", so let them run first.
+afterAll(() => new Promise((resolve) => setTimeout(resolve, LONGEST_UI_TIMER_MS + 100)));

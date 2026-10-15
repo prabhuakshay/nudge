@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.test import Client
 
-from apps.tasks import services
+from apps.tasks import creation, services
 from apps.tasks.models import TaskActivity
 
 if TYPE_CHECKING:
@@ -30,7 +30,7 @@ def test_activity_requires_a_session() -> None:
 
 @pytest.mark.django_db
 def test_a_new_task_has_a_created_event(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
 
     response = client.get(f"/api/v1/tasks/{task.pk}/activity")
 
@@ -46,7 +46,7 @@ def test_a_new_task_has_a_created_event(client: Client, ada: User) -> None:
 
 @pytest.mark.django_db
 def test_renaming_records_the_old_and_new_title(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
 
     client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -64,7 +64,7 @@ def test_editing_the_description_records_that_it_changed_but_not_how(
     client: Client,
     ada: User,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
 
     client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -79,7 +79,7 @@ def test_editing_the_description_records_that_it_changed_but_not_how(
 
 @pytest.mark.django_db
 def test_saving_unchanged_text_records_nothing(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
 
     client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -92,7 +92,7 @@ def test_saving_unchanged_text_records_nothing(client: Client, ada: User) -> Non
 
 @pytest.mark.django_db
 def test_events_come_newest_first_in_pages_of_fifty(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Title 0")
+    task = creation.create_task(services.inbox(ada), "Title 0")
     for number in range(1, 55):
         services.update_task(ada, task.pk, services.TaskEdit(title=f"Title {number}"))
     start = datetime(2026, 10, 1, 9, tzinfo=UTC)
@@ -112,7 +112,7 @@ def test_events_come_newest_first_in_pages_of_fifty(client: Client, ada: User) -
 
 @pytest.mark.django_db
 def test_activity_rejects_a_malformed_cursor(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
 
     response = client.get(f"/api/v1/tasks/{task.pk}/activity?cursor=nonsense")
 
@@ -121,7 +121,7 @@ def test_activity_rejects_a_malformed_cursor(client: Client, ada: User) -> None:
 
 @pytest.mark.django_db
 def test_activity_of_another_users_task_is_not_found(client: Client, grace: User) -> None:
-    task = services.create_task(services.inbox(grace), "Private")
+    task = creation.create_task(services.inbox(grace), "Private")
 
     response = client.get(f"/api/v1/tasks/{task.pk}/activity")
 
@@ -130,7 +130,7 @@ def test_activity_of_another_users_task_is_not_found(client: Client, grace: User
 
 @pytest.mark.django_db
 def test_activity_of_a_trashed_task_is_not_found(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Gone")
+    task = creation.create_task(services.inbox(ada), "Gone")
     task.deleted_at = datetime(2026, 10, 1, tzinfo=UTC)
     task.save()
 
@@ -141,7 +141,7 @@ def test_activity_of_a_trashed_task_is_not_found(client: Client, ada: User) -> N
 
 @pytest.mark.django_db
 def test_blocking_records_the_status_change_with_its_reason(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
 
     client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -163,7 +163,7 @@ def test_blocking_records_the_status_change_with_its_reason(client: Client, ada:
 
 @pytest.mark.django_db
 def test_closing_records_the_status_change(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
 
     client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -188,7 +188,7 @@ def test_changing_the_priority_records_the_old_and_new_priority(
     client: Client,
     ada: User,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
 
     client.patch(f"/api/v1/tasks/{task.pk}", {"priority": 2}, content_type="application/json")
     client.patch(f"/api/v1/tasks/{task.pk}", {"priority": 2}, content_type="application/json")
@@ -200,7 +200,7 @@ def test_changing_the_priority_records_the_old_and_new_priority(
 
 @pytest.mark.django_db
 def test_pinning_and_unpinning_are_recorded_once_each(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Pay rent")
+    task = creation.create_task(services.inbox(ada), "Pay rent")
 
     for pinned in (True, True, False):
         client.patch(
@@ -216,7 +216,7 @@ def test_pinning_and_unpinning_are_recorded_once_each(client: Client, ada: User)
 
 @pytest.mark.django_db
 def test_a_duplicate_starts_its_own_history_with_created(client: Client, ada: User) -> None:
-    original = services.create_task(services.inbox(ada), "Plan the trip")
+    original = creation.create_task(services.inbox(ada), "Plan the trip")
     services.update_task(ada, original.pk, services.TaskEdit(title="Plan the holiday"))
 
     copy = client.post(f"/api/v1/tasks/{original.pk}/duplicate").json()

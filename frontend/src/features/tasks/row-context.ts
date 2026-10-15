@@ -7,7 +7,7 @@ import { useRowKeyDown } from "./row-keys";
 import { NO_SELECTION, selectRange, toggleSelected } from "./selection";
 import { isClosed } from "./task-properties";
 import type { RowContext, SelectTask, ToggleCollapsed, ToggleStatus } from "./task-row";
-import { useSetTaskStatus } from "./tasks";
+import { useSetTaskStatus } from "./set-status";
 
 /** How far each level of Subtasks steps in, in pixels; nesting eats width, so less on phones. */
 const INDENT = 22;

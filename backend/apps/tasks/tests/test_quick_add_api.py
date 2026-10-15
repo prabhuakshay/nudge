@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import services, tags
+from apps.tasks import creation, services, tags
 
 if TYPE_CHECKING:
     from django.test import Client
@@ -45,7 +45,7 @@ def test_create_refuses_an_unknown_priority(client: Client, ada: User) -> None:
 
 @pytest.mark.django_db
 def test_a_subtask_gets_its_priority_and_tags(client: Client, ada: User) -> None:
-    parent = services.create_task(services.inbox(ada), "Plan the trip")
+    parent = creation.create_task(services.inbox(ada), "Plan the trip")
     work = tags.create_tag(ada, "work")
 
     response = _post(
@@ -72,7 +72,7 @@ def test_a_subtask_cannot_use_another_users_tag(
     ada: User,
     grace: User,
 ) -> None:
-    parent = services.create_task(services.inbox(ada), "Plan the trip")
+    parent = creation.create_task(services.inbox(ada), "Plan the trip")
     graces = tags.create_tag(grace, "hers")
 
     response = _post(
@@ -126,7 +126,7 @@ def test_create_refuses_an_unreadable_repeat(client: Client, ada: User) -> None:
 
 @pytest.mark.django_db
 def test_a_subtask_gets_its_dates(client: Client, ada: User) -> None:
-    parent = services.create_task(services.inbox(ada), "Plan the trip")
+    parent = creation.create_task(services.inbox(ada), "Plan the trip")
 
     response = _post(
         client,
@@ -139,7 +139,7 @@ def test_a_subtask_gets_its_dates(client: Client, ada: User) -> None:
 
 @pytest.mark.django_db
 def test_a_subtask_cannot_repeat(client: Client, ada: User) -> None:
-    parent = services.create_task(services.inbox(ada), "Plan the trip")
+    parent = creation.create_task(services.inbox(ada), "Plan the trip")
 
     response = _post(
         client,

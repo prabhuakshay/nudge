@@ -28,7 +28,7 @@ environ.Env.read_env(REPO_ROOT / ".env")
 
 DEBUG = env.bool("NUDGE_DEBUG", default=False)
 
-_INSECURE_DEV_SECRET_KEY = "django-insecure-dev-only-never-use-in-production"  # noqa: S105
+_INSECURE_DEV_SECRET_KEY = "django-insecure-dev-only-never-use-in-production"  # noqa: S105 - only the default with DEBUG on
 SECRET_KEY = env.str(
     "NUDGE_SECRET_KEY",
     default=_INSECURE_DEV_SECRET_KEY if DEBUG else environ.Env.NOTSET,

@@ -11,9 +11,7 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 
 import { remindersAfter } from "./reminders";
-import { advances } from "./repeat";
 import type { ScheduleView } from "./schedule";
-import { offerStatusUndo } from "./status-undo";
 import { openTrees } from "./task-tree";
 
 export type Task = components["schemas"]["TaskOut"];
@@ -63,8 +61,9 @@ export function openTasksQuery(projectId: number) {
   });
 }
 
-/** Where a list's Tasks come from: a Project, a Tag, or a view that picks them by date. */
-type ListSource = { project: number } | { tag: number } | { view: ScheduleView };
+/** Where a list's Tasks come from: a Project, Tag or Person, or a view that picks them by date. */
+export type ListSource =
+  { project: number } | { tag: number } | { person: number } | { view: ScheduleView };
 
 /**
  * A view's open Tasks as flat rows, in the order the view lists them: Today has Overdue first,
@@ -104,6 +103,7 @@ export function closedPagesQuery(source: ListSource) {
       }
       return data;
     },
+    // Widened so later pages' cursors, which are strings, fit the same parameter.
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.next_cursor,
   });
@@ -138,6 +138,7 @@ export function taskActivityQuery(taskId: number) {
       }
       return data;
     },
+    // Widened so later pages' cursors, which are strings, fit the same parameter.
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.next_cursor,
   });
@@ -215,19 +216,20 @@ export function useDeleteAttachment(taskId: number) {
 /** A Task's dates as the API takes them; null removes them all. */
 export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
 
+type Editable = "title" | "description" | "status" | "priority" | "blocked_reason";
+
 /**
- * A change to a Task: the fields to set, which are all left as they are when absent. `dates`
+ * A PATCH to a Task: the fields to set, which are all left as they are when absent. `dates`
  * replaces all four date fields at once, and removing them removes the Reminders. `reminders`
  * replaces the Reminders, as offsets in minutes, and `tags` all of its Tags.
  */
-type Editable = "title" | "description" | "status" | "priority" | "blocked_reason";
-export type TaskChange = { id: number; pinned?: boolean } & Partial<
+export type TaskPatch = { id: number; pinned?: boolean } & Partial<
   Pick<TaskDetail, Editable | "tags" | "repeat_rule" | "repeat_from">
 > & { dates?: DatesIn; reminders?: number[] };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
-async function patchTask({ id, tags, ...change }: TaskChange) {
+export async function patchTask({ id, tags, ...change }: TaskPatch) {
   const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
     params: { path: { task_id: id } },
     body: { ...change, ...(tags && { tag_ids: tags.map((tag) => tag.id) }) },
@@ -241,7 +243,7 @@ async function patchTask({ id, tags, ...change }: TaskChange) {
 /** The Task as the server will return it after the change, for showing the change straight away. */
 function withChange<T extends Task>(
   task: T,
-  { pinned, dates, reminders, ...change }: TaskChange,
+  { pinned, dates, reminders, ...change }: TaskPatch,
 ): T {
   const leavesStatus = change.status !== undefined && change.status !== task.status;
   return {
@@ -265,12 +267,12 @@ function pinnedAt(task: Task, pinned: boolean | undefined) {
 }
 
 /** The Task with the change applied if it's the one changed, else the Task as it is. */
-function applyTo<T extends Task>(task: T, change: TaskChange): T {
+function applyTo<T extends Task>(task: T, change: TaskPatch): T {
   return task.id === change.id ? withChange(task, change) : task;
 }
 
 /** Show a change in every drawer and list before the server answers, dropping closed trees. */
-async function showChange(queryClient: QueryClient, change: TaskChange) {
+export async function showChange(queryClient: QueryClient, change: TaskPatch) {
   await queryClient.cancelQueries({ queryKey: DETAIL_KEY });
   await queryClient.cancelQueries({ queryKey: OPEN_KEY });
   queryClient.setQueriesData<TaskDetail>(
@@ -301,24 +303,6 @@ export function useUpdateTask() {
   return useMutation({
     mutationFn: patchTask,
     onMutate: (change) => showChange(queryClient, change),
-    onError: (error) => toast.error(error.message),
-    onSettled: () => refreshTasks(queryClient),
-  });
-}
-
-/** Set a Task's Status, then offer Undo in a toast. */
-export function useSetTaskStatus() {
-  const queryClient = useQueryClient();
-  const { mutate: update } = useUpdateTask();
-  return useMutation({
-    mutationFn: ({ task, status }: { task: Task; status: TaskStatus }) =>
-      patchTask({ id: task.id, status }),
-    // A repeating Task moves on rather than closing, so it stays where it is until the server says.
-    onMutate: ({ task, status }) =>
-      advances(task, status) ? undefined : showChange(queryClient, { id: task.id, status }),
-    onSuccess: ({ task, affected }, { status }) => {
-      offerStatusUndo(update, task, status, affected);
-    },
     onError: (error) => toast.error(error.message),
     onSettled: () => refreshTasks(queryClient),
   });

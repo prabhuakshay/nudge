@@ -9,7 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.utils import timezone
 
-from apps.tasks import attachments, projects, services
+from apps.tasks import attachments, creation, projects, services
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import Project, Task
 
@@ -42,7 +42,7 @@ def media_root(settings: Settings, tmp_path: Path) -> Path:
 def archived(ada: User) -> Project:
     """An archived Project of Ada's holding one Task."""
     project = projects.create_project(ada, "Garden")
-    services.create_task(project, "Plant bulbs")
+    creation.create_task(project, "Plant bulbs")
     projects.archive_project(ada, project.pk)
     project.refresh_from_db()
     return project
@@ -119,7 +119,7 @@ def test_sidebar_lists_archived_projects_by_name_apart_from_the_rest(
     work = projects.create_project(ada, "work")
     garden = projects.create_project(ada, "Garden", folder=folder)
     projects.create_project(ada, "Books")
-    services.create_task(garden, "Plant bulbs")
+    creation.create_task(garden, "Plant bulbs")
     projects.archive_project(ada, work.pk)
     projects.archive_project(ada, garden.pk)
 
@@ -230,7 +230,7 @@ def test_moving_a_task_into_an_archived_project_is_refused(
     ada: User,
     archived: Project,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Buy seeds")
+    task = creation.create_task(services.inbox(ada), "Buy seeds")
 
     response = _patch(client, f"/api/v1/tasks/{task.pk}", {"project_id": archived.pk})
 
@@ -265,7 +265,7 @@ def test_deleting_a_file_from_a_task_in_an_archived_project_is_refused(
     ada: User,
 ) -> None:
     project = projects.create_project(ada, "Garden")
-    task = services.create_task(project, "Plant bulbs")
+    task = creation.create_task(project, "Plant bulbs")
     attachment = attachments.attach_file(task, SimpleUploadedFile("plan.txt", b"rows"))
     projects.archive_project(ada, project.pk)
 
@@ -306,8 +306,8 @@ def test_an_unarchived_projects_tasks_can_be_changed_again(
 
 @pytest.mark.django_db
 def test_active_tasks_leave_out_archived_and_trashed_ones(ada: User, archived: Project) -> None:
-    kept = services.create_task(services.inbox(ada), "Buy milk")
-    trashed = services.create_task(services.inbox(ada), "Old")
+    kept = creation.create_task(services.inbox(ada), "Buy milk")
+    trashed = creation.create_task(services.inbox(ada), "Old")
     Task.objects.filter(pk=trashed.pk).update(deleted_at=timezone.now())
 
     assert [task.pk for task in active_tasks(ada)] == [kept.pk]

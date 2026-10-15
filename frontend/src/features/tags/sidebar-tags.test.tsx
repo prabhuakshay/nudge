@@ -6,6 +6,7 @@ import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import type { Sidebar } from "@/features/tasks/tasks";
 import { INBOX } from "@/test/drawer";
+import { requestOf } from "@/test/fetch";
 
 import { SidebarTags } from "./sidebar-tags";
 
@@ -32,6 +33,7 @@ const SIDEBAR: Sidebar = {
   items: [],
   archived: [],
   tags: [WORK_TAG, HOME_TAG],
+  people: [],
   today_count: 0,
   upcoming_count: 0,
 };
@@ -48,7 +50,7 @@ function json(body: unknown, status = 200) {
 /** A stand-in server: the sidebar for reads, and an echo of every write. */
 function mockApi(sidebar: Sidebar = SIDEBAR) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     if (request.method === "GET") return json(sidebar);
     if (request.method === "DELETE" || /\/(move|merge)$/.test(request.url)) return json(null, 204);
     const body = (await request.clone().json()) as object;
@@ -58,7 +60,7 @@ function mockApi(sidebar: Sidebar = SIDEBAR) {
 
 async function writes(fetchSpy: ReturnType<typeof mockApi>) {
   const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET");
   return Promise.all(
     requests.map(async (request) => {

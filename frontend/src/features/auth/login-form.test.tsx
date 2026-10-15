@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
+import { requestOf } from "@/test/fetch";
 import { LoginForm } from "./login-form";
 
 function renderWithQueryClient(ui: ReactNode) {
@@ -44,7 +45,7 @@ describe("LoginForm", () => {
     await vi.waitFor(() => {
       expect(onSuccess).toHaveBeenCalledWith(ada, expect.anything(), undefined, expect.anything());
     });
-    const request = fetchSpy.mock.calls[0]?.[0] as Request;
+    const request = requestOf(fetchSpy.mock.calls[0]?.[0]);
     expect(request.url).toMatch(/\/api\/v1\/auth\/login$/);
     expect(await request.json()).toEqual({ email: "ada@example.com", password: "correct-horse" });
   });

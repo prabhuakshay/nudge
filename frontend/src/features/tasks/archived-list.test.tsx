@@ -1,6 +1,7 @@
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 
 import { GARDEN, mockApi, renderList, task } from "@/test/drawer";
+import { requestOf } from "@/test/fetch";
 
 const BULBS = { ...task({ id: 1, title: "Plant bulbs", project_id: GARDEN.id }), description: "" };
 
@@ -53,7 +54,7 @@ describe("An archived Project's list", () => {
 
     await waitFor(() => {
       const posts = fetchSpy.mock.calls
-        .map(([input]) => input as Request)
+        .map(([input]) => requestOf(input))
         .filter((request) => request.method === "POST")
         .map((request) => new URL(request.url).pathname);
       expect(posts).toEqual(["/api/v1/projects/9/unarchive"]);

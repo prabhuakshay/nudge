@@ -8,14 +8,14 @@ How a change spreads through a Task's Subtask tree lives in `apps.tasks.tree`.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass, replace
+from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
-from fractional_indexing import generate_key_between
 
+from apps.core.errors import DomainRuleError
 from apps.core.palette import PaletteColor
 from apps.tasks import reminders, repeat
 from apps.tasks.archive import ensure_writable
@@ -24,20 +24,21 @@ from apps.tasks.mentions import TEXT_FIELDS, check_mentions, sync_mentions
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
-    MAX_DEPTH,
     OPEN_STATUSES,
     Project,
+    Tag,
     Task,
     TaskActivity,
 )
 from apps.tasks.pagination import Page, newest_first
+from apps.tasks.positions import first_root_position
 from apps.tasks.rows import as_rows, with_counts, with_overdue
+from apps.tasks.tags import retag
 from apps.tasks.tree import (
     AffectedTask,
     cascade_status,
     move_tree,
     moved_event,
-    reopen_ancestors,
     root_status_in,
     rows_below,
 )
@@ -50,7 +51,7 @@ if TYPE_CHECKING:
     from apps.accounts.models import User
 
 
-class TaskRuleError(Exception):
+class TaskRuleError(DomainRuleError):
     """A change that would break a Task rule. The message says which, in the user's words."""
 
 
@@ -59,7 +60,7 @@ class TaskEdit:
     """The fields of a Task to change; a field left as None stays as it is.
 
     `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them, and the
-    Reminders with them. `reminders` replaces the Reminders, as offsets.
+    Reminders with them. `reminders` replaces the Reminders, as offsets, and `tags` the Tags.
     """
 
     title: str | None = None
@@ -73,6 +74,7 @@ class TaskEdit:
     project: Project | None = None
     repeat_rule: str | None = None
     repeat_from: Task.RepeatFrom | None = None
+    tags: list[Tag] | None = None
 
 
 @dataclass(frozen=True)
@@ -136,119 +138,6 @@ def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
     return Page(items=rows, next_cursor=page.next_cursor)
 
 
-def _first_position(project: Project) -> str:
-    """Return a key before every root Task in the Project. Call it inside a transaction."""
-    # Locking the Project serialises inserts into it, so two Tasks never get the same key.
-    Project.objects.select_for_update().get(pk=project.pk)
-    roots = project.tasks.filter(parent__isnull=True).order_by("position", "id")
-    first = roots.values_list("position", flat=True).first()
-    return str(generate_key_between(None, first))
-
-
-def create_task(
-    project: Project,
-    title: str,
-    dates: TaskDates | None = None,
-    *,
-    priority: Task.Priority = Task.Priority.NONE,
-) -> Task:
-    """Create a Task in the Project, first among its roots, owned by the Project's owner.
-
-    Raises:
-        ArchivedProjectError: The Project is archived.
-        MentionError: The title mentions a Person the owner doesn't have.
-    """
-    ensure_writable(project)
-    check_mentions(project.owner, title)
-    with transaction.atomic():
-        task = Task.objects.create(
-            owner_id=project.owner_id,
-            project=project,
-            title=title,
-            priority=priority,
-            position=_first_position(project),
-            **asdict(dates or TaskDates()),
-        )
-        TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
-        sync_mentions(task)
-    return with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)
-
-
-def create_subtask(
-    parent: Task,
-    title: str,
-    dates: TaskDates | None = None,
-    *,
-    priority: Task.Priority = Task.Priority.NONE,
-) -> TaskChange:
-    """Create a Subtask last under the parent, in the parent's Project.
-
-    A Closed Task can't hold open work, so adding under one reopens it and its Closed ancestors.
-
-    Raises:
-        TaskRuleError: The parent is already at the deepest level.
-        ArchivedProjectError: The parent is in an archived Project.
-        MentionError: The title mentions a Person the owner doesn't have.
-    """
-    ensure_writable(parent.project)
-    if parent.depth >= MAX_DEPTH:
-        message = "Tasks can only nest four levels deep."
-        raise TaskRuleError(message)
-    check_mentions(parent.owner, title)
-    with transaction.atomic():
-        Project.objects.select_for_update().get(pk=parent.project_id)
-        siblings = parent.subtasks.order_by("-position", "-id")
-        last = siblings.values_list("position", flat=True).first()
-        task = Task.objects.create(
-            owner_id=parent.owner_id,
-            project_id=parent.project_id,
-            parent=parent,
-            title=title,
-            priority=priority,
-            position=str(generate_key_between(last, None)),
-            **asdict(dates or TaskDates()),
-        )
-        TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
-        sync_mentions(task)
-        affected = reopen_ancestors(task)
-    fresh = as_rows(Task.objects.filter(pk=task.pk), parent.owner).get()
-    return TaskChange(task=fresh, affected=affected)
-
-
-def duplicate_task(user: User, task_id: int) -> Task | None:
-    """Copy one of the user's Tasks to right after it; return None if it isn't theirs.
-
-    The copy is a fresh open Task with the original's title, Description and Priority, under the
-    same parent. Being open, it reopens any Closed ancestors.
-
-    Raises:
-        ArchivedProjectError: The Task is in an archived Project.
-    """
-    original = live_task(user, task_id)
-    if original is None:
-        return None
-    ensure_writable(original.project)
-    with transaction.atomic():
-        # Locking the Project serialises inserts into it, so two Tasks never get the same key.
-        Project.objects.select_for_update().get(pk=original.project_id)
-        siblings = original.project.tasks.filter(parent_id=original.parent_id)
-        later = siblings.filter(position__gt=original.position).order_by("position")
-        following = later.values_list("position", flat=True).first()
-        task = Task.objects.create(
-            owner=user,
-            project_id=original.project_id,
-            parent_id=original.parent_id,
-            title=original.title,
-            description=original.description,
-            priority=original.priority,
-            position=str(generate_key_between(original.position, following)),
-        )
-        TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
-        sync_mentions(task)
-        reopen_ancestors(task)
-    return as_rows(user.tasks.filter(pk=task.pk), user).get()
-
-
 def live_task(user: User, task_id: int) -> Task | None:
     """Return one of the user's Tasks that isn't in Trash, or None."""
     tasks = with_counts(user.tasks.filter(pk=task_id, deleted_at__isnull=True))
@@ -282,7 +171,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
 
     Moving it to another of the user's Projects puts it first among the roots there, with its
     Subtasks under it; a Subtask moved out becomes a root, since Subtasks share their root's
-    Project.
+    Project. Each Tag put on or taken off is logged in Activity.
 
     Raises:
         TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked, or pins a
@@ -311,7 +200,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     cascaded: list[AffectedTask] = []
     target = edit.project if edit.project and edit.project.pk != task.project_id else None
     with transaction.atomic():
-        moved = [] if target is None else move_tree(task, target, _first_position(target))
+        moved = [] if target is None else move_tree(task, target, first_root_position(target))
         if changed or moved:
             task.save(update_fields=[*changed, *moved, "updated_at"])
             sync_mentions(task)
@@ -326,6 +215,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
             events.append(moved_event(task, from_project, from_parent))
         asked = edit.repeat_rule is not None or edit.repeat_from is not None
         events.extend(filter(None, [repeat.edit_event(task, repeat_before, asked=asked)]))
+        events.extend([] if edit.tags is None else retag(task, edit.tags))
         TaskActivity.objects.bulk_create(events)
         reminders.replace(task, edit.reminders, dates_before)
         if step is not None:

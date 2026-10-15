@@ -6,6 +6,7 @@ import { NotificationCenter } from "./notification-center";
 import type { Notification } from "./notifications";
 
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 const push = vi.fn();
 vi.mock("@tanstack/react-router", () => ({ useRouter: () => ({ history: { push } }) }));
@@ -25,7 +26,7 @@ function notification(overrides: Partial<Notification>): Notification {
 
 function mockApi(items: Notification[]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     if (request.method === "GET") {
       const unread = items.filter((item) => item.read_at === null).length;
       return Promise.resolve(
@@ -46,7 +47,7 @@ function mockApi(items: Notification[]) {
 
 function sentRequests(fetchSpy: ReturnType<typeof mockApi>) {
   return fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET");
 }
 

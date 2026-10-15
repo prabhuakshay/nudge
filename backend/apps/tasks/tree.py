@@ -95,9 +95,7 @@ def moved_event(task: Task, from_project: str, from_parent: str | None) -> TaskA
 
 def move_descendants(task: Task, project: Project) -> None:
     """Move every Subtask below the Task into the Project, in one write."""
-    below([task]).update(project=project)
-    # A bulk update skips the save signal that keeps Reminders on time, so do its work here.
-    reminders.reschedule(below([task]))
+    reminders.update_tasks(below([task]), project=project)
 
 
 def move_tree(task: Task, project: Project, position: str) -> list[str]:
@@ -134,8 +132,10 @@ def _close_descendants(task: Task) -> list[AffectedTask]:
 
 
 def reopen_ancestors(task: Task) -> list[AffectedTask]:
-    """Reopen every Closed ancestor of an open Task."""
-    affected = []
+    """Reopen every Closed ancestor of the Task, if the Task is open; a Closed one opens no work."""
+    affected: list[AffectedTask] = []
+    if task.status not in OPEN_STATUSES:
+        return affected
     ancestor = task.parent
     while ancestor is not None:
         if ancestor.status in CLOSED_STATUSES:

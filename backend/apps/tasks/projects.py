@@ -21,6 +21,7 @@ from django.utils import timezone
 from fractional_indexing import generate_key_between, generate_n_keys_between
 
 from apps.accounts.models import User
+from apps.core.errors import DomainRuleError
 from apps.core.palette import PaletteColor
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import OPEN_STATUSES, Folder, Project
@@ -29,7 +30,7 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
 
-class ProjectRuleError(Exception):
+class ProjectRuleError(DomainRuleError):
     """A change to a Project breaks one of the rules Projects follow."""
 
 

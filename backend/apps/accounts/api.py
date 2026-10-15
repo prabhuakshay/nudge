@@ -6,6 +6,7 @@ There is deliberately no sign-up endpoint: accounts are created by an administra
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from django.conf import settings
@@ -19,7 +20,6 @@ from ninja.throttling import AnonRateThrottle, UserRateThrottle
 from apps.accounts.managers import UserManager
 from apps.accounts.models import User
 from apps.accounts.schemas import (
-    ErrorOut,
     LoginIn,
     PasswordChangeIn,
     ProfileIn,
@@ -35,28 +35,32 @@ from apps.accounts.services import (
     set_time_zone,
     update_profile,
 )
+from apps.core.auth import signed_in_user
+from apps.core.schemas import ErrorOut
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
 
 router = Router()
 
-_HTTP_NO_CONTENT = 204
-_HTTP_BAD_REQUEST = 400
-_HTTP_UNAUTHORIZED = 401
 
-
-@router.get("/session", response=SessionOut, auth=None, summary="Get the current session")
+@router.get(
+    "/session",
+    response={HTTPStatus.OK: SessionOut},
+    auth=None,
+    summary="Get the current session",
+)
 @decorate_view(ensure_csrf_cookie)
-def session(request: HttpRequest) -> SessionOut:
+def session(request: HttpRequest) -> Status[SessionOut]:
     """Return the signed-in user, or no user, and set the CSRF cookie the frontend needs."""
     user = request.user
-    return SessionOut(user=UserOut.from_orm(user) if isinstance(user, User) else None)
+    signed_in = UserOut.from_orm(user) if isinstance(user, User) else None
+    return Status(HTTPStatus.OK, SessionOut(user=signed_in))
 
 
 @router.post(
     "/login",
-    response={200: UserOut, _HTTP_UNAUTHORIZED: ErrorOut},
+    response={HTTPStatus.OK: UserOut, HTTPStatus.UNAUTHORIZED: ErrorOut},
     auth=None,
     throttle=[AnonRateThrottle(settings.LOGIN_RATE_LIMIT)],
     summary="Sign in",
@@ -71,63 +75,74 @@ def login(request: HttpRequest, credentials: LoginIn) -> Status[UserOut] | Statu
     )
     if not isinstance(user, User):
         return Status(
-            _HTTP_UNAUTHORIZED,
+            HTTPStatus.UNAUTHORIZED,
             ErrorOut(detail="That email and password don't match an account."),
         )
     auth.login(request, user)
-    return Status(200, UserOut.from_orm(user))
+    return Status(HTTPStatus.OK, UserOut.from_orm(user))
 
 
 @router.post(
     "/logout",
-    response={_HTTP_NO_CONTENT: None},
+    response={HTTPStatus.NO_CONTENT: None},
     auth=django_auth,
     summary="Sign out",
 )
 def logout(request: HttpRequest) -> Status[None]:
     """End the current session."""
     auth.logout(request)
-    return Status(_HTTP_NO_CONTENT, None)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
 @router.post(
     "/password",
-    response={_HTTP_NO_CONTENT: None, _HTTP_BAD_REQUEST: ErrorOut},
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.BAD_REQUEST: ErrorOut},
     auth=django_auth,
     throttle=[UserRateThrottle(settings.LOGIN_RATE_LIMIT)],
     summary="Change password",
 )
 def password(request: HttpRequest, passwords: PasswordChangeIn) -> Status[None] | Status[ErrorOut]:
     """Change the signed-in user's password, keeping this session and ending all others."""
-    user = request.user
-    assert isinstance(user, User)  # noqa: S101 - django_auth only lets signed-in users through
+    user = signed_in_user(request)
     try:
         change_password(user, passwords.current_password, passwords.new_password)
     except PasswordChangeError as error:
-        return Status(_HTTP_BAD_REQUEST, ErrorOut(detail=str(error)))
+        return Status(HTTPStatus.BAD_REQUEST, ErrorOut(detail=str(error)))
     auth.update_session_auth_hash(request, user)
-    return Status(_HTTP_NO_CONTENT, None)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
-@router.patch("/profile", response=UserOut, auth=django_auth, summary="Update profile")
-def profile(request: HttpRequest, changes: ProfileIn) -> UserOut:
+@router.patch(
+    "/profile",
+    response={HTTPStatus.OK: UserOut},
+    auth=django_auth,
+    summary="Update profile",
+)
+def profile(request: HttpRequest, changes: ProfileIn) -> Status[UserOut]:
     """Change the signed-in user's name and return the updated user."""
-    user = request.user
-    assert isinstance(user, User)  # noqa: S101 - django_auth only lets signed-in users through
-    return UserOut.from_orm(update_profile(user, changes.full_name))
+    user = update_profile(signed_in_user(request), changes.full_name)
+    return Status(HTTPStatus.OK, UserOut.from_orm(user))
 
 
-@router.put("/time-zone", response=UserOut, auth=django_auth, summary="Set time zone")
-def time_zone(request: HttpRequest, changes: TimeZoneIn) -> UserOut:
+@router.put(
+    "/time-zone",
+    response={HTTPStatus.OK: UserOut},
+    auth=django_auth,
+    summary="Set time zone",
+)
+def time_zone(request: HttpRequest, changes: TimeZoneIn) -> Status[UserOut]:
     """Change the signed-in user's time zone and return the updated user."""
-    user = request.user
-    assert isinstance(user, User)  # noqa: S101 - django_auth only lets signed-in users through
-    return UserOut.from_orm(set_time_zone(user, changes.time_zone))
+    user = set_time_zone(signed_in_user(request), changes.time_zone)
+    return Status(HTTPStatus.OK, UserOut.from_orm(user))
 
 
-@router.put("/shortcuts", response=UserOut, auth=django_auth, summary="Set keyboard shortcuts")
-def shortcuts(request: HttpRequest, changes: ShortcutsIn) -> UserOut:
+@router.put(
+    "/shortcuts",
+    response={HTTPStatus.OK: UserOut},
+    auth=django_auth,
+    summary="Set keyboard shortcuts",
+)
+def shortcuts(request: HttpRequest, changes: ShortcutsIn) -> Status[UserOut]:
     """Turn the signed-in user's single-key shortcuts on or off and return the updated user."""
-    user = request.user
-    assert isinstance(user, User)  # noqa: S101 - django_auth only lets signed-in users through
-    return UserOut.from_orm(set_single_key_shortcuts(user, enabled=changes.single_key))
+    user = set_single_key_shortcuts(signed_in_user(request), enabled=changes.single_key)
+    return Status(HTTPStatus.OK, UserOut.from_orm(user))

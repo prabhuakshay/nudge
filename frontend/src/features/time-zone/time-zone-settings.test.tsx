@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { sessionQuery } from "@/features/auth/session";
+import { requestOf } from "@/test/fetch";
 
 import { TimeZoneSettings } from "./time-zone-settings";
 
@@ -68,7 +69,7 @@ describe("TimeZoneSettings", () => {
 
     await pick(user, "Europe/London");
 
-    const request = fetch.mock.calls[0]?.[0] as Request; // The API client always passes a Request.
+    const request = requestOf(fetch.mock.calls[0]?.[0]);
     expect(await request.json()).toEqual({ time_zone: "Europe/London" });
     expect(queryClient.getQueryData(sessionQuery.queryKey)).toEqual(london);
     expect(screen.queryByRole("combobox")).not.toBeInTheDocument();

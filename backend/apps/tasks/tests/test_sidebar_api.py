@@ -10,7 +10,7 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 
 from apps.core.palette import PaletteColor
-from apps.tasks import projects, services
+from apps.tasks import creation, people, projects, services
 from apps.tasks.models import Project, Task
 
 if TYPE_CHECKING:
@@ -30,10 +30,10 @@ def test_sidebar_shows_the_users_inbox_with_its_open_task_count(
     ada: User,
     grace: User,
 ) -> None:
-    services.create_task(services.inbox(ada), "Buy milk")
-    done = services.create_task(services.inbox(ada), "Call mum")
+    creation.create_task(services.inbox(ada), "Buy milk")
+    done = creation.create_task(services.inbox(ada), "Call mum")
     services.update_task(ada, done.pk, services.TaskEdit(status=Task.Status.COMPLETED))
-    services.create_task(services.inbox(grace), "Grace's")
+    creation.create_task(services.inbox(grace), "Grace's")
 
     response = client.get("/api/v1/sidebar")
 
@@ -52,6 +52,7 @@ def test_sidebar_shows_the_users_inbox_with_its_open_task_count(
         },
         "items": [],
         "tags": [],
+        "people": [],
         "archived": [],
         "today_count": 0,
         "upcoming_count": 0,
@@ -59,13 +60,24 @@ def test_sidebar_shows_the_users_inbox_with_its_open_task_count(
 
 
 @pytest.mark.django_db
+def test_sidebar_lists_the_users_people_a_to_z(client: Client, ada: User, grace: User) -> None:
+    people.create_person(ada, "priya", color=PaletteColor.VIOLET)
+    people.create_person(ada, "Ada", color=PaletteColor.BLUE)
+    people.create_person(grace, "Grace's", color=PaletteColor.RED)
+
+    response = client.get("/api/v1/sidebar")
+
+    assert [person["name"] for person in response.json()["people"]] == ["Ada", "priya"]
+
+
+@pytest.mark.django_db
 def test_sidebar_counts_blocked_tasks_as_open_and_wont_do_as_closed(
     client: Client,
     ada: User,
 ) -> None:
-    waiting = services.create_task(services.inbox(ada), "Waiting")
+    waiting = creation.create_task(services.inbox(ada), "Waiting")
     services.update_task(ada, waiting.pk, services.TaskEdit(status=Task.Status.BLOCKED))
-    skipped = services.create_task(services.inbox(ada), "Skipped")
+    skipped = creation.create_task(services.inbox(ada), "Skipped")
     services.update_task(ada, skipped.pk, services.TaskEdit(status=Task.Status.WONT_DO))
 
     response = client.get("/api/v1/sidebar")
@@ -86,8 +98,8 @@ def test_sidebar_lists_folders_and_ungrouped_projects_in_order_with_counts(
     health = projects.create_project(
         ada, "Health", folder=folder, color=PaletteColor.PINK, icon=Project.Icon.DUMBBELL
     )
-    services.create_task(work, "Plan launch")
-    services.create_task(work, "Write notes")
+    creation.create_task(work, "Plan launch")
+    creation.create_task(work, "Write notes")
     projects.create_project(grace, "Grace's")
     trashed = projects.create_project(ada, "Old")
     Project.objects.filter(pk=trashed.pk).update(deleted_at="2026-01-01T00:00Z")
@@ -139,7 +151,7 @@ def test_sidebar_takes_the_same_number_of_queries_however_many_projects(
     with CaptureQueriesContext(connection) as few:
         client.get("/api/v1/sidebar")
     for name in ["Home", "Health", "Garden"]:
-        services.create_task(projects.create_project(ada, name, folder=folder), "A task")
+        creation.create_task(projects.create_project(ada, name, folder=folder), "A task")
     projects.create_folder(ada, "Work things")
 
     with CaptureQueriesContext(connection) as many:

@@ -16,6 +16,7 @@ import { validateTaskSearch } from "@/features/tasks/open-task";
 import { rememberTask } from "@/features/tasks/recent-tasks";
 import { GARDEN, INBOX, json, TAGS, WORK } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import { CommandBar, type CommandActions } from "./command-bar";
 
@@ -34,12 +35,17 @@ function result(id: number, title: string): SearchResult {
 function mockApi(results: SearchResult[] = []) {
   const patches: unknown[] = [];
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const { pathname } = new URL(request.url);
     if (pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [WORK], archived: [TOOLS], tags: [TODO_TAG] });
+      return json({
+        inbox: INBOX,
+        items: [WORK],
+        archived: [TOOLS],
+        tags: [TODO_TAG],
+        people: [TOM],
+      });
     }
-    if (pathname.endsWith("/people")) return json([TOM]);
     if (pathname.endsWith("/tasks/search")) return json(results);
     const task = makeTask({ id: 5, title: "Water plants", project_id: WORK.id });
     if (request.method === "PATCH") {

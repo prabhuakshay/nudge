@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import projects, services
+from apps.tasks import creation, projects, services
 from apps.tasks.models import Task, TaskActivity
 
 if TYPE_CHECKING:
@@ -35,11 +35,11 @@ def _outline(client: Client, project_id: int) -> dict[str | None, list[str]]:
 
 def _roots(ada: User, *titles: str) -> list[Task]:
     """Create root Tasks in the Inbox that list in the order given."""
-    return [services.create_task(services.inbox(ada), title) for title in reversed(titles)][::-1]
+    return [creation.create_task(services.inbox(ada), title) for title in reversed(titles)][::-1]
 
 
 def _subtask(parent: Task, title: str) -> Task:
-    return services.create_subtask(parent, title).task
+    return creation.create_subtask(parent, title).task
 
 
 def _kinds(task: Task) -> list[str]:
@@ -226,7 +226,7 @@ def test_a_subtask_moved_to_another_project_becomes_a_root_there(
     ada: User,
 ) -> None:
     work = projects.create_project(ada, "Work")
-    already = services.create_task(work, "Already there")
+    already = creation.create_task(work, "Already there")
     (trip,) = _roots(ada, "Plan the trip")
     flights = _subtask(trip, "Book flights")
     _subtask(flights, "Pick seats")
@@ -250,7 +250,7 @@ def test_a_subtask_moved_to_another_project_becomes_a_root_there(
 @pytest.mark.django_db
 def test_a_task_can_nest_under_a_task_in_another_project(client: Client, ada: User) -> None:
     work = projects.create_project(ada, "Work")
-    launch = services.create_task(work, "Launch")
+    launch = creation.create_task(work, "Launch")
     (notes,) = _roots(ada, "Notes")
 
     _move(client, notes, parent_id=launch.pk)
@@ -275,7 +275,7 @@ def test_a_parent_in_another_project_than_the_one_given_is_refused(
 @pytest.mark.django_db
 def test_tasks_cannot_move_into_or_out_of_an_archived_project(client: Client, ada: User) -> None:
     garden = projects.create_project(ada, "Garden")
-    weeds = services.create_task(garden, "Pull weeds")
+    weeds = creation.create_task(garden, "Pull weeds")
     projects.archive_project(ada, garden.pk)
     (mine,) = _roots(ada, "Mine")
 
@@ -297,7 +297,7 @@ def test_a_move_cannot_reach_another_users_tasks_or_projects(
     field: str,
 ) -> None:
     (mine,) = _roots(ada, "Mine")
-    theirs = services.create_task(services.inbox(grace), "Theirs")
+    theirs = creation.create_task(services.inbox(grace), "Theirs")
     target = {
         "task": (theirs.pk, {}),
         "project_id": (mine.pk, {"project_id": theirs.project_id}),

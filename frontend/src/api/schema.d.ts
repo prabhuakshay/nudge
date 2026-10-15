@@ -704,7 +704,8 @@ export interface paths {
      *     Each Task changes as it would on its own, cascades and Activity included. If any id isn't one
      *     of the user's Tasks, or the Project or Tag isn't theirs, nothing changes and the answer is
      *     404; if any Task refuses the change, nothing changes and the answer is 422. Every Task whose
-     *     Status changed comes back with its Status from before, so the client can offer Undo.
+     *     Status changed comes back with its Status from before, and a move says where each Task was,
+     *     so the client can offer Undo.
      */
     post: operations["apps_tasks_api_bulk_bulk_change"];
     delete?: never;
@@ -821,26 +822,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v1/tasks/{task_id}/activity": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List a Task's Activity
-     * @description Return a page of a Task's history, newest first, with the number of events in all.
-     */
-    get: operations["apps_tasks_api_tasks_list_activity"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/v1/tasks/search": {
     parameters: {
       query?: never;
@@ -855,6 +836,26 @@ export interface paths {
      *     Archived Projects are searched too. At most 50 Tasks come back, with no further pages.
      */
     get: operations["apps_tasks_api_search_search"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/activity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Task's Activity
+     * @description Return a page of a Task's history, newest first, with the number of events in all.
+     */
+    get: operations["apps_tasks_api_activity_list_activity"];
     put?: never;
     post?: never;
     delete?: never;
@@ -1865,6 +1866,11 @@ export interface components {
        * @description In the user's order.
        */
       tags: components["schemas"]["SidebarTagOut"][];
+      /**
+       * People
+       * @description A to Z.
+       */
+      people: components["schemas"]["PersonOut"][];
     };
     /**
      * SidebarProjectOut
@@ -1957,11 +1963,39 @@ export interface components {
     };
     /**
      * TaskBulkOut
-     * @description Every Task whose Status the action changed, with its Status before, for Undo.
+     * @description What the action changed, for Undo.
      */
     TaskBulkOut: {
-      /** Affected */
+      /**
+       * Affected
+       * @description Every Task whose Status changed, with its Status before.
+       */
       affected: components["schemas"]["AffectedTaskOut"][];
+      /**
+       * Moved From
+       * @description For a move: where each moved Task was, in the order to put them back.
+       */
+      moved_from: components["schemas"]["TaskPlace"][];
+    };
+    /**
+     * TaskPlace
+     * @description Where a Task sits: its Project, its parent and the sibling before it.
+     */
+    TaskPlace: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description None at the top level.
+       */
+      parent_id: number | null;
+      /**
+       * After Id
+       * @description None when it's first among its siblings.
+       */
+      after_id: number | null;
     };
     /**
      * BulkDatesIn
@@ -2000,6 +2034,19 @@ export interface components {
       project_id: number;
     };
     /**
+     * BulkPlaceIn
+     * @description Put each Task in its own place, in the order listed, as Undo of a move does.
+     */
+    BulkPlaceIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "place";
+      /** Places */
+      places: components["schemas"]["TaskPlace"][];
+    };
+    /**
      * BulkPriorityIn
      * @description Set the Tasks' Priority.
      */
@@ -2022,6 +2069,19 @@ export interface components {
        */
       kind: "status";
       status: components["schemas"]["Status"];
+    };
+    /**
+     * BulkStatusesIn
+     * @description Give each Task its own Status, in the order listed, as Undo of a cascade does.
+     */
+    BulkStatusesIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "statuses";
+      /** Statuses */
+      statuses: components["schemas"]["TaskStatusIn"][];
     };
     /**
      * BulkTagIn
@@ -2047,6 +2107,8 @@ export interface components {
       action:
         | components["schemas"]["BulkMoveIn"]
         | components["schemas"]["BulkStatusIn"]
+        | components["schemas"]["BulkStatusesIn"]
+        | components["schemas"]["BulkPlaceIn"]
         | components["schemas"]["BulkPriorityIn"]
         | components["schemas"]["BulkDatesIn"]
         | components["schemas"]["BulkTagIn"]
@@ -2071,6 +2133,20 @@ export interface components {
       start_date?: string | null;
       /** Start Time */
       start_time?: string | null;
+    };
+    /**
+     * TaskStatusIn
+     * @description The Status, and Blocked reason, to give one Task.
+     */
+    TaskStatusIn: {
+      /** Id */
+      id: number;
+      status: components["schemas"]["Status"];
+      /**
+       * Blocked Reason
+       * @default
+       */
+      blocked_reason: string;
     };
     /**
      * TaskListQuery
@@ -2224,6 +2300,133 @@ export interface components {
        * @description The sibling it now follows; first when left out, last when it isn't there.
        */
       after_id?: number | null;
+    };
+    /**
+     * TaskSearchQuery
+     * @description What to search for.
+     */
+    TaskSearchQuery: {
+      /**
+       * Q
+       * @description Words that must all appear, ignoring case.
+       */
+      q: string;
+    };
+    /**
+     * MatchIn
+     * @description Where a Task matched, best first: a title match outranks a Description or Comment one.
+     * @enum {string}
+     */
+    MatchIn: "title" | "description" | "comment";
+    /**
+     * TaskSearchOut
+     * @description A Task that matched a search, with where it matched and the text around the match.
+     */
+    TaskSearchOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
+      completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
+      /**
+       * Tags
+       * @description In the user's Tag order.
+       */
+      tags: components["schemas"]["TagOut"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
+      /** @description Where it matched: the title, else the Description, else a Comment. */
+      match_in: components["schemas"]["MatchIn"];
+      /**
+       * Snippet
+       * @description The matching text as one plain line, cut to the part around the first match.
+       */
+      snippet: string;
     };
     /**
      * AttachmentAddedActivityOut
@@ -2853,133 +3056,6 @@ export interface components {
        */
       at: string;
       data: components["schemas"]["NoActivityData"];
-    };
-    /**
-     * TaskSearchQuery
-     * @description What to search for.
-     */
-    TaskSearchQuery: {
-      /**
-       * Q
-       * @description Words that must all appear, ignoring case.
-       */
-      q: string;
-    };
-    /**
-     * MatchIn
-     * @description Where a Task matched, best first: a title match outranks a Description or Comment one.
-     * @enum {string}
-     */
-    MatchIn: "title" | "description" | "comment";
-    /**
-     * TaskSearchOut
-     * @description A Task that matched a search, with where it matched and the text around the match.
-     */
-    TaskSearchOut: {
-      /** Id */
-      id: number;
-      /** Project Id */
-      project_id: number;
-      /**
-       * Parent Id
-       * @description Null for a root Task.
-       */
-      parent_id: number | null;
-      /**
-       * Position
-       * @description Sorts the Task among its siblings, byte by byte.
-       */
-      position: string;
-      /**
-       * Depth
-       * @description 0 for a root Task, up to 3 for the deepest Subtask.
-       */
-      depth: number;
-      /**
-       * Parent Title
-       * @description The parent's title, for a breadcrumb.
-       */
-      parent_title: string | null;
-      /** Title */
-      title: string;
-      status: components["schemas"]["Status"];
-      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
-      priority: components["schemas"]["Priority"];
-      /**
-       * Blocked Reason
-       * @description Why a Blocked Task waits; empty otherwise.
-       */
-      blocked_reason: string;
-      /**
-       * Completed At
-       * @description When it was Completed or marked Won't do.
-       */
-      completed_at: string | null;
-      /**
-       * Pinned At
-       * @description When it was pinned; null when it isn't.
-       */
-      pinned_at: string | null;
-      /** Due Date */
-      due_date: string | null;
-      /**
-       * Due Time
-       * @description Null for an all-day Task.
-       */
-      due_time: string | null;
-      /**
-       * Start Date
-       * @description Set for a range, which ends on the due date.
-       */
-      start_date: string | null;
-      /** Start Time */
-      start_time: string | null;
-      /**
-       * Repeat Rule
-       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
-       */
-      repeat_rule: string;
-      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
-      repeat_from: components["schemas"]["RepeatFrom"];
-      /**
-       * Is Overdue
-       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
-       */
-      is_overdue: boolean;
-      /**
-       * Tags
-       * @description In the user's Tag order.
-       */
-      tags: components["schemas"]["TagOut"][];
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /**
-       * Updated At
-       * Format: date-time
-       */
-      updated_at: string;
-      /**
-       * Attachment Count
-       * @description How many Attachments the Task has. A Task just added has none.
-       * @default 0
-       */
-      attachment_count: number;
-      /**
-       * Comment Count
-       * @description How many Comments the Task has. A Task just added has none.
-       * @default 0
-       */
-      comment_count: number;
-      /** @description Where it matched: the title, else the Description, else a Comment. */
-      match_in: components["schemas"]["MatchIn"];
-      /**
-       * Snippet
-       * @description The matching text as one plain line, cut to the part around the first match.
-       */
-      snippet: string;
     };
     /**
      * AttachmentOut
@@ -4671,7 +4747,30 @@ export interface operations {
       };
     };
   };
-  apps_tasks_api_tasks_list_activity: {
+  apps_tasks_api_search_search: {
+    parameters: {
+      query: {
+        /** @description Words that must all appear, ignoring case. */
+        q: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskSearchOut"][];
+        };
+      };
+    };
+  };
+  apps_tasks_api_activity_list_activity: {
     parameters: {
       query?: {
         cursor?: string | null;
@@ -4709,29 +4808,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorOut"];
-        };
-      };
-    };
-  };
-  apps_tasks_api_search_search: {
-    parameters: {
-      query: {
-        /** @description Words that must all appear, ignoring case. */
-        q: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TaskSearchOut"][];
         };
       };
     };

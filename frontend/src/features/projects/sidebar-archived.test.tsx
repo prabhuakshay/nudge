@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
+import { requestOf } from "@/test/fetch";
 import type { Sidebar, SidebarProject } from "./projects";
 import { SidebarArchived } from "./sidebar-archived";
 
@@ -30,6 +31,7 @@ function sidebar(archived: SidebarProject[]): Sidebar {
     items: [],
     archived,
     tags: [],
+    people: [],
     today_count: 0,
     upcoming_count: 0,
   };
@@ -37,7 +39,7 @@ function sidebar(archived: SidebarProject[]): Sidebar {
 
 function mockApi(archived: SidebarProject[]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const body = request.method === "GET" ? sidebar(archived) : { ...GARDEN, is_archived: false };
     return Promise.resolve(
       new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } }),
@@ -76,7 +78,7 @@ describe("SidebarArchived", () => {
 
     await waitFor(() => {
       const posts = fetchSpy.mock.calls
-        .map(([input]) => input as Request)
+        .map(([input]) => requestOf(input))
         .filter((request) => request.method === "POST")
         .map((request) => new URL(request.url).pathname);
       expect(posts).toEqual(["/api/v1/projects/3/unarchive"]);
@@ -94,7 +96,7 @@ describe("SidebarArchived", () => {
 
     await waitFor(() => {
       const deletes = fetchSpy.mock.calls
-        .map(([input]) => input as Request)
+        .map(([input]) => requestOf(input))
         .filter((request) => request.method === "DELETE")
         .map((request) => new URL(request.url).pathname);
       expect(deletes).toEqual(["/api/v1/projects/3"]);

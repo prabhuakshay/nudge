@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 
+import { requestOf } from "@/test/fetch";
 import { Attachments } from "./attachments";
 import type { Attachment } from "./tasks";
 
@@ -34,7 +35,7 @@ function json(body: unknown, status = 200) {
 function mockApi(stored: Attachment[], uploads: string[] = []) {
   let nextId = 100;
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     if (request.method === "POST") {
       const name = uploads.shift() ?? "file";
@@ -56,7 +57,7 @@ function mockApi(stored: Attachment[], uploads: string[] = []) {
 
 function writes(fetchSpy: ReturnType<typeof mockApi>) {
   return fetchSpy.mock.calls
-    .map(([input]) => input as Request)
+    .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET")
     .map((request) => {
       const type = request.headers.get("Content-Type")?.split(";")[0] ?? "";

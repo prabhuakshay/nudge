@@ -7,6 +7,7 @@ import { trashQuery } from "@/features/trash/trash";
 import type { SidebarTag } from "@/features/tags/tags";
 import { toastWithUndo } from "@/lib/undo-toast";
 
+import { useRestoreStatuses } from "./set-status";
 import { STATUS_VERB } from "./task-properties";
 import {
   refreshTasks,
@@ -94,12 +95,13 @@ function useRestoreTasks() {
  * What the "N selected" bar does to the chosen Tasks, each in one request with one Undo toast.
  * `tasks` are all the list's rows, so a delete can tell which chosen Tasks go with a parent.
  * Undo puts back what each Task had before: its Status (with cascades), Priority, dates,
- * Project or Tags, or brings it back from Trash.
+ * place in its Project or Tags, or brings it back from Trash.
  */
 export function useBulkActions(chosen: Task[], tasks: Task[]) {
   const { mutate: change } = useBulkChange();
   const { mutate: update } = useUpdateTask();
   const { mutate: restore } = useRestoreTasks();
+  const { mutate: restoreStatuses } = useRestoreStatuses();
   const ids = chosen.map((task) => task.id);
   const count = tasksCount(chosen.length);
 
@@ -137,15 +139,7 @@ export function useBulkActions(chosen: Task[], tasks: Task[]) {
         {
           onSuccess: ({ affected }) => {
             toastWithUndo(`${STATUS_VERB[status]} ${count}`, () => {
-              for (const prior of affected) {
-                update({
-                  id: prior.id,
-                  status: prior.prior_status,
-                  ...(prior.prior_status === "blocked" && {
-                    blocked_reason: prior.prior_blocked_reason,
-                  }),
-                });
-              }
+              restoreStatuses(affected);
             });
           },
         },
@@ -180,13 +174,16 @@ export function useBulkActions(chosen: Task[], tasks: Task[]) {
       });
     },
     moveTo: (project: SidebarProject) => {
-      run({ kind: "move", project_id: project.id }, `Moved ${count} to “${project.name}”`, () => {
-        changeBack(
-          chosen,
-          (task) => task.project_id,
-          (prior) => ({ kind: "move", project_id: prior }),
-        );
-      });
+      change(
+        { ids, action: { kind: "move", project_id: project.id } },
+        {
+          onSuccess: ({ moved_from: places }) => {
+            toastWithUndo(`Moved ${count} to “${project.name}”`, () => {
+              change({ ids: places.map((place) => place.id), action: { kind: "place", places } });
+            });
+          },
+        },
+      );
     },
     addTag: (tag: SidebarTag) => {
       run({ kind: "add_tag", tag_id: tag.id }, `Added “${tag.name}” to ${count}`, () => {

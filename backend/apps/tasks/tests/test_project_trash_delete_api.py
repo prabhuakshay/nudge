@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import project_trash, projects, purge, services, trash
+from apps.tasks import creation, project_trash, projects, purge, services, trash
 from apps.tasks.models import Project, Task
 
 if TYPE_CHECKING:
@@ -22,7 +22,7 @@ if TYPE_CHECKING:
 def _trashed_project(user: User, name: str, *titles: str) -> Project:
     project = projects.create_project(user, name)
     for title in titles:
-        services.create_task(project, title)
+        creation.create_task(project, title)
     project_trash.trash_project(user, project.pk)
     return project
 
@@ -59,10 +59,10 @@ def test_a_task_trashed_before_its_project_outlives_it_in_the_inbox(
     ada: User,
 ) -> None:
     home = projects.create_project(ada, "Home")
-    fence = services.create_task(home, "Paint the fence")
+    fence = creation.create_task(home, "Paint the fence")
     trash.trash_task(ada, fence.pk)
     project_trash.trash_project(ada, home.pk)
-    services.create_task(services.inbox(ada), "Buy milk")
+    creation.create_task(services.inbox(ada), "Buy milk")
 
     assert _delete_forever(client, projects=(home,)).status_code == 204
 

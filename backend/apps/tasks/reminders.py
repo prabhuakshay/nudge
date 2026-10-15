@@ -17,6 +17,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.accounts.services import local_zone
+from apps.core.errors import DomainRuleError
 from apps.notifications.services import notify
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import OPEN_STATUSES, Reminder, Task, TaskActivity
@@ -30,7 +31,7 @@ MAX_OFFSET = timedelta(days=365)
 CATCH_UP = timedelta(hours=1)
 
 
-class ReminderRuleError(Exception):
+class ReminderRuleError(DomainRuleError):
     """A set of Reminders that would break a Reminder rule. The message says which."""
 
 
@@ -80,6 +81,16 @@ def _check(task: Task, offsets: list[timedelta]) -> None:
 
 def _minutes(offsets: list[timedelta]) -> list[int]:
     return sorted(int(offset.total_seconds()) // 60 for offset in offsets)
+
+
+def update_tasks(tasks: QuerySet[Task], **fields: object) -> None:
+    """Set the fields on the Tasks in one write, and keep their Reminders on time.
+
+    A bulk update skips the save signal that reschedules Reminders, so every bulk write to Tasks
+    goes through here. The Tasks must still match `tasks` after the write.
+    """
+    tasks.update(**fields)
+    reschedule(tasks)
 
 
 def reschedule(tasks: QuerySet[Task]) -> None:

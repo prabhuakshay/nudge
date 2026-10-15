@@ -3,6 +3,7 @@ import { useState } from "react";
 
 import { INBOX, json, renderListRoute } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import { GlobalQuickAdd } from "./global-quick-add";
 import { TaskList } from "./task-list";
@@ -12,17 +13,17 @@ import type { NewTask } from "./tasks";
 function mockApi() {
   const added: unknown[] = [];
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const { pathname } = new URL(request.url);
     if (pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [], archived: [], tags: [] });
+      return json({ inbox: INBOX, items: [], archived: [], tags: [], people: [] });
     }
     if (request.method === "POST") {
       const body = (await request.json()) as NewTask;
       added.push(body);
       return json(makeTask({ id: 50, title: body.title, project_id: INBOX.id }), 201);
     }
-    return json(pathname.endsWith("/people") ? [] : { items: [], next_cursor: null });
+    return json({ items: [], next_cursor: null });
   });
   return added;
 }

@@ -1,6 +1,7 @@
 import { screen, waitFor, within } from "@testing-library/react";
 
 import { INBOX, json, renderListRoute } from "@/test/drawer";
+import { requestOf } from "@/test/fetch";
 
 import { TrashList } from "./trash-list";
 import type { TrashedProject, TrashedRow, TrashedTask } from "./trash";
@@ -36,7 +37,7 @@ function trashedProject(overrides: Partial<TrashedProject> = {}): TrashedProject
 
 function mockApi(rows: TrashedRow[]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     if (url.pathname.endsWith("/trash") && request.method === "DELETE") {
       rows.splice(0);
@@ -92,7 +93,7 @@ describe("The Trash", () => {
     expect(await screen.findByText("Restored to Inbox")).toBeInTheDocument();
     expect(await screen.findByText("Trash is empty")).toBeInTheDocument();
     const posts = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => request.method === "POST")
       .map((request) => new URL(request.url).pathname);
     expect(posts).toEqual(["/api/v1/tasks/4/restore"]);
@@ -119,7 +120,7 @@ describe("The Trash", () => {
     });
     expect(screen.getByRole("button", { name: "Restore “Pay rent”" })).toBeInTheDocument();
     const posts = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => request.method === "POST")
       .map((request) => new URL(request.url).pathname);
     expect(posts).toEqual(["/api/v1/projects/4/restore"]);
@@ -140,7 +141,7 @@ describe("The Trash", () => {
     expect(await screen.findByText("Deleted “Move house” forever")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Restore “Move house”" })).not.toBeInTheDocument();
     const deletes = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => new URL(request.url).pathname === "/api/v1/trash/delete");
     expect(deletes).toHaveLength(1);
     expect(await deletes[0]?.json()).toEqual({ task_ids: [4], project_ids: [] });
@@ -158,7 +159,7 @@ describe("The Trash", () => {
     expect(await screen.findByText("Deleted “Home” forever")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Restore “Pay rent”" })).toBeVisible();
     const deletes = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => new URL(request.url).pathname === "/api/v1/trash/delete");
     expect(await deletes[0]?.json()).toEqual({ task_ids: [], project_ids: [4] });
   });
@@ -172,7 +173,7 @@ describe("The Trash", () => {
 
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Restore “Move house”" })).toBeVisible();
-    const methods = fetchSpy.mock.calls.map(([input]) => (input as Request).method);
+    const methods = fetchSpy.mock.calls.map(([input]) => requestOf(input).method);
     expect(methods).not.toContain("POST");
   });
 
@@ -188,10 +189,61 @@ describe("The Trash", () => {
     expect(await screen.findByText("Trash is empty")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Empty Trash" })).not.toBeInTheDocument();
     const deletes = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .filter((request) => request.method === "DELETE")
       .map((request) => new URL(request.url).pathname);
     expect(deletes).toEqual(["/api/v1/trash"]);
+  });
+
+  it("restores several selected rows at once", async () => {
+    const fetchSpy = mockApi([
+      trashedProject({ id: 4 }),
+      trashed({ id: 4, title: "Pay rent" }),
+      trashed({ id: 5, title: "Buy milk" }),
+    ]);
+    const { user } = renderListRoute(<TrashList />);
+
+    await user.click(await screen.findByRole("checkbox", { name: "Select “Home”" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select “Pay rent”" }));
+    const bar = screen.getByRole("toolbar", { name: "Selected items" });
+    expect(within(bar).getByText("2 selected")).toBeVisible();
+    await user.click(within(bar).getByRole("button", { name: "Restore" }));
+
+    expect(await screen.findByText("Restored 2 items")).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox").map((box) => box.getAttribute("aria-label"))).toEqual([
+      "Select “Buy milk”",
+    ]);
+    expect(screen.queryByRole("toolbar")).not.toBeInTheDocument();
+    const posts = fetchSpy.mock.calls
+      .map(([input]) => requestOf(input))
+      .filter((request) => request.method === "POST")
+      .map((request) => new URL(request.url).pathname);
+    expect(posts).toEqual(["/api/v1/projects/4/restore", "/api/v1/tasks/4/restore"]);
+  });
+
+  it("deletes several selected rows forever in one request once confirmed", async () => {
+    const fetchSpy = mockApi([
+      trashedProject({ id: 4 }),
+      trashed({ id: 4, title: "Pay rent" }),
+      trashed({ id: 5, title: "Buy milk" }),
+    ]);
+    const { user } = renderListRoute(<TrashList />);
+
+    await user.click(await screen.findByRole("checkbox", { name: "Select “Home”" }));
+    await user.click(screen.getByRole("checkbox", { name: "Select “Buy milk”" }));
+    const bar = screen.getByRole("toolbar", { name: "Selected items" });
+    await user.click(within(bar).getByRole("button", { name: "Delete forever" }));
+    const dialog = await screen.findByRole("dialog", { name: "Delete 2 items forever?" });
+    await user.click(within(dialog).getByRole("button", { name: "Delete forever" }));
+
+    expect(await screen.findByText("Deleted 2 items forever")).toBeInTheDocument();
+    expect(screen.getAllByRole("checkbox").map((box) => box.getAttribute("aria-label"))).toEqual([
+      "Select “Pay rent”",
+    ]);
+    const deletes = fetchSpy.mock.calls
+      .map(([input]) => requestOf(input))
+      .filter((request) => new URL(request.url).pathname === "/api/v1/trash/delete");
+    expect(await deletes[0]?.json()).toEqual({ task_ids: [5], project_ids: [4] });
   });
 
   it("says so when the Trash is empty", async () => {

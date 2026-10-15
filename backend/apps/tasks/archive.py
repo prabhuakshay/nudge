@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from apps.core.errors import DomainRuleError
+
 if TYPE_CHECKING:
     from django.db.models import QuerySet
 
@@ -14,7 +16,7 @@ if TYPE_CHECKING:
     from apps.tasks.models import Project, Task
 
 
-class ArchivedProjectError(Exception):
+class ArchivedProjectError(DomainRuleError):
     """A write to a Task in an archived Project, or a move of a Task into one."""
 
 

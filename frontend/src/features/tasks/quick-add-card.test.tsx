@@ -5,6 +5,7 @@ import { PersonTasks } from "@/features/people/person-tasks";
 import { TagTaskList } from "@/features/tags/tag-task-list";
 import { INBOX, json, PRIYA, renderListRoute, renderTaskList, TAGS, WORK } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import type { NewTask } from "./tasks";
 
@@ -16,17 +17,15 @@ function mockApi() {
   const log: [string, unknown][] = [];
   let nextId = 100;
   const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const { pathname } = new URL(request.url);
     const body: unknown = request.method === "GET" ? undefined : await request.clone().json();
     log.push([`${request.method} ${pathname}`, body]);
     if (pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [WORK], archived: [], tags: TAGS });
+      return json({ inbox: INBOX, items: [WORK], archived: [], tags: TAGS, people: [PRIYA] });
     }
     if (pathname.endsWith("/people")) {
-      return request.method === "POST"
-        ? json({ id: nextId++, color: "red", ...(body as object) }, 201)
-        : json([PRIYA]);
+      return json({ id: nextId++, color: "red", ...(body as object) }, 201);
     }
     if (request.method === "POST") {
       const { title, project_id: projectId, priority, tag_ids: tagIds = [] } = body as NewTask;

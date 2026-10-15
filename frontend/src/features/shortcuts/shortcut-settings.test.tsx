@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { sessionQuery } from "@/features/auth/session";
+import { requestOf } from "@/test/fetch";
 
 import { ShortcutSettings } from "./shortcut-settings";
 
@@ -39,7 +40,7 @@ describe("ShortcutSettings", () => {
     expect(toggle).toBeChecked();
     await user.click(toggle);
 
-    const request = fetch.mock.calls[0]?.[0] as Request; // The API client always passes a Request.
+    const request = requestOf(fetch.mock.calls[0]?.[0]);
     expect(`${request.method} ${new URL(request.url).pathname}`).toBe("PUT /api/v1/auth/shortcuts");
     expect(await request.json()).toEqual({ single_key: false });
     expect(queryClient.getQueryData(sessionQuery.queryKey)).toEqual(saved);

@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.test import Client
 
-from apps.tasks import people, projects, services
+from apps.tasks import creation, people, projects, services
 from apps.tasks.models import Project, Task
 
 if TYPE_CHECKING:
@@ -27,7 +27,7 @@ def _titles(client: Client, q: str) -> list[object]:
 
 
 def _task(user: User, title: str, *, description: str = "") -> Task:
-    task = services.create_task(services.inbox(user), title)
+    task = creation.create_task(services.inbox(user), title)
     if description:
         Task.objects.filter(pk=task.pk).update(description=description)
     return task
@@ -186,7 +186,7 @@ def test_blocked_tasks_rank_with_open_ones(client: Client, ada: User) -> None:
 @pytest.mark.django_db
 def test_search_includes_tasks_in_archived_projects(client: Client, ada: User) -> None:
     project = projects.create_project(ada, "Old trips")
-    services.create_task(project, "Lisbon 2019")
+    creation.create_task(project, "Lisbon 2019")
     projects.archive_project(ada, project.pk)
 
     assert _titles(client, "lisbon") == ["Lisbon 2019"]
@@ -197,7 +197,7 @@ def test_search_never_returns_trashed_tasks(client: Client, ada: User) -> None:
     trashed = _task(ada, "Lisbon trashed")
     Task.objects.filter(pk=trashed.pk).update(deleted_at=datetime(2026, 10, 1, tzinfo=UTC))
     project = projects.create_project(ada, "Gone")
-    services.create_task(project, "Lisbon in a trashed Project")
+    creation.create_task(project, "Lisbon in a trashed Project")
     Project.objects.filter(pk=project.pk).update(deleted_at=datetime(2026, 10, 1, tzinfo=UTC))
 
     assert _search(client, "lisbon") == []
@@ -206,7 +206,7 @@ def test_search_never_returns_trashed_tasks(client: Client, ada: User) -> None:
 @pytest.mark.django_db
 def test_search_drops_a_task_and_its_subtasks_once_trashed(client: Client, ada: User) -> None:
     parent = _task(ada, "Lisbon trip")
-    services.create_subtask(parent, "Lisbon hotel")
+    creation.create_subtask(parent, "Lisbon hotel")
 
     assert client.delete(f"/api/v1/tasks/{parent.pk}").status_code == 204
     assert _search(client, "lisbon") == []

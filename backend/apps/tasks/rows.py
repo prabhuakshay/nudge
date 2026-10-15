@@ -4,7 +4,16 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from django.db.models import Case, Count, OuterRef, Q, Subquery, When
+from django.db.models import (
+    BooleanField,
+    Case,
+    Count,
+    ExpressionWrapper,
+    OuterRef,
+    Q,
+    Subquery,
+    When,
+)
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -65,3 +74,8 @@ def as_rows(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
     # Three hops reach a root from the deepest Subtask, so a row's depth costs no queries.
     tasks = tasks.select_related("parent__parent__parent").prefetch_related("tags")
     return with_overdue(with_counts(tasks), user)
+
+
+def unpinned() -> ExpressionWrapper[Q]:
+    """Return whether a Task isn't Pinned, as an expression: ordering by it puts Pinned first."""
+    return ExpressionWrapper(Q(pinned_at__isnull=True), output_field=BooleanField())

@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 
-import { json, mockApi, patches, renderList, task } from "@/test/drawer";
+import { bulkRequests, json, mockApi, patches, renderList, task } from "@/test/drawer";
+import { requestOf } from "@/test/fetch";
 
 function row(title: string) {
   const found = screen
@@ -19,25 +20,21 @@ const RENT = () => task({ id: 2, title: "Pay rent", position: "a1" });
 const BOOKS = () => task({ id: 3, title: "Return books", position: "a2" });
 
 type Affected = { id: number; prior_status: string; prior_blocked_reason: string }[];
+type Place = { id: number; project_id: number; parent_id: number | null; after_id: number | null };
 
-/** The stand-in server, answering `POST /tasks/bulk` with `affected`. */
-function mockBulk(affected: Affected = []) {
+/** The stand-in server, answering `POST /tasks/bulk` with `affected` and `movedFrom`. */
+function mockBulk(affected: Affected = [], movedFrom: Place[] = []) {
   const fetchSpy = mockApi([MILK(), RENT(), BOOKS()]);
   const tasksApi = fetchSpy.getMockImplementation();
   fetchSpy.mockImplementation((input, init) => {
-    const request = input as Request;
-    if (new URL(request.url).pathname.endsWith("/tasks/bulk")) return json({ affected });
+    const request = requestOf(input);
+    if (new URL(request.url).pathname.endsWith("/tasks/bulk")) {
+      return json({ affected, moved_from: movedFrom });
+    }
     if (!tasksApi) throw new Error("mockApi has no implementation");
     return tasksApi(input, init);
   });
   return fetchSpy;
-}
-
-async function bulkRequests(fetchSpy: ReturnType<typeof mockApi>) {
-  const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
-    .filter((request) => new URL(request.url).pathname.endsWith("/tasks/bulk"));
-  return Promise.all(requests.map(async (request) => (await request.json()) as unknown));
 }
 
 /** Mod-click "Buy milk", then Shift-click "Return books": all three rows. */
@@ -129,7 +126,7 @@ describe("the N selected bar", () => {
     expect(screen.getByText("Changed the priority of 3 tasks")).toBeInTheDocument();
   });
 
-  it("completes every Task, and Undo reopens each Task the server says it closed", async () => {
+  it("completes every Task, and Undo reopens in one request each Task the server says it closed", async () => {
     const fetchSpy = mockBulk([
       { id: 1, prior_status: "open", prior_blocked_reason: "" },
       { id: 2, prior_status: "blocked", prior_blocked_reason: "Waiting on the bank" },
@@ -142,14 +139,20 @@ describe("the N selected bar", () => {
     await user.click(await screen.findByRole("button", { name: "Undo" }));
 
     await vi.waitFor(async () => {
-      expect(await patches(fetchSpy)).toEqual([
-        ["/api/v1/tasks/1", { status: "open" }],
-        ["/api/v1/tasks/2", { status: "blocked", blocked_reason: "Waiting on the bank" }],
+      expect(await bulkRequests(fetchSpy)).toEqual([
+        { ids: [1, 2, 3], action: { kind: "status", status: "completed" } },
+        {
+          ids: [1, 2],
+          action: {
+            kind: "statuses",
+            statuses: [
+              { id: 1, status: "open", blocked_reason: "" },
+              { id: 2, status: "blocked", blocked_reason: "Waiting on the bank" },
+            ],
+          },
+        },
       ]);
     });
-    expect(await bulkRequests(fetchSpy)).toEqual([
-      { ids: [1, 2, 3], action: { kind: "status", status: "completed" } },
-    ]);
   });
 
   it("moves every Task to Trash, and Undo restores each one", async () => {
@@ -162,7 +165,7 @@ describe("the N selected bar", () => {
 
     await vi.waitFor(() => {
       const restored = fetchSpy.mock.calls
-        .map(([input]) => new URL((input as Request).url).pathname)
+        .map(([input]) => new URL(requestOf(input).url).pathname)
         .filter((path) => path.endsWith("/restore"));
       expect(restored).toEqual([
         "/api/v1/tasks/1/restore",
@@ -190,8 +193,13 @@ describe("the N selected bar", () => {
     });
   });
 
-  it("moves every Task to another Project, and Undo moves them back", async () => {
-    const fetchSpy = mockBulk();
+  it("moves every Task to another Project, and Undo puts each back in its place", async () => {
+    const places = [
+      { id: 1, project_id: 7, parent_id: null, after_id: null },
+      { id: 2, project_id: 7, parent_id: null, after_id: 1 },
+      { id: 3, project_id: 7, parent_id: null, after_id: 2 },
+    ];
+    const fetchSpy = mockBulk([], places);
     const user = renderList();
     await selectAll(user);
 
@@ -202,7 +210,7 @@ describe("the N selected bar", () => {
     await vi.waitFor(async () => {
       expect(await bulkRequests(fetchSpy)).toEqual([
         { ids: [1, 2, 3], action: { kind: "move", project_id: 8 } },
-        { ids: [1, 2, 3], action: { kind: "move", project_id: 7 } },
+        { ids: [1, 2, 3], action: { kind: "place", places } },
       ]);
     });
   });

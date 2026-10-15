@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 
 import { mockApi, openTask, patches, renderList, TAGS, task } from "@/test/drawer";
+import { requestOf } from "@/test/fetch";
 
 const [WORK_TAG, HOME_TAG] = TAGS as [(typeof TAGS)[number], (typeof TAGS)[number]];
 
@@ -58,7 +59,7 @@ describe("Tags in the drawer", () => {
 
     expect(await within(drawer).findByRole("button", { name: "Remove tag urgent" })).toBeVisible();
     const created = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .find((request) => request.method === "POST");
     expect(created && (await created.json())).toEqual({ name: "urgent", color: null });
   });

@@ -11,7 +11,7 @@ import { useRowContext } from "./row-context";
 import { addDays, todayIn, upcomingGroups, type ScheduleView } from "./schedule";
 import { SelectionBar } from "./selection-bar";
 import { TaskDetail } from "./task-detail";
-import { ClosedGroup, Group, TaskTableHeader } from "./task-list";
+import { ClosedGroup, Group, PinnedGroup, TaskTableHeader } from "./task-groups";
 import { TreeRows, type RowContext } from "./task-row";
 import { flatRows } from "./task-tree";
 import { closedTodayQuery, viewTasksQuery, type SidebarProject, type Task } from "./tasks";
@@ -26,9 +26,9 @@ const NONE_FOLDED: ReadonlySet<number> = new Set();
 const ignoreFold = () => undefined;
 
 /**
- * Today or Upcoming as a table, its Tasks picked by date on the server. Today shows Overdue,
- * then Today, then a collapsed Closed today group; Upcoming shows a group per day for the coming
- * week, then per month. Rows are flat, a Subtask naming its parent above its title. Quick add
+ * Today or Upcoming as a table, its Tasks picked by date on the server. Both show Pinned Tasks
+ * first. Today then shows Overdue, then Today, then a collapsed Closed today group; Upcoming
+ * shows a group per day for the coming week, then per month. Rows are flat, a Subtask naming its parent above its title. Quick add
  * puts new Tasks in the Inbox, due today in Today and tomorrow in Upcoming.
  */
 export function ScheduleList({
@@ -45,6 +45,8 @@ export function ScheduleList({
   description?: string;
 }) {
   const { data: tasks = [] } = useQuery(viewTasksQuery(view));
+  const pinned = useMemo(() => tasks.filter((task) => task.pinned_at !== null), [tasks]);
+  const unpinned = useMemo(() => tasks.filter((task) => task.pinned_at === null), [tasks]);
   const [showClosed, setShowClosed] = useState(false);
   const closed = useInfiniteQuery({ ...closedTodayQuery, enabled: showClosed && view === "today" });
   const closedTasks = useMemo(
@@ -82,9 +84,14 @@ export function ScheduleList({
         className="rounded-xl border border-border bg-surface shadow-sm"
       >
         <TaskTableHeader />
+        {pinned.length > 0 && (
+          <PinnedGroup count={pinned.length}>
+            <TreeRows rows={flatRows(pinned)} context={context} />
+          </PinnedGroup>
+        )}
         {view === "today" ? (
           <>
-            <TodayGroups tasks={tasks} context={context} />
+            <TodayGroups tasks={unpinned} context={context} />
             <ClosedGroup
               label="Closed today"
               query={closed}
@@ -96,7 +103,7 @@ export function ScheduleList({
             </ClosedGroup>
           </>
         ) : (
-          <UpcomingGroups tasks={tasks} today={today} context={context} />
+          <UpcomingGroups tasks={unpinned} today={today} context={context} />
         )}
       </div>
 

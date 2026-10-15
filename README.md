@@ -6,13 +6,13 @@
 
 <p align="center">
   An open-source, self-hostable task manager in the spirit of TickTick.<br>
-  Your tasks, lists and reminders, on a server you control.
+  Your tasks, projects and reminders, on a server you control.
 </p>
 
 ---
 
-> **Status:** early development. Sign-in and the app layout work; tasks, lists and reminders are
-> next. See [PLAN.md](PLAN.md) for the roadmap.
+> **Status:** early development. The v1 core loop is being finished: tasks, projects and
+> reminders. See [PLAN.md](PLAN.md) for the roadmap.
 
 ## Features
 
@@ -24,7 +24,7 @@
 - **Configured entirely from `.env`.** Every option is documented in
   [`.env.example`](.env.example).
 
-Planned for v1: natural-language quick add, lists and tags, repeating tasks, reminders by
+Planned for v1: natural-language quick add, projects and tags, repeating tasks, reminders by
 browser push, email and ntfy, and an iCal feed.
 
 ## Self-hosting

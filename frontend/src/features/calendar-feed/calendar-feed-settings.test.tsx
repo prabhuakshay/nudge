@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { requestOf } from "@/test/fetch";
 import { CalendarFeedSettings } from "./calendar-feed-settings";
 
 const FIRST = "https://nudge.example.com/api/v1/calendar/first.ics";
@@ -16,7 +17,7 @@ function mockServer(initial: string | null, failWrites = false) {
   let url = initial;
   const addresses = [FIRST, SECOND];
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-    const request = input as Request; // The API client always passes a Request.
+    const request = requestOf(input);
     if (request.method === "GET") return Promise.resolve(json({ url }));
     if (failWrites) return Promise.resolve(new Response(null, { status: 500 }));
     if (request.method === "POST") {
@@ -75,7 +76,7 @@ describe("CalendarFeedSettings", () => {
     await user.click(await screen.findByRole("button", { name: "Turn off" }));
 
     expect(await screen.findByRole("button", { name: "Turn on" })).toBeInTheDocument();
-    const methods = fetch.mock.calls.map(([input]) => (input as Request).method);
+    const methods = fetch.mock.calls.map(([input]) => requestOf(input).method);
     expect(methods).toContain("DELETE");
   });
 

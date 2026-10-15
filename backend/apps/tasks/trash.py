@@ -31,6 +31,7 @@ from fractional_indexing import generate_key_between
 from apps.tasks import reminders, services
 from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, Project, Task, TaskActivity
+from apps.tasks.positions import lock_project
 from apps.tasks.rows import as_rows
 from apps.tasks.tree import below, reopen_ancestors
 
@@ -64,10 +65,8 @@ def trash_task(user: User, task_id: int) -> bool:
     now = timezone.now()
     with transaction.atomic():
         ids = [task.pk, *below([task]).values_list("pk", flat=True)]
-        unit = Task.objects.filter(pk__in=ids)
-        unit.update(deleted_at=now, trash_unit=uuid.uuid4(), updated_at=now)
-        # A bulk update skips the save signal that keeps Reminders on time, so do its work here.
-        reminders.reschedule(unit)
+        unit = user.tasks.filter(pk__in=ids)
+        reminders.update_tasks(unit, deleted_at=now, trash_unit=uuid.uuid4(), updated_at=now)
         TaskActivity.objects.bulk_create(
             TaskActivity(task_id=pk, kind=TaskActivity.Kind.TRASHED, at=now) for pk in ids
         )
@@ -125,25 +124,25 @@ def restore_task(user: User, task_id: int) -> Restored | None:
     if task is None:
         return None
     head = _head(task)
-    unit = list(Task.objects.filter(trash_unit=head.trash_unit))
+    unit = list(user.tasks.filter(trash_unit=head.trash_unit))
     with transaction.atomic():
         _place(user, head, height=max(member.depth for member in unit) - head.depth)
         head.deleted_at = head.trash_unit = None
         fields = ["deleted_at", "trash_unit", "project", "parent", "position", "updated_at"]
         head.save(update_fields=fields)
-        others = Task.objects.filter(pk__in=[member.pk for member in unit if member != head])
-        others.update(
+        others = user.tasks.filter(pk__in=[member.pk for member in unit if member != head])
+        reminders.update_tasks(
+            others,
             deleted_at=None,
             trash_unit=None,
             project=head.project,
             updated_at=timezone.now(),
         )
-        reminders.reschedule(others)
         TaskActivity.objects.bulk_create(
             TaskActivity(task=member, kind=TaskActivity.Kind.RESTORED) for member in unit
         )
         reopen_ancestors(head)
-    return Restored(task=as_rows(Task.objects.filter(pk=head.pk), user).get(), project=head.project)
+    return Restored(task=as_rows(user.tasks.filter(pk=head.pk), user).get(), project=head.project)
 
 
 def _head(task: Task) -> Task:
@@ -162,8 +161,7 @@ def _place(user: User, head: Task, height: int) -> None:
     project = head.project if head.project.deleted_at is None else services.inbox(user)
     if parent is None and project == head.project:
         return
-    # Locking the Project serialises inserts into it, so two Tasks never get the same key.
-    Project.objects.select_for_update().get(pk=project.pk)
+    lock_project(project.pk)
     roots = project.tasks.filter(parent__isnull=True).order_by("-position", "-id")
     head.position = str(
         generate_key_between(roots.values_list("position", flat=True).first(), None)

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { requestOf } from "@/test/fetch";
 import { EditNameForm } from "./edit-name-form";
 import { sessionQuery } from "./session";
 
@@ -58,7 +59,7 @@ describe("EditNameForm", () => {
     await vi.waitFor(() => {
       expect(onSuccess).toHaveBeenCalled();
     });
-    const request = fetchSpy.mock.calls[0]?.[0] as Request;
+    const request = requestOf(fetchSpy.mock.calls[0]?.[0]);
     expect(request.method).toBe("PATCH");
     expect(await request.json()).toEqual({ full_name: "Augusta Ada King" });
     expect(queryClient.getQueryData(sessionQuery.queryKey)).toEqual(renamed);

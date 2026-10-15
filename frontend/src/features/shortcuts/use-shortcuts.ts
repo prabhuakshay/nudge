@@ -76,6 +76,7 @@ export function runShortcut(
   handlers: ShortcutHandlers,
   singleKey: boolean,
 ): boolean {
+  // `Object.entries` types keys as strings; ShortcutHandlers is keyed by ShortcutId only.
   const entries = Object.entries(handlers) as [ShortcutId, (event: KeyboardEvent) => void][];
   for (const [id, handler] of entries) {
     const binding = matchingBinding(event, id);
@@ -105,6 +106,7 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled = true) {
     if (!enabled) return;
     watchChords();
     const bindings: KeyBindingMap = {};
+    // `ids` is the handlers' keys joined, so every part is a ShortcutId.
     for (const id of ids.split(" ").filter(Boolean) as ShortcutId[]) {
       for (const binding of SHORTCUTS[id].keys) {
         if (!singleKey && isSingleKey(binding)) continue;

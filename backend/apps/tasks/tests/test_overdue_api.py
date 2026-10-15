@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from apps.accounts.services import set_time_zone
-from apps.tasks import services
+from apps.tasks import creation, services
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 
@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 
 def _task(user: User, dates: TaskDates) -> Task:
-    task = services.create_task(services.inbox(user), "Dated")
+    task = creation.create_task(services.inbox(user), "Dated")
     services.update_task(user, task.pk, services.TaskEdit(dates=dates))
     return task
 
@@ -201,7 +201,7 @@ def test_list_rows_say_whether_they_are_overdue(
 ) -> None:
     late = _task(kolkata, TaskDates(due_date=date(2026, 10, 14)))
     _task(kolkata, TaskDates(due_date=date(2026, 10, 15)))
-    services.create_task(services.inbox(kolkata), "Undated")
+    creation.create_task(services.inbox(kolkata), "Undated")
     freeze_time(datetime(2026, 10, 15, 12, tzinfo=UTC))
 
     response = client.get(f"/api/v1/tasks?project={services.inbox(kolkata).pk}")

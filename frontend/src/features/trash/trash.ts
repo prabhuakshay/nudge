@@ -1,4 +1,4 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api } from "@/api/client";
@@ -76,9 +76,51 @@ export function useRestoreTask() {
   });
 }
 
-/** The same Trash row: Tasks and Projects have separate ids. */
-function sameRow(a: TrashedRow, b: TrashedRow) {
-  return a.kind === b.kind && a.id === b.id;
+/** "1 item" or "3 items". */
+export function plural(count: number, noun: string) {
+  return `${String(count)} ${noun}${count === 1 ? "" : "s"}`;
+}
+
+/** A Trash row's key, unique across Tasks and Projects, which have separate ids. */
+export function rowKey(row: TrashedRow) {
+  return `${row.kind}-${String(row.id)}`;
+}
+
+/** Take rows out of the Trash before the server answers. */
+async function dropFromTrash(queryClient: QueryClient, gone: TrashedRow[]) {
+  const keys = new Set(gone.map(rowKey));
+  await queryClient.cancelQueries(trashQuery);
+  queryClient.setQueryData(trashQuery.queryKey, (rows) =>
+    rows?.filter((row) => !keys.has(rowKey(row))),
+  );
+}
+
+/** Bring one Trash row back: a Task unit or a Project. */
+async function restoreRow(row: TrashedRow) {
+  const { response } =
+    row.kind === "project"
+      ? await api.POST("/api/v1/projects/{project_id}/restore", {
+          params: { path: { project_id: row.id } },
+        })
+      : await api.POST("/api/v1/tasks/{task_id}/restore", {
+          params: { path: { task_id: row.id } },
+        });
+  if (!response.ok) {
+    throw new Error("Could not restore everything selected.");
+  }
+}
+
+/** Bring several Trash rows back at once, with one toast for all of them. */
+export function useRestoreRows() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (rows: TrashedRow[]) => Promise.all(rows.map(restoreRow)),
+    onMutate: (rows) => dropFromTrash(queryClient, rows),
+    onSuccess: (_, rows) => toast(`Restored ${plural(rows.length, "item")}`),
+    onError: (error) => toast.error(error.message),
+    onSettled: () =>
+      Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),
+  });
 }
 
 /** Delete Trash rows for good: each takes the whole unit it went to Trash with. */
@@ -95,12 +137,7 @@ export function useDeleteForever() {
         throw new Error("Could not delete it forever.");
       }
     },
-    onMutate: async (gone) => {
-      await queryClient.cancelQueries(trashQuery);
-      queryClient.setQueryData(trashQuery.queryKey, (rows) =>
-        rows?.filter((row) => !gone.some((other) => sameRow(row, other))),
-      );
-    },
+    onMutate: (gone) => dropFromTrash(queryClient, gone),
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries(trashQuery),
   });

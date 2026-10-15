@@ -11,7 +11,7 @@ from django.test import Client
 from apps.accounts.services import set_time_zone
 from apps.notifications.models import Notification
 from apps.notifications.services import notify
-from apps.tasks import projects, reminders, services
+from apps.tasks import creation, projects, reminders, services
 from apps.tasks.dates import TaskDates
 
 if TYPE_CHECKING:
@@ -42,7 +42,7 @@ def _fired_reminder(
     """Give the user a Task due at 14:00 with a Reminder 30 minutes before, and fire it."""
     set_time_zone(user, "Europe/London")
     freeze_time(FIRED - timedelta(hours=1))
-    task = services.create_task(services.inbox(user), title)
+    task = creation.create_task(services.inbox(user), title)
     edit = services.TaskEdit(
         dates=TaskDates(due_date=date(2026, 11, 6), due_time=time(14, 0)),
         reminders=[timedelta(minutes=-30)],
@@ -230,7 +230,7 @@ def test_completing_from_a_reminder_applies_the_status_rules(
     task_id = _task_id(notification)
     parent = services.live_task(ada, task_id)
     assert parent is not None
-    subtask = services.create_subtask(parent, "Find the card").task
+    subtask = creation.create_subtask(parent, "Find the card").task
 
     response = client.post(f"/api/v1/notifications/{notification.pk}/complete")
 

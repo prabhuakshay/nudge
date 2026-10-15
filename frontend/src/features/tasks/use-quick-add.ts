@@ -43,6 +43,7 @@ function tokenAt(text: string, caret: number) {
   const found = /(?:^|\s)([#@~])([^\s#@~]*)$/.exec(text.slice(0, caret));
   if (!found) return null;
   const query = found[2] ?? "";
+  // The pattern's first group only matches the sigils.
   return { sigil: found[1] as Sigil, query, start: caret - query.length - 1 };
 }
 

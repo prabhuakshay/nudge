@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import services
+from apps.tasks import creation, services
 
 if TYPE_CHECKING:
     from django.test import Client
@@ -32,7 +32,7 @@ def test_a_subtask_lives_under_its_parent_in_the_parents_project(
     client: Client,
     ada: User,
 ) -> None:
-    parent = services.create_task(services.inbox(ada), "Plan the trip")
+    parent = creation.create_task(services.inbox(ada), "Plan the trip")
 
     subtask = _add(client, "Book flights", parent)
 
@@ -59,7 +59,7 @@ def test_subtasks_nest_four_levels_deep_and_no_further(client: Client, ada: User
 
 @pytest.mark.django_db
 def test_a_subtask_cannot_go_under_another_users_task(client: Client, grace: User) -> None:
-    theirs = services.create_task(services.inbox(grace), "Grace's")
+    theirs = creation.create_task(services.inbox(grace), "Grace's")
 
     response = client.post(
         "/api/v1/tasks",
@@ -73,7 +73,7 @@ def test_a_subtask_cannot_go_under_another_users_task(client: Client, grace: Use
 
 @pytest.mark.django_db
 def test_a_subtask_ignores_a_project_other_than_its_parents(client: Client, ada: User) -> None:
-    parent = services.create_task(services.inbox(ada), "Plan the trip")
+    parent = creation.create_task(services.inbox(ada), "Plan the trip")
     other = ada.projects.create(name="Work")
 
     response = client.post(
@@ -90,7 +90,7 @@ def test_the_list_returns_flat_rows_with_new_subtasks_last_among_their_siblings(
     client: Client,
     ada: User,
 ) -> None:
-    parent = services.create_task(services.inbox(ada), "Plan the trip")
+    parent = creation.create_task(services.inbox(ada), "Plan the trip")
     flights = _add(client, "Book flights", parent)
     _add(client, "Book hotel", parent)
     _add(client, "Pick seats", _id(flights))
@@ -118,9 +118,9 @@ def test_open_trees_keep_their_closed_subtasks_and_closed_trees_come_whole(
     client: Client,
     ada: User,
 ) -> None:
-    open_root = services.create_task(services.inbox(ada), "Open root")
+    open_root = creation.create_task(services.inbox(ada), "Open root")
     _patch(client, _id(_add(client, "Done step", open_root)), "completed")
-    closed_root = services.create_task(services.inbox(ada), "Closed root")
+    closed_root = creation.create_task(services.inbox(ada), "Closed root")
     _add(client, "Closed step", closed_root)
     _patch(client, closed_root, "completed")
     project = open_root.project_id
@@ -290,7 +290,7 @@ def _statuses(ada: User) -> dict[str, str]:
 
 def _chain(client: Client, ada: User, length: int) -> list[int]:
     """Create a root with one Subtask per level below it, `length` Tasks in all; return ids."""
-    ids = [services.create_task(services.inbox(ada), "Level 0").pk]
+    ids = [creation.create_task(services.inbox(ada), "Level 0").pk]
     for level in range(1, length):
         ids.append(_id(_add(client, f"Level {level}", ids[-1])))
     return ids

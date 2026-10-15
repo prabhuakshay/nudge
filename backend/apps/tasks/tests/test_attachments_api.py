@@ -8,7 +8,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
-from apps.tasks import services
+from apps.tasks import creation, services
 from apps.tasks.models import Attachment
 
 if TYPE_CHECKING:
@@ -32,7 +32,7 @@ def media_root(settings: Settings, tmp_path: Path) -> Path:
 
 @pytest.fixture
 def task(ada: User) -> Task:
-    return services.create_task(services.inbox(ada), "File the taxes")
+    return creation.create_task(services.inbox(ada), "File the taxes")
 
 
 def _upload(client: Client, task_id: int, name: str, content: bytes = b"data") -> Response:
@@ -151,7 +151,7 @@ def test_upload_to_another_users_task_is_not_found(
     grace: User,
     media_root: Path,
 ) -> None:
-    task = services.create_task(services.inbox(grace), "Private")
+    task = creation.create_task(services.inbox(grace), "Private")
 
     response = _upload(client, task.pk, "x.txt")
 
@@ -172,7 +172,7 @@ def test_list_returns_the_tasks_attachments_oldest_first(client: Client, task: T
 
 @pytest.mark.django_db
 def test_list_of_another_users_task_is_not_found(client: Client, grace: User) -> None:
-    task = services.create_task(services.inbox(grace), "Private")
+    task = creation.create_task(services.inbox(grace), "Private")
 
     response = client.get(f"/api/v1/tasks/{task.pk}/attachments")
 
@@ -217,7 +217,7 @@ def test_download_of_another_users_attachment_is_not_found(
     client: Client,
     grace: User,
 ) -> None:
-    task = services.create_task(services.inbox(grace), "Private")
+    task = creation.create_task(services.inbox(grace), "Private")
     grace_client = Client()
     grace_client.force_login(grace)
     attachment_id = _upload(grace_client, task.pk, "secret.txt").json()["id"]
@@ -252,7 +252,7 @@ def test_delete_of_another_users_attachment_is_not_found(
     grace: User,
     media_root: Path,
 ) -> None:
-    task = services.create_task(services.inbox(grace), "Private")
+    task = creation.create_task(services.inbox(grace), "Private")
     grace_client = Client()
     grace_client.force_login(grace)
     attachment_id = _upload(grace_client, task.pk, "secret.txt").json()["id"]

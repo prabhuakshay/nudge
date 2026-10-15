@@ -15,7 +15,8 @@ import { useWithMentions } from "@/features/people/people";
 import { cn } from "@/lib/utils";
 
 import { STATUS, STATUSES } from "./task-properties";
-import { useSetTaskStatus, useUpdateTask, type Task, type TaskStatus } from "./tasks";
+import { useSetTaskStatus } from "./set-status";
+import { useUpdateTask, type Task, type TaskStatus } from "./tasks";
 
 /** A Task's Status as a small coloured label. */
 export function StatusBadge({ status }: { status: TaskStatus }) {

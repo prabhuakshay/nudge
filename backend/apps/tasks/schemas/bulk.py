@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated, Literal
 
 from ninja import Field, Schema
+from pydantic import model_validator
 
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.tasks.schemas.tasks import (  # noqa: TC001 - Pydantic needs the types at runtime
@@ -27,6 +28,37 @@ class BulkStatusIn(Schema):
 
     kind: Literal["status"]
     status: Task.Status
+
+
+class TaskStatusIn(Schema):
+    """The Status, and Blocked reason, to give one Task."""
+
+    id: int
+    status: Task.Status
+    blocked_reason: str = ""
+
+
+class BulkStatusesIn(Schema):
+    """Give each Task its own Status, in the order listed, as Undo of a cascade does."""
+
+    kind: Literal["statuses"]
+    statuses: list[TaskStatusIn]
+
+
+class TaskPlace(Schema):
+    """Where a Task sits: its Project, its parent and the sibling before it."""
+
+    id: int
+    project_id: int
+    parent_id: int | None = Field(description="None at the top level.")
+    after_id: int | None = Field(description="None when it's first among its siblings.")
+
+
+class BulkPlaceIn(Schema):
+    """Put each Task in its own place, in the order listed, as Undo of a move does."""
+
+    kind: Literal["place"]
+    places: list[TaskPlace]
 
 
 class BulkPriorityIn(Schema):
@@ -57,7 +89,14 @@ class BulkDeleteIn(Schema):
 
 
 BulkAction = Annotated[
-    BulkMoveIn | BulkStatusIn | BulkPriorityIn | BulkDatesIn | BulkTagIn | BulkDeleteIn,
+    BulkMoveIn
+    | BulkStatusIn
+    | BulkStatusesIn
+    | BulkPlaceIn
+    | BulkPriorityIn
+    | BulkDatesIn
+    | BulkTagIn
+    | BulkDeleteIn,
     Field(discriminator="kind"),
 ]
 
@@ -68,8 +107,24 @@ class TaskBulkIn(Schema):
     ids: list[int] = Field(min_length=1, max_length=MAX_BULK)
     action: BulkAction
 
+    @model_validator(mode="after")
+    def _entries_name_the_tasks(self) -> TaskBulkIn:
+        """Refuse per-Task Statuses or places that aren't for exactly the Tasks given, in order."""
+        action = self.action
+        if isinstance(action, BulkStatusesIn | BulkPlaceIn):
+            entries = action.statuses if isinstance(action, BulkStatusesIn) else action.places
+            if self.ids != [entry.id for entry in entries]:
+                message = "Each entry must be for a task given, in the same order."
+                raise ValueError(message)
+        return self
+
 
 class TaskBulkOut(Schema):
-    """Every Task whose Status the action changed, with its Status before, for Undo."""
+    """What the action changed, for Undo."""
 
-    affected: list[AffectedTaskOut]
+    affected: list[AffectedTaskOut] = Field(
+        description="Every Task whose Status changed, with its Status before.",
+    )
+    moved_from: list[TaskPlace] = Field(
+        description="For a move: where each moved Task was, in the order to put them back.",
+    )

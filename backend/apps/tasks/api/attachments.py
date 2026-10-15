@@ -7,15 +7,16 @@ type is the one the server chose, sniffing is off and the response is sandboxed.
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from django.http import FileResponse
 from ninja import File, Router, Status, UploadedFile
 
-from apps.accounts.schemas import ErrorOut
+from apps.core.auth import signed_in_user
+from apps.core.schemas import ErrorOut
 from apps.tasks import attachments, services
-from apps.tasks.api import signed_in_user
-from apps.tasks.archive import ArchivedProjectError
+from apps.tasks.api.errors import TASK_NOT_FOUND
 from apps.tasks.schemas.attachments import AttachmentOut
 
 if TYPE_CHECKING:
@@ -23,13 +24,6 @@ if TYPE_CHECKING:
 
 router = Router()
 
-_HTTP_OK = 200
-_HTTP_CREATED = 201
-_HTTP_NO_CONTENT = 204
-_HTTP_NOT_FOUND = 404
-_HTTP_CONTENT_TOO_LARGE = 413
-_HTTP_UNPROCESSABLE = 422
-_TASK_NOT_FOUND = ErrorOut(detail="Task not found.")
 _ATTACHMENT_NOT_FOUND = ErrorOut(detail="Attachment not found.")
 
 # Types a browser shows without running anything. SVG and HTML can carry scripts, so they, like
@@ -42,10 +36,10 @@ _INLINE_TYPES = frozenset(
 @router.post(
     "/tasks/{int:task_id}/attachments",
     response={
-        _HTTP_CREATED: AttachmentOut,
-        _HTTP_NOT_FOUND: ErrorOut,
-        _HTTP_CONTENT_TOO_LARGE: ErrorOut,
-        _HTTP_UNPROCESSABLE: ErrorOut,
+        HTTPStatus.CREATED: AttachmentOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.REQUEST_ENTITY_TOO_LARGE: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
     },
     summary="Attach a file to a Task",
 )
@@ -57,19 +51,17 @@ def upload_attachment(
     """Store one file against a Task, up to the configured size."""
     task = services.live_task(signed_in_user(request), task_id)
     if task is None:
-        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
     try:
         attachment = attachments.attach_file(task, file)
     except attachments.AttachmentTooLargeError as error:
-        return Status(_HTTP_CONTENT_TOO_LARGE, ErrorOut(detail=str(error)))
-    except ArchivedProjectError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
-    return Status(_HTTP_CREATED, AttachmentOut.from_orm(attachment))
+        return Status(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, ErrorOut(detail=str(error)))
+    return Status(HTTPStatus.CREATED, AttachmentOut.from_orm(attachment))
 
 
 @router.get(
     "/tasks/{int:task_id}/attachments",
-    response={_HTTP_OK: list[AttachmentOut], _HTTP_NOT_FOUND: ErrorOut},
+    response={HTTPStatus.OK: list[AttachmentOut], HTTPStatus.NOT_FOUND: ErrorOut},
     summary="List a Task's Attachments",
 )
 def list_attachments(
@@ -79,18 +71,18 @@ def list_attachments(
     """Return a Task's Attachments, oldest first."""
     task = services.live_task(signed_in_user(request), task_id)
     if task is None:
-        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
     items = [AttachmentOut.from_orm(attachment) for attachment in attachments.attachments(task)]
-    return Status(_HTTP_OK, items)
+    return Status(HTTPStatus.OK, items)
 
 
 @router.get(
     "/attachments/{int:attachment_id}/download",
-    response={_HTTP_NOT_FOUND: ErrorOut},
+    response={HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Download an Attachment",
     openapi_extra={
         "responses": {
-            _HTTP_OK: {
+            HTTPStatus.OK: {
                 "description": "The file's bytes.",
                 "content": {"application/octet-stream": {}},
             },
@@ -104,7 +96,7 @@ def download_attachment(
     """Send an Attachment's bytes, inline for images and PDFs and as a download otherwise."""
     attachment = attachments.live_attachment(signed_in_user(request), attachment_id)
     if attachment is None:
-        return Status(_HTTP_NOT_FOUND, _ATTACHMENT_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, _ATTACHMENT_NOT_FOUND)
     response = FileResponse(
         attachment.file.open("rb"),
         as_attachment=attachment.content_type not in _INLINE_TYPES,
@@ -118,15 +110,16 @@ def download_attachment(
 
 @router.delete(
     "/attachments/{int:attachment_id}",
-    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.NO_CONTENT: None,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Delete an Attachment",
 )
 def delete_attachment(request: HttpRequest, attachment_id: int) -> Status[None] | Status[ErrorOut]:
     """Delete an Attachment and its file for good."""
-    try:
-        deleted = attachments.delete_attachment(signed_in_user(request), attachment_id)
-    except ArchivedProjectError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    deleted = attachments.delete_attachment(signed_in_user(request), attachment_id)
     if not deleted:
-        return Status(_HTTP_NOT_FOUND, _ATTACHMENT_NOT_FOUND)
-    return Status(_HTTP_NO_CONTENT, None)
+        return Status(HTTPStatus.NOT_FOUND, _ATTACHMENT_NOT_FOUND)
+    return Status(HTTPStatus.NO_CONTENT, None)

@@ -3,7 +3,8 @@ import { useCallback } from "react";
 import type { ShortcutHandlers } from "@/features/shortcuts/use-shortcuts";
 import { useDeleteTask } from "@/features/trash/trash";
 
-import { useSetTaskStatus, useUpdateTask, type Task, type TaskPriority } from "./tasks";
+import { useSetTaskStatus } from "./set-status";
+import { useUpdateTask, type Task, type TaskPriority } from "./tasks";
 
 const PRIORITIES: readonly TaskPriority[] = [0, 1, 2, 3, 4];
 

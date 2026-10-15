@@ -9,7 +9,7 @@ import pytest
 from django.test import Client
 
 from apps.accounts.services import set_time_zone
-from apps.tasks import services
+from apps.tasks import creation, services
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -40,7 +40,7 @@ def client(ada: User, freeze: Callable[[datetime], None]) -> Client:  # noqa: AR
 
 @pytest.fixture
 def task(ada: User) -> Task:
-    return services.create_task(services.inbox(ada), "Water the plants")
+    return creation.create_task(services.inbox(ada), "Water the plants")
 
 
 def _patch(client: Client, task_id: int, **fields: Any) -> Response:  # noqa: ANN401 - JSON body
@@ -169,8 +169,8 @@ def test_a_range_moves_whole(client: Client, task: Task) -> None:
 @pytest.mark.django_db
 def test_subtasks_start_over_and_dated_ones_move_with_it(client: Client, task: Task) -> None:
     _repeat(client, task, "FREQ=WEEKLY", "2026-10-15")
-    done = services.create_subtask(task, "Fill the can").task
-    dated = services.create_subtask(task, "Feed the roses").task
+    done = creation.create_subtask(task, "Fill the can").task
+    dated = creation.create_subtask(task, "Feed the roses").task
     _patch(client, done.pk, status="completed")
     _patch(client, dated.pk, dates={"due_date": "2026-10-14"}, status="wont_do")
 
@@ -220,7 +220,7 @@ def test_a_future_occurrence_cannot_be_completed_early(client: Client, task: Tas
 @pytest.mark.django_db
 def test_undo_reopens_on_the_same_occurrence(client: Client, task: Task) -> None:
     _repeat(client, task, "FREQ=WEEKLY", "2026-10-15")
-    done = services.create_subtask(task, "Fill the can").task
+    done = creation.create_subtask(task, "Fill the can").task
     _patch(client, done.pk, dates={"due_date": "2026-10-14"}, status="completed")
     _complete(client, task.pk)
 

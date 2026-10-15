@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from ninja import Router, Status
 
-from apps.accounts.schemas import ErrorOut
+from apps.core.auth import signed_in_user
+from apps.core.schemas import ErrorOut
 from apps.tasks import projects
-from apps.tasks.api import signed_in_user
+from apps.tasks.api.errors import FOLDER_NOT_FOUND
 from apps.tasks.projects import SiblingRef
 from apps.tasks.schemas.projects import FolderIn, FolderMoveIn, FolderOut, FolderPatchIn
 
@@ -17,23 +19,17 @@ if TYPE_CHECKING:
 
 router = Router()
 
-_HTTP_OK = 200
-_HTTP_CREATED = 201
-_HTTP_NO_CONTENT = 204
-_HTTP_NOT_FOUND = 404
-_FOLDER_NOT_FOUND = ErrorOut(detail="Folder not found.")
 
-
-@router.post("", response={_HTTP_CREATED: FolderOut}, summary="Create a Folder")
+@router.post("", response={HTTPStatus.CREATED: FolderOut}, summary="Create a Folder")
 def create_folder(request: HttpRequest, folder: FolderIn) -> Status[FolderOut]:
     """Create an expanded Folder last in the sidebar."""
     created = projects.create_folder(signed_in_user(request), folder.name)
-    return Status(_HTTP_CREATED, FolderOut.from_orm(created))
+    return Status(HTTPStatus.CREATED, FolderOut.from_orm(created))
 
 
 @router.patch(
     "/{int:folder_id}",
-    response={_HTTP_OK: FolderOut, _HTTP_NOT_FOUND: ErrorOut},
+    response={HTTPStatus.OK: FolderOut, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Change a Folder",
 )
 def update_folder(
@@ -49,13 +45,13 @@ def update_folder(
         collapsed=patch.collapsed,
     )
     if folder is None:
-        return Status(_HTTP_NOT_FOUND, _FOLDER_NOT_FOUND)
-    return Status(_HTTP_OK, FolderOut.from_orm(folder))
+        return Status(HTTPStatus.NOT_FOUND, FOLDER_NOT_FOUND)
+    return Status(HTTPStatus.OK, FolderOut.from_orm(folder))
 
 
 @router.post(
     "/{int:folder_id}/move",
-    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut},
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Move a Folder in the sidebar",
 )
 def move_folder(
@@ -66,17 +62,17 @@ def move_folder(
     """Put a Folder right after a top-level sibling, or first."""
     after = None if move.after is None else SiblingRef(move.after.kind, move.after.id)
     if not projects.move_folder(signed_in_user(request), folder_id, after):
-        return Status(_HTTP_NOT_FOUND, _FOLDER_NOT_FOUND)
-    return Status(_HTTP_NO_CONTENT, None)
+        return Status(HTTPStatus.NOT_FOUND, FOLDER_NOT_FOUND)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
 @router.delete(
     "/{int:folder_id}",
-    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut},
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Delete a Folder",
 )
 def delete_folder(request: HttpRequest, folder_id: int) -> Status[None] | Status[ErrorOut]:
     """Delete a Folder for good; its Projects stay, ungrouped, where it was."""
     if not projects.delete_folder(signed_in_user(request), folder_id):
-        return Status(_HTTP_NOT_FOUND, _FOLDER_NOT_FOUND)
-    return Status(_HTTP_NO_CONTENT, None)
+        return Status(HTTPStatus.NOT_FOUND, FOLDER_NOT_FOUND)
+    return Status(HTTPStatus.NO_CONTENT, None)

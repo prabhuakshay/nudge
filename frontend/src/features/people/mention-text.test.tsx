@@ -1,12 +1,22 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 
+import { INBOX } from "@/test/drawer";
+
 import { MentionText } from "./mention-text";
 import { peopleQuery } from "./people";
 
 function renderText(text: string) {
   const queryClient = new QueryClient();
-  queryClient.setQueryData(peopleQuery.queryKey, [{ id: 1, name: "Priya Shah", color: "violet" }]);
+  queryClient.setQueryData(peopleQuery.queryKey, {
+    inbox: INBOX,
+    items: [],
+    archived: [],
+    tags: [],
+    people: [{ id: 1, name: "Priya Shah", color: "violet" }],
+    today_count: 0,
+    upcoming_count: 0,
+  });
   const { container } = render(
     <QueryClientProvider client={queryClient}>
       <p>

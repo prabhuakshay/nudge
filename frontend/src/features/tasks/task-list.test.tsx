@@ -2,20 +2,38 @@ import { screen, within } from "@testing-library/react";
 
 import { INBOX, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { requestOf } from "@/test/fetch";
 
 import type { Task } from "./tasks";
 
 const task = makeTask;
 
 /** A small stand-in for the server: open Tasks, pages of Closed ones, and Task creation. */
-function mockApi({
-  open = [] as Task[],
-  closedPages = [] as Task[][],
-}: { open?: Task[]; closedPages?: Task[][] } = {}) {
+function mockApi({ open = [], closedPages = [] }: { open?: Task[]; closedPages?: Task[][] } = {}) {
   let nextId = 100;
+  const known = new Map<number, Task>();
+  const save = (id: number, change: Partial<Task>) => {
+    const before =
+      known.get(id) ??
+      [...open, ...closedPages.flat()].find((item) => item.id === id) ??
+      task({ id });
+    const changed = { ...before, ...change };
+    known.set(id, changed);
+    open = [changed, ...open.filter((item) => item.id !== id)].filter(
+      (item) => item.status === "open" || item.status === "blocked",
+    );
+    return { before, changed };
+  };
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
+    if (url.pathname.endsWith("/tasks/bulk")) {
+      const { action } = (await request.clone().json()) as {
+        action: { statuses: Pick<Task, "id" | "status">[] };
+      };
+      for (const { id, status } of action.statuses) save(id, { status });
+      return json({ affected: [] });
+    }
     if (request.method === "POST") {
       const body = (await request.clone().json()) as { title: string };
       const created = task({ id: nextId++, title: body.title });
@@ -25,32 +43,30 @@ function mockApi({
     if (request.method === "PATCH") {
       const change = (await request.clone().json()) as Partial<Task>;
       const id = Number(url.pathname.split("/").at(-1));
-      const before =
-        [...open, ...closedPages.flat()].find((item) => item.id === id) ?? task({ id });
-      const changed = { ...before, ...change };
+      const { before, changed } = save(id, change);
       const affected = change.status
         ? [{ id, prior_status: before.status, prior_blocked_reason: before.blocked_reason }]
         : [];
-      open = [changed, ...open.filter((item) => item.id !== id)].filter(
-        (item) => item.status === "open" || item.status === "blocked",
-      );
       return json({ task: { ...changed, description: "" }, affected });
     }
     if (url.pathname === "/api/v1/sidebar") {
       return json({ inbox: { ...INBOX, open_count: open.length }, items: [], archived: [] });
     }
-    if (url.searchParams.get("closed") === "true") {
-      const page = Number(url.searchParams.get("cursor") ?? 0);
-      const next = page + 1 < closedPages.length ? String(page + 1) : null;
-      return json({ items: closedPages[page] ?? [], next_cursor: next });
-    }
+    if (url.searchParams.get("closed") === "true") return closedPage(url, closedPages);
     return json({ items: open, next_cursor: null });
   });
 }
 
+/** The page of Closed Tasks the URL's cursor asks for. */
+function closedPage(url: URL, closedPages: Task[][]) {
+  const page = Number(url.searchParams.get("cursor") ?? 0);
+  const next = page + 1 < closedPages.length ? String(page + 1) : null;
+  return json({ items: closedPages[page] ?? [], next_cursor: next });
+}
+
 function requests(fetchSpy: ReturnType<typeof mockApi>) {
   return fetchSpy.mock.calls.map(([input]) => {
-    const request = input as Request;
+    const request = requestOf(input);
     const url = new URL(request.url);
     return `${request.method} ${url.pathname}${url.search}`;
   });
@@ -172,7 +188,7 @@ describe("TaskList", () => {
     await user.click(await screen.findByRole("checkbox", { name: "Reopen “Paid rent”" }));
 
     const patch = fetchSpy.mock.calls
-      .map(([input]) => input as Request)
+      .map(([input]) => requestOf(input))
       .find((request) => request.method === "PATCH");
     expect(await patch?.json()).toEqual({ status: "open" });
   });
@@ -186,7 +202,8 @@ describe("TaskList", () => {
     await user.click(screen.getByRole("button", { name: "Undo" }));
 
     expect(await screen.findByRole("checkbox", { name: "Complete “Buy milk”" })).toBeVisible();
-    expect(requests(fetchSpy).filter((request) => request.startsWith("PATCH"))).toHaveLength(2);
+    expect(requests(fetchSpy).filter((request) => request.startsWith("PATCH"))).toHaveLength(1);
+    expect(requests(fetchSpy)).toContain("POST /api/v1/tasks/bulk");
   });
 
   it("changes the Status and Priority from the row's cells", async () => {
@@ -205,9 +222,9 @@ describe("TaskList", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     const bodies = await Promise.all(
       fetchSpy.mock.calls
-        .map(([input]) => input as Request)
+        .map(([input]) => requestOf(input))
         .filter((request) => request.method === "PATCH")
-        .map((request) => request.json() as Promise<unknown>),
+        .map(async (request): Promise<unknown> => request.json()),
     );
     expect(bodies).toEqual([{ status: "blocked" }, { priority: 2 }]);
   });

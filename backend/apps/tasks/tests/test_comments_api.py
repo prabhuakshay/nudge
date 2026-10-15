@@ -9,7 +9,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from apps.tasks import people, projects, services
+from apps.tasks import creation, people, projects, services
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -24,7 +24,7 @@ NOON = datetime(2026, 10, 15, 12, 0, tzinfo=UTC)
 
 @pytest.fixture
 def task(ada: User) -> Task:
-    return services.create_task(services.inbox(ada), "Plan the trip")
+    return creation.create_task(services.inbox(ada), "Plan the trip")
 
 
 def _post(client: Client, path: str, data: object) -> Response:
@@ -255,7 +255,7 @@ def test_a_task_in_an_archived_project_takes_no_comment_changes(
     ada: User,
 ) -> None:
     project = projects.create_project(ada, "Trips")
-    task = services.create_task(project, "Plan the trip")
+    task = creation.create_task(project, "Plan the trip")
     comment_id = _comment(client, task, "Booked the train")
     projects.archive_project(ada, project.pk)
 
@@ -282,7 +282,7 @@ def test_a_trashed_tasks_comments_are_out_of_reach(client: Client, task: Task) -
 
 @pytest.mark.django_db
 def test_another_users_task_and_comments_are_404(client: Client, grace: User) -> None:
-    theirs = services.create_task(services.inbox(grace), "Their task")
+    theirs = creation.create_task(services.inbox(grace), "Their task")
     grace_client = Client()
     grace_client.force_login(grace)
     comment_id = _comment(grace_client, theirs, "Their comment")

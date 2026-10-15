@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from apps.core.palette import PaletteColor
-from apps.tasks import projects, services, tags
+from apps.tasks import creation, projects, services, tags
 from apps.tasks.models import Tag, Task, TaskActivity
 
 if TYPE_CHECKING:
@@ -83,7 +83,7 @@ def test_create_cannot_use_another_users_tag(client: Client, ada: User, grace: U
 @pytest.mark.django_db
 def test_patch_replaces_the_tags_and_logs_each_change(client: Client, ada: User) -> None:
     work, home, urgent = (tags.create_tag(ada, name) for name in ("work", "home", "urgent"))
-    task = tags.create_tagged_task(services.inbox(ada), "Report", tags=[work, home])
+    task = creation.create_task(services.inbox(ada), "Report", creation.NewTask(tags=[work, home]))
 
     response = _patch(client, f"/api/v1/tasks/{task.pk}", {"tag_ids": [urgent.pk, work.pk]})
 
@@ -98,7 +98,7 @@ def test_patch_replaces_the_tags_and_logs_each_change(client: Client, ada: User)
 
 @pytest.mark.django_db
 def test_patch_cannot_use_another_users_tag(client: Client, ada: User, grace: User) -> None:
-    task = services.create_task(services.inbox(ada), "Report")
+    task = creation.create_task(services.inbox(ada), "Report")
     graces = tags.create_tag(grace, "hers")
 
     response = _patch(client, f"/api/v1/tasks/{task.pk}", {"tag_ids": [graces.pk]})
@@ -110,8 +110,8 @@ def test_patch_cannot_use_another_users_tag(client: Client, ada: User, grace: Us
 @pytest.mark.django_db
 def test_activity_lists_tag_events(client: Client, ada: User) -> None:
     job, work = tags.create_tag(ada, "job"), tags.create_tag(ada, "work")
-    task = services.create_task(services.inbox(ada), "Report")
-    tags.update_tagged_task(ada, task.pk, services.TaskEdit(), [job])
+    task = creation.create_task(services.inbox(ada), "Report")
+    services.update_task(ada, task.pk, services.TaskEdit(tags=[job]))
     tags.merge_tag(ada, job.pk, work.pk)
     tags.delete_tag(ada, work.pk)
 
@@ -128,7 +128,7 @@ def test_activity_lists_tag_events(client: Client, ada: User) -> None:
 @pytest.mark.django_db
 def test_a_renamed_tag_shows_on_its_tasks(client: Client, ada: User) -> None:
     work = tags.create_tag(ada, "work")
-    task = tags.create_tagged_task(services.inbox(ada), "Report", tags=[work])
+    task = creation.create_task(services.inbox(ada), "Report", creation.NewTask(tags=[work]))
     tags.update_tag(ada, work.pk, name="job")
 
     response = client.get(f"/api/v1/tasks/{task.pk}")
@@ -140,10 +140,10 @@ def test_a_renamed_tag_shows_on_its_tasks(client: Client, ada: User) -> None:
 def test_tag_view_lists_open_tasks_across_projects(client: Client, ada: User) -> None:
     work = tags.create_tag(ada, "work")
     project = projects.create_project(ada, "Office")
-    tags.create_tagged_task(project, "Report", tags=[work])
-    tags.create_tagged_task(services.inbox(ada), "Email", tags=[work])
-    services.create_task(services.inbox(ada), "Untagged")
-    done = tags.create_tagged_task(services.inbox(ada), "Done", tags=[work])
+    creation.create_task(project, "Report", creation.NewTask(tags=[work]))
+    creation.create_task(services.inbox(ada), "Email", creation.NewTask(tags=[work]))
+    creation.create_task(services.inbox(ada), "Untagged")
+    done = creation.create_task(services.inbox(ada), "Done", creation.NewTask(tags=[work]))
     services.update_task(ada, done.pk, services.TaskEdit(status=Task.Status.COMPLETED))
 
     open_tasks = client.get(f"/api/v1/tasks?tag={work.pk}")
@@ -158,7 +158,7 @@ def test_tag_view_lists_open_tasks_across_projects(client: Client, ada: User) ->
 def test_tag_view_leaves_out_trashed_projects(client: Client, ada: User) -> None:
     work = tags.create_tag(ada, "work")
     project = projects.create_project(ada, "Old")
-    tags.create_tagged_task(project, "Gone", tags=[work])
+    creation.create_task(project, "Gone", creation.NewTask(tags=[work]))
     project.deleted_at = project.created_at
     project.save()
 
@@ -171,7 +171,7 @@ def test_tag_view_leaves_out_trashed_projects(client: Client, ada: User) -> None
 def test_tag_view_and_its_count_leave_out_archived_projects(client: Client, ada: User) -> None:
     work = tags.create_tag(ada, "work")
     project = projects.create_project(ada, "Old")
-    tags.create_tagged_task(project, "Shelved", tags=[work])
+    creation.create_task(project, "Shelved", creation.NewTask(tags=[work]))
     projects.archive_project(ada, project.pk)
 
     listed = client.get(f"/api/v1/tasks?tag={work.pk}")
@@ -193,9 +193,9 @@ def test_tag_view_lists_a_tagged_subtask_with_its_parents_title(
     ada: User,
 ) -> None:
     work = tags.create_tag(ada, "work")
-    parent = services.create_task(services.inbox(ada), "Launch")
-    subtask = services.create_subtask(parent, "Write the post").task
-    tags.update_tagged_task(ada, subtask.pk, services.TaskEdit(), [work])
+    parent = creation.create_task(services.inbox(ada), "Launch")
+    subtask = creation.create_subtask(parent, "Write the post").task
+    services.update_task(ada, subtask.pk, services.TaskEdit(tags=[work]))
 
     response = client.get(f"/api/v1/tasks?tag={work.pk}")
 
@@ -206,7 +206,7 @@ def test_tag_view_lists_a_tagged_subtask_with_its_parents_title(
 @pytest.mark.django_db
 def test_tag_view_cannot_reach_another_users_tag(client: Client, grace: User) -> None:
     graces = tags.create_tag(grace, "hers")
-    tags.create_tagged_task(services.inbox(grace), "Hers", tags=[graces])
+    creation.create_task(services.inbox(grace), "Hers", creation.NewTask(tags=[graces]))
 
     response = client.get(f"/api/v1/tasks?tag={graces.pk}")
 
@@ -225,8 +225,8 @@ def test_listing_needs_a_project_a_person_a_tag_or_a_view(client: Client) -> Non
 @pytest.mark.django_db
 def test_sidebar_lists_tags_in_order_with_counts(client: Client, ada: User, grace: User) -> None:
     work, home = tags.create_tag(ada, "work", color=PaletteColor.TEAL), tags.create_tag(ada, "home")
-    tags.create_tagged_task(services.inbox(ada), "Report", tags=[work])
-    done = tags.create_tagged_task(services.inbox(ada), "Done", tags=[work, home])
+    creation.create_task(services.inbox(ada), "Report", creation.NewTask(tags=[work]))
+    done = creation.create_task(services.inbox(ada), "Done", creation.NewTask(tags=[work, home]))
     services.update_task(ada, done.pk, services.TaskEdit(status=Task.Status.WONT_DO))
     tags.create_tag(grace, "hers")
 

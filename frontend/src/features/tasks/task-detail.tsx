@@ -19,19 +19,14 @@ import { backOutOfField, useDetailKeys } from "./detail-keys";
 import { DetailTabsList } from "./detail-tabs";
 import { PropertyChips } from "./property-chips";
 import { rememberTask } from "./recent-tasks";
+import { useSetTaskStatus } from "./set-status";
 import { SubtaskSection } from "./subtask-section";
 import { TaskActionsMenu } from "./task-actions";
 import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
 import { isClosed } from "./task-properties";
 import { BlockedReasonField } from "./task-status";
-import {
-  sidebarQuery,
-  taskQuery,
-  useSetTaskStatus,
-  type SidebarProject,
-  type TaskDetail as Task,
-} from "./tasks";
+import { sidebarQuery, taskQuery, type SidebarProject, type TaskDetail as Task } from "./tasks";
 
 /** The bottom sheet opens at 60% of the screen and drags up to all of it. */
 const PEEK = 0.6;
@@ -88,7 +83,8 @@ export function TaskDetail(props: TaskDetailProps) {
           showClose={false}
           aria-describedby={undefined}
           onOpenAutoFocus={(event) => {
-            // Focus the drawer itself, not its first field, so J/K work straight away.
+            // Focus the drawer itself, not its first field, so J/K work straight away. The event's
+            // target is typed as a bare EventTarget, but it is the drawer's element.
             event.preventDefault();
             (event.currentTarget as HTMLElement | null)?.focus();
           }}

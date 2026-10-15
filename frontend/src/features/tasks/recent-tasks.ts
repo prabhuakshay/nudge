@@ -11,6 +11,7 @@ export type RecentTask = { id: number; title: string; project_id: number };
 
 function isRecentTask(value: unknown): value is RecentTask {
   if (typeof value !== "object" || value === null) return false;
+  // Any non-null object can be read field by field; the checks below say what each field is.
   const { id, title, project_id: projectId } = value as Record<string, unknown>;
   return typeof id === "number" && typeof title === "string" && typeof projectId === "number";
 }

@@ -7,7 +7,8 @@ import type { ShortcutHandlers } from "@/features/shortcuts/use-shortcuts";
 import { useOpenTask } from "@/features/tasks/open-task";
 import { requestDetailAction, useTaskKeys } from "@/features/tasks/task-keys";
 import { isClosed } from "@/features/tasks/task-properties";
-import { sidebarQuery, taskQuery, useSetTaskStatus, type Task } from "@/features/tasks/tasks";
+import { useSetTaskStatus } from "@/features/tasks/set-status";
+import { sidebarQuery, taskQuery, type Task } from "@/features/tasks/tasks";
 
 import { KeyHint } from "./key-hint";
 import { matches, type Run } from "./matches";

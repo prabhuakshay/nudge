@@ -1,15 +1,7 @@
 import type { ComponentProps } from "react";
 
+import { initials } from "@/lib/initials";
 import { cn } from "@/lib/utils";
-
-function initials(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
-  return words
-    .slice(0, 2)
-    .map((word) => word[0] ?? "")
-    .join("")
-    .toUpperCase();
-}
 
 const SIZE_CLASS = {
   xs: "size-5 text-[9px]",

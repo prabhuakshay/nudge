@@ -17,6 +17,7 @@ from datetime import date, datetime, time
 
 from dateutil.rrule import rrule, rrulestr
 
+from apps.core.errors import DomainRuleError
 from apps.tasks.advance import Advance, Revert, last_undo
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import CLOSED_STATUSES, Task, TaskActivity
@@ -28,7 +29,7 @@ _UNREADABLE = "That isn't a repeat rule Nudge understands."
 SUBTASK_REPEAT = "Only a top-level task can repeat."
 
 
-class RepeatRuleError(Exception):
+class RepeatRuleError(DomainRuleError):
     """A Repeat that would break a Repeat rule. The message says which, in the user's words."""
 
 

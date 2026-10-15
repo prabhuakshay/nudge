@@ -91,6 +91,7 @@ export const PROJECT_ICONS: Record<ProjectIconKey, LucideIcon> = {
 };
 
 /** Icons a user can pick for a Project: every one but the Inbox's. */
+// `Object.keys` types keys as strings; these are exactly PROJECT_ICONS' keys.
 export const PICKABLE_ICONS = (Object.keys(PROJECT_ICONS) as ProjectIconKey[]).filter(
   (icon) => icon !== "inbox",
 );

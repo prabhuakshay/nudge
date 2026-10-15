@@ -32,10 +32,8 @@ import {
   type SidebarItem,
   type SidebarProject,
 } from "./projects";
+import { SIDEBAR_ROW } from "./sidebar-drag";
 import type { Placement } from "./sidebar-order";
-
-const ROW =
-  "group flex h-10 items-center gap-2.5 rounded-md pr-1 pl-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground lg:h-9";
 
 /** Keeps a press on a row's own controls from starting a drag of the row. */
 function keepFromDragging(event: SyntheticEvent) {
@@ -48,7 +46,8 @@ const DRAG_GUARD = {
   onKeyDown: keepFromDragging,
 };
 
-function RowMenu({ label, children }: { label: string; children: ReactNode }) {
+/** A sidebar row's ⋯ menu, shown on hover or focus where there's a pointer to hover with. */
+export function RowMenu({ label, children }: { label: string; children: ReactNode }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
@@ -84,7 +83,7 @@ export function ProjectRow({
     return item ? { kind: item.kind, id: item.id } : null;
   };
   return (
-    <div className={cn(ROW, "has-[a[data-status=active]]:bg-primary-soft")}>
+    <div className={cn(SIDEBAR_ROW, "has-[a[data-status=active]]:bg-primary-soft")}>
       <Link
         to="/projects/$projectId"
         params={{ projectId: String(project.id) }}
@@ -154,7 +153,7 @@ export function FolderRow({
   const deleteFolder = useDeleteFolder();
   const Chevron = folder.collapsed ? ChevronRight : ChevronDown;
   return (
-    <div className={ROW}>
+    <div className={SIDEBAR_ROW}>
       <button
         type="button"
         aria-expanded={!folder.collapsed}

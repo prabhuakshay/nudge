@@ -1,28 +1,19 @@
 import {
   closestCenter,
   DndContext,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
   type DragEndEvent,
   type DragMoveEvent,
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { useMemo, useRef, useState, type ReactNode } from "react";
 
 import { cn } from "@/lib/utils";
 
 import type { SidebarItem } from "./projects";
+import { useSidebarSensors } from "./sidebar-drag";
 import {
   dropPlacement,
   flattenSidebar,
@@ -33,16 +24,6 @@ import {
 
 /** How far a Project in a Folder is indented, and how far to drag sideways to change level. */
 const INDENT = 16;
-
-// Module constants, not inline objects: dnd-kit memoizes sensors on these options. A mouse drag
-// starts after 5 px so clicks still open Projects; touch needs a press and hold so the sidebar
-// still scrolls; the keyboard picks up with Space, leaving Enter to follow the link.
-const MOUSE = { activationConstraint: { distance: 5 } };
-const TOUCH = { activationConstraint: { delay: 220, tolerance: 6 } };
-const KEYBOARD = {
-  coordinateGetter: sortableKeyboardCoordinates,
-  keyboardCodes: { start: ["Space"], cancel: ["Escape"], end: ["Space", "Enter"] },
-};
 
 /** What a row renders, with the props that make it draggable already applied to its wrapper. */
 export type RenderRow = (row: SidebarRow) => ReactNode;
@@ -65,11 +46,7 @@ export function SidebarTree({
   // Sideways drag in whole indents, so pointer moves re-render only when the level can change.
   const [steps, setSteps] = useState(0);
   const justDropped = useRef(false);
-  const sensors = useSensors(
-    useSensor(MouseSensor, MOUSE),
-    useSensor(TouchSensor, TOUCH),
-    useSensor(KeyboardSensor, KEYBOARD),
-  );
+  const sensors = useSidebarSensors();
 
   const draggedFolder = activeKey?.startsWith("folder-") ? Number(activeKey.slice(7)) : undefined;
   const rows = useMemo(() => flattenSidebar(items, draggedFolder), [items, draggedFolder]);

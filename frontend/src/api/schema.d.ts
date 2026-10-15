@@ -461,7 +461,7 @@ export interface paths {
     };
     /**
      * Get the sidebar
-     * @description Return the Inbox, Folders and ungrouped Projects in order, then archived Projects.
+     * @description Return everything the sidebar lists, with open counts for Projects, Today and Upcoming.
      */
     get: operations["apps_tasks_api_sidebar_sidebar"];
     put?: never;
@@ -480,10 +480,12 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * List a Project's Tasks
-     * @description Return a Project's open Tasks in manual order, or, with `closed`, a page of Closed ones.
+     * List a Project's or a view's Tasks
+     * @description Return the open Tasks of a Project or of a view, or, with `closed`, a page of Closed ones.
      *
-     *     Closed Tasks come most recently completed first, in pages; open Tasks come all at once.
+     *     A Project lists its trees in manual order. Today and Upcoming list flat rows by date, with
+     *     Overdue first in Today; Today's Closed Tasks are those closed today. Closed Tasks come most
+     *     recently completed first, in pages; open Tasks come all at once.
      */
     get: operations["apps_tasks_api_tasks_list_tasks"];
     put?: never;
@@ -997,6 +999,16 @@ export interface components {
        * @description Archived Projects, by name.
        */
       archived: components["schemas"]["SidebarProjectOut"][];
+      /**
+       * Today Count
+       * @description Open Tasks in Today, Overdue ones included.
+       */
+      today_count: number;
+      /**
+       * Upcoming Count
+       * @description Open Tasks in Upcoming.
+       */
+      upcoming_count: number;
     };
     /**
      * SidebarProjectOut
@@ -1026,6 +1038,12 @@ export interface components {
       /** Open Count */
       open_count: number;
     };
+    /**
+     * View
+     * @description A list of Tasks picked by their dates rather than by Project.
+     * @enum {string}
+     */
+    View: "today" | "upcoming";
     /**
      * Priority
      * @description How urgent a Task is; P1 is the most urgent.
@@ -1137,6 +1155,26 @@ export interface components {
       attachment_count: number;
     };
     /**
+     * TaskDatesIn
+     * @description A Task's due date, time and range, all clock times in the user's time zone.
+     *
+     *     Without a time the Task is all-day. A start turns it into a range ending at the due date;
+     *     start and due are then both all-day or both timed. Times have minute precision.
+     */
+    TaskDatesIn: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Due Time */
+      due_time?: string | null;
+      /** Start Date */
+      start_date?: string | null;
+      /** Start Time */
+      start_time?: string | null;
+    };
+    /**
      * TaskIn
      * @description A new Task from Quick add.
      */
@@ -1153,6 +1191,8 @@ export interface components {
        * @description Makes the Task the last Subtask of this one; reopens it if it's Closed.
        */
       parent_id?: number | null;
+      /** @description Dates the Task from the start, such as today in Today. Not for a Subtask. */
+      dates?: components["schemas"]["TaskDatesIn"] | null;
     };
     /**
      * TaskAncestorOut
@@ -1283,26 +1323,6 @@ export interface components {
       task: components["schemas"]["TaskDetailOut"];
       /** Affected */
       affected: components["schemas"]["AffectedTaskOut"][];
-    };
-    /**
-     * TaskDatesIn
-     * @description A Task's due date, time and range, all clock times in the user's time zone.
-     *
-     *     Without a time the Task is all-day. A start turns it into a range ending at the due date;
-     *     start and due are then both all-day or both timed. Times have minute precision.
-     */
-    TaskDatesIn: {
-      /**
-       * Due Date
-       * Format: date
-       */
-      due_date: string;
-      /** Due Time */
-      due_time?: string | null;
-      /** Start Date */
-      start_date?: string | null;
-      /** Start Time */
-      start_time?: string | null;
     };
     /**
      * TaskPatchIn
@@ -2409,8 +2429,9 @@ export interface operations {
   };
   apps_tasks_api_tasks_list_tasks: {
     parameters: {
-      query: {
-        project: number;
+      query?: {
+        project?: number | null;
+        view?: components["schemas"]["View"] | null;
         closed?: boolean;
         cursor?: string | null;
       };

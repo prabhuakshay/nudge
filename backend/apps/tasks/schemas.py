@@ -73,20 +73,6 @@ class TaskListOut(Schema):
     )
 
 
-class TaskIn(Schema):
-    """A new Task from Quick add."""
-
-    title: Title
-    project_id: int | None = Field(
-        default=None,
-        description="Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.",
-    )
-    parent_id: int | None = Field(
-        default=None,
-        description="Makes the Task the last Subtask of this one; reopens it if it's Closed.",
-    )
-
-
 class TaskDatesIn(Schema):
     """A Task's due date, time and range, all clock times in the user's time zone.
 
@@ -124,6 +110,24 @@ class TaskDatesIn(Schema):
             message = "A range can't start after it's due."
             raise ValueError(message)
         return self
+
+
+class TaskIn(Schema):
+    """A new Task from Quick add."""
+
+    title: Title
+    project_id: int | None = Field(
+        default=None,
+        description="Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.",
+    )
+    parent_id: int | None = Field(
+        default=None,
+        description="Makes the Task the last Subtask of this one; reopens it if it's Closed.",
+    )
+    dates: TaskDatesIn | None = Field(
+        default=None,
+        description="Dates the Task from the start, such as today in Today. Not for a Subtask.",
+    )
 
 
 class TaskPatchIn(Schema):
@@ -457,3 +461,5 @@ class SidebarOut(Schema):
         Field(description="Folders and ungrouped Projects in the user's order.")
     )
     archived: list[SidebarProjectOut] = Field(description="Archived Projects, by name.")
+    today_count: int = Field(description="Open Tasks in Today, Overdue ones included.")
+    upcoming_count: int = Field(description="Open Tasks in Upcoming.")

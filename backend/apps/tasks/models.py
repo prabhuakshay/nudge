@@ -288,7 +288,8 @@ CLOSED_STATUSES = (Task.Status.COMPLETED, Task.Status.WONT_DO)
 class TaskActivity(models.Model):
     """One event in a Task's history, written by a service in the same transaction as the change.
 
-    `data` holds the event's details, shaped per `kind`; `apps.tasks.schemas` types each shape.
+    `data` holds the event's details, shaped per `kind`; `apps.tasks.schemas.activity` types
+    each shape.
     """
 
     class Kind(models.TextChoices):

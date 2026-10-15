@@ -13,9 +13,9 @@ from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.mentions import MentionError
 from apps.tasks.pagination import InvalidCursorError, Page
-from apps.tasks.schemas import (
+from apps.tasks.schemas.activity import TaskActivityListOut
+from apps.tasks.schemas.tasks import (
     AffectedTaskOut,
-    TaskActivityListOut,
     TaskAncestorOut,
     TaskChangeOut,
     TaskDetailOut,

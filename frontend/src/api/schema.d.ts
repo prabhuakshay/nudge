@@ -703,6 +703,54 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/calendar/feed": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the Calendar feed address
+     * @description Return the signed-in user's feed address, or null while the feed is off.
+     */
+    get: operations["apps_tasks_api_calendar_get_feed"];
+    put?: never;
+    /**
+     * Turn on or reset the Calendar feed
+     * @description Give the user a new feed address; any old address stops working.
+     */
+    post: operations["apps_tasks_api_calendar_turn_on_feed"];
+    /**
+     * Turn off the Calendar feed
+     * @description Clear the user's feed address so it stops working.
+     */
+    delete: operations["apps_tasks_api_calendar_turn_off_feed"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/calendar/{token}.ics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Fetch a Calendar feed
+     * @description Return the feed's owner's open dated Tasks as an iCalendar file.
+     */
+    get: operations["apps_tasks_api_calendar_feed"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1884,6 +1932,17 @@ export interface components {
        * Format: date-time
        */
       created_at: string;
+    };
+    /**
+     * CalendarFeedOut
+     * @description The user's Calendar feed address.
+     */
+    CalendarFeedOut: {
+      /**
+       * Url
+       * @description The private `.ics` address, or null while it's off.
+       */
+      url: string | null;
     };
   };
   responses: never;
@@ -3159,6 +3218,95 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_get_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CalendarFeedOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_turn_on_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CalendarFeedOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_turn_off_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  apps_tasks_api_calendar_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The feed as an iCalendar file. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/calendar": string;
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

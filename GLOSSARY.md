@@ -88,7 +88,7 @@ The history of changes made to a Task, shown on that Task.
 _Avoid_: Audit log, history
 
 **Trash**:
-Where deleted Tasks and Projects wait for 30 days before they are gone for good.
+Where deleted Tasks and Projects wait, for a year by default, before they are gone for good.
 _Avoid_: Bin, archive
 
 **Attachment**:

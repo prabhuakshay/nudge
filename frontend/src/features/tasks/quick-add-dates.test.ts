@@ -8,6 +8,7 @@ const CONTEXT: QuickAddContext = {
   projects: [],
   tags: [{ id: 21, name: "may", color: null }],
   people: [],
+  dayFirst: false,
 };
 
 function parse(text: string, context: Partial<QuickAddContext> = {}) {
@@ -34,7 +35,8 @@ describe("parseQuickAdd dates", () => {
     ["Call at noon", "Call", due("2026-10-16", "12:00")],
     // A day that is named keeps its time, even one already past.
     ["Call today 14:00", "Call", due("2026-10-15", "14:00")],
-    ["Review next week", "Review", due("2026-10-22")],
+    // "next week" is next Monday.
+    ["Review next week", "Review", due("2026-10-19")],
     ["Plan in 3 days", "Plan", due("2026-10-18")],
     ["Dinner next friday at 7pm", "Dinner", due("2026-10-23", "19:00")],
     // The first date wins; later ones stay in the title.

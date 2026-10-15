@@ -4,9 +4,9 @@
  * chrono-node reads dates well but not repeats, so repeats get a grammar of their own.
  */
 
-import * as chrono from "chrono-node";
 import { addDays, format, getDaysInMonth, isLastDayOfMonth } from "date-fns";
 
+import { quickAddChrono } from "./quick-add-chrono";
 import { ruleParts, type Parts } from "./repeat";
 
 /** A Repeat phrase, where it sits in the text, and the RRULE it means. */
@@ -107,7 +107,11 @@ const COUNT = /^\s+(?:for\s+)?(\d+)\s+times?(?=$|[\s,.;!?])/i;
 const UNTIL = /^\s+until\s+/i;
 
 /** The "until <date>" or "for N times" after a phrase, as an RRULE part and its length. */
-function ending(after: string, today: Date): { part: string; length: number } | null {
+function ending(
+  after: string,
+  today: Date,
+  dayFirst: boolean,
+): { part: string; length: number } | null {
   const count = COUNT.exec(after);
   if (count && Number(count[1]) > 0) {
     return { part: `;COUNT=${String(Number(count[1]))}`, length: count[0].length };
@@ -115,7 +119,7 @@ function ending(after: string, today: Date): { part: string; length: number } | 
   const until = UNTIL.exec(after);
   if (!until) return null;
   const rest = after.slice(until[0].length);
-  const date = chrono.parse(rest, today, { forwardDate: true })[0];
+  const date = quickAddChrono(dayFirst).parse(rest, today, { forwardDate: true })[0];
   if (date?.index !== 0) return null;
   // The whole last day counts, since a Task's time can be any time of day.
   const last = format(date.start.date(), "yyyyMMdd");
@@ -123,14 +127,14 @@ function ending(after: string, today: Date): { part: string; length: number } | 
 }
 
 /** Every phrase each pattern finds, with its ending, overlapping ones included. */
-function allPhrases(text: string, today: Date): FoundRepeat[] {
+function allPhrases(text: string, today: Date, dayFirst: boolean): FoundRepeat[] {
   return PATTERNS.flatMap(([pattern, ruleOf]) =>
     [...text.matchAll(pattern)].flatMap((match) => {
       const rule = ruleOf(match.groups ?? {});
       if (rule === null) return [];
       const start = match.index;
       const phraseEnd = start + match[0].length;
-      const tail = ending(text.slice(phraseEnd), today);
+      const tail = ending(text.slice(phraseEnd), today, dayFirst);
       const end = phraseEnd + (tail?.length ?? 0);
       return [{ start, end, text: text.slice(start, end), rule: rule + (tail?.part ?? "") }];
     }),
@@ -139,10 +143,13 @@ function allPhrases(text: string, today: Date): FoundRepeat[] {
 
 /**
  * Every Repeat phrase in the text, left to right, the longest where two start together. `today`
- * is midnight on the user's clock, for reading "until" dates forwards.
+ * is midnight on the user's clock, for reading "until" dates forwards, and `dayFirst` whether
+ * they read 3/11 as 3 November.
  */
-export function findRepeats(text: string, today: Date): FoundRepeat[] {
-  const sorted = allPhrases(text, today).sort((a, b) => a.start - b.start || b.end - a.end);
+export function findRepeats(text: string, today: Date, dayFirst: boolean): FoundRepeat[] {
+  const sorted = allPhrases(text, today, dayFirst).sort(
+    (a, b) => a.start - b.start || b.end - a.end,
+  );
   let reached = 0;
   return sorted.filter((repeat) => {
     if (repeat.start < reached) return false;

@@ -11,7 +11,7 @@ import {
   refreshTasks,
   showChange,
   type Task,
-  type TaskChange,
+  type TaskPatch,
   type TaskStatus,
 } from "./tasks";
 
@@ -19,7 +19,7 @@ import {
 export type AffectedTask = components["schemas"]["AffectedTaskOut"];
 
 /** The change that gives a Task back the Status and Blocked reason it had. */
-function priorStatus(prior: AffectedTask): TaskChange {
+function priorStatus(prior: AffectedTask): TaskPatch {
   return {
     id: prior.id,
     status: prior.prior_status,

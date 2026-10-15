@@ -155,6 +155,56 @@ def test_the_person_view_lists_open_tasks_from_every_project_but_not_trashed_one
 
 
 @pytest.mark.django_db
+def test_a_subtasks_mention_lists_the_subtask_alone_with_its_parents_title(
+    client: Client,
+    ada: User,
+) -> None:
+    priya = people.create_person(ada, "Priya")
+    parent = services.create_task(services.inbox(ada), "Plan the trip")
+
+    response = _post(
+        client,
+        "/api/v1/tasks",
+        {"title": f"Ask {_mention(priya)}", "parent_id": parent.pk},
+    )
+
+    assert response.status_code == 201
+    rows = client.get("/api/v1/tasks", {"person": str(priya.pk)}).json()["items"]
+    assert [(row["title"], row["parent_title"]) for row in rows] == [
+        (f"Ask {_mention(priya)}", "Plan the trip"),
+    ]
+
+
+@pytest.mark.django_db
+def test_a_subtasks_mention_of_another_users_person_is_refused(
+    client: Client,
+    ada: User,
+    grace: User,
+) -> None:
+    theirs = people.create_person(grace, "Priya")
+    parent = services.create_task(services.inbox(ada), "Plan the trip")
+
+    response = _post(
+        client,
+        "/api/v1/tasks",
+        {"title": f"Ask {_mention(theirs)}", "parent_id": parent.pk},
+    )
+
+    assert response.status_code == 422
+    assert not parent.subtasks.exists()
+
+
+@pytest.mark.django_db
+def test_a_duplicate_mentions_the_same_people(client: Client, ada: User) -> None:
+    priya = people.create_person(ada, "Priya")
+    task = services.create_task(services.inbox(ada), f"Call {_mention(priya)}")
+
+    client.post(f"/api/v1/tasks/{task.pk}/duplicate")
+
+    assert len(_person_view(client, priya)) == 2
+
+
+@pytest.mark.django_db
 def test_the_person_view_cannot_show_another_users_person(client: Client, grace: User) -> None:
     theirs = people.create_person(grace, "Priya")
 

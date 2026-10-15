@@ -1,4 +1,4 @@
-"""Task endpoints: list a Project's or Person's Tasks, add one, read and change one."""
+"""Task endpoints: list a Project's or Person's Tasks, add, read, change and duplicate one."""
 
 from __future__ import annotations
 
@@ -8,13 +8,14 @@ from typing import TYPE_CHECKING
 from ninja import Router, Status
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import people, services
+from apps.tasks import people, services, tree
 from apps.tasks.api import signed_in_user
 from apps.tasks.mentions import MentionError
 from apps.tasks.pagination import InvalidCursorError
 from apps.tasks.schemas import (
     AffectedTaskOut,
     TaskActivityListOut,
+    TaskAncestorOut,
     TaskChangeOut,
     TaskDetailOut,
     TaskIn,
@@ -109,8 +110,14 @@ def _project_source(user: User, project: int) -> _ListSource | Status[ErrorOut]:
     summary="Add a Task",
 )
 def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[ErrorOut]:
-    """Add a Task first in its Project, or in the Inbox when no Project is given."""
+    """Add a Task first in its Project, or in the Inbox when no Project is given.
+
+    With `parent_id` it is added last under that Task instead, which reopens the parent and its
+    ancestors if they are Closed.
+    """
     user = signed_in_user(request)
+    if task.parent_id is not None:
+        return _create_subtask(user, task.parent_id, task.title)
     project = (
         services.inbox(user)
         if task.project_id is None
@@ -125,6 +132,29 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
     return Status(_HTTP_CREATED, TaskOut.from_orm(created))
 
 
+def _create_subtask(user: User, parent_id: int, title: str) -> Status[TaskOut] | Status[ErrorOut]:
+    parent = services.live_task(user, parent_id)
+    if parent is None:
+        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    try:
+        change = services.create_subtask(parent, title)
+    except (services.TaskRuleError, MentionError) as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    return Status(_HTTP_CREATED, TaskOut.from_orm(change.task))
+
+
+def _detail(task: Task) -> TaskDetailOut:
+    """Return the Task as the drawer shows it: its fields, its ancestors and its Subtasks."""
+    return TaskDetailOut(
+        **TaskOut.from_orm(task).model_dump(),
+        description=task.description,
+        ancestors=[
+            TaskAncestorOut(id=above.pk, title=above.title) for above in tree.ancestors(task)
+        ],
+        subtasks=[TaskOut.from_orm(below) for below in tree.descendants(task)],
+    )
+
+
 @router.get(
     "/{int:task_id}",
     response={_HTTP_OK: TaskDetailOut, _HTTP_NOT_FOUND: ErrorOut},
@@ -135,7 +165,7 @@ def get_task(request: HttpRequest, task_id: int) -> Status[TaskDetailOut] | Stat
     task = services.live_task(signed_in_user(request), task_id)
     if task is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    return Status(_HTTP_OK, TaskDetailOut.from_orm(task))
+    return Status(_HTTP_OK, _detail(task))
 
 
 @router.patch(
@@ -165,6 +195,7 @@ def update_task(
         status=patch.status,
         blocked_reason=patch.blocked_reason,
         priority=patch.priority,
+        pinned=patch.pinned,
         dates=_dates(patch),
         project=project,
     )
@@ -175,9 +206,20 @@ def update_task(
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
-    return Status(
-        _HTTP_OK, TaskChangeOut(task=TaskDetailOut.from_orm(change.task), affected=affected)
-    )
+    return Status(_HTTP_OK, TaskChangeOut(task=_detail(change.task), affected=affected))
+
+
+@router.post(
+    "/{int:task_id}/duplicate",
+    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut},
+    summary="Duplicate a Task",
+)
+def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Status[ErrorOut]:
+    """Add an open copy of a Task right after it, with its title, Description and Priority."""
+    copy = services.duplicate_task(signed_in_user(request), task_id)
+    if copy is None:
+        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    return Status(_HTTP_CREATED, TaskOut.from_orm(copy))
 
 
 def _dates(patch: TaskPatchIn) -> services.TaskDates | None:

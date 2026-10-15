@@ -11,7 +11,8 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { plainMentions } from "@/features/people/mentions";
 
-import { isClosed, STATUS_VERB } from "./task-properties";
+import { statusMessage } from "./task-properties";
+import { openTrees } from "./task-tree";
 
 export type Task = components["schemas"]["TaskOut"];
 export type TaskDetail = components["schemas"]["TaskDetailOut"];
@@ -39,8 +40,10 @@ export const sidebarQuery = queryOptions({
 export const TASKS_KEY = ["tasks"] as const;
 /** The key prefix of every open-Task list, so a change can show in all of them at once. */
 export const OPEN_KEY = [...TASKS_KEY, "open"] as const;
+/** The key prefix of every drawer's Task, so a change can show in a parent's Subtasks too. */
+const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
 
-/** A Project's open Tasks, in the user's manual order. */
+/** A Project's open Tasks with every Subtask under them, as flat rows in manual order. */
 export function openTasksQuery(projectId: number) {
   return queryOptions({
     queryKey: [...OPEN_KEY, projectId],
@@ -56,7 +59,7 @@ export function openTasksQuery(projectId: number) {
   });
 }
 
-/** A Project's Closed Tasks, most recently completed first, a page at a time. */
+/** A Project's Closed Tasks with their Subtasks, most recently completed first, a page at a time. */
 export function closedTasksQuery(projectId: number) {
   return infiniteQueryOptions({
     queryKey: [...TASKS_KEY, "closed", projectId],
@@ -79,7 +82,7 @@ export function closedTasksQuery(projectId: number) {
 /** One Task with everything the drawer shows. Keyed under the Task lists so list changes refresh it. */
 export function taskQuery(taskId: number) {
   return queryOptions({
-    queryKey: [...TASKS_KEY, "detail", taskId],
+    queryKey: [...DETAIL_KEY, taskId],
     queryFn: async (): Promise<TaskDetail> => {
       const { data } = await api.GET("/api/v1/tasks/{task_id}", {
         params: { path: { task_id: taskId } },
@@ -186,7 +189,7 @@ export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
  * A change to a Task: the fields to set, which are all left as they are when absent. `dates`
  * replaces all four date fields at once.
  */
-export type TaskChange = { id: number } & Partial<
+export type TaskChange = { id: number; pinned?: boolean } & Partial<
   Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason">
 > & { dates?: DatesIn };
 
@@ -204,34 +207,49 @@ async function patchTask({ id, ...change }: TaskChange) {
 }
 
 /** The Task as the server will return it after the change, for showing the change straight away. */
-function withChange<T extends Task>(task: T, { dates, ...change }: TaskChange): T {
+function withChange<T extends Task>(task: T, { pinned, dates, ...change }: TaskChange): T {
   const leavesStatus = change.status !== undefined && change.status !== task.status;
-  // The server drops the Blocked reason on any Status change, unless the change sets one.
   return {
     ...task,
+    // The server drops the Blocked reason on any Status change, unless the change sets one.
     ...(leavesStatus && { blocked_reason: "" }),
+    pinned_at: pinnedAt(task, pinned),
     ...change,
     ...(dates !== undefined && { ...UNDATED, ...dates }),
   };
 }
 
-/** Show a change in the drawer and in every open list before the server answers. */
+function pinnedAt(task: Task, pinned: boolean | undefined) {
+  if (pinned === undefined || pinned === (task.pinned_at !== null)) return task.pinned_at;
+  // The server sets the real time; now is close enough to show the Task in the right group.
+  return pinned ? new Date().toISOString() : null;
+}
+
+/** The Task with the change applied if it's the one changed, else the Task as it is. */
+function applyTo<T extends Task>(task: T, change: TaskChange): T {
+  return task.id === change.id ? withChange(task, change) : task;
+}
+
+/** Show a change in every drawer and list before the server answers, dropping closed trees. */
 async function showChange(queryClient: QueryClient, change: TaskChange) {
-  const detailKey = taskQuery(change.id).queryKey;
-  await queryClient.cancelQueries({ queryKey: detailKey });
+  await queryClient.cancelQueries({ queryKey: DETAIL_KEY });
   await queryClient.cancelQueries({ queryKey: OPEN_KEY });
-  queryClient.setQueryData(detailKey, (task) => task && withChange(task, change));
-  queryClient.setQueriesData<Task[]>({ queryKey: OPEN_KEY }, (tasks) =>
-    tasks?.flatMap((task) => {
-      if (task.id !== change.id) return [task];
-      const changed = withChange(task, change);
-      return isClosed(changed.status) ? [] : [changed];
-    }),
+  queryClient.setQueriesData<TaskDetail>(
+    { queryKey: DETAIL_KEY },
+    (task) =>
+      task && {
+        ...applyTo(task, change),
+        subtasks: task.subtasks.map((subtask) => applyTo(subtask, change)),
+      },
+  );
+  queryClient.setQueriesData<Task[]>(
+    { queryKey: OPEN_KEY },
+    (tasks) => tasks && openTrees(tasks.map((task) => applyTo(task, change))),
   );
 }
 
 /** Refetch everything a Task change can touch: the lists, the drawer, Activity and counts. */
-function refresh(queryClient: QueryClient) {
+export function refreshTasks(queryClient: QueryClient) {
   return Promise.all([
     queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
     queryClient.invalidateQueries(sidebarQuery),
@@ -245,7 +263,7 @@ export function useUpdateTask() {
     mutationFn: patchTask,
     onMutate: (change) => showChange(queryClient, change),
     onError: (error) => toast.error(error.message),
-    onSettled: () => refresh(queryClient),
+    onSettled: () => refreshTasks(queryClient),
   });
 }
 
@@ -261,7 +279,7 @@ export function useSetTaskStatus() {
       patchTask({ id: task.id, status }),
     onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
     onSuccess: ({ affected }, { task, status }) => {
-      toast(`${STATUS_VERB[status]} “${plainMentions(task.title)}”`, {
+      toast(statusMessage(plainMentions(task.title), status, affected.length - 1), {
         action: {
           label: "Undo",
           onClick: () => {
@@ -279,7 +297,7 @@ export function useSetTaskStatus() {
       });
     },
     onError: (error) => toast.error(error.message),
-    onSettled: () => refresh(queryClient),
+    onSettled: () => refreshTasks(queryClient),
   });
 }
 
@@ -303,28 +321,5 @@ export function useCreateTask(projectId: number) {
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries(sidebarQuery),
-  });
-}
-
-/** Move a Task to another Project, where it goes first. Both lists and the sidebar refresh. */
-export function useMoveTaskToProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async ({ id, projectId }: { id: number; projectId: number }) => {
-      const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
-        params: { path: { task_id: id } },
-        body: { project_id: projectId },
-      });
-      if (!data) {
-        throw new Error("Could not move the task.");
-      }
-      return data;
-    },
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
-        queryClient.invalidateQueries(sidebarQuery),
-      ]),
   });
 }

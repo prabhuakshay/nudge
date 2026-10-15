@@ -1,10 +1,7 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen, within } from "@testing-library/react";
 
-import { TooltipProvider } from "@/components/ui/tooltip";
 import type { Task } from "@/features/tasks/tasks";
-import { INBOX, WORK } from "@/test/drawer";
+import { INBOX, renderListRoute, WORK } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
 
 import type { Person } from "./people";
@@ -38,14 +35,7 @@ function renderView() {
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TooltipProvider>
-        <PersonTasks person={PRIYA} />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
-  return userEvent.setup();
+  return renderListRoute(<PersonTasks person={PRIYA} />).user;
 }
 
 /** The row titles in a group as read aloud: a Mention chip's avatar initials are decorative. */
@@ -75,10 +65,29 @@ describe("PersonTasks", () => {
 
     expect(await screen.findByRole("heading", { level: 1, name: "Priya" })).toBeInTheDocument();
     expect(await screen.findByText("3 open")).toBeInTheDocument();
-    const groups = screen.getAllByRole("region").map((region) => region.getAttribute("aria-label"));
+    const table = screen.getByRole("treegrid", { name: "Tasks mentioning Priya" });
+    const groups = within(table)
+      .getAllByRole("region")
+      .map((region) => region.getAttribute("aria-label"));
     expect(groups).toEqual(["Inbox", "Work", "Closed"]);
     expect(titlesIn("Work")).toEqual(["Review with Priya", "Send Priya the deck"]);
     expect(titlesIn("Inbox")).toEqual(["Call Priya"]);
+  });
+
+  it("lists a mentioning Subtask on its own, under its parent's title", async () => {
+    mockApi([
+      makeTask({
+        id: 5,
+        title: `Ask ${MENTION}`,
+        parent_id: 9,
+        depth: 1,
+        parent_title: "Plan the trip",
+      }),
+    ]);
+    renderView();
+
+    expect(await screen.findByText("Plan the trip")).toBeInTheDocument();
+    expect(titlesIn("Inbox")).toEqual(["Ask Priya"]);
   });
 
   it("says so when no open Task mentions the Person", async () => {

@@ -11,16 +11,29 @@ import { taskActivityQuery, type DatesChange, type TaskActivity } from "./tasks"
 
 type ActivityData = { [E in TaskActivity as E["kind"]]: E["data"] };
 
+/** A Status change, naming the relative whose change caused it, or the Subtasks it closed too. */
+function describeStatus(change: ActivityData["status_changed"]): string {
+  const verb = STATUS_VERB[change.new];
+  const closedSubtasks = change.closed_subtasks;
+  if (change.via_parent) return `${verb} via parent “${plainMentions(change.via_parent)}”`;
+  if (change.via_subtask) return `${verb} via Subtask “${plainMentions(change.via_subtask)}”`;
+  if (closedSubtasks > 0) {
+    return `${verb} with ${String(closedSubtasks)} ${closedSubtasks === 1 ? "Subtask" : "Subtasks"}`;
+  }
+  return change.blocked_reason ? `${verb}: “${plainMentions(change.blocked_reason)}”` : verb;
+}
+
 /** What each kind of event says happened, in the user's words rather than the API's. */
 const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string } = {
   created: () => "Created this task",
   title_changed: (data) =>
     `Renamed from “${plainMentions(data.old)}” to “${plainMentions(data.new)}”`,
   description_edited: () => "Edited the description",
-  status_changed: ({ new: status, blocked_reason: reason }) =>
-    reason ? `${STATUS_VERB[status]}: “${plainMentions(reason)}”` : STATUS_VERB[status],
+  status_changed: (data) => describeStatus(data),
   priority_changed: (data) =>
     `Changed priority from ${PRIORITY[data.old].short} to ${PRIORITY[data.new].short}`,
+  pinned: () => "Pinned to the top",
+  unpinned: () => "Unpinned",
   attachment_added: (data) => `Attached “${data.name}”`,
   attachment_removed: (data) => `Deleted the attachment “${data.name}”`,
   dates_changed: (data) => describeDatesChange(data),

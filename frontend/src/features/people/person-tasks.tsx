@@ -4,44 +4,56 @@ import { useCallback, useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { ProjectIcon } from "@/features/projects/project-icon";
 import { allProjects } from "@/features/projects/projects";
+import { useOpenTask } from "@/features/tasks/open-task";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { ClosedGroup, Group, TaskTableHeader } from "@/features/tasks/task-list";
-import { TaskRow, type ToggleStatus } from "@/features/tasks/task-row";
 import { isClosed } from "@/features/tasks/task-properties";
+import { TreeRows, type RowContext, type ToggleStatus } from "@/features/tasks/task-row";
+import type { TreeRow } from "@/features/tasks/task-tree";
 import {
   sidebarQuery,
   useSetTaskStatus,
   type SidebarProject,
   type Task,
 } from "@/features/tasks/tasks";
+import { useMediaQuery } from "@/lib/use-media-query";
 
 import { PersonAvatar } from "./person-avatar";
 import { personClosedTasksQuery, personTasksQuery, type Person } from "./people";
 
-/** A Project's open Tasks that mention the Person, in the Project's manual order. */
-type ProjectGroup = { project: SidebarProject; tasks: Task[] };
+/** A Person's view never nests or folds rows, so nothing is ever collapsed. */
+const NOTHING_COLLAPSED: ReadonlySet<number> = new Set();
+
+/**
+ * Tasks as flat rows. A Subtask stands on its own, with its parent's title as a breadcrumb,
+ * because only the Task whose text holds the Mention belongs in the view.
+ */
+function flatRows(tasks: Task[]): TreeRow[] {
+  return tasks.map((task) => ({ task, level: 0, subtasks: { done: 0, total: 0 } }));
+}
 
 /** Group Tasks by Project in sidebar order, keeping the server's order within each Project. */
-function byProject(tasks: Task[], projects: SidebarProject[]): ProjectGroup[] {
+function byProject(tasks: Task[], projects: SidebarProject[]) {
   return projects
     .map((project) => ({
       project,
-      tasks: tasks.filter((task) => task.project_id === project.id),
+      rows: flatRows(tasks.filter((task) => task.project_id === project.id)),
     }))
-    .filter((group) => group.tasks.length > 0);
+    .filter((group) => group.rows.length > 0);
 }
 
 /**
- * A Person's view: every open Task that mentions them, grouped by Project in sidebar order, then
- * a collapsed Closed group. Rows are flat, and open in the drawer like any list's.
+ * A Person's view: every open Task that mentions them, flat and grouped by Project in sidebar
+ * order, then a collapsed Closed group. Rows open in the drawer like any list's, and the URL's
+ * `?task=` follows the open Task.
  */
 export function PersonTasks({ person }: { person: Person }) {
   const { data: open = [] } = useQuery(personTasksQuery(person.id));
   const { data: sidebar } = useQuery(sidebarQuery);
   const [showClosed, setShowClosed] = useState(false);
   const closed = useInfiniteQuery({ ...personClosedTasksQuery(person.id), enabled: showClosed });
-  const closedTasks = useMemo(
-    () => (showClosed ? (closed.data?.pages.flatMap((page) => page.items) ?? []) : []),
+  const closedRows = useMemo(
+    () => flatRows(showClosed ? (closed.data?.pages.flatMap((page) => page.items) ?? []) : []),
     [showClosed, closed.data],
   );
   const groups = useMemo(
@@ -49,10 +61,11 @@ export function PersonTasks({ person }: { person: Person }) {
     [open, sidebar],
   );
   const order = useMemo(
-    () => [...groups.flatMap((group) => group.tasks), ...closedTasks].map((task) => task.id),
-    [groups, closedTasks],
+    () => [...groups.flatMap((group) => group.rows), ...closedRows].map((row) => row.task.id),
+    [groups, closedRows],
   );
-  const [openId, setOpenId] = useState<number | null>(null);
+  const { openTaskId: openId, setOpenTask: setOpenId } = useOpenTask();
+  const touch = useMediaQuery("(pointer: coarse)");
   const { mutate: setStatus } = useSetTaskStatus();
   // Stable, so memoized rows don't re-render when the list does.
   const toggle = useCallback<ToggleStatus>(
@@ -60,6 +73,18 @@ export function PersonTasks({ person }: { person: Person }) {
       setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
     },
     [setStatus],
+  );
+  const context = useMemo<RowContext>(
+    () => ({
+      openId,
+      collapsed: NOTHING_COLLAPSED,
+      indent: 0,
+      touch,
+      onToggle: toggle,
+      onOpen: setOpenId,
+      onToggleCollapsed: () => undefined,
+    }),
+    [openId, touch, toggle, setOpenId],
   );
 
   return (
@@ -87,33 +112,23 @@ export function PersonTasks({ person }: { person: Person }) {
             No open tasks mention {person.name}.
           </p>
         )}
-        {groups.map(({ project, tasks }) => (
+        {groups.map(({ project, rows }) => (
           <Group
             key={project.id}
             icon={<ProjectIcon project={project} className="size-3.5" />}
             label={project.name}
-            count={tasks.length}
+            count={rows.length}
           >
-            {tasks.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                selected={task.id === openId}
-                onToggle={toggle}
-                onOpen={setOpenId}
-              />
-            ))}
+            <TreeRows rows={rows} context={context} />
           </Group>
         ))}
 
         <ClosedGroup
           query={closed}
-          tasks={closedTasks}
+          rows={closedRows}
           expanded={showClosed}
           onExpandedChange={setShowClosed}
-          openId={openId}
-          onToggle={toggle}
-          onOpen={setOpenId}
+          context={context}
         />
       </div>
 

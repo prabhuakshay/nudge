@@ -1286,7 +1286,7 @@
             }
           }
         },
-        "description": "Add a Task first in its Project, or in the Inbox when no Project is given.",
+        "description": "Add a Task first in its Project, or in the Inbox when no Project is given.\n\nWith `parent_id` it is added last under that Task instead, which reopens the parent and its\nancestors if they are Closed.",
         "tags": [
           "tasks"
         ],
@@ -1414,6 +1414,54 @@
           },
           "required": true
         },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/duplicate": {
+      "post": {
+        "operationId": "apps_tasks_api_tasks_duplicate_task",
+        "summary": "Duplicate a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add an open copy of a Task right after it, with its title, Description and Priority.",
+        "tags": [
+          "tasks"
+        ],
         "security": [
           {
             "SessionAuth": []
@@ -2635,7 +2683,7 @@
         "type": "object"
       },
       "TaskOut": {
-        "description": "A Task as a list row shows it.",
+        "description": "A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`.",
         "properties": {
           "id": {
             "title": "Id",
@@ -2644,6 +2692,40 @@
           "project_id": {
             "title": "Project Id",
             "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for a root Task.",
+            "title": "Parent Id"
+          },
+          "position": {
+            "description": "Sorts the Task among its siblings, byte by byte.",
+            "title": "Position",
+            "type": "string"
+          },
+          "depth": {
+            "description": "0 for a root Task, up to 3 for the deepest Subtask.",
+            "title": "Depth",
+            "type": "integer"
+          },
+          "parent_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The parent's title, for a breadcrumb.",
+            "title": "Parent Title"
           },
           "title": {
             "title": "Title",
@@ -2673,6 +2755,19 @@
             ],
             "description": "When it was Completed or marked Won't do.",
             "title": "Completed At"
+          },
+          "pinned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was pinned; null when it isn't.",
+            "title": "Pinned At"
           },
           "due_date": {
             "anyOf": [
@@ -2749,11 +2844,16 @@
         "required": [
           "id",
           "project_id",
+          "parent_id",
+          "position",
+          "depth",
+          "parent_title",
           "title",
           "status",
           "priority",
           "blocked_reason",
           "completed_at",
+          "pinned_at",
           "due_date",
           "due_time",
           "start_date",
@@ -2783,8 +2883,20 @@
                 "type": "null"
               }
             ],
-            "description": "Defaults to the Inbox.",
+            "description": "Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.",
             "title": "Project Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Makes the Task the last Subtask of this one; reopens it if it's Closed.",
+            "title": "Parent Id"
           }
         },
         "required": [
@@ -2793,8 +2905,27 @@
         "title": "TaskIn",
         "type": "object"
       },
+      "TaskAncestorOut": {
+        "description": "A Task above another in the tree, as a breadcrumb links to it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "TaskAncestorOut",
+        "type": "object"
+      },
       "TaskDetailOut": {
-        "description": "A Task as the detail drawer shows it.",
+        "description": "A Task as the detail drawer shows it, with where it sits in the tree and what's under it.",
         "properties": {
           "id": {
             "title": "Id",
@@ -2803,6 +2934,40 @@
           "project_id": {
             "title": "Project Id",
             "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for a root Task.",
+            "title": "Parent Id"
+          },
+          "position": {
+            "description": "Sorts the Task among its siblings, byte by byte.",
+            "title": "Position",
+            "type": "string"
+          },
+          "depth": {
+            "description": "0 for a root Task, up to 3 for the deepest Subtask.",
+            "title": "Depth",
+            "type": "integer"
+          },
+          "parent_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The parent's title, for a breadcrumb.",
+            "title": "Parent Title"
           },
           "title": {
             "title": "Title",
@@ -2832,6 +2997,19 @@
             ],
             "description": "When it was Completed or marked Won't do.",
             "title": "Completed At"
+          },
+          "pinned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was pinned; null when it isn't.",
+            "title": "Pinned At"
           },
           "due_date": {
             "anyOf": [
@@ -2908,16 +3086,37 @@
             "description": "Markdown, as the user wrote it.",
             "title": "Description",
             "type": "string"
+          },
+          "ancestors": {
+            "description": "From the root down to the parent.",
+            "items": {
+              "$ref": "#/components/schemas/TaskAncestorOut"
+            },
+            "title": "Ancestors",
+            "type": "array"
+          },
+          "subtasks": {
+            "description": "Every Subtask below, whatever its Status, as flat rows in manual order.",
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Subtasks",
+            "type": "array"
           }
         },
         "required": [
           "id",
           "project_id",
+          "parent_id",
+          "position",
+          "depth",
+          "parent_title",
           "title",
           "status",
           "priority",
           "blocked_reason",
           "completed_at",
+          "pinned_at",
           "due_date",
           "due_time",
           "start_date",
@@ -2925,7 +3124,9 @@
           "is_overdue",
           "created_at",
           "updated_at",
-          "description"
+          "description",
+          "ancestors",
+          "subtasks"
         ],
         "title": "TaskDetailOut",
         "type": "object"
@@ -3086,6 +3287,18 @@
                 "type": "null"
               }
             ]
+          },
+          "pinned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pin the Task to the top of its lists, or unpin it.",
+            "title": "Pinned"
           },
           "dates": {
             "anyOf": [
@@ -3467,6 +3680,36 @@
         "title": "PersonMergedData",
         "type": "object"
       },
+      "PinnedActivityOut": {
+        "description": "The Task was pinned.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "pinned",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "PinnedActivityOut",
+        "type": "object"
+      },
       "PriorityChangedActivityOut": {
         "description": "The Task's Priority changed.",
         "properties": {
@@ -3545,7 +3788,7 @@
         "type": "object"
       },
       "StatusChangedData": {
-        "description": "The Status before and after a change, and the Blocked reason it was given, if any.",
+        "description": "The Status before and after a change, the Blocked reason it was given, and any cascade.\n\nA change the user made to a relative names that relative: `via_parent` when closing a\nparent closed this Task, `via_subtask` when reopening a Subtask reopened it.",
         "properties": {
           "old": {
             "$ref": "#/components/schemas/Status"
@@ -3556,6 +3799,36 @@
           "blocked_reason": {
             "title": "Blocked Reason",
             "type": "string"
+          },
+          "via_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Closed parent's title.",
+            "title": "Via Parent"
+          },
+          "via_subtask": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The reopened Subtask's title.",
+            "title": "Via Subtask"
+          },
+          "closed_subtasks": {
+            "default": 0,
+            "description": "How many Subtasks closed with it.",
+            "title": "Closed Subtasks",
+            "type": "integer"
           }
         },
         "required": [
@@ -3580,9 +3853,11 @@
                   "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
                   "moved": "#/components/schemas/MovedActivityOut",
                   "person_merged": "#/components/schemas/PersonMergedActivityOut",
+                  "pinned": "#/components/schemas/PinnedActivityOut",
                   "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
                   "status_changed": "#/components/schemas/StatusChangedActivityOut",
-                  "title_changed": "#/components/schemas/TitleChangedActivityOut"
+                  "title_changed": "#/components/schemas/TitleChangedActivityOut",
+                  "unpinned": "#/components/schemas/UnpinnedActivityOut"
                 },
                 "propertyName": "kind"
               },
@@ -3601,6 +3876,12 @@
                 },
                 {
                   "$ref": "#/components/schemas/PriorityChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/PinnedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/UnpinnedActivityOut"
                 },
                 {
                   "$ref": "#/components/schemas/AttachmentAddedActivityOut"
@@ -3695,6 +3976,36 @@
           "new"
         ],
         "title": "TitleChangedData",
+        "type": "object"
+      },
+      "UnpinnedActivityOut": {
+        "description": "The Task was unpinned.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "unpinned",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "UnpinnedActivityOut",
         "type": "object"
       },
       "AttachmentOut": {

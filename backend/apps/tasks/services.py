@@ -1,42 +1,46 @@
-"""Business rules for Projects and Tasks: Inbox, order, Status, dates, Attachments and Activity.
+"""Business rules for Projects and Tasks: Inbox, order, Status, pins, dates and Activity.
 
 Every function takes the user first and reaches Projects and Tasks through that user's related
 managers, so another user's ids behave as if they don't exist. A change and the Activity event
 that records it are saved in one transaction, so a Task's history never misses or invents a change.
+How a change spreads through a Task's Subtask tree lives in `apps.tasks.tree`.
 """
 
 from __future__ import annotations
 
-import mimetypes
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from django.conf import settings
 from django.db import transaction
-from django.db.models import Case, Count, OuterRef, Q, Subquery, When
-from django.db.models.functions import Coalesce
-from django.template.defaultfilters import filesizeformat
+from django.db.models import F
 from django.utils import timezone
 from fractional_indexing import generate_key_between
 
-from apps.accounts.services import local_zone
 from apps.core.palette import PaletteColor
 from apps.tasks.mentions import TEXT_FIELDS, check_mentions, sync_mentions
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
+    MAX_DEPTH,
     OPEN_STATUSES,
-    Attachment,
     Project,
     Task,
     TaskActivity,
 )
 from apps.tasks.pagination import Page, newest_first
+from apps.tasks.rows import as_rows, with_counts, with_overdue
+from apps.tasks.tree import (
+    AffectedTask,
+    cascade_status,
+    move_tree,
+    reopen_ancestors,
+    root_status_in,
+    rows_below,
+)
 
 if TYPE_CHECKING:
     from datetime import date, time
 
-    from django.core.files.uploadedfile import UploadedFile
     from django.db.models import QuerySet
 
     from apps.accounts.models import User
@@ -84,17 +88,9 @@ class TaskEdit:
     status: Task.Status | None = None
     blocked_reason: str | None = None
     priority: Task.Priority | None = None
+    pinned: bool | None = None
     dates: TaskDates | None = None
     project: Project | None = None
-
-
-@dataclass(frozen=True)
-class AffectedTask:
-    """A Task whose Status a change touched, with what it had before, so Undo can restore it."""
-
-    id: int
-    prior_status: Task.Status
-    prior_blocked_reason: str
 
 
 @dataclass(frozen=True)
@@ -126,65 +122,49 @@ def live_project(user: User, project_id: int) -> Project | None:
     return user.projects.filter(pk=project_id, deleted_at__isnull=True).first()
 
 
-def _with_counts(tasks: QuerySet[Task]) -> QuerySet[Task]:
-    # A subquery rather than a join: grouping would drop the model's default ordering.
-    attachments = (
-        Attachment.objects.filter(task=OuterRef("pk"))
-        .order_by()
-        .values("task")
-        .annotate(count=Count("pk"))
-        .values("count")
-    )
-    return tasks.annotate(attachment_count=Coalesce(Subquery(attachments), 0))
-
-
-def _with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
-    """Annotate each Task with `is_overdue`, judged by the user's clock right now.
-
-    Times are floating, so the comparison is on the user's local date and time: an all-day Task
-    is overdue once its day ends, a timed one once its time passes, a range once its end passes.
-    """
-    now = timezone.now().astimezone(local_zone(user))
-    overdue = Q(completed_at__isnull=True) & (
-        Q(due_date__lt=now.date()) | Q(due_date=now.date(), due_time__lt=now.time())
-    )
-    return tasks.annotate(is_overdue=Case(When(overdue, then=True), default=False))
-
-
-def task_rows(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
-    """Return the live Tasks among `tasks` with what a list row shows: counts and `is_overdue`."""
-    return _with_overdue(_with_counts(tasks.filter(deleted_at__isnull=True)), user)
-
-
 def _live_tasks(project: Project) -> QuerySet[Task]:
-    return task_rows(project.tasks.all(), project.owner)
+    return as_rows(project.tasks.filter(deleted_at__isnull=True), project.owner)
 
 
 def open_tasks(project: Project) -> QuerySet[Task]:
-    """Return the Project's open and Blocked Tasks in the user's manual order."""
-    return _live_tasks(project).filter(status__in=OPEN_STATUSES)
+    """Return the Project's open trees: open roots and every Subtask under them.
+
+    Pinned roots come first, then the rest in manual order. Subtasks come whatever their Status,
+    so a list can show done steps under open work.
+    """
+    return (
+        _live_tasks(project)
+        .filter(root_status_in(OPEN_STATUSES))
+        .order_by(F("pinned_at").asc(nulls_last=True), "position", "id")
+    )
 
 
 def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
-    """Return a page of the Project's Closed Tasks, most recently completed first.
+    """Return a page of the Project's Closed trees, most recently completed root first.
+
+    Each page holds its Closed roots, newest first, then every Subtask under them in manual
+    order. A Closed root has no open descendants, so the whole tree is Closed.
 
     Raises:
         InvalidCursorError: The cursor wasn't one this function returned.
     """
-    closed = _live_tasks(project).filter(status__in=CLOSED_STATUSES)
-    return newest_first(closed, "completed_at", cursor)
+    roots = _live_tasks(project).filter(parent__isnull=True, status__in=CLOSED_STATUSES)
+    page = newest_first(roots, "completed_at", cursor)
+    rows = [*page.items, *rows_below(page.items, project.owner)]
+    return Page(items=rows, next_cursor=page.next_cursor)
 
 
 def _first_position(project: Project) -> str:
-    """Return a key before every Task in the Project. Call it inside a transaction."""
+    """Return a key before every root Task in the Project. Call it inside a transaction."""
     # Locking the Project serialises inserts into it, so two Tasks never get the same key.
     Project.objects.select_for_update().get(pk=project.pk)
-    first = project.tasks.order_by("position", "id").values_list("position", flat=True).first()
+    roots = project.tasks.filter(parent__isnull=True).order_by("position", "id")
+    first = roots.values_list("position", flat=True).first()
     return str(generate_key_between(None, first))
 
 
 def create_task(project: Project, title: str) -> Task:
-    """Create a Task in the Project, first among its Tasks, owned by the Project's owner.
+    """Create a Task in the Project, first among its roots, owned by the Project's owner.
 
     Raises:
         MentionError: The title mentions a Person the owner doesn't have.
@@ -199,13 +179,74 @@ def create_task(project: Project, title: str) -> Task:
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
         sync_mentions(task)
-    return _with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)
+    return with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)
+
+
+def create_subtask(parent: Task, title: str) -> TaskChange:
+    """Create a Subtask last under the parent, in the parent's Project.
+
+    A Closed Task can't hold open work, so adding under one reopens it and its Closed ancestors.
+
+    Raises:
+        TaskRuleError: The parent is already at the deepest level.
+        MentionError: The title mentions a Person the owner doesn't have.
+    """
+    if parent.depth >= MAX_DEPTH:
+        message = "Tasks can only nest four levels deep."
+        raise TaskRuleError(message)
+    check_mentions(parent.owner, title)
+    with transaction.atomic():
+        Project.objects.select_for_update().get(pk=parent.project_id)
+        siblings = parent.subtasks.order_by("-position", "-id")
+        last = siblings.values_list("position", flat=True).first()
+        task = Task.objects.create(
+            owner_id=parent.owner_id,
+            project_id=parent.project_id,
+            parent=parent,
+            title=title,
+            position=str(generate_key_between(last, None)),
+        )
+        TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
+        sync_mentions(task)
+        affected = reopen_ancestors(task)
+    fresh = as_rows(Task.objects.filter(pk=task.pk), parent.owner).get()
+    return TaskChange(task=fresh, affected=affected)
+
+
+def duplicate_task(user: User, task_id: int) -> Task | None:
+    """Copy one of the user's Tasks to right after it; return None if it isn't theirs.
+
+    The copy is a fresh open Task with the original's title, Description and Priority, under the
+    same parent. Being open, it reopens any Closed ancestors.
+    """
+    original = live_task(user, task_id)
+    if original is None:
+        return None
+    with transaction.atomic():
+        # Locking the Project serialises inserts into it, so two Tasks never get the same key.
+        Project.objects.select_for_update().get(pk=original.project_id)
+        siblings = original.project.tasks.filter(parent_id=original.parent_id)
+        later = siblings.filter(position__gt=original.position).order_by("position")
+        following = later.values_list("position", flat=True).first()
+        task = Task.objects.create(
+            owner=user,
+            project_id=original.project_id,
+            parent_id=original.parent_id,
+            title=original.title,
+            description=original.description,
+            priority=original.priority,
+            position=str(generate_key_between(original.position, following)),
+        )
+        TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
+        sync_mentions(task)
+        reopen_ancestors(task)
+    return as_rows(user.tasks.filter(pk=task.pk), user).get()
 
 
 def live_task(user: User, task_id: int) -> Task | None:
     """Return one of the user's Tasks that isn't in Trash, or None."""
-    tasks = _with_counts(user.tasks.filter(pk=task_id, deleted_at__isnull=True))
-    return _with_overdue(tasks, user).first()
+    tasks = with_counts(user.tasks.filter(pk=task_id, deleted_at__isnull=True))
+    return with_overdue(tasks, user).first()
 
 
 _EDITABLE_FIELDS = (
@@ -215,6 +256,7 @@ _EDITABLE_FIELDS = (
     "blocked_reason",
     "priority",
     "completed_at",
+    "pinned_at",
     "due_date",
     "due_time",
     "start_date",
@@ -225,39 +267,49 @@ _EDITABLE_FIELDS = (
 def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     """Change the given fields of one of the user's Tasks; return None if it isn't theirs.
 
-    Moving it to another of the user's Projects puts it first there.
+    A Status change keeps the tree consistent: closing a Task closes its open descendants with
+    the same Status, and reopening one reopens its Closed ancestors. Every Task the change
+    touched comes back in `affected`.
+
+    Moving it to another of the user's Projects puts it first among the roots there, with its
+    Subtasks under it; a Subtask moved out becomes a root, since Subtasks share their root's
+    Project.
 
     Raises:
-        TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked.
+        TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked, or pins a
+            Subtask.
         MentionError: A text mentions a Person the user doesn't have.
     """
     task = live_task(user, task_id)
     if task is None:
         return None
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
+    before["project_name"] = task.project.name
     dates_before = TaskDates.of(task)
     _apply(task, edit)
     changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
     check_mentions(user, *(getattr(task, name) for name in TEXT_FIELDS if name in changed))
     affected = []
-    if "status" in changed:
-        affected.append(
-            AffectedTask(task.pk, Task.Status(before["status"]), before["blocked_reason"]),
-        )
-    events = _activity(task, before, dates_before)
+    cascaded: list[AffectedTask] = []
+    target = edit.project if edit.project and edit.project.pk != task.project_id else None
     with transaction.atomic():
-        if edit.project is not None and edit.project.pk != task.project_id:
-            events.append(_moved(task, edit.project))
-            task.position = _first_position(edit.project)
-            task.project = edit.project
-            changed += ["project", "position"]
-        if changed:
-            task.save(update_fields=[*changed, "updated_at"])
+        moved = [] if target is None else move_tree(task, target, _first_position(target))
+        if changed or moved:
+            task.save(update_fields=[*changed, *moved, "updated_at"])
             sync_mentions(task)
+        if "status" in changed:
+            affected.append(
+                AffectedTask(task.pk, Task.Status(before["status"]), before["blocked_reason"]),
+            )
+            cascaded = cascade_status(task)
+        closed_subtasks = len(cascaded) if task.status in CLOSED_STATUSES else 0
+        events = _activity(task, before, dates_before, closed_subtasks)
+        if moved:
+            events.append(_moved(before["project_name"], task))
         TaskActivity.objects.bulk_create(events)
     # Re-read, because a change of dates or Status can change whether the Task is overdue.
-    fresh = _with_overdue(_with_counts(user.tasks.all()), user).get(pk=task.pk)
-    return TaskChange(task=fresh, affected=affected)
+    fresh = as_rows(user.tasks.filter(pk=task.pk), user).get()
+    return TaskChange(task=fresh, affected=affected + cascaded)
 
 
 def _apply(task: Task, edit: TaskEdit) -> None:
@@ -267,6 +319,18 @@ def _apply(task: Task, edit: TaskEdit) -> None:
         task.description = edit.description
     if edit.priority is not None:
         task.priority = edit.priority
+    _apply_status(task, edit)
+    if edit.pinned and task.parent_id is not None:
+        message = "Only a top-level task can be pinned."
+        raise TaskRuleError(message)
+    if edit.pinned is not None and edit.pinned != (task.pinned_at is not None):
+        task.pinned_at = timezone.now() if edit.pinned else None
+    if edit.dates is not None:
+        task.due_date, task.due_time = edit.dates.due_date, edit.dates.due_time
+        task.start_date, task.start_time = edit.dates.start_date, edit.dates.start_time
+
+
+def _apply_status(task: Task, edit: TaskEdit) -> None:
     if edit.status is not None and edit.status != task.status:
         task.status = edit.status
         task.completed_at = timezone.now() if edit.status in CLOSED_STATUSES else None
@@ -277,15 +341,13 @@ def _apply(task: Task, edit: TaskEdit) -> None:
             message = "Only a Blocked task can have a Blocked reason."
             raise TaskRuleError(message)
         task.blocked_reason = edit.blocked_reason
-    if edit.dates is not None:
-        task.due_date, task.due_time = edit.dates.due_date, edit.dates.due_time
-        task.start_date, task.start_time = edit.dates.start_date, edit.dates.start_time
 
 
 def _activity(
     task: Task,
     before: dict[str, object],
     dates_before: TaskDates,
+    closed_subtasks: int,
 ) -> list[TaskActivity]:
     """Return the history events for the difference between `before` and the Task as it is now."""
     events = []
@@ -296,10 +358,15 @@ def _activity(
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.DESCRIPTION_EDITED))
     if task.status != before["status"]:
         data = {"old": before["status"], "new": task.status, "blocked_reason": task.blocked_reason}
+        if closed_subtasks:
+            data["closed_subtasks"] = closed_subtasks
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.STATUS_CHANGED, data=data))
     if task.priority != before["priority"]:
         data = {"old": before["priority"], "new": task.priority}
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.PRIORITY_CHANGED, data=data))
+    if (task.pinned_at is None) != (before["pinned_at"] is None):
+        kind = TaskActivity.Kind.UNPINNED if task.pinned_at is None else TaskActivity.Kind.PINNED
+        events.append(TaskActivity(task=task, kind=kind))
     dates = TaskDates.of(task)
     if dates != dates_before:
         data = {"old": dates_before.as_activity(), "new": dates.as_activity()}
@@ -307,11 +374,11 @@ def _activity(
     return events
 
 
-def _moved(task: Task, project: Project) -> TaskActivity:
+def _moved(from_project: object, task: Task) -> TaskActivity:
     return TaskActivity(
         task=task,
         kind=TaskActivity.Kind.MOVED,
-        data={"from_project": task.project.name, "to_project": project.name},
+        data={"from_project": from_project, "to_project": task.project.name},
     )
 
 
@@ -327,73 +394,3 @@ def task_activity(task: Task, cursor: str | None = None) -> Page[TaskActivity]:
 def activity_count(task: Task) -> int:
     """Return how many events the Task's history holds."""
     return task.activity.count()
-
-
-class AttachmentTooLargeError(Exception):
-    """The uploaded file is bigger than `ATTACHMENT_MAX_SIZE` allows."""
-
-
-def attachments(task: Task) -> QuerySet[Attachment]:
-    """Return the Task's Attachments, oldest first."""
-    return task.attachments.all()
-
-
-def attach_file(task: Task, upload: UploadedFile[bytes]) -> Attachment:
-    """Store an uploaded file against the Task and record it in the Task's Activity.
-
-    The content type comes from the file's name, never from the client, so the download serves
-    a type the server chose.
-
-    Raises:
-        AttachmentTooLargeError: The file is bigger than `ATTACHMENT_MAX_SIZE`.
-    """
-    limit: int = settings.ATTACHMENT_MAX_SIZE
-    size = upload.size or 0
-    if size > limit:
-        message = f"Files can be at most {filesizeformat(limit)}."
-        raise AttachmentTooLargeError(message)
-    name = upload.name or "file"
-    content_type, _encoding = mimetypes.guess_type(name, strict=False)
-    attachment = Attachment(
-        task=task,
-        name=name,
-        size=size,
-        content_type=content_type or "application/octet-stream",
-    )
-    with transaction.atomic():
-        attachment.file.save(name, upload, save=False)
-        attachment.save()
-        TaskActivity.objects.create(
-            task=task,
-            kind=TaskActivity.Kind.ATTACHMENT_ADDED,
-            data={"name": name},
-        )
-    return attachment
-
-
-def live_attachment(user: User, attachment_id: int) -> Attachment | None:
-    """Return one of the user's Attachments on a Task that isn't in Trash, or None."""
-    return Attachment.objects.filter(
-        pk=attachment_id,
-        task__owner=user,
-        task__deleted_at__isnull=True,
-    ).first()
-
-
-def delete_attachment(user: User, attachment_id: int) -> bool:
-    """Delete one of the user's Attachments for good; return False if it isn't theirs.
-
-    The file goes only once the deletion commits, so a rolled-back delete never loses it.
-    """
-    attachment = live_attachment(user, attachment_id)
-    if attachment is None:
-        return False
-    with transaction.atomic():
-        attachment.delete()
-        TaskActivity.objects.create(
-            task=attachment.task,
-            kind=TaskActivity.Kind.ATTACHMENT_REMOVED,
-            data={"name": attachment.name},
-        )
-        transaction.on_commit(lambda: attachment.file.delete(save=False))
-    return True

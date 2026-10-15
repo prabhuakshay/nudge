@@ -14,6 +14,8 @@ from django.utils import timezone
 from apps.core.palette import PaletteColor
 
 INBOX_NAME = "Inbox"
+# Tasks nest four levels deep: a root at depth 0 and Subtasks down to depth 3.
+MAX_DEPTH = 3
 
 
 class Folder(models.Model):
@@ -149,14 +151,19 @@ class Task(models.Model):
     """One thing to do, owned by one user and living in one of their Projects.
 
     `position` is a fractional-indexing key: a new Task gets a key between its neighbours, so
-    reordering writes one row. Keys compare byte by byte, hence the C collation.
+    reordering writes one row. Keys compare byte by byte, hence the C collation. Keys are scoped
+    to a sibling set: the roots of one Project, or the Subtasks of one parent.
+
+    A Subtask always lives in its root's Project, and Tasks nest at most `MAX_DEPTH` levels below
+    a root. A Closed Task never has open descendants; the services keep it that way.
 
     Dates are floating: a time means that clock time in the owner's `time_zone`, wherever it is,
     so 09:00 stays 09:00 when the user travels. A due date without a time is all-day; a start
     date turns the Task into a range that ends on the due date.
 
     Completed and Won't do are Closed and record when in `completed_at`. Blocked is still open
-    work, and only a Blocked Task keeps a `blocked_reason`.
+    work, and only a Blocked Task keeps a `blocked_reason`. A pinned Task records when in
+    `pinned_at` and lists above the rest, oldest pin first.
     """
 
     class Status(models.TextChoices):
@@ -182,6 +189,13 @@ class Task(models.Model):
         related_name="tasks",
     )
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="tasks")
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="subtasks",
+    )
     position = models.CharField(max_length=255, db_collation="C")
     title = models.CharField(max_length=500)
     description = models.TextField(blank=True, default="")
@@ -189,6 +203,7 @@ class Task(models.Model):
     blocked_reason = models.TextField(blank=True, default="")
     priority = models.PositiveSmallIntegerField(choices=Priority, default=Priority.NONE)
     completed_at = models.DateTimeField(null=True, blank=True)
+    pinned_at = models.DateTimeField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
     due_time = models.TimeField(null=True, blank=True, help_text="Empty for an all-day Task.")
     start_date = models.DateField(null=True, blank=True, help_text="Set for a range.")
@@ -204,6 +219,7 @@ class Task(models.Model):
         indexes: ClassVar = [
             models.Index(fields=["project", "position"], name="task_project_position_idx"),
             models.Index(fields=["project", "-completed_at"], name="task_project_completed_idx"),
+            models.Index(fields=["parent", "position"], name="task_parent_position_idx"),
         ]
         constraints: ClassVar = [
             models.CheckConstraint(
@@ -244,6 +260,19 @@ class Task(models.Model):
         """Return the title, which is what the user sees in every list."""
         return self.title
 
+    @property
+    def depth(self) -> int:
+        """Return how many parents the Task has: 0 for a root, up to `MAX_DEPTH`."""
+        depth, parent = 0, self.parent
+        while parent is not None:
+            depth, parent = depth + 1, parent.parent
+        return depth
+
+    @property
+    def parent_title(self) -> str | None:
+        """Return the parent's title, which flat lists show as a breadcrumb; None for a root."""
+        return None if self.parent is None else self.parent.title
+
 
 # Blocked work is still to be done, so it sorts and counts with open Tasks.
 OPEN_STATUSES = (Task.Status.OPEN, Task.Status.BLOCKED)
@@ -265,6 +294,8 @@ class TaskActivity(models.Model):
         DATES_CHANGED = "dates_changed", "Dates changed"
         STATUS_CHANGED = "status_changed", "Status changed"
         PRIORITY_CHANGED = "priority_changed", "Priority changed"
+        PINNED = "pinned", "Pinned"
+        UNPINNED = "unpinned", "Unpinned"
         ATTACHMENT_ADDED = "attachment_added", "Attachment added"
         ATTACHMENT_REMOVED = "attachment_removed", "Attachment removed"
         MOVED = "moved", "Moved"

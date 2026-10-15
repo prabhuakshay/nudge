@@ -5,8 +5,10 @@ import { UserX } from "lucide-react";
 import { EmptyState } from "@/components/layout/empty-state";
 import { peopleQuery } from "@/features/people/people";
 import { PersonTasks } from "@/features/people/person-tasks";
+import { validateTaskSearch } from "@/features/tasks/open-task";
 
 export const Route = createFileRoute("/_app/people/$personId")({
+  validateSearch: validateTaskSearch,
   loader: ({ context }) => context.queryClient.query(peopleQuery),
   component: PersonPage,
 });

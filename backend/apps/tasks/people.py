@@ -13,7 +13,6 @@ from typing import TYPE_CHECKING
 from django.db import IntegrityError, transaction
 
 from apps.core.palette import PaletteColor
-from apps.tasks import services
 from apps.tasks.mentions import rewrite_mentions, token
 from apps.tasks.models import (
     CLOSED_STATUSES,
@@ -24,6 +23,7 @@ from apps.tasks.models import (
     TaskMention,
 )
 from apps.tasks.pagination import Page, newest_first
+from apps.tasks.rows import as_rows
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -143,8 +143,12 @@ def _mentioning(found: Person) -> QuerySet[Task]:
     Only the Task whose own text holds the Mention counts: a Subtask's Mention never pulls in its
     parent. Tasks in a deleted Project stay out with their Project.
     """
-    tasks = Task.objects.filter(mentions__person=found, project__deleted_at__isnull=True)
-    return services.task_rows(tasks, found.owner)
+    tasks = Task.objects.filter(
+        mentions__person=found,
+        deleted_at__isnull=True,
+        project__deleted_at__isnull=True,
+    )
+    return as_rows(tasks, found.owner)
 
 
 def open_tasks(found: Person) -> QuerySet[Task]:

@@ -14,6 +14,7 @@ from apps.tasks.schemas.reminders import (  # noqa: TC001 - Pydantic needs the t
     ReminderOffset,
     ReminderOut,
 )
+from apps.tasks.schemas.tags import TagName, TagOut  # noqa: TC001 - Pydantic needs it at runtime
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
@@ -42,6 +43,7 @@ class TaskOut(Schema):
         description="Whether the Task is open and its due date or time has passed in the user's "
         "time zone. A range is overdue only once its end has passed.",
     )
+    tags: list[TagOut] = Field(description="In the user's Tag order.")
     created_at: datetime
     updated_at: datetime
     attachment_count: int = Field(
@@ -73,18 +75,20 @@ class TaskDetailOut(TaskOut):
 
 
 class TaskListQuery(Schema):
-    """Which Tasks to list: one Project's, one Person's or one view's, open or Closed."""
+    """Which Tasks to list: one Project's, Person's, Tag's or view's, open or Closed."""
 
     project: int | None = None
     person: int | None = None
+    tag: int | None = None
     view: View | None = Field(default=None, description="Today or Upcoming, picked by date.")
     closed: bool = Field(default=False, description="List Closed Tasks, a page at a time.")
     cursor: str | None = Field(default=None, description="From the previous page of Closed ones.")
 
     @model_validator(mode="after")
     def _at_most_one_source(self) -> Self:
-        if sum(source is not None for source in (self.project, self.person, self.view)) > 1:
-            message = "Give only one of project, person or view."
+        sources = (self.project, self.person, self.tag, self.view)
+        if sum(source is not None for source in sources) > 1:
+            message = "Give only one of project, person, tag or view."
             raise ValueError(message)
         return self
 
@@ -153,6 +157,11 @@ class TaskIn(Schema):
         default=None,
         description="Dates the Task from the start, such as today in Today. Not for a Subtask.",
     )
+    tags: list[TagName] = Field(
+        default_factory=list,
+        description="Tag names, in any case; Tags the user doesn't have yet are created.",
+    )
+    tag_ids: list[int] = Field(default_factory=list, description="Tags picked by id.")
 
 
 class TaskPatchIn(Schema):
@@ -182,6 +191,7 @@ class TaskPatchIn(Schema):
         description="Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.",
     )
     project_id: int | None = Field(default=None, description="Moves the Task first into it.")
+    tag_ids: list[int] | None = Field(default=None, description="Replaces all of its Tags.")
 
 
 class TaskMoveIn(Schema):

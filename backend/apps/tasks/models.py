@@ -1,4 +1,4 @@
-"""Database models for Tasks, the Projects that hold them and the People they mention."""
+"""Models for Tasks, the Projects and Tags that organise them and the People they mention."""
 
 from __future__ import annotations
 
@@ -153,6 +153,43 @@ class Project(models.Model):
         return self.archived_at is not None
 
 
+class Tag(models.Model):
+    """A flat label a user puts on Tasks across their Projects.
+
+    Tasks link to a Tag by id, so renaming it shows everywhere at once. Names have no spaces or
+    `#`, because Quick add reads `#name` as a Tag. `position` is a fractional-indexing key in the
+    user's manual order, and an empty `color` shows grey. A deleted Tag is gone for good.
+    """
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="tags",
+    )
+    name = models.CharField(max_length=64)
+    color = models.CharField(max_length=16, choices=PaletteColor, blank=True, default="")
+    position = models.CharField(max_length=255, db_collation="C")
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Model options."""
+
+        ordering = ("position", "id")
+        constraints: ClassVar = [
+            models.UniqueConstraint("owner", Lower("name"), name="tasks_tag_name_ci_unique"),
+            models.CheckConstraint(
+                condition=~Q(name="") & ~Q(name__regex=r"[\s#]"),
+                name="tasks_tag_name_one_word",
+            ),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        """Return the name, which is how the user tells Tags apart."""
+        return self.name
+
+
 class Task(models.Model):
     """One thing to do, owned by one user and living in one of their Projects.
 
@@ -214,6 +251,7 @@ class Task(models.Model):
     due_time = models.TimeField(null=True, blank=True, help_text="Empty for an all-day Task.")
     start_date = models.DateField(null=True, blank=True, help_text="Set for a range.")
     start_time = models.TimeField(null=True, blank=True)
+    tags = models.ManyToManyField(Tag, blank=True, related_name="tasks")
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -306,6 +344,9 @@ class TaskActivity(models.Model):
         ATTACHMENT_ADDED = "attachment_added", "Attachment added"
         ATTACHMENT_REMOVED = "attachment_removed", "Attachment removed"
         MOVED = "moved", "Moved"
+        TAG_ADDED = "tag_added", "Tag added"
+        TAG_REMOVED = "tag_removed", "Tag removed"
+        TAGS_MERGED = "tags_merged", "Tags merged"
         PERSON_MERGED = "person_merged", "Person merged"
         REMINDERS_CHANGED = "reminders_changed", "Reminders changed"
 

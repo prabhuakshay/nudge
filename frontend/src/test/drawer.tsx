@@ -18,6 +18,7 @@ export const INBOX: SidebarProject = {
   icon: "inbox",
   folder_id: null,
   is_inbox: true,
+  is_archived: false,
   open_count: 3,
 };
 export const WORK: SidebarProject = {
@@ -27,6 +28,7 @@ export const WORK: SidebarProject = {
   color: "violet",
   icon: "briefcase",
   is_inbox: false,
+  is_archived: false,
 };
 
 export const task = makeTask;

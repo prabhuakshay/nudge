@@ -863,6 +863,112 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/archive": {
+      "post": {
+        "operationId": "apps_tasks_api_projects_archive_project",
+        "summary": "Archive a Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Make a Project read-only and move it to the sidebar's Archived section.",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/unarchive": {
+      "post": {
+        "operationId": "apps_tasks_api_projects_unarchive_project",
+        "summary": "Unarchive a Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Bring an archived Project back to its place in the sidebar, unchanged.",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/sidebar": {
       "get": {
         "operationId": "apps_tasks_api_sidebar_sidebar",
@@ -880,7 +986,7 @@
             }
           }
         },
-        "description": "Return the Inbox, then Folders and ungrouped Projects in order, with open Task counts.",
+        "description": "Return the Inbox, Folders and ungrouped Projects in order, then archived Projects.",
         "tags": [
           "sidebar"
         ],
@@ -991,6 +1097,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1254,6 +1370,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
           }
         },
         "description": "Store one file against a Task, up to the configured size.",
@@ -1403,6 +1529,16 @@
           },
           "404": {
             "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
             "content": {
               "application/json": {
                 "schema": {
@@ -1938,6 +2074,11 @@
           "is_inbox": {
             "title": "Is Inbox",
             "type": "boolean"
+          },
+          "is_archived": {
+            "description": "Archived Projects are read-only.",
+            "title": "Is Archived",
+            "type": "boolean"
           }
         },
         "required": [
@@ -1946,7 +2087,8 @@
           "color",
           "icon",
           "folder_id",
-          "is_inbox"
+          "is_inbox",
+          "is_archived"
         ],
         "title": "ProjectOut",
         "type": "object"
@@ -2133,11 +2275,20 @@
             },
             "title": "Items",
             "type": "array"
+          },
+          "archived": {
+            "description": "Archived Projects, by name.",
+            "items": {
+              "$ref": "#/components/schemas/SidebarProjectOut"
+            },
+            "title": "Archived",
+            "type": "array"
           }
         },
         "required": [
           "inbox",
-          "items"
+          "items",
+          "archived"
         ],
         "title": "SidebarOut",
         "type": "object"
@@ -2174,6 +2325,11 @@
             "title": "Is Inbox",
             "type": "boolean"
           },
+          "is_archived": {
+            "description": "Archived Projects are read-only.",
+            "title": "Is Archived",
+            "type": "boolean"
+          },
           "kind": {
             "const": "project",
             "title": "Kind",
@@ -2191,6 +2347,7 @@
           "icon",
           "folder_id",
           "is_inbox",
+          "is_archived",
           "kind",
           "open_count"
         ],

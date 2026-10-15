@@ -318,6 +318,7 @@ class ProjectOut(Schema):
     icon: Project.Icon
     folder_id: int | None
     is_inbox: bool
+    is_archived: bool = Field(description="Archived Projects are read-only.")
 
 
 class ProjectIn(Schema):
@@ -401,3 +402,4 @@ class SidebarOut(Schema):
     items: list[Annotated[SidebarFolderOut | SidebarProjectOut, Field(discriminator="kind")]] = (
         Field(description="Folders and ungrouped Projects in the user's order.")
     )
+    archived: list[SidebarProjectOut] = Field(description="Archived Projects, by name.")

@@ -10,6 +10,7 @@ function project(id: number, name: string, folderId: number | null = null): Side
     icon: "list",
     folder_id: folderId,
     is_inbox: false,
+    is_archived: false,
     open_count: 0,
   };
 }
@@ -26,6 +27,7 @@ const PERSONAL = folder(10, "Personal", [HEALTH, GARDEN]);
 const SIDEBAR: Sidebar = {
   inbox: { ...project(99, "Inbox"), icon: "inbox", is_inbox: true },
   items: [WORK, PERSONAL, READING],
+  archived: [],
 };
 
 /** The sidebar as `name` lines, Projects in a Folder indented. */

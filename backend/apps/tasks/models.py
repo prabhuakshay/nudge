@@ -118,6 +118,7 @@ class Project(models.Model):
     )
     position = models.CharField(max_length=255, db_collation="C", blank=True)
     is_inbox = models.BooleanField(default=False)
+    archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -143,6 +144,11 @@ class Project(models.Model):
     def __str__(self) -> str:
         """Return the name, which is how the user tells Projects apart."""
         return self.name
+
+    @property
+    def is_archived(self) -> bool:
+        """Whether the Project is archived, and so read-only."""
+        return self.archived_at is not None
 
 
 class Task(models.Model):

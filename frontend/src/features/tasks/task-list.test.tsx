@@ -17,6 +17,7 @@ const INBOX: SidebarProject = {
   icon: "inbox",
   folder_id: null,
   is_inbox: true,
+  is_archived: false,
   open_count: 2,
 };
 

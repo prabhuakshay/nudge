@@ -9,6 +9,7 @@ from ninja import Router, Status
 from apps.accounts.schemas import ErrorOut
 from apps.tasks import services
 from apps.tasks.api import signed_in_user
+from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.pagination import InvalidCursorError
 from apps.tasks.schemas import (
     AffectedTaskOut,
@@ -66,7 +67,7 @@ def list_tasks(
 
 @router.post(
     "",
-    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut},
+    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
     summary="Add a Task",
 )
 def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[ErrorOut]:
@@ -79,7 +80,10 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
     )
     if project is None:
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
-    created = services.create_task(project, task.title)
+    try:
+        created = services.create_task(project, task.title)
+    except ArchivedProjectError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, TaskOut.from_orm(created))
 
 
@@ -128,7 +132,7 @@ def update_task(
     )
     try:
         change = services.update_task(user, task_id, edit)
-    except services.TaskRuleError as error:
+    except (services.TaskRuleError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)

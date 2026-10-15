@@ -31,6 +31,7 @@ function project(id: number, name: string, overrides: Partial<SidebarProject> = 
     icon: "list",
     folder_id: null,
     is_inbox: false,
+    is_archived: false,
     open_count: 0,
     ...overrides,
   } satisfies SidebarProject;
@@ -48,6 +49,7 @@ const PERSONAL: SidebarFolder = {
 const SIDEBAR: Sidebar = {
   inbox: project(99, "Inbox", { icon: "inbox", is_inbox: true }),
   items: [WORK, PERSONAL],
+  archived: [],
 };
 
 function json(body: unknown, status = 200) {

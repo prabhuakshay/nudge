@@ -21,6 +21,7 @@ from fractional_indexing import generate_key_between
 
 from apps.accounts.services import local_zone
 from apps.core.palette import PaletteColor
+from apps.tasks.archive import ensure_writable
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
@@ -178,7 +179,12 @@ def _first_position(project: Project) -> str:
 
 
 def create_task(project: Project, title: str) -> Task:
-    """Create a Task in the Project, first among its Tasks, owned by the Project's owner."""
+    """Create a Task in the Project, first among its Tasks, owned by the Project's owner.
+
+    Raises:
+        ArchivedProjectError: The Project is archived.
+    """
+    ensure_writable(project)
     with transaction.atomic():
         task = Task.objects.create(
             owner_id=project.owner_id,
@@ -217,10 +223,14 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
 
     Raises:
         TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked.
+        ArchivedProjectError: The Task is in an archived Project, or would move into one.
     """
     task = live_task(user, task_id)
     if task is None:
         return None
+    ensure_writable(task.project)
+    if edit.project is not None:
+        ensure_writable(edit.project)
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
     dates_before = TaskDates.of(task)
     _apply(task, edit)
@@ -331,7 +341,9 @@ def attach_file(task: Task, upload: UploadedFile[bytes]) -> Attachment:
 
     Raises:
         AttachmentTooLargeError: The file is bigger than `ATTACHMENT_MAX_SIZE`.
+        ArchivedProjectError: The Task is in an archived Project.
     """
+    ensure_writable(task.project)
     limit: int = settings.ATTACHMENT_MAX_SIZE
     size = upload.size or 0
     if size > limit:
@@ -369,10 +381,14 @@ def delete_attachment(user: User, attachment_id: int) -> bool:
     """Delete one of the user's Attachments for good; return False if it isn't theirs.
 
     The file goes only once the deletion commits, so a rolled-back delete never loses it.
+
+    Raises:
+        ArchivedProjectError: The Attachment's Task is in an archived Project.
     """
     attachment = live_attachment(user, attachment_id)
     if attachment is None:
         return False
+    ensure_writable(attachment.task.project)
     with transaction.atomic():
         attachment.delete()
         TaskActivity.objects.create(

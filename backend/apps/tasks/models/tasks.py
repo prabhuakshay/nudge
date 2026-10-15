@@ -30,9 +30,15 @@ class Task(models.Model):
     so 09:00 stays 09:00 when the user travels. A due date without a time is all-day; a start
     date turns the Task into a range that ends on the due date.
 
+    A dated root Task can Repeat: closing it moves the same row on to its next Occurrence rather
+    than closing it; see `apps.tasks.repeat`.
+
     Completed and Won't do are Closed and record when in `completed_at`. Blocked is still open
     work, and only a Blocked Task keeps a `blocked_reason`. A pinned Task records when in
     `pinned_at` and lists above the rest, oldest pin first.
+
+    A Task in Trash records when in `deleted_at`. Everything one delete sent to Trash shares a
+    `trash_unit`, so the Trash lists it as one row and restores it as one.
     """
 
     class Status(models.TextChoices):
@@ -51,6 +57,13 @@ class Task(models.Model):
         P2 = 2, "P2"
         P3 = 3, "P3"
         P4 = 4, "P4"
+
+    class RepeatFrom(models.TextChoices):
+        """What a repeating Task's next Occurrence counts from."""
+
+        DUE = "due", "Due date"
+        COMPLETION = "completion", "Completion date"
+        CALENDAR = "calendar", "Calendar"
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -77,10 +90,23 @@ class Task(models.Model):
     due_time = models.TimeField(null=True, blank=True, help_text="Empty for an all-day Task.")
     start_date = models.DateField(null=True, blank=True, help_text="Set for a range.")
     start_time = models.TimeField(null=True, blank=True)
+    repeat_rule = models.CharField(
+        max_length=500,
+        blank=True,
+        default="",
+        help_text="An RFC 5545 RRULE; empty when the Task doesn't repeat.",
+    )
+    repeat_anchor = models.DateField(
+        null=True,
+        blank=True,
+        help_text="The day the series starts (its DTSTART), at the Task's due time.",
+    )
+    repeat_from = models.CharField(max_length=16, choices=RepeatFrom, default=RepeatFrom.CALENDAR)
     tags = models.ManyToManyField(Tag, blank=True, related_name="tasks")
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    trash_unit = models.UUIDField(null=True, blank=True, db_index=True)
 
     class Meta:
         """Model options."""
@@ -122,6 +148,11 @@ class Task(models.Model):
             models.CheckConstraint(
                 condition=Q(status="blocked") | Q(blocked_reason=""),
                 name="tasks_task_blocked_reason_needs_blocked",
+            ),
+            models.CheckConstraint(
+                condition=Q(repeat_rule="")
+                | Q(parent__isnull=True, due_date__isnull=False, repeat_anchor__isnull=False),
+                name="tasks_task_repeat_needs_dated_root",
             ),
         ]
 

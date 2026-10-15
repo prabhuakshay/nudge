@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import json
 from datetime import UTC, date, datetime, time, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
 
 from apps.accounts.services import set_time_zone
+from apps.notifications import services as notifications
 from apps.notifications.models import Notification
-from apps.tasks import projects, reminders, services
+from apps.tasks import projects, reminder_actions, reminders, services
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Reminder, Task
 
@@ -153,3 +155,55 @@ def test_a_closed_task_never_fires_even_with_a_stale_fire_time(
 
     assert fired == 0
     assert not Notification.objects.exists()
+
+
+@pytest.mark.django_db
+def test_a_reminder_push_offers_its_actions(
+    london: User,
+    freeze_time: Callable[[datetime], None],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sent: list[object] = []
+    monkeypatch.setattr(
+        notifications,
+        "webpush",
+        lambda **kwargs: sent.append(json.loads(str(kwargs["data"]))),
+    )
+    notifications.save_push_subscription(london, "https://push.example.com/phone", "key", "auth")
+    freeze_time(NOW)
+    _remind(london, _dated_task(london), THIRTY_MINUTES_BEFORE)
+    freeze_time(datetime(2026, 11, 6, 13, 30, tzinfo=UTC))
+    reminders.send_due_reminders()
+    notification = Notification.objects.get(user=london)
+
+    notifications.push_to_devices(notification.pk)
+
+    assert sent == [
+        {
+            "id": notification.pk,
+            "title": "Call the bank",
+            "body": "Today 14:00 · Inbox",
+            "url": notification.url,
+            "is_reminder": True,
+        },
+    ]
+
+
+@pytest.mark.django_db
+def test_a_snooze_leaves_the_next_regular_firing_in_place(
+    london: User,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    freeze_time(NOW)
+    task = _dated_task(london)
+    _remind(london, task, THIRTY_MINUTES_BEFORE, timedelta(0))
+    freeze_time(datetime(2026, 11, 6, 13, 30, tzinfo=UTC))
+    reminders.send_due_reminders()
+    first = Notification.objects.get(user=london)
+    reminder_actions.snooze(london, first.pk, reminder_actions.Snooze.IN_15_MINUTES)
+    freeze_time(datetime(2026, 11, 6, 13, 45, tzinfo=UTC))
+
+    snoozed = reminders.send_due_reminders()
+    freeze_time(datetime(2026, 11, 6, 14, 0, tzinfo=UTC))
+
+    assert (snoozed, reminders.send_due_reminders()) == (1, 1)

@@ -19,17 +19,22 @@ export function rowActivator(handle: DragHandle | undefined, touch: boolean | un
     : { onPointerDown: handle.onPointerDown };
 }
 
-/** Enter opens a focused row; Tab, Shift+Tab and Alt+↑/↓ move it where rows can move. */
+/**
+ * Enter opens a focused row; Tab, Shift+Tab and Alt+↑/↓ move it where rows can move; Delete and
+ * Backspace send it to Trash where it can change.
+ */
 export function rowKeyDown(
   event: KeyboardEvent,
   taskId: number,
   onOpen: (taskId: number) => void,
   onMoveByKey: MoveByKey | undefined,
+  onDelete: (() => void) | undefined,
 ) {
   if (event.target !== event.currentTarget) return;
   const move = onMoveByKey && keyMove(event);
   if (move) onMoveByKey(taskId, move);
   else if (event.key === "Enter") onOpen(taskId);
+  else if (onDelete && (event.key === "Delete" || event.key === "Backspace")) onDelete();
   else return;
   event.preventDefault();
 }

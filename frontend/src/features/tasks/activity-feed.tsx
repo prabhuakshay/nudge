@@ -1,4 +1,5 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
+import { format, parseISO } from "date-fns";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -7,11 +8,13 @@ import { plainMentions } from "@/features/people/mentions";
 import { activityTime, exactTime } from "./activity-time";
 import { describeDates } from "./due";
 import { remindersLabel } from "./reminders";
+import { REPEAT_FROM, repeatLabel } from "./repeat";
 import { PRIORITY, STATUS_VERB } from "./task-properties";
 import {
   taskActivityQuery,
   type DatesChange,
   type RemindersChange,
+  type RepeatChange,
   type TaskActivity,
 } from "./tasks";
 
@@ -49,7 +52,18 @@ const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string }
   tag_removed: (data) => `Removed the tag #${data.name}`,
   tags_merged: (data) => `Merged the tag #${data.from_tag} into #${data.into_tag}`,
   person_merged: (data) => `Merged @${data.from_person} into @${data.to_person}`,
+  repeat_changed: (data) => describeRepeatChange(data),
+  repeat_removed: (data) =>
+    `Stopped repeating ${repeatLabel(data.rule)}, as only dated top-level tasks repeat`,
+  repeat_advanced: (data) =>
+    `${data.action === "completed" ? "Completed" : "Skipped"} ${longDate(data.occurrence)}; next on ${longDate(data.next)}`,
+  trashed: () => "Moved to Trash",
+  restored: () => "Restored from Trash",
 };
+
+function longDate(date: string): string {
+  return format(parseISO(date), "d MMM yyyy");
+}
 
 function describe<K extends keyof ActivityData>(event: { kind: K; data: ActivityData[K] }) {
   return DESCRIBE[event.kind](event.data);
@@ -69,6 +83,15 @@ function describeDatesChange({ old, new: next }: DatesChange): string {
     return next === null ? "Removed the date" : `Set the date to ${describeDates(next)}`;
   if (next === null) return `Removed the date (was ${describeDates(old)})`;
   return `Changed the date from ${describeDates(old)} to ${describeDates(next)}`;
+}
+
+function describeRepeatChange({ old, new: next }: RepeatChange): string {
+  const full = (repeat: NonNullable<RepeatChange["old"]>) =>
+    `${repeatLabel(repeat.rule)} (${REPEAT_FROM[repeat.repeat_from]})`;
+  if (old === null)
+    return next === null ? "Stopped repeating" : `Set to repeat ${repeatLabel(next.rule)}`;
+  if (next === null) return `Stopped repeating (was ${repeatLabel(old.rule)})`;
+  return `Changed repeat from ${full(old)} to ${full(next)}`;
 }
 
 function describeRemindersChange({ old, new: next, all_day: allDay }: RemindersChange): string {

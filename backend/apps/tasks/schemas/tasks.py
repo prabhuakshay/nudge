@@ -17,6 +17,7 @@ from apps.tasks.schemas.reminders import (  # noqa: TC001 - Pydantic needs the t
 from apps.tasks.schemas.tags import TagName, TagOut  # noqa: TC001 - Pydantic needs it at runtime
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+RepeatRule = Annotated[str, StringConstraints(max_length=500)]
 BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
 
 
@@ -39,6 +40,11 @@ class TaskOut(Schema):
     due_time: time | None = Field(description="Null for an all-day Task.")
     start_date: date | None = Field(description="Set for a range, which ends on the due date.")
     start_time: time | None
+    repeat_rule: str = Field(description="An RFC 5545 RRULE; empty when the Task doesn't repeat.")
+    repeat_from: Task.RepeatFrom = Field(
+        description="What the next Occurrence counts from: the due date, the completion date, or "
+        "the calendar, which skips missed Occurrences.",
+    )
     is_overdue: bool = Field(
         description="Whether the Task is open and its due date or time has passed in the user's "
         "time zone. A range is overdue only once its end has passed.",
@@ -195,6 +201,13 @@ class TaskPatchIn(Schema):
         description="Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.",
     )
     project_id: int | None = Field(default=None, description="Moves the Task first into it.")
+    repeat_rule: RepeatRule | None = Field(
+        default=None,
+        description="Makes a dated top-level Task repeat, as an RFC 5545 RRULE; an empty string "
+        "stops it. Closing a repeating Task moves it on to its next Occurrence instead; setting "
+        "the Status it had before, straight after, undoes that.",
+    )
+    repeat_from: Task.RepeatFrom | None = None
     tag_ids: list[int] | None = Field(default=None, description="Replaces all of its Tags.")
 
 

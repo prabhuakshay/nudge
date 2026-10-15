@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from "react";
 
+import { useDeleteTask } from "@/features/trash/trash";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 import { useOpenTask } from "./open-task";
@@ -28,6 +29,7 @@ export function useRowContext({
   const indent = useMediaQuery("(min-width: 1024px)") ? INDENT : PHONE_INDENT;
   const touch = useMediaQuery("(pointer: coarse)");
   const { mutate: setStatus } = useSetTaskStatus();
+  const { mutate: deleteTask } = useDeleteTask();
   const toggle = useCallback<ToggleStatus>(
     (task) => {
       setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
@@ -43,7 +45,18 @@ export function useRowContext({
       onToggle: toggle,
       onOpen: setOpenTask,
       onToggleCollapsed,
+      onDelete: readOnly ? undefined : deleteTask,
     }),
-    [openId, collapsed, indent, touch, readOnly, toggle, setOpenTask, onToggleCollapsed],
+    [
+      openId,
+      collapsed,
+      indent,
+      touch,
+      readOnly,
+      toggle,
+      setOpenTask,
+      onToggleCollapsed,
+      deleteTask,
+    ],
   );
 }

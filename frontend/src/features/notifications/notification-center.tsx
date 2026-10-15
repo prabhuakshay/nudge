@@ -1,17 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
-import { Bell, BellOff, X } from "lucide-react";
+import { AlarmClock, Bell, BellOff, Check, ChevronDown, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
 import {
   notificationsQuery,
+  SNOOZE_OPTIONS,
+  useCompleteFromReminder,
   useDismiss,
   useMarkAllRead,
   useMarkRead,
+  useSnoozeReminder,
   type Notification,
 } from "./notifications";
 import { timeAgo } from "./relative-time";
@@ -111,49 +120,102 @@ function NotificationItem({ notification, onOpen }: NotificationItemProps) {
   const unread = notification.read_at === null;
 
   return (
-    <li className="flex items-start border-b border-border last:border-b-0">
-      <button
-        type="button"
-        onClick={() => {
-          if (unread) {
-            markRead.mutate(notification.id);
-          }
-          if (notification.url) {
-            onOpen();
-            router.history.push(notification.url);
-          }
-        }}
-        className="flex min-w-0 flex-1 gap-3 py-3 pl-4 text-left transition-colors hover:bg-surface-muted"
-      >
-        <span
-          className={cn("mt-1.5 size-2 shrink-0 rounded-full", unread && "bg-primary")}
-          aria-hidden
-        />
-        <span className="flex min-w-0 flex-col gap-0.5">
-          <span className={cn("text-sm", unread ? "font-semibold" : "font-medium")}>
-            {notification.title}
-            {unread && <span className="sr-only"> (unread)</span>}
+    <li className="border-b border-border last:border-b-0">
+      <div className="flex items-start">
+        <button
+          type="button"
+          onClick={() => {
+            if (unread) {
+              markRead.mutate(notification.id);
+            }
+            if (notification.url) {
+              onOpen();
+              router.history.push(notification.url);
+            }
+          }}
+          className="flex min-w-0 flex-1 gap-3 py-3 pl-4 text-left transition-colors hover:bg-surface-muted"
+        >
+          <span
+            className={cn("mt-1.5 size-2 shrink-0 rounded-full", unread && "bg-primary")}
+            aria-hidden
+          />
+          <span className="flex min-w-0 flex-col gap-0.5">
+            <span className={cn("text-sm", unread ? "font-semibold" : "font-medium")}>
+              {notification.title}
+              {unread && <span className="sr-only"> (unread)</span>}
+            </span>
+            {notification.body && (
+              <span className="text-sm text-muted-foreground">{notification.body}</span>
+            )}
+            <time dateTime={notification.created_at} className="text-xs text-muted-foreground">
+              {timeAgo(new Date(notification.created_at), new Date())}
+            </time>
           </span>
-          {notification.body && (
-            <span className="text-sm text-muted-foreground">{notification.body}</span>
-          )}
-          <time dateTime={notification.created_at} className="text-xs text-muted-foreground">
-            {timeAgo(new Date(notification.created_at), new Date())}
-          </time>
-        </span>
-      </button>
-      <Button
-        variant="ghost"
-        size="icon"
-        aria-label={`Dismiss ${notification.title}`}
-        disabled={dismiss.isPending}
-        onClick={() => {
-          dismiss.mutate(notification.id);
-        }}
-        className="m-1.5 text-muted-foreground"
-      >
-        <X aria-hidden />
-      </Button>
+        </button>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label={`Dismiss ${notification.title}`}
+          disabled={dismiss.isPending}
+          onClick={() => {
+            dismiss.mutate(notification.id);
+          }}
+          className="m-1.5 text-muted-foreground"
+        >
+          <X aria-hidden />
+        </Button>
+      </div>
+      {notification.is_reminder && <ReminderActions notification={notification} />}
     </li>
+  );
+}
+
+/** Complete and Snooze for a Reminder, under its notification like TickTick's reminder popup. */
+function ReminderActions({ notification }: { notification: Notification }) {
+  const complete = useCompleteFromReminder();
+  const snooze = useSnoozeReminder();
+  const busy = complete.isPending || snooze.isPending;
+
+  return (
+    <div className="flex gap-2 pr-4 pb-3 pl-9">
+      <Button
+        variant="outline"
+        aria-label={`Complete ${notification.title}`}
+        disabled={busy}
+        onClick={() => {
+          complete.mutate(notification.id);
+        }}
+        className="h-11 px-3 lg:h-8"
+      >
+        <Check aria-hidden />
+        Complete
+      </Button>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            aria-label={`Snooze ${notification.title}`}
+            disabled={busy}
+            className="h-11 px-3 lg:h-8"
+          >
+            <AlarmClock aria-hidden />
+            Snooze
+            <ChevronDown aria-hidden />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="w-44">
+          {SNOOZE_OPTIONS.map(({ until, label }) => (
+            <DropdownMenuItem
+              key={until}
+              onSelect={() => {
+                snooze.mutate({ id: notification.id, until });
+              }}
+            >
+              {label}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
   );
 }

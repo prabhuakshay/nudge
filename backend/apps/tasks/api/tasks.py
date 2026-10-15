@@ -1,4 +1,4 @@
-"""Task endpoints: list Tasks; add, read, change, move or duplicate one; read its history."""
+"""Task endpoints: list Tasks; add, read, change, move, copy or delete one; read its history."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from ninja import Query, Router, Status
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import moves, people, schedule, services, tags, tree
+from apps.tasks import moves, people, schedule, services, tags, trash, tree
 from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.dates import TaskDates
@@ -17,6 +17,7 @@ from apps.tasks.mentions import MentionError
 from apps.tasks.models import Task
 from apps.tasks.pagination import InvalidCursorError, Page
 from apps.tasks.reminders import ReminderRuleError
+from apps.tasks.repeat import RepeatRuleError
 from apps.tasks.schemas.activity import TaskActivityListOut
 from apps.tasks.schemas.reminders import ReminderOut
 from apps.tasks.schemas.tasks import (
@@ -44,6 +45,7 @@ router = Router()
 
 _HTTP_OK = 200
 _HTTP_CREATED = 201
+_HTTP_NO_CONTENT = 204
 _HTTP_NOT_FOUND = 404
 _HTTP_UNPROCESSABLE = 422
 _PROJECT_NOT_FOUND = ErrorOut(detail="Project not found.")
@@ -215,6 +217,12 @@ def _detail(task: Task) -> TaskDetailOut:
     )
 
 
+def task_change_out(change: services.TaskChange) -> TaskChangeOut:
+    """Return a change as the API shows it, with every Task whose Status changed, for Undo."""
+    affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
+    return TaskChangeOut(task=_detail(change.task), affected=affected)
+
+
 @router.get(
     "/{int:task_id}",
     response={_HTTP_OK: TaskDetailOut, _HTTP_NOT_FOUND: ErrorOut},
@@ -253,13 +261,29 @@ def update_task(
         services.TaskRuleError,
         MentionError,
         ReminderRuleError,
+        RepeatRuleError,
         ArchivedProjectError,
     ) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
-    return Status(_HTTP_OK, TaskChangeOut(task=_detail(change.task), affected=affected))
+    return Status(_HTTP_OK, task_change_out(change))
+
+
+@router.delete(
+    "/{int:task_id}",
+    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    summary="Move a Task to Trash",
+)
+def delete_task(request: HttpRequest, task_id: int) -> Status[None] | Status[ErrorOut]:
+    """Send a Task and its Subtasks to Trash as one unit, which `restore` brings back."""
+    try:
+        trashed = trash.trash_task(signed_in_user(request), task_id)
+    except ArchivedProjectError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    if not trashed:
+        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    return Status(_HTTP_NO_CONTENT, None)
 
 
 @router.post(
@@ -288,8 +312,7 @@ def move_task(
         change = moves.move_task(task, destination)
     except (services.TaskRuleError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
-    affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
-    return Status(_HTTP_OK, TaskChangeOut(task=_detail(change.task), affected=affected))
+    return Status(_HTTP_OK, task_change_out(change))
 
 
 def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:
@@ -347,6 +370,8 @@ def _edit(
         if patch.reminders is None
         else [timedelta(minutes=offset) for offset in patch.reminders],
         project=project,
+        repeat_rule=patch.repeat_rule,
+        repeat_from=patch.repeat_from,
     )
     return edit, picked
 

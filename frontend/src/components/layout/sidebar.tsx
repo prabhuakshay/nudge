@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { Trash2 } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
 import type { User } from "@/features/auth/session";
@@ -55,9 +56,13 @@ function navCount(sidebar: SidebarData, to: NavItem["to"]) {
   }[to];
 }
 
+const LINK =
+  "flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground data-[status=active]:bg-primary-soft data-[status=active]:text-primary lg:h-9";
+
 /**
- * The views, then the user's Projects, Tags and People: the body of the desktop sidebar and of the
- * phone menu. `onNavigate` runs when a link is followed, so the phone menu can close.
+ * The views, then the user's Projects, Tags and People, then Trash: the body of the desktop
+ * sidebar and of the phone menu, which holds what the bottom bar has no room for.
+ * `onNavigate` runs when a link is followed, so the phone menu can close.
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { data: sidebar } = useQuery(sidebarQuery);
@@ -72,7 +77,7 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
               to={to}
               onClick={onNavigate}
               activeOptions={{ exact: true }}
-              className="flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground data-[status=active]:bg-primary-soft data-[status=active]:text-primary lg:h-9"
+              className={LINK}
             >
               <Icon className="size-4" aria-hidden />
               {label}
@@ -102,6 +107,13 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="mt-5">
         <SidebarPeople onNavigate={onNavigate} />
+      </div>
+
+      <div className="mt-5 px-2">
+        <Link to="/trash" onClick={onNavigate} className={LINK}>
+          <Trash2 className="size-4" aria-hidden />
+          Trash
+        </Link>
       </div>
     </>
   );

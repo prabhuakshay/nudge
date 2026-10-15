@@ -9,11 +9,11 @@ import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
-import { plainMentions } from "@/features/people/mentions";
 
 import { remindersAfter } from "./reminders";
+import { advances } from "./repeat";
 import type { ScheduleView } from "./schedule";
-import { statusMessage } from "./task-properties";
+import { offerStatusUndo } from "./status-undo";
 import { openTrees } from "./task-tree";
 
 export type Task = components["schemas"]["TaskOut"];
@@ -24,6 +24,7 @@ export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"]
 export type Attachment = components["schemas"]["AttachmentOut"];
 export type DatesChange = components["schemas"]["DatesChangedData"];
 export type RemindersChange = components["schemas"]["RemindersChangedData"];
+export type RepeatChange = components["schemas"]["RepeatChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 
@@ -219,8 +220,9 @@ export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
  * replaces all four date fields at once, and removing them removes the Reminders. `reminders`
  * replaces the Reminders, as offsets in minutes, and `tags` all of its Tags.
  */
+type Editable = "title" | "description" | "status" | "priority" | "blocked_reason";
 export type TaskChange = { id: number; pinned?: boolean } & Partial<
-  Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason" | "tags">
+  Pick<TaskDetail, Editable | "tags" | "repeat_rule" | "repeat_from">
 > & { dates?: DatesIn; reminders?: number[] };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
@@ -249,6 +251,8 @@ function withChange<T extends Task>(
     pinned_at: pinnedAt(task, pinned),
     ...change,
     ...(dates !== undefined && { ...UNDATED, ...dates }),
+    // An undated Task can't repeat, so the server drops the Repeat with the dates.
+    ...(dates === null && { repeat_rule: "" }),
     // Only the drawer's Task carries its Reminders; list rows don't.
     ...("reminders" in task && remindersAfter(reminders, dates)),
   };
@@ -302,34 +306,18 @@ export function useUpdateTask() {
   });
 }
 
-/**
- * Set a Task's Status, then offer Undo in a toast. Undo gives every Task the change touched back
- * the Status and Blocked reason it had, as the server reported them.
- */
+/** Set a Task's Status, then offer Undo in a toast. */
 export function useSetTaskStatus() {
   const queryClient = useQueryClient();
   const { mutate: update } = useUpdateTask();
   return useMutation({
     mutationFn: ({ task, status }: { task: Task; status: TaskStatus }) =>
       patchTask({ id: task.id, status }),
-    onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
-    onSuccess: ({ affected }, { task, status }) => {
-      toast(statusMessage(plainMentions(task.title), status, affected.length - 1), {
-        action: {
-          label: "Undo",
-          onClick: () => {
-            for (const prior of affected) {
-              update({
-                id: prior.id,
-                status: prior.prior_status,
-                ...(prior.prior_status === "blocked" && {
-                  blocked_reason: prior.prior_blocked_reason,
-                }),
-              });
-            }
-          },
-        },
-      });
+    // A repeating Task moves on rather than closing, so it stays where it is until the server says.
+    onMutate: ({ task, status }) =>
+      advances(task, status) ? undefined : showChange(queryClient, { id: task.id, status }),
+    onSuccess: ({ task, affected }, { status }) => {
+      offerStatusUndo(update, task, status, affected);
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => refreshTasks(queryClient),

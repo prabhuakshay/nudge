@@ -13,6 +13,8 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
+import { Route as AppSearchRouteImport } from './routes/_app/search'
+import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as AppUpcomingRouteImport } from './routes/_app/upcoming'
 import { Route as AppPeoplePersonIdRouteImport } from './routes/_app/people.$personId'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects.$projectId'
@@ -35,6 +37,16 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppInboxRoute = AppInboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppSearchRoute = AppSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTrashRoute = AppTrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
   getParentRoute: () => AppRoute,
 } as any)
 const AppUpcomingRoute = AppUpcomingRouteImport.update({
@@ -62,6 +74,8 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/inbox': typeof AppInboxRoute
+  '/search': typeof AppSearchRoute
+  '/trash': typeof AppTrashRoute
   '/upcoming': typeof AppUpcomingRoute
   '/people/$personId': typeof AppPeoplePersonIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
@@ -70,6 +84,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/inbox': typeof AppInboxRoute
+  '/search': typeof AppSearchRoute
+  '/trash': typeof AppTrashRoute
   '/upcoming': typeof AppUpcomingRoute
   '/': typeof AppIndexRoute
   '/people/$personId': typeof AppPeoplePersonIdRoute
@@ -81,6 +97,8 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/inbox': typeof AppInboxRoute
+  '/_app/search': typeof AppSearchRoute
+  '/_app/trash': typeof AppTrashRoute
   '/_app/upcoming': typeof AppUpcomingRoute
   '/_app/': typeof AppIndexRoute
   '/_app/people/$personId': typeof AppPeoplePersonIdRoute
@@ -93,6 +111,8 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/inbox'
+    | '/search'
+    | '/trash'
     | '/upcoming'
     | '/people/$personId'
     | '/projects/$projectId'
@@ -101,6 +121,8 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/inbox'
+    | '/search'
+    | '/trash'
     | '/upcoming'
     | '/'
     | '/people/$personId'
@@ -111,6 +133,8 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/inbox'
+    | '/_app/search'
+    | '/_app/trash'
     | '/_app/upcoming'
     | '/_app/'
     | '/_app/people/$personId'
@@ -153,6 +177,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInboxRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/search': {
+      id: '/_app/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof AppSearchRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/trash': {
+      id: '/_app/trash'
+      path: '/trash'
+      fullPath: '/trash'
+      preLoaderRoute: typeof AppTrashRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/upcoming': {
       id: '/_app/upcoming'
       path: '/upcoming'
@@ -186,6 +224,8 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppInboxRoute: typeof AppInboxRoute
+  AppSearchRoute: typeof AppSearchRoute
+  AppTrashRoute: typeof AppTrashRoute
   AppUpcomingRoute: typeof AppUpcomingRoute
   AppIndexRoute: typeof AppIndexRoute
   AppPeoplePersonIdRoute: typeof AppPeoplePersonIdRoute
@@ -195,6 +235,8 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppInboxRoute: AppInboxRoute,
+  AppSearchRoute: AppSearchRoute,
+  AppTrashRoute: AppTrashRoute,
   AppUpcomingRoute: AppUpcomingRoute,
   AppIndexRoute: AppIndexRoute,
   AppPeoplePersonIdRoute: AppPeoplePersonIdRoute,

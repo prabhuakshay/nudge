@@ -8,7 +8,12 @@ vi.mock("@/features/auth/sign-out-button", () => ({
   SignOutButton: () => <button type="button">Sign out</button>,
 }));
 
-const ada = { id: 1, email: "ada@example.com", full_name: "Ada Lovelace" };
+const ada = {
+  id: 1,
+  email: "ada@example.com",
+  full_name: "Ada Lovelace",
+  time_zone: "Europe/London",
+};
 
 async function openDialog() {
   render(

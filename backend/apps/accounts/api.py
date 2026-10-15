@@ -24,9 +24,15 @@ from apps.accounts.schemas import (
     PasswordChangeIn,
     ProfileIn,
     SessionOut,
+    TimeZoneIn,
     UserOut,
 )
-from apps.accounts.services import PasswordChangeError, change_password, update_profile
+from apps.accounts.services import (
+    PasswordChangeError,
+    change_password,
+    set_time_zone,
+    update_profile,
+)
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -107,3 +113,11 @@ def profile(request: HttpRequest, changes: ProfileIn) -> UserOut:
     user = request.user
     assert isinstance(user, User)  # noqa: S101 - django_auth only lets signed-in users through
     return UserOut.from_orm(update_profile(user, changes.full_name))
+
+
+@router.put("/time-zone", response=UserOut, auth=django_auth, summary="Set time zone")
+def time_zone(request: HttpRequest, changes: TimeZoneIn) -> UserOut:
+    """Change the signed-in user's time zone and return the updated user."""
+    user = request.user
+    assert isinstance(user, User)  # noqa: S101 - django_auth only lets signed-in users through
+    return UserOut.from_orm(set_time_zone(user, changes.time_zone))

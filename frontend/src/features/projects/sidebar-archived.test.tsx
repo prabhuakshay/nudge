@@ -29,6 +29,7 @@ function sidebar(archived: SidebarProject[]): Sidebar {
     inbox: { ...GARDEN, id: 99, name: "Inbox", icon: "inbox", is_inbox: true, is_archived: false },
     items: [],
     archived,
+    tags: [],
     today_count: 0,
     upcoming_count: 0,
   };

@@ -34,7 +34,10 @@ export function TaskList({ project }: { project: SidebarProject }) {
   const pinned = useMemo(() => treesWhere(open, (root) => root.pinned_at !== null), [open]);
   const unpinned = useMemo(() => treesWhere(open, (root) => root.pinned_at === null), [open]);
   const [showClosed, setShowClosed] = useState(false);
-  const closed = useInfiniteQuery({ ...closedTasksQuery(project.id), enabled: showClosed });
+  const closed = useInfiniteQuery({
+    ...closedTasksQuery(project.id),
+    enabled: showClosed,
+  });
   const closedTasks = useMemo(
     () => (showClosed ? (closed.data?.pages.flatMap((page) => page.items) ?? []) : []),
     [showClosed, closed.data],
@@ -205,6 +208,9 @@ export function TaskTableHeader() {
       </span>
       <span role="columnheader" className="px-2">
         Due
+      </span>
+      <span role="columnheader" className="hidden px-2 xl:block">
+        Tags
       </span>
       <span role="columnheader" className="px-2 text-right">
         Activity

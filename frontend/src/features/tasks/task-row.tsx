@@ -1,6 +1,7 @@
 import { ChevronDown, ChevronRight, CornerDownRight, MessageSquare, Paperclip } from "lucide-react";
 import { memo } from "react";
 
+import { TagBadge } from "@/features/tags/tag-badge";
 import { MentionText } from "@/features/people/mention-text";
 import { plainMentions } from "@/features/people/mentions";
 import { cn } from "@/lib/utils";
@@ -12,7 +13,7 @@ import { Grip } from "./row-grip";
 import type { DragHandle } from "./sortable-tree";
 import { SubtaskCount } from "./subtask-count";
 import { TaskActionsMenu, TaskContextMenu } from "./task-actions";
-import { DueCell, PriorityCell, StatusCell } from "./task-cells";
+import { DueCell, PriorityCell, StatusCell, TagsCell } from "./task-cells";
 import { TaskCheckbox } from "./task-checkbox";
 import { PriorityFlag } from "./task-priority";
 import { isClosed } from "./task-properties";
@@ -21,7 +22,8 @@ import type { TreeRow } from "./task-tree";
 import type { Task } from "./tasks";
 
 /** One grid for the header and every row, so the columns line up from `lg`. */
-export const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_6.5rem_2.5rem]";
+export const GRID =
+  "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_6.5rem_2.5rem] xl:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_11rem_6.5rem_2.5rem]";
 
 /** How far a title sits from its row's edge: the chevron and checkbox with their gaps, in pixels. */
 const TITLE_INSET = 54;
@@ -109,7 +111,6 @@ export const TaskRow = memo(function TaskRow({
   handle?: DragHandle;
   touch?: boolean;
 }) {
-  const closed = isClosed(task.status);
   const blocked = task.status === "blocked";
   return (
     <TaskContextMenu
@@ -185,23 +186,7 @@ export const TaskRow = memo(function TaskRow({
             }}
           />
           <div className="flex min-w-0 flex-1 flex-col">
-            <span
-              data-task-title
-              className={cn(
-                "min-w-0 truncate text-sm",
-                closed && "text-muted-foreground line-through",
-                !closed && (level === 0 ? "font-semibold" : "font-medium"),
-              )}
-            >
-              <MentionText text={task.title} />
-            </span>
-            {level === 0 && task.parent_title !== null && (
-              <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                <CornerDownRight className="size-3 shrink-0" aria-hidden />
-                <span className="sr-only">Subtask of</span>
-                <span className="truncate">{plainMentions(task.parent_title)}</span>
-              </span>
-            )}
+            <RowTitle task={task} level={level} />
             {blocked && <BlockedNote task={task} className="hidden lg:flex" />}
           </div>
           <TaskActionsMenu task={task} className="-my-2 lg:hidden" />
@@ -218,6 +203,9 @@ export const TaskRow = memo(function TaskRow({
         <div role="gridcell" className="hidden min-w-0 lg:block">
           <DueCell task={task} />
         </div>
+        <div role="gridcell" className="hidden min-w-0 overflow-hidden xl:block">
+          <TagsCell task={task} />
+        </div>
         <div role="gridcell" className="hidden min-w-0 items-center justify-end gap-2 pr-1 lg:flex">
           <ActivityCounts task={task} subtasks={subtasks} />
         </div>
@@ -232,6 +220,39 @@ export const TaskRow = memo(function TaskRow({
     </TaskContextMenu>
   );
 });
+
+/**
+ * A row's title, with the first Tag beside it while the Tags column is hidden. A Subtask listed
+ * without its parent, as in a Tag's list, says under its title whose it is.
+ */
+function RowTitle({ task, level }: { task: Task; level: number }) {
+  const closed = isClosed(task.status);
+  const firstTag = task.tags[0];
+  return (
+    <>
+      <span className="flex min-w-0 items-center gap-2">
+        <span
+          data-task-title
+          className={cn(
+            "min-w-0 truncate text-sm",
+            closed && "text-muted-foreground line-through",
+            !closed && (level === 0 ? "font-semibold" : "font-medium"),
+          )}
+        >
+          <MentionText text={task.title} />
+        </span>
+        {firstTag && <TagBadge tag={firstTag} className="hidden shrink-0 lg:flex xl:hidden" />}
+      </span>
+      {level === 0 && task.parent_title !== null && (
+        <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+          <CornerDownRight className="size-3 shrink-0" aria-hidden />
+          <span className="sr-only">Subtask of</span>
+          <span className="truncate">{plainMentions(task.parent_title)}</span>
+        </span>
+      )}
+    </>
+  );
+}
 
 /** The chevron that folds a Task's Subtasks away in the list, or shows them again. */
 function CollapseToggle({
@@ -280,6 +301,9 @@ function PhoneMeta({
       {task.status === "blocked" && <BlockedNote task={task} className="max-w-full" />}
       <PriorityFlag priority={task.priority} />
       <DueBadge task={task} />
+      {task.tags.map((tag) => (
+        <TagBadge key={tag.id} tag={tag} />
+      ))}
       <ActivityCounts task={task} subtasks={subtasks} />
     </div>
   );

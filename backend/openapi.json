@@ -1239,7 +1239,7 @@
             }
           }
         },
-        "description": "Return everything the sidebar lists, with open counts for Projects, Today and Upcoming.",
+        "description": "Return everything the sidebar lists, with open counts for Projects, Tags and views.",
         "tags": [
           "sidebar"
         ],
@@ -1250,10 +1250,277 @@
         ]
       }
     },
+    "/api/v1/tags": {
+      "post": {
+        "operationId": "apps_tasks_api_tags_create_tag",
+        "summary": "Create a Tag",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a Tag last in the user's order.",
+        "tags": [
+          "tags"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/{tag_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_tags_update_tag",
+        "summary": "Change a Tag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "schema": {
+              "title": "Tag Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rename or recolour a Tag; the new name shows on every Task that has it.",
+        "tags": [
+          "tags"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_tags_delete_tag",
+        "summary": "Delete a Tag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "schema": {
+              "title": "Tag Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete a Tag for good, taking it off every Task that has it.",
+        "tags": [
+          "tags"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/{tag_id}/move": {
+      "post": {
+        "operationId": "apps_tasks_api_tags_move_tag",
+        "summary": "Move a Tag in the user's order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "schema": {
+              "title": "Tag Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Put a Tag right after another, or first.",
+        "tags": [
+          "tags"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/{tag_id}/merge": {
+      "post": {
+        "operationId": "apps_tasks_api_tags_merge_tag",
+        "summary": "Merge a Tag into another",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "schema": {
+              "title": "Tag Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Move every Task of a Tag onto another Tag, then delete the first for good.",
+        "tags": [
+          "tags"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagMergeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/tasks": {
       "get": {
         "operationId": "apps_tasks_api_tasks_list_tasks",
-        "summary": "List a Project's, a Person's or a view's Tasks",
+        "summary": "List a Project's, a Person's, a Tag's or a view's Tasks",
         "parameters": [
           {
             "in": "query",
@@ -1284,6 +1551,22 @@
                 }
               ],
               "title": "Person"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
             },
             "required": false
           },
@@ -1367,7 +1650,7 @@
             }
           }
         },
-        "description": "Return the open Tasks of a Project, Person or view, or, with `closed`, a page of Closed ones.\n\nA Project's Tasks come in manual order. A Person's are the Tasks that mention them, flat, in\neach Project's manual order. Today and Upcoming list flat rows by date, with Overdue first in\nToday; Today's Closed Tasks are those closed today, and Upcoming has none. Closed Tasks come\nmost recently completed first, in pages; open Tasks come all at once.",
+        "description": "Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.\n\nA Project's Tasks come in manual order. A Person's are the Tasks that mention them and a\nTag's the Tasks it's on, flat, in each Project's manual order. Today and Upcoming list flat\nrows by date, with Overdue first in Today; Today's Closed Tasks are those closed today, and\nUpcoming has none. Closed Tasks come most recently completed first, in pages; open Tasks come\nall at once.",
         "tags": [
           "tasks"
         ],
@@ -1413,7 +1696,7 @@
             }
           }
         },
-        "description": "Add a Task first in its Project, or in the Inbox when no Project is given.\n\nWith `parent_id` it is added last under that Task instead, which reopens the parent and its\nancestors if they are Closed.",
+        "description": "Add a Task first in its Project, or in the Inbox when no Project is given.\n\nWith `parent_id` it is added last under that Task instead, which reopens the parent and its\nancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are\ncreated with the Task.",
         "tags": [
           "tasks"
         ],
@@ -3294,6 +3577,14 @@
             "description": "Open Tasks in Upcoming.",
             "title": "Upcoming Count",
             "type": "integer"
+          },
+          "tags": {
+            "description": "In the user's order.",
+            "items": {
+              "$ref": "#/components/schemas/SidebarTagOut"
+            },
+            "title": "Tags",
+            "type": "array"
           }
         },
         "required": [
@@ -3301,7 +3592,8 @@
           "items",
           "archived",
           "today_count",
-          "upcoming_count"
+          "upcoming_count",
+          "tags"
         ],
         "title": "SidebarOut",
         "type": "object"
@@ -3367,8 +3659,175 @@
         "title": "SidebarProjectOut",
         "type": "object"
       },
+      "SidebarTagOut": {
+        "description": "A Tag as the sidebar lists it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null shows the Tag grey."
+          },
+          "open_count": {
+            "description": "Open and Blocked Tasks with the Tag.",
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "task_count": {
+            "description": "Tasks with the Tag that aren't in Trash, closed too.",
+            "title": "Task Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "open_count",
+          "task_count"
+        ],
+        "title": "SidebarTagOut",
+        "type": "object"
+      },
+      "TagOut": {
+        "description": "A Tag's own fields.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null shows the Tag grey."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color"
+        ],
+        "title": "TagOut",
+        "type": "object"
+      },
+      "TagIn": {
+        "description": "A new Tag.",
+        "properties": {
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[^\\s#]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Grey when left out."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "TagIn",
+        "type": "object"
+      },
+      "TagPatchIn": {
+        "description": "The fields of a Tag to change; fields left out stay as they are.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[^\\s#]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null makes the Tag grey."
+          }
+        },
+        "title": "TagPatchIn",
+        "type": "object"
+      },
+      "TagMoveIn": {
+        "description": "Where a Tag goes in the user's order.",
+        "properties": {
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Tag it now follows; first when null, last when it isn't there.",
+            "title": "After Id"
+          }
+        },
+        "title": "TagMoveIn",
+        "type": "object"
+      },
+      "TagMergeIn": {
+        "description": "The Tag to merge into.",
+        "properties": {
+          "into_id": {
+            "title": "Into Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "into_id"
+        ],
+        "title": "TagMergeIn",
+        "type": "object"
+      },
       "TaskListQuery": {
-        "description": "Which Tasks to list: one Project's, one Person's or one view's, open or Closed.",
+        "description": "Which Tasks to list: one Project's, Person's, Tag's or view's, open or Closed.",
         "properties": {
           "project": {
             "anyOf": [
@@ -3391,6 +3850,17 @@
               }
             ],
             "title": "Person"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
           },
           "view": {
             "anyOf": [
@@ -3629,6 +4099,14 @@
             "title": "Is Overdue",
             "type": "boolean"
           },
+          "tags": {
+            "description": "In the user's Tag order.",
+            "items": {
+              "$ref": "#/components/schemas/TagOut"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -3670,6 +4148,7 @@
           "start_date",
           "start_time",
           "is_overdue",
+          "tags",
           "created_at",
           "updated_at"
         ],
@@ -3770,6 +4249,25 @@
               }
             ],
             "description": "Dates the Task from the start, such as today in Today. Not for a Subtask."
+          },
+          "tags": {
+            "description": "Tag names, in any case; Tags the user doesn't have yet are created.",
+            "items": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[^\\s#]+$",
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "tag_ids": {
+            "description": "Tags picked by id.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Tag Ids",
+            "type": "array"
           }
         },
         "required": [
@@ -3970,6 +4468,14 @@
             "title": "Is Overdue",
             "type": "boolean"
           },
+          "tags": {
+            "description": "In the user's Tag order.",
+            "items": {
+              "$ref": "#/components/schemas/TagOut"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -4040,6 +4546,7 @@
           "start_date",
           "start_time",
           "is_overdue",
+          "tags",
           "created_at",
           "updated_at",
           "description",
@@ -4208,6 +4715,21 @@
             ],
             "description": "Moves the Task first into it.",
             "title": "Project Id"
+          },
+          "tag_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Replaces all of its Tags.",
+            "title": "Tag Ids"
           }
         },
         "title": "TaskPatchIn",
@@ -4883,6 +5405,129 @@
         "title": "StatusChangedData",
         "type": "object"
       },
+      "TagAddedActivityOut": {
+        "description": "A Tag was put on the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "tag_added",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TagData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TagAddedActivityOut",
+        "type": "object"
+      },
+      "TagData": {
+        "description": "The Tag an event is about, by the name it had.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "TagData",
+        "type": "object"
+      },
+      "TagRemovedActivityOut": {
+        "description": "A Tag was taken off the Task, or deleted.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "tag_removed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TagData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TagRemovedActivityOut",
+        "type": "object"
+      },
+      "TagsMergedActivityOut": {
+        "description": "One of the Task's Tags was merged into another.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "tags_merged",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TagsMergedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TagsMergedActivityOut",
+        "type": "object"
+      },
+      "TagsMergedData": {
+        "description": "The Tags of a merge, by the names they had.",
+        "properties": {
+          "from_tag": {
+            "title": "From Tag",
+            "type": "string"
+          },
+          "into_tag": {
+            "title": "Into Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_tag",
+          "into_tag"
+        ],
+        "title": "TagsMergedData",
+        "type": "object"
+      },
       "TaskActivityListOut": {
         "description": "A page of a Task's history, newest first.",
         "properties": {
@@ -4902,6 +5547,9 @@
                   "reminders_changed": "#/components/schemas/RemindersChangedActivityOut",
                   "restored": "#/components/schemas/RestoredActivityOut",
                   "status_changed": "#/components/schemas/StatusChangedActivityOut",
+                  "tag_added": "#/components/schemas/TagAddedActivityOut",
+                  "tag_removed": "#/components/schemas/TagRemovedActivityOut",
+                  "tags_merged": "#/components/schemas/TagsMergedActivityOut",
                   "title_changed": "#/components/schemas/TitleChangedActivityOut",
                   "trashed": "#/components/schemas/TrashedActivityOut",
                   "unpinned": "#/components/schemas/UnpinnedActivityOut"
@@ -4947,6 +5595,15 @@
                 },
                 {
                   "$ref": "#/components/schemas/PersonMergedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TagAddedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TagRemovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TagsMergedActivityOut"
                 },
                 {
                   "$ref": "#/components/schemas/TrashedActivityOut"

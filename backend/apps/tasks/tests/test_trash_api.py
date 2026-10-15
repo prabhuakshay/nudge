@@ -9,7 +9,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from apps.tasks import projects, services
+from apps.tasks import projects, services, tags
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 
@@ -152,13 +152,21 @@ def test_a_trashed_task_leaves_the_views_and_counts(client: Client, ada: User) -
     today = timezone.localdate()
     task = services.create_task(services.inbox(ada), "Pay rent", TaskDates(due_date=today))
     _subtask(task, "Find the bank details")
+    money = tags.create_tag(ada, "money")
+    client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"tag_ids": [money.pk]},
+        content_type="application/json",
+    )
 
     _delete(client, task)
 
     assert client.get("/api/v1/tasks?view=today").json()["items"] == []
+    assert client.get(f"/api/v1/tasks?tag={money.pk}").json()["items"] == []
     sidebar = client.get("/api/v1/sidebar").json()
     assert sidebar["today_count"] == 0
     assert sidebar["inbox"]["open_count"] == 0
+    assert [(tag["open_count"], tag["task_count"]) for tag in sidebar["tags"]] == [(0, 0)]
 
 
 @pytest.mark.django_db

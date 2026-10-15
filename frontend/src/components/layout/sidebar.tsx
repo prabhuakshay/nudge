@@ -8,6 +8,7 @@ import { SidebarArchived } from "@/features/projects/sidebar-archived";
 import { SidebarPeople } from "@/features/people/sidebar-people";
 import { SidebarProjects } from "@/features/projects/sidebar-projects";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
+import { SidebarTags } from "@/features/tags/sidebar-tags";
 import { sidebarQuery, type Sidebar as SidebarData } from "@/features/tasks/tasks";
 
 import { NAV_ITEMS, type NavItem } from "./nav-items";
@@ -59,8 +60,8 @@ const LINK =
   "flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground data-[status=active]:bg-primary-soft data-[status=active]:text-primary lg:h-9";
 
 /**
- * The views, then the user's Projects and People, then Trash: the body of the desktop sidebar and
- * of the phone menu, which holds what the bottom bar has no room for.
+ * The views, then the user's Projects, Tags and People, then Trash: the body of the desktop
+ * sidebar and of the phone menu, which holds what the bottom bar has no room for.
  * `onNavigate` runs when a link is followed, so the phone menu can close.
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
@@ -98,6 +99,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       </div>
       <div className="mt-3">
         <SidebarArchived onNavigate={onNavigate} />
+      </div>
+
+      <div className="mt-5">
+        <SidebarTags onNavigate={onNavigate} />
       </div>
 
       <div className="mt-5">

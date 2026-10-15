@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useId, useState, type ReactNode, type SubmitEvent } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
+import { ColorField } from "./color-field";
 import { HUE, PICKABLE_ICONS, PROJECT_ICONS } from "./project-style";
 import {
-  PALETTE,
   useCreateFolder,
   useCreateProject,
   useUpdateFolder,
@@ -134,46 +134,6 @@ function ProjectForm({
 
       <DialogFooter pending={pending} label={project ? "Save" : "Create project"} />
     </form>
-  );
-}
-
-/** The palette as a row of swatches; nothing is picked until the user picks one. */
-export function ColorField({
-  value,
-  onChange,
-}: {
-  value: PaletteColor | null;
-  onChange: (color: PaletteColor) => void;
-}) {
-  return (
-    <fieldset>
-      <legend className="mb-2 text-sm font-semibold">Colour</legend>
-      <div className="flex flex-wrap gap-2">
-        {PALETTE.map((hue) => (
-          <label key={hue} className="relative">
-            <input
-              type="radio"
-              name="color"
-              value={hue}
-              checked={value === hue}
-              onChange={() => {
-                onChange(hue);
-              }}
-              aria-label={hue.charAt(0).toUpperCase() + hue.slice(1)}
-              className="peer sr-only"
-            />
-            <span
-              className={cn(
-                "flex size-9 cursor-pointer items-center justify-center rounded-full text-surface ring-offset-2 ring-offset-surface peer-checked:ring-2 peer-checked:ring-foreground peer-focus-visible:outline-2 peer-focus-visible:outline-offset-4 peer-focus-visible:outline-ring sm:size-7",
-                HUE[hue].bg,
-              )}
-            >
-              {value === hue && <Check className="size-4" aria-hidden />}
-            </span>
-          </label>
-        ))}
-      </div>
-    </fieldset>
   );
 }
 

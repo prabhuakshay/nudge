@@ -1,20 +1,21 @@
-"""Task endpoints: list a Project's or Tag's Tasks; add, read, change or copy one; its history."""
+"""Task endpoints: list a Project's, Person's or Tag's Tasks; add, read, change or copy one."""
 
 from __future__ import annotations
 
+from functools import partial
 from typing import TYPE_CHECKING
 
 from ninja import Router, Status
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import services, tags, tree
+from apps.tasks import people, services, tags, tree
 from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
-from apps.tasks.models import Tag
+from apps.tasks.mentions import MentionError
 from apps.tasks.pagination import InvalidCursorError
-from apps.tasks.schemas import (
+from apps.tasks.schemas.activity import TaskActivityListOut
+from apps.tasks.schemas.tasks import (
     AffectedTaskOut,
-    TaskActivityListOut,
     TaskAncestorOut,
     TaskChangeOut,
     TaskDetailOut,
@@ -25,10 +26,13 @@ from apps.tasks.schemas import (
 )
 
 if TYPE_CHECKING:
+    from collections.abc import Callable, Iterable
+
     from django.http import HttpRequest
 
     from apps.accounts.models import User
-    from apps.tasks.models import Project, Task
+    from apps.tasks.models import Project, Tag, Task
+    from apps.tasks.pagination import Page
 
 router = Router()
 
@@ -38,59 +42,83 @@ _HTTP_NOT_FOUND = 404
 _HTTP_UNPROCESSABLE = 422
 _PROJECT_NOT_FOUND = ErrorOut(detail="Project not found.")
 _TASK_NOT_FOUND = ErrorOut(detail="Task not found.")
+_PERSON_NOT_FOUND = ErrorOut(detail="Person not found.")
 _TAG_NOT_FOUND = ErrorOut(detail="Tag not found.")
-
-
-def _source(
-    user: User,
-    project_id: int | None,
-    tag_id: int | None,
-) -> Project | Tag | Status[ErrorOut]:
-    """Return the user's Project or Tag whose Tasks to list, or the error to answer with."""
-    if (project_id is None) == (tag_id is None):
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail="Give either a project or a tag."))
-    if project_id is not None:
-        project = services.live_project(user, project_id)
-        return project or Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
-    return tags.tag(user, tag_id or 0) or Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
 
 
 @router.get(
     "",
     response={_HTTP_OK: TaskListOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
-    summary="List a Project's or Tag's Tasks",
+    summary="List a Project's, a Person's or a Tag's Tasks",
 )
-def list_tasks(
+def list_tasks(  # noqa: PLR0913 - each list filter is its own query parameter
     request: HttpRequest,
     project: int | None = None,
+    person: int | None = None,
     tag: int | None = None,
     *,
     closed: bool = False,
     cursor: str | None = None,
 ) -> Status[TaskListOut] | Status[ErrorOut]:
-    """Return the open Tasks of a Project or a Tag, or, with `closed`, a page of Closed ones.
+    """Return the open Tasks of a Project, Person or Tag, or, with `closed`, a page of Closed ones.
 
-    Give exactly one of `project` and `tag`. A Tag's Tasks come from all of the user's Projects,
-    in each Project's manual order. Closed Tasks come most recently completed first, in pages;
-    open Tasks come all at once.
+    A Project's Tasks come in manual order. A Person's are the Tasks that mention them, and a
+    Tag's the Tasks it's on, flat, in each Project's manual order. Closed Tasks come most recently
+    completed first, in pages; open Tasks come all at once.
     """
-    found = _source(signed_in_user(request), project, tag)
-    if isinstance(found, Status):
-        return found
+    source = _list_source(signed_in_user(request), project, person, tag)
+    if isinstance(source, Status):
+        return source
+    open_tasks, closed_page = source
     if not closed:
-        rows = tags.open_tasks(found) if isinstance(found, Tag) else services.open_tasks(found)
-        items = [TaskOut.from_orm(task) for task in rows]
+        items = [TaskOut.from_orm(task) for task in open_tasks()]
         return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=None))
     try:
-        page = (
-            tags.closed_tasks(found, cursor)
-            if isinstance(found, Tag)
-            else services.closed_tasks(found, cursor)
-        )
+        page = closed_page(cursor)
     except InvalidCursorError as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     items = [TaskOut.from_orm(task) for task in page.items]
     return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=page.next_cursor))
+
+
+type _ListSource = tuple[Callable[[], Iterable[Task]], Callable[[str | None], Page[Task]]]
+
+
+def _list_source(
+    user: User,
+    project: int | None,
+    person: int | None,
+    tag: int | None,
+) -> _ListSource | Status[ErrorOut]:
+    """Return how to read the open Tasks and a page of Closed ones of the list asked for."""
+    if person is not None:
+        return _person_source(user, person)
+    if tag is not None:
+        return _tag_source(user, tag)
+    if project is None:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail="Give a project, a person or a tag."))
+    return _project_source(user, project)
+
+
+def _person_source(user: User, person: int) -> _ListSource | Status[ErrorOut]:
+    found = people.person(user, person)
+    if found is None:
+        return Status(_HTTP_NOT_FOUND, _PERSON_NOT_FOUND)
+    return partial(people.open_tasks, found), partial(people.closed_tasks, found)
+
+
+def _tag_source(user: User, tag: int) -> _ListSource | Status[ErrorOut]:
+    found = tags.tag(user, tag)
+    if found is None:
+        return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
+    return partial(tags.open_tasks, found), partial(tags.closed_tasks, found)
+
+
+def _project_source(user: User, project: int) -> _ListSource | Status[ErrorOut]:
+    found = services.live_project(user, project)
+    if found is None:
+        return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+    return partial(services.open_tasks, found), partial(services.closed_tasks, found)
 
 
 @router.post(
@@ -114,7 +142,7 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
     project, picked = target
     try:
         created = tags.create_tagged_task(project, task.title, tags=picked, tag_names=task.tags)
-    except ArchivedProjectError as error:
+    except (MentionError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, TaskOut.from_orm(created))
 
@@ -140,7 +168,7 @@ def _create_subtask(user: User, parent_id: int, title: str) -> Status[TaskOut] |
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     try:
         change = services.create_subtask(parent, title)
-    except (services.TaskRuleError, ArchivedProjectError) as error:
+    except (services.TaskRuleError, MentionError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, TaskOut.from_orm(change.task))
 
@@ -191,7 +219,7 @@ def update_task(
         return edit
     try:
         change = tags.update_tagged_task(user, task_id, *edit)
-    except (services.TaskRuleError, ArchivedProjectError) as error:
+    except (services.TaskRuleError, MentionError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)

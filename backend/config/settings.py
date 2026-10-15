@@ -130,6 +130,10 @@ SESSION_COOKIE_AGE = env.int("NUDGE_SESSION_COOKIE_AGE", default=60 * 60 * 24 * 
 # Sign-in attempts allowed per client IP, and password changes per user, e.g. "10/m".
 LOGIN_RATE_LIMIT = env.str("NUDGE_LOGIN_RATE_LIMIT", default="10/m")
 
+# Calendar feed fetches allowed per client IP. Calendar apps poll at most every few minutes, so
+# this only bites someone guessing feed addresses.
+CALENDAR_FEED_RATE_LIMIT = env.str("NUDGE_CALENDAR_FEED_RATE_LIMIT", default="30/m")
+
 # ---------------------------------------------------------------- security
 
 # Caddy (or another proxy) terminates HTTPS and forwards plain HTTP, so Django must trust the

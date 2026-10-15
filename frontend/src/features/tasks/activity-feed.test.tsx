@@ -243,6 +243,33 @@ describe("ActivityFeed", () => {
     expect(await screen.findByText("Moved from “Inbox” to “Work”")).toBeInTheDocument();
   });
 
+  it("writes Mentions as plain names and says which People were merged", async () => {
+    const events = [
+      {
+        id: 2,
+        kind: "person_merged",
+        at: NEWER.at,
+        data: { from_person: "Al", to_person: "Alice" },
+      },
+      {
+        id: 1,
+        kind: "title_changed",
+        at: OLDER.at,
+        data: { old: "Call Al", new: "Call [@Al](person:4)" },
+      },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 2 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    renderFeed();
+
+    expect(await screen.findByText("Merged @Al into @Alice")).toBeInTheDocument();
+    expect(screen.getByText("Renamed from “Call Al” to “Call @Al”")).toBeInTheDocument();
+  });
+
   it("names the Tags in Tag events", async () => {
     const events = [
       { id: 3, kind: "tags_merged", at: NEWER.at, data: { from_tag: "job", into_tag: "work" } },
@@ -254,13 +281,7 @@ describe("ActivityFeed", () => {
         headers: { "Content-Type": "application/json" },
       }),
     );
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <TooltipProvider>
-          <ActivityFeed taskId={1} />
-        </TooltipProvider>
-      </QueryClientProvider>,
-    );
+    renderFeed();
 
     expect(await screen.findByText("Merged the tag #job into #work")).toBeInTheDocument();
     expect(screen.getByText("Removed the tag #home")).toBeInTheDocument();

@@ -118,7 +118,7 @@ export function TaskList({ project }: { project: SidebarProject }) {
           aria-label={`${project.name} tasks`}
           className="rounded-xl border border-border bg-surface shadow-sm"
         >
-          <TableHeader />
+          <TaskTableHeader />
 
           {pinnedRows.length > 0 && (
             <Group
@@ -167,8 +167,8 @@ export function TaskList({ project }: { project: SidebarProject }) {
   );
 }
 
-/** The table's column headings, from `lg`; Tags get a column from `xl`. */
-export function TableHeader() {
+/** The table's column headings, shown from `lg` where the rows become a grid. */
+export function TaskTableHeader() {
   return (
     <div
       role="row"
@@ -200,7 +200,7 @@ export function TableHeader() {
   );
 }
 
-/** A titled section of the table, with a count of its Tasks. */
+/** A titled section of the table, with a count of the Tasks in it. */
 export function Group({
   icon,
   label,

@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { Logo } from "@/components/brand/logo";
 import type { User } from "@/features/auth/session";
 import { SidebarArchived } from "@/features/projects/sidebar-archived";
+import { SidebarPeople } from "@/features/people/sidebar-people";
 import { SidebarProjects } from "@/features/projects/sidebar-projects";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
 import { SidebarTags } from "@/features/tags/sidebar-tags";
@@ -46,8 +47,8 @@ export function Sidebar({ user }: { user: User }) {
 }
 
 /**
- * The views, then the user's Projects and Tags: the body of the desktop sidebar and of the phone
- * menu. `onNavigate` runs when a link is followed, so the phone menu can close.
+ * The views, then the user's Projects, Tags and People: the body of the desktop sidebar and of the
+ * phone menu. `onNavigate` runs when a link is followed, so the phone menu can close.
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { data: sidebar } = useQuery(sidebarQuery);
@@ -88,6 +89,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="mt-5">
         <SidebarTags onNavigate={onNavigate} />
+      </div>
+
+      <div className="mt-5">
+        <SidebarPeople onNavigate={onNavigate} />
       </div>
     </>
   );

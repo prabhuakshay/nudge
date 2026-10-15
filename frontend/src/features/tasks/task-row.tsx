@@ -1,7 +1,9 @@
-import { ChevronDown, ChevronRight, Paperclip } from "lucide-react";
+import { ChevronDown, ChevronRight, CornerDownRight, Paperclip } from "lucide-react";
 import { memo } from "react";
 
 import { TagBadge } from "@/features/tags/tag-badge";
+import { MentionText } from "@/features/people/mention-text";
+import { plainMentions } from "@/features/people/mentions";
 import { cn } from "@/lib/utils";
 
 import { CountIcon } from "./count-icon";
@@ -138,7 +140,7 @@ const TaskRow = memo(function TaskRow({
           <span className="-mr-1 flex w-5 shrink-0 justify-center">
             {subtasks.total > 0 && (
               <CollapseToggle
-                title={task.title}
+                title={plainMentions(task.title)}
                 collapsed={collapsed}
                 onToggle={() => {
                   onToggleCollapsed(task.id);
@@ -190,19 +192,13 @@ const TaskRow = memo(function TaskRow({
 
 /**
  * A row's title, with the first Tag beside it while the Tags column is hidden. A Subtask listed
- * without its parent, as in a Tag's list, says above its title whose it is.
+ * without its parent, as in a Tag's list, says under its title whose it is.
  */
 function RowTitle({ task, level }: { task: Task; level: number }) {
   const closed = isClosed(task.status);
   const firstTag = task.tags[0];
   return (
     <>
-      {level === 0 && task.parent_title !== null && (
-        <span className="truncate text-[11px] text-muted-foreground">
-          <span className="sr-only">In </span>
-          {task.parent_title} ›
-        </span>
-      )}
       <span className="flex min-w-0 items-center gap-2">
         <span
           data-task-title
@@ -212,10 +208,17 @@ function RowTitle({ task, level }: { task: Task; level: number }) {
             !closed && (level === 0 ? "font-semibold" : "font-medium"),
           )}
         >
-          {task.title}
+          <MentionText text={task.title} />
         </span>
         {firstTag && <TagBadge tag={firstTag} className="hidden shrink-0 lg:flex xl:hidden" />}
       </span>
+      {level === 0 && task.parent_title !== null && (
+        <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+          <CornerDownRight className="size-3 shrink-0" aria-hidden />
+          <span className="sr-only">Subtask of</span>
+          <span className="truncate">{plainMentions(task.parent_title)}</span>
+        </span>
+      )}
     </>
   );
 }

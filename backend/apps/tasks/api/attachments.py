@@ -16,7 +16,7 @@ from apps.accounts.schemas import ErrorOut
 from apps.tasks import attachments, services
 from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
-from apps.tasks.schemas import AttachmentOut
+from apps.tasks.schemas.attachments import AttachmentOut
 
 if TYPE_CHECKING:
     from django.http import HttpRequest

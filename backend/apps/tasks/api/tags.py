@@ -9,7 +9,7 @@ from ninja import Router, Status
 from apps.accounts.schemas import ErrorOut
 from apps.tasks import tags
 from apps.tasks.api import signed_in_user
-from apps.tasks.tag_schemas import TagIn, TagMergeIn, TagMoveIn, TagOut, TagPatchIn
+from apps.tasks.schemas.tags import TagIn, TagMergeIn, TagMoveIn, TagOut, TagPatchIn
 
 if TYPE_CHECKING:
     from django.http import HttpRequest

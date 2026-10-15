@@ -201,7 +201,7 @@ function FolderForm({ folder, onDone }: { folder?: SidebarFolder; onDone: () => 
   );
 }
 
-/** The shared frame: full screen on phones, a small centred panel from `sm`. */
+/** The shared frame of the sidebar's dialogs: full screen on phones, a small panel from `sm`. */
 export function SidebarDialog({
   open,
   onOpenChange,
@@ -236,7 +236,7 @@ export function SidebarDialog({
   );
 }
 
-/** Cancel and the submit button, along the bottom of a sidebar dialog's form. */
+/** Cancel and a submit button, at the foot of a sidebar dialog's form. */
 export function DialogFooter({ pending, label }: { pending: boolean; label: string }) {
   return (
     <div className="flex shrink-0 justify-end gap-2 border-t border-border px-5 py-3">

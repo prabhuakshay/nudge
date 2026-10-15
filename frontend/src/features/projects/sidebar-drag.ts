@@ -19,7 +19,3 @@ export function useSidebarSensors() {
     useSensor(KeyboardSensor, KEYBOARD),
   );
 }
-
-/** The look of a sidebar row: a Project, Folder or Tag. */
-export const SIDEBAR_ROW =
-  "group flex h-10 items-center gap-2.5 rounded-md pr-1 pl-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground lg:h-9";

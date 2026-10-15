@@ -9,6 +9,9 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { MentionText } from "@/features/people/mention-text";
+import { plainMentions } from "@/features/people/mentions";
+import { useWithMentions } from "@/features/people/people";
 import { cn } from "@/lib/utils";
 
 import { STATUS } from "./task-properties";
@@ -69,7 +72,9 @@ export function BlockedNote({ task, className }: { task: Task; className?: strin
   return (
     <span className={cn("inline-flex min-w-0 items-center gap-1 text-xs text-warning", className)}>
       <Ban className="size-3 shrink-0" aria-hidden />
-      <span className="truncate">{task.blocked_reason || "Blocked"}</span>
+      <span className="truncate">
+        {task.blocked_reason ? <MentionText text={task.blocked_reason} /> : "Blocked"}
+      </span>
     </span>
   );
 }
@@ -77,6 +82,7 @@ export function BlockedNote({ task, className }: { task: Task; className?: strin
 /** The drawer's card for a Blocked Task, where the user says what it waits on. Saves on blur. */
 export function BlockedReasonField({ task, className }: { task: Task; className?: string }) {
   const { mutate: update } = useUpdateTask();
+  const withMentions = useWithMentions();
   return (
     <div
       className={cn(
@@ -91,14 +97,14 @@ export function BlockedReasonField({ task, className }: { task: Task; className?
           // A new key whenever the saved reason changes, such as on Undo, resets the field to it.
           key={`${String(task.id)}-${task.blocked_reason}`}
           aria-label="Blocked reason"
-          defaultValue={task.blocked_reason}
+          defaultValue={plainMentions(task.blocked_reason)}
           maxLength={500}
-          placeholder="What is it waiting on?"
+          placeholder="What is it waiting on? Type @ and a name to mention someone"
           onKeyDown={(event) => {
             if (event.key === "Enter") event.currentTarget.blur();
           }}
           onBlur={(event) => {
-            const reason = event.currentTarget.value.trim();
+            const reason = withMentions(event.currentTarget.value.trim());
             if (reason !== task.blocked_reason) update({ id: task.id, blocked_reason: reason });
           }}
           className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"

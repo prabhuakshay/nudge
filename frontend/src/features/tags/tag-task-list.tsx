@@ -7,7 +7,7 @@ import { allProjects } from "@/features/projects/projects";
 import { useOpenTask } from "@/features/tasks/open-task";
 import { QuickAddCard } from "@/features/tasks/quick-add-card";
 import { TaskDetail } from "@/features/tasks/task-detail";
-import { ClosedGroup, Group, TableHeader } from "@/features/tasks/task-list";
+import { ClosedGroup, Group, TaskTableHeader } from "@/features/tasks/task-list";
 import { isClosed } from "@/features/tasks/task-properties";
 import { TreeRows, type RowContext, type ToggleStatus } from "@/features/tasks/task-row";
 import type { TreeRow } from "@/features/tasks/task-tree";
@@ -88,7 +88,7 @@ export function TagTaskList({ tag }: { tag: SidebarTag }) {
         aria-label={`#${tag.name} tasks`}
         className="rounded-xl border border-border bg-surface shadow-sm"
       >
-        <TableHeader />
+        <TaskTableHeader />
 
         {groups.length === 0 ? (
           <Group

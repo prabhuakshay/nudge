@@ -215,14 +215,11 @@ def test_tag_view_cannot_reach_another_users_tag(client: Client, grace: User) ->
 
 
 @pytest.mark.django_db
-def test_listing_needs_exactly_one_of_project_and_tag(client: Client, ada: User) -> None:
-    work = tags.create_tag(ada, "work")
-    inbox = services.inbox(ada)
+def test_listing_needs_a_project_a_person_or_a_tag(client: Client) -> None:
+    response = client.get("/api/v1/tasks")
 
-    neither = client.get("/api/v1/tasks")
-    both = client.get(f"/api/v1/tasks?project={inbox.pk}&tag={work.pk}")
-
-    assert (neither.status_code, both.status_code) == (422, 422)
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Give a project, a person or a tag."}
 
 
 @pytest.mark.django_db

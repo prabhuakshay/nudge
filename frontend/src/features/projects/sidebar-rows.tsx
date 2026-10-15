@@ -35,8 +35,11 @@ import {
   type SidebarItem,
   type SidebarProject,
 } from "./projects";
-import { SIDEBAR_ROW } from "./sidebar-drag";
 import type { Placement } from "./sidebar-order";
+
+/** A sidebar row: the classes every Project, Folder and Person row shares. */
+export const ROW =
+  "group flex h-10 items-center gap-2.5 rounded-md pr-1 pl-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground lg:h-9";
 
 /** Keeps a press on a row's own controls from starting a drag of the row. */
 function keepFromDragging(event: SyntheticEvent) {
@@ -49,7 +52,7 @@ const DRAG_GUARD = {
   onKeyDown: keepFromDragging,
 };
 
-/** A sidebar row's ⋯ menu, shown on hover or focus where there's a pointer to hover with. */
+/** A row's ⋯ menu, shown on hover or focus where there is a pointer, always on touch. */
 export function RowMenu({ label, children }: { label: string; children: ReactNode }) {
   return (
     <DropdownMenu>
@@ -87,7 +90,7 @@ export function ProjectRow({
     return item ? { kind: item.kind, id: item.id } : null;
   };
   return (
-    <div className={cn(SIDEBAR_ROW, "has-[a[data-status=active]]:bg-primary-soft")}>
+    <div className={cn(ROW, "has-[a[data-status=active]]:bg-primary-soft")}>
       <Link
         to="/projects/$projectId"
         params={{ projectId: String(project.id) }}
@@ -160,7 +163,7 @@ export function ArchivedProjectRow({
 }) {
   const setArchived = useSetArchived();
   return (
-    <div className={cn(SIDEBAR_ROW, "font-medium has-[a[data-status=active]]:bg-primary-soft")}>
+    <div className={cn(ROW, "font-medium has-[a[data-status=active]]:bg-primary-soft")}>
       <Link
         to="/projects/$projectId"
         params={{ projectId: String(project.id) }}
@@ -197,7 +200,7 @@ export function FolderRow({
   const deleteFolder = useDeleteFolder();
   const Chevron = folder.collapsed ? ChevronRight : ChevronDown;
   return (
-    <div className={SIDEBAR_ROW}>
+    <div className={ROW}>
       <button
         type="button"
         aria-expanded={!folder.collapsed}

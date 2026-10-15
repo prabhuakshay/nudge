@@ -15,8 +15,8 @@ import {
   DropdownMenuSubTrigger,
 } from "@/components/ui/dropdown-menu";
 import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog";
-import { SIDEBAR_ROW, useSidebarSensors } from "@/features/projects/sidebar-drag";
-import { RowMenu } from "@/features/projects/sidebar-rows";
+import { useSidebarSensors } from "@/features/projects/sidebar-drag";
+import { ROW, RowMenu } from "@/features/projects/sidebar-rows";
 import { sidebarQuery } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
@@ -183,7 +183,7 @@ function SortableTagRow({
         isDragging && "z-10 rounded-md bg-surface opacity-90 shadow-lg",
       )}
     >
-      <div className={cn(SIDEBAR_ROW, "has-[a[data-status=active]]:bg-primary-soft")}>
+      <div className={cn(ROW, "has-[a[data-status=active]]:bg-primary-soft")}>
         <Link
           to="/tags/$tagId"
           params={{ tagId: String(tag.id) }}

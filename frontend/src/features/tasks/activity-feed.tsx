@@ -2,6 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { plainMentions } from "@/features/people/mentions";
 
 import { activityTime, exactTime } from "./activity-time";
 import { describeDates } from "./due";
@@ -14,18 +15,19 @@ type ActivityData = { [E in TaskActivity as E["kind"]]: E["data"] };
 function describeStatus(change: ActivityData["status_changed"]): string {
   const verb = STATUS_VERB[change.new];
   const closedSubtasks = change.closed_subtasks;
-  if (change.via_parent) return `${verb} via parent “${change.via_parent}”`;
-  if (change.via_subtask) return `${verb} via Subtask “${change.via_subtask}”`;
+  if (change.via_parent) return `${verb} via parent “${plainMentions(change.via_parent)}”`;
+  if (change.via_subtask) return `${verb} via Subtask “${plainMentions(change.via_subtask)}”`;
   if (closedSubtasks > 0) {
     return `${verb} with ${String(closedSubtasks)} ${closedSubtasks === 1 ? "Subtask" : "Subtasks"}`;
   }
-  return change.blocked_reason ? `${verb}: “${change.blocked_reason}”` : verb;
+  return change.blocked_reason ? `${verb}: “${plainMentions(change.blocked_reason)}”` : verb;
 }
 
 /** What each kind of event says happened, in the user's words rather than the API's. */
 const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string } = {
   created: () => "Created this task",
-  title_changed: (data) => `Renamed from “${data.old}” to “${data.new}”`,
+  title_changed: (data) =>
+    `Renamed from “${plainMentions(data.old)}” to “${plainMentions(data.new)}”`,
   description_edited: () => "Edited the description",
   status_changed: (data) => describeStatus(data),
   priority_changed: (data) =>
@@ -39,6 +41,7 @@ const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string }
   tag_added: (data) => `Added the tag #${data.name}`,
   tag_removed: (data) => `Removed the tag #${data.name}`,
   tags_merged: (data) => `Merged the tag #${data.from_tag} into #${data.into_tag}`,
+  person_merged: (data) => `Merged @${data.from_person} into @${data.to_person}`,
 };
 
 function describe<K extends keyof ActivityData>(event: { kind: K; data: ActivityData[K] }) {

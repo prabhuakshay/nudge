@@ -76,7 +76,13 @@ function TagForm({ tag, onDone }: { tag?: SidebarTag; onDone: () => void }) {
           )}
         </div>
 
-        <ColorField value={color} onChange={setColor} allowNone />
+        <ColorField
+          value={color}
+          onChange={setColor}
+          onClear={() => {
+            setColor(null);
+          }}
+        />
       </div>
 
       <DialogFooter

@@ -83,7 +83,7 @@ describe("A Tag's list", () => {
     expect(lists).toContain(`?tag=${String(WORK_TAG.id)}`);
   });
 
-  it("shows a Subtask flat, under its parent's title", async () => {
+  it("shows a Subtask flat, with its parent's title", async () => {
     mockApi([
       makeTask({ id: 3, title: "Write the post", parent_id: 1, parent_title: "Launch", depth: 1 }),
     ]);
@@ -91,7 +91,7 @@ describe("A Tag's list", () => {
     renderTagList();
 
     const row = await screen.findByRole("row", { name: /Write the post/ });
-    expect(row).toHaveTextContent("In Launch ›");
+    expect(row).toHaveTextContent("Subtask ofLaunch");
     expect(row).toHaveAttribute("aria-level", "1");
   });
 

@@ -7,11 +7,13 @@ import {
 } from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { validateTaskSearch } from "@/features/tasks/open-task";
 import { TaskList } from "@/features/tasks/task-list";
+import type { Person } from "@/features/people/people";
 import type { SidebarProject, SidebarTag, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
 import { makeTask } from "@/test/tasks";
 
@@ -54,6 +56,8 @@ export const TAGS: SidebarTag[] = [
 
 export const task = makeTask;
 
+export const PRIYA: Person = { id: 1, name: "Priya", color: "violet" };
+
 /** A JSON response, as the mocked `fetch` returns it. */
 export function json(body: unknown, status = 200) {
   return Promise.resolve(
@@ -78,19 +82,13 @@ export function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = input as Request;
     const url = new URL(request.url);
-    if (url.pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [WORK], archived: [GARDEN], tags });
-    }
-    if (url.pathname.endsWith("/tags") && request.method === "POST") {
-      const { name } = (await request.clone().json()) as { name: string };
-      const created = { id: 100 + tags.length, name, color: null, open_count: 0, task_count: 0 };
-      tags.push(created);
-      return json(created, 201);
-    }
+    const sidebarOrTag = await sidebarAndTags(request, tags);
+    if (sidebarOrTag) return sidebarOrTag;
     if (url.pathname.endsWith("/activity")) {
       return json({ items: activity, next_cursor: null, count: activity.length });
     }
     if (url.pathname.endsWith("/attachments")) return json([]);
+    if (url.pathname.endsWith("/people")) return json([PRIYA]);
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);
     if (request.method === "PATCH" && found) {
@@ -103,6 +101,19 @@ export function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
     }
     return json({ items: tasks, next_cursor: null });
   });
+}
+
+/** The sidebar, with the Tags so far, and Tag creation, which adds to them. */
+async function sidebarAndTags(request: Request, tags: SidebarTag[]) {
+  const { pathname } = new URL(request.url);
+  if (pathname.endsWith("/sidebar")) {
+    return json({ inbox: INBOX, items: [WORK], archived: [GARDEN], tags });
+  }
+  if (!pathname.endsWith("/tags") || request.method !== "POST") return undefined;
+  const { name } = (await request.clone().json()) as { name: string };
+  const created = { id: 100 + tags.length, name, color: null, open_count: 0, task_count: 0 };
+  tags.push(created);
+  return json(created, 201);
 }
 
 type TaskPatch = Partial<TaskDetail> & { tag_ids?: number[] };
@@ -143,12 +154,17 @@ export async function patches(fetchSpy: ReturnType<typeof mockApi>) {
  * Returns the router, to read the URL, and a user to drive the page.
  */
 export function renderTaskList({ url = "/", project = INBOX } = {}) {
+  return renderListRoute(<TaskList project={project} />, { url });
+}
+
+/** Render a list at a route that takes `?task=`, as every list route does, with a fresh cache. */
+export function renderListRoute(list: ReactNode, { url = "/" } = {}) {
   const user = userEvent.setup();
   const rootRoute = createRootRoute({
     validateSearch: validateTaskSearch,
     component: () => (
       <TooltipProvider>
-        <TaskList project={project} />
+        {list}
         <Toaster />
       </TooltipProvider>
     ),

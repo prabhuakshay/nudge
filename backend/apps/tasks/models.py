@@ -1,4 +1,4 @@
-"""Database models for Tasks and the Projects and Tags that organise them."""
+"""Models for Tasks, the Projects and Tags that organise them and the People they mention."""
 
 from __future__ import annotations
 
@@ -326,7 +326,8 @@ CLOSED_STATUSES = (Task.Status.COMPLETED, Task.Status.WONT_DO)
 class TaskActivity(models.Model):
     """One event in a Task's history, written by a service in the same transaction as the change.
 
-    `data` holds the event's details, shaped per `kind`; `apps.tasks.schemas` types each shape.
+    `data` holds the event's details, shaped per `kind`; `apps.tasks.schemas.activity` types
+    each shape.
     """
 
     class Kind(models.TextChoices):
@@ -346,6 +347,7 @@ class TaskActivity(models.Model):
         TAG_ADDED = "tag_added", "Tag added"
         TAG_REMOVED = "tag_removed", "Tag removed"
         TAGS_MERGED = "tags_merged", "Tags merged"
+        PERSON_MERGED = "person_merged", "Person merged"
 
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="activity")
     kind = models.CharField(max_length=32, choices=Kind)
@@ -394,3 +396,61 @@ class Attachment(models.Model):
     def __str__(self) -> str:
         """Return the file's original name, which is how the user knows it."""
         return self.name
+
+
+class Person(models.Model):
+    """A name in one user's private address book, which their Tasks can mention.
+
+    A Person is never an account: nobody signs in as one or hears about a Mention.
+    """
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="people",
+    )
+    name = models.CharField(max_length=64)
+    color = models.CharField(max_length=16, choices=PaletteColor)
+    created_at = models.DateTimeField(default=timezone.now)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        """Model options."""
+
+        verbose_name_plural = "people"
+        ordering = (Lower("name"), "id")
+        constraints: ClassVar = [
+            models.UniqueConstraint(
+                "owner",
+                Lower("name"),
+                name="tasks_person_name_ci_unique",
+            ),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        """Return the name, which is how the user tells People apart."""
+        return self.name
+
+
+class TaskMention(models.Model):
+    """A Task that mentions a Person somewhere in its texts.
+
+    Derived data: `apps.tasks.people.sync_mentions` rebuilds a Task's rows from its texts
+    whenever they are saved, so the Person view never has to scan text.
+    """
+
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="mentions")
+    person = models.ForeignKey(Person, on_delete=models.CASCADE, related_name="mentions")
+
+    class Meta:
+        """Model options."""
+
+        constraints: ClassVar = [
+            models.UniqueConstraint(fields=["task", "person"], name="tasks_mention_unique"),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        """Return who is mentioned where."""
+        return f"{self.person} in {self.task}"

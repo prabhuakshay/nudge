@@ -95,9 +95,7 @@ def moved_event(task: Task, from_project: str, from_parent: str | None) -> TaskA
 
 def move_descendants(task: Task, project: Project) -> None:
     """Move every Subtask below the Task into the Project, in one write."""
-    below([task]).update(project=project)
-    # A bulk update skips the save signal that keeps Reminders on time, so do its work here.
-    reminders.reschedule(below([task]))
+    reminders.update_tasks(below([task]), project=project)
 
 
 def move_tree(task: Task, project: Project, position: str) -> list[str]:

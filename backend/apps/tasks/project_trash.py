@@ -46,9 +46,7 @@ def trash_project(user: User, project_id: int) -> bool:
         project.save(update_fields=["deleted_at", "trash_unit", "updated_at"])
         ids = list(project.tasks.filter(deleted_at__isnull=True).values_list("pk", flat=True))
         tasks = Task.objects.filter(pk__in=ids)
-        tasks.update(deleted_at=now, trash_unit=project.trash_unit, updated_at=now)
-        # A bulk update skips the save signal that keeps Reminders on time, so do its work here.
-        reminders.reschedule(tasks)
+        reminders.update_tasks(tasks, deleted_at=now, trash_unit=project.trash_unit, updated_at=now)
         TaskActivity.objects.bulk_create(
             TaskActivity(task_id=pk, kind=TaskActivity.Kind.TRASHED, at=now) for pk in ids
         )
@@ -88,8 +86,7 @@ def restore_project(user: User, project_id: int) -> Project | None:
         project.deleted_at = project.trash_unit = None
         project.save(update_fields=["name", "position", "deleted_at", "trash_unit", "updated_at"])
         tasks = Task.objects.filter(pk__in=ids)
-        tasks.update(deleted_at=None, trash_unit=None, updated_at=now)
-        reminders.reschedule(tasks)
+        reminders.update_tasks(tasks, deleted_at=None, trash_unit=None, updated_at=now)
         TaskActivity.objects.bulk_create(
             TaskActivity(task_id=pk, kind=TaskActivity.Kind.RESTORED, at=now) for pk in ids
         )

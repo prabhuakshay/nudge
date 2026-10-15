@@ -66,9 +66,7 @@ def trash_task(user: User, task_id: int) -> bool:
     with transaction.atomic():
         ids = [task.pk, *below([task]).values_list("pk", flat=True)]
         unit = Task.objects.filter(pk__in=ids)
-        unit.update(deleted_at=now, trash_unit=uuid.uuid4(), updated_at=now)
-        # A bulk update skips the save signal that keeps Reminders on time, so do its work here.
-        reminders.reschedule(unit)
+        reminders.update_tasks(unit, deleted_at=now, trash_unit=uuid.uuid4(), updated_at=now)
         TaskActivity.objects.bulk_create(
             TaskActivity(task_id=pk, kind=TaskActivity.Kind.TRASHED, at=now) for pk in ids
         )
@@ -133,13 +131,13 @@ def restore_task(user: User, task_id: int) -> Restored | None:
         fields = ["deleted_at", "trash_unit", "project", "parent", "position", "updated_at"]
         head.save(update_fields=fields)
         others = Task.objects.filter(pk__in=[member.pk for member in unit if member != head])
-        others.update(
+        reminders.update_tasks(
+            others,
             deleted_at=None,
             trash_unit=None,
             project=head.project,
             updated_at=timezone.now(),
         )
-        reminders.reschedule(others)
         TaskActivity.objects.bulk_create(
             TaskActivity(task=member, kind=TaskActivity.Kind.RESTORED) for member in unit
         )

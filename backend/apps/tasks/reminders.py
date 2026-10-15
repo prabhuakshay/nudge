@@ -83,6 +83,16 @@ def _minutes(offsets: list[timedelta]) -> list[int]:
     return sorted(int(offset.total_seconds()) // 60 for offset in offsets)
 
 
+def update_tasks(tasks: QuerySet[Task], **fields: object) -> None:
+    """Set the fields on the Tasks in one write, and keep their Reminders on time.
+
+    A bulk update skips the save signal that reschedules Reminders, so every bulk write to Tasks
+    goes through here. The Tasks must still match `tasks` after the write.
+    """
+    tasks.update(**fields)
+    reschedule(tasks)
+
+
 def reschedule(tasks: QuerySet[Task]) -> None:
     """Work out again when each Reminder of the Tasks fires, after something it depends on changed.
 

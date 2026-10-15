@@ -22,6 +22,7 @@ function task(overrides: Partial<TaskDetail>): TaskDetail {
     completed_at: null,
     created_at: "2026-10-15T09:00:00Z",
     updated_at: "2026-10-15T09:00:00Z",
+    attachment_count: 0,
     ...overrides,
   };
 }
@@ -51,33 +52,32 @@ function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
     if (url.pathname.endsWith("/activity")) {
       return json({ items: activity, next_cursor: null, count: activity.length });
     }
+    if (url.pathname.endsWith("/attachments")) return json([]);
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);
     if (request.method === "PATCH" && found) {
       const change = (await request.clone().json()) as Partial<TaskDetail>;
-      if (change.title !== undefined) {
-        activity.unshift({
-          id: activity.length + 1,
-          kind: "title_changed",
-          at: minutesAgo(0),
-          data: { old: found.title, new: change.title },
-        });
-      }
-      const statusChanged = change.status !== undefined && change.status !== found.status;
-      const affected = statusChanged
-        ? [{ id, prior_status: found.status, prior_blocked_reason: found.blocked_reason }]
-        : [];
-      Object.assign(found, statusChanged ? { blocked_reason: "" } : {}, change);
-      return json({ task: found, affected });
+      return json(applyPatch(found, change, activity));
     }
-    if (found) {
-      return json(found);
-    }
+    if (found) return json(found);
     if (url.searchParams.get("closed") === "true") {
       return json({ items: [], next_cursor: null });
     }
     return json({ items: tasks, next_cursor: null });
   });
+}
+
+function applyPatch(found: TaskDetail, change: Partial<TaskDetail>, activity: TaskActivity[]) {
+  if (change.title !== undefined) {
+    const data = { old: found.title, new: change.title };
+    activity.unshift({ id: activity.length + 1, kind: "title_changed", at: minutesAgo(0), data });
+  }
+  const statusChanged = change.status !== undefined && change.status !== found.status;
+  const affected = statusChanged
+    ? [{ id: found.id, prior_status: found.status, prior_blocked_reason: found.blocked_reason }]
+    : [];
+  Object.assign(found, statusChanged ? { blocked_reason: "" } : {}, change);
+  return { task: found, affected };
 }
 
 async function patches(fetchSpy: ReturnType<typeof mockApi>) {

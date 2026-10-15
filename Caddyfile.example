@@ -3,5 +3,9 @@
 
 nudge.example.com {
 	encode zstd gzip
+	# A little above NUDGE_ATTACHMENT_MAX_SIZE (25 MB), leaving room for the upload's form fields.
+	request_body {
+		max_size 26MiB
+	}
 	reverse_proxy 127.0.0.1:8000
 }

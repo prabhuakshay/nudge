@@ -21,6 +21,7 @@ function task(overrides: Partial<Task>): Task {
     completed_at: null,
     created_at: "2026-10-15T09:00:00Z",
     updated_at: "2026-10-15T09:00:00Z",
+    attachment_count: 0,
     ...overrides,
   };
 }
@@ -110,6 +111,22 @@ describe("TaskList", () => {
     expect(await screen.findByText("Call mum")).toBeInTheDocument();
     expect(titlesIn("Tasks")).toEqual(["Buy milk", "Call mum"]);
     expect(screen.getByText("2 open")).toBeInTheDocument();
+  });
+
+  it("counts a Task's Attachments in its row and shows nothing for none", async () => {
+    mockApi({
+      open: [
+        task({ id: 1, title: "File taxes", attachment_count: 2 }),
+        task({ id: 2, title: "Call mum" }),
+      ],
+    });
+
+    renderList();
+
+    const taxes = await screen.findByRole("row", { name: /File taxes/ });
+    const mum = screen.getByRole("row", { name: /Call mum/ });
+    expect(within(taxes).getAllByRole("img", { name: "2 attachments" })).not.toHaveLength(0);
+    expect(within(mum).queryByRole("img")).not.toBeInTheDocument();
   });
 
   it("adds a Task from Quick add at the top and keeps the input focused", async () => {

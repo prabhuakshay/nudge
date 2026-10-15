@@ -1,4 +1,4 @@
-"""Request and response shapes for the Task, Activity and sidebar endpoints."""
+"""Request and response shapes for the Task, Attachment, Activity and sidebar endpoints."""
 
 from __future__ import annotations
 
@@ -26,6 +26,10 @@ class TaskOut(Schema):
     completed_at: datetime | None = Field(description="When it was Completed or marked Won't do.")
     created_at: datetime
     updated_at: datetime
+    attachment_count: int = Field(
+        default=0,
+        description="How many Attachments the Task has. A Task just added has none.",
+    )
 
 
 class TaskDetailOut(TaskOut):
@@ -152,12 +156,38 @@ class PriorityChangedActivityOut(Schema):
     data: PriorityChangedData
 
 
+class AttachmentData(Schema):
+    """The Attachment an event is about, by the name it had."""
+
+    name: str
+
+
+class AttachmentAddedActivityOut(Schema):
+    """A file was attached to the Task."""
+
+    id: int
+    kind: Literal["attachment_added"]
+    at: datetime
+    data: AttachmentData
+
+
+class AttachmentRemovedActivityOut(Schema):
+    """An Attachment was deleted from the Task."""
+
+    id: int
+    kind: Literal["attachment_removed"]
+    at: datetime
+    data: AttachmentData
+
+
 TaskActivityOut = Annotated[
     CreatedActivityOut
     | TitleChangedActivityOut
     | DescriptionEditedActivityOut
     | StatusChangedActivityOut
-    | PriorityChangedActivityOut,
+    | PriorityChangedActivityOut
+    | AttachmentAddedActivityOut
+    | AttachmentRemovedActivityOut,
     Field(discriminator="kind"),
 ]
 
@@ -170,6 +200,16 @@ class TaskActivityListOut(Schema):
         description="Pass as `cursor` to get the next page; null on the last page.",
     )
     count: int = Field(description="How many events the whole history holds.")
+
+
+class AttachmentOut(Schema):
+    """A file attached to a Task. Its bytes come from the download endpoint."""
+
+    id: int
+    name: str = Field(description="The file's name as it was uploaded.")
+    size: int = Field(description="In bytes.")
+    content_type: str = Field(description="Chosen by the server from the file's name.")
+    created_at: datetime
 
 
 class SidebarProjectOut(Schema):

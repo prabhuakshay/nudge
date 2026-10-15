@@ -22,6 +22,10 @@ function describe(event: TaskActivity): string {
     }
     case "priority_changed":
       return `Changed priority from ${PRIORITY[event.data.old].short} to ${PRIORITY[event.data.new].short}`;
+    case "attachment_added":
+      return `Attached “${event.data.name}”`;
+    case "attachment_removed":
+      return `Deleted the attachment “${event.data.name}”`;
   }
 }
 

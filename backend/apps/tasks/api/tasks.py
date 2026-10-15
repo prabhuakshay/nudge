@@ -1,4 +1,4 @@
-"""Task endpoints: list Tasks; add, read, change, move, copy or delete one; read its history."""
+"""Task endpoints: list Tasks; add, read, change, move, copy or delete one."""
 
 from __future__ import annotations
 
@@ -17,7 +17,6 @@ from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 from apps.tasks.pagination import Page
 from apps.tasks.repeat import Repeat
-from apps.tasks.schemas.activity import TaskActivityListOut
 from apps.tasks.schemas.reminders import ReminderOut
 from apps.tasks.schemas.tasks import (
     AffectedTaskOut,
@@ -377,32 +376,3 @@ def _dates(body: TaskIn | TaskPatchIn) -> TaskDates | None:
         return TaskDates()
     dates = body.dates
     return TaskDates(dates.due_date, dates.due_time, dates.start_date, dates.start_time)
-
-
-@router.get(
-    "/{int:task_id}/activity",
-    response={
-        HTTPStatus.OK: TaskActivityListOut,
-        HTTPStatus.NOT_FOUND: ErrorOut,
-        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
-    },
-    summary="List a Task's Activity",
-)
-def list_activity(
-    request: HttpRequest,
-    task_id: int,
-    cursor: str | None = None,
-) -> Status[TaskActivityListOut] | Status[ErrorOut]:
-    """Return a page of a Task's history, newest first, with the number of events in all."""
-    task = services.live_task(signed_in_user(request), task_id)
-    if task is None:
-        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
-    page = services.task_activity(task, cursor)
-    activity = TaskActivityListOut.model_validate(
-        {
-            "items": page.items,
-            "next_cursor": page.next_cursor,
-            "count": services.activity_count(task),
-        },
-    )
-    return Status(HTTPStatus.OK, activity)

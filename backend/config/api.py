@@ -20,6 +20,7 @@ from apps.accounts.api import router as accounts_router
 from apps.core.api import router as core_router
 from apps.core.errors import DomainRuleError
 from apps.notifications.api import router as notifications_router
+from apps.tasks.api.activity import router as activity_router
 from apps.tasks.api.attachments import router as attachments_router
 from apps.tasks.api.bulk import router as bulk_router
 from apps.tasks.api.calendar import router as calendar_router
@@ -69,6 +70,7 @@ api.add_router("/tags", tags_router, tags=["tags"])
 api.add_router("/", bulk_router, tags=["tasks"])
 api.add_router("/tasks", tasks_router, tags=["tasks"])
 api.add_router("/tasks", search_router, tags=["tasks"])
+api.add_router("/tasks", activity_router, tags=["tasks"])
 api.add_router("/", attachments_router, tags=["attachments"])
 api.add_router("/", comments_router, tags=["comments"])
 api.add_router("/calendar", calendar_router, tags=["calendar"])

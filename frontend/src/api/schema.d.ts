@@ -822,26 +822,6 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
-  "/api/v1/tasks/{task_id}/activity": {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    /**
-     * List a Task's Activity
-     * @description Return a page of a Task's history, newest first, with the number of events in all.
-     */
-    get: operations["apps_tasks_api_tasks_list_activity"];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
   "/api/v1/tasks/search": {
     parameters: {
       query?: never;
@@ -856,6 +836,26 @@ export interface paths {
      *     Archived Projects are searched too. At most 50 Tasks come back, with no further pages.
      */
     get: operations["apps_tasks_api_search_search"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/activity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Task's Activity
+     * @description Return a page of a Task's history, newest first, with the number of events in all.
+     */
+    get: operations["apps_tasks_api_activity_list_activity"];
     put?: never;
     post?: never;
     delete?: never;
@@ -2302,6 +2302,133 @@ export interface components {
       after_id?: number | null;
     };
     /**
+     * TaskSearchQuery
+     * @description What to search for.
+     */
+    TaskSearchQuery: {
+      /**
+       * Q
+       * @description Words that must all appear, ignoring case.
+       */
+      q: string;
+    };
+    /**
+     * MatchIn
+     * @description Where a Task matched, best first: a title match outranks a Description or Comment one.
+     * @enum {string}
+     */
+    MatchIn: "title" | "description" | "comment";
+    /**
+     * TaskSearchOut
+     * @description A Task that matched a search, with where it matched and the text around the match.
+     */
+    TaskSearchOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
+      completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
+      /**
+       * Tags
+       * @description In the user's Tag order.
+       */
+      tags: components["schemas"]["TagOut"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
+      /** @description Where it matched: the title, else the Description, else a Comment. */
+      match_in: components["schemas"]["MatchIn"];
+      /**
+       * Snippet
+       * @description The matching text as one plain line, cut to the part around the first match.
+       */
+      snippet: string;
+    };
+    /**
      * AttachmentAddedActivityOut
      * @description A file was attached to the Task.
      */
@@ -2929,133 +3056,6 @@ export interface components {
        */
       at: string;
       data: components["schemas"]["NoActivityData"];
-    };
-    /**
-     * TaskSearchQuery
-     * @description What to search for.
-     */
-    TaskSearchQuery: {
-      /**
-       * Q
-       * @description Words that must all appear, ignoring case.
-       */
-      q: string;
-    };
-    /**
-     * MatchIn
-     * @description Where a Task matched, best first: a title match outranks a Description or Comment one.
-     * @enum {string}
-     */
-    MatchIn: "title" | "description" | "comment";
-    /**
-     * TaskSearchOut
-     * @description A Task that matched a search, with where it matched and the text around the match.
-     */
-    TaskSearchOut: {
-      /** Id */
-      id: number;
-      /** Project Id */
-      project_id: number;
-      /**
-       * Parent Id
-       * @description Null for a root Task.
-       */
-      parent_id: number | null;
-      /**
-       * Position
-       * @description Sorts the Task among its siblings, byte by byte.
-       */
-      position: string;
-      /**
-       * Depth
-       * @description 0 for a root Task, up to 3 for the deepest Subtask.
-       */
-      depth: number;
-      /**
-       * Parent Title
-       * @description The parent's title, for a breadcrumb.
-       */
-      parent_title: string | null;
-      /** Title */
-      title: string;
-      status: components["schemas"]["Status"];
-      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
-      priority: components["schemas"]["Priority"];
-      /**
-       * Blocked Reason
-       * @description Why a Blocked Task waits; empty otherwise.
-       */
-      blocked_reason: string;
-      /**
-       * Completed At
-       * @description When it was Completed or marked Won't do.
-       */
-      completed_at: string | null;
-      /**
-       * Pinned At
-       * @description When it was pinned; null when it isn't.
-       */
-      pinned_at: string | null;
-      /** Due Date */
-      due_date: string | null;
-      /**
-       * Due Time
-       * @description Null for an all-day Task.
-       */
-      due_time: string | null;
-      /**
-       * Start Date
-       * @description Set for a range, which ends on the due date.
-       */
-      start_date: string | null;
-      /** Start Time */
-      start_time: string | null;
-      /**
-       * Repeat Rule
-       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
-       */
-      repeat_rule: string;
-      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
-      repeat_from: components["schemas"]["RepeatFrom"];
-      /**
-       * Is Overdue
-       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
-       */
-      is_overdue: boolean;
-      /**
-       * Tags
-       * @description In the user's Tag order.
-       */
-      tags: components["schemas"]["TagOut"][];
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /**
-       * Updated At
-       * Format: date-time
-       */
-      updated_at: string;
-      /**
-       * Attachment Count
-       * @description How many Attachments the Task has. A Task just added has none.
-       * @default 0
-       */
-      attachment_count: number;
-      /**
-       * Comment Count
-       * @description How many Comments the Task has. A Task just added has none.
-       * @default 0
-       */
-      comment_count: number;
-      /** @description Where it matched: the title, else the Description, else a Comment. */
-      match_in: components["schemas"]["MatchIn"];
-      /**
-       * Snippet
-       * @description The matching text as one plain line, cut to the part around the first match.
-       */
-      snippet: string;
     };
     /**
      * AttachmentOut
@@ -4747,7 +4747,30 @@ export interface operations {
       };
     };
   };
-  apps_tasks_api_tasks_list_activity: {
+  apps_tasks_api_search_search: {
+    parameters: {
+      query: {
+        /** @description Words that must all appear, ignoring case. */
+        q: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskSearchOut"][];
+        };
+      };
+    };
+  };
+  apps_tasks_api_activity_list_activity: {
     parameters: {
       query?: {
         cursor?: string | null;
@@ -4785,29 +4808,6 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorOut"];
-        };
-      };
-    };
-  };
-  apps_tasks_api_search_search: {
-    parameters: {
-      query: {
-        /** @description Words that must all appear, ignoring case. */
-        q: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description OK */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          "application/json": components["schemas"]["TaskSearchOut"][];
         };
       };
     };

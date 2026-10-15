@@ -1246,6 +1246,12 @@ export interface components {
       fire_at: string | null;
     };
     /**
+     * RepeatFrom
+     * @description What a repeating Task's next Occurrence counts from.
+     * @enum {string}
+     */
+    RepeatFrom: "due" | "completion" | "calendar";
+    /**
      * Status
      * @description Where a Task stands.
      * @enum {string}
@@ -1345,6 +1351,13 @@ export interface components {
       start_date: string | null;
       /** Start Time */
       start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
       /**
        * Is Overdue
        * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
@@ -1461,6 +1474,13 @@ export interface components {
       start_date: string | null;
       /** Start Time */
       start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
       /**
        * Is Overdue
        * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
@@ -1985,6 +2005,12 @@ export interface components {
        */
       project_id?: number | null;
       /**
+       * Repeat Rule
+       * @description Makes a dated top-level Task repeat, as an RFC 5545 RRULE; an empty string stops it. Closing a repeating Task moves it on to its next Occurrence instead; setting the Status it had before, straight after, undoes that.
+       */
+      repeat_rule?: string | null;
+      repeat_from?: components["schemas"]["RepeatFrom"] | null;
+      /**
        * Tag Ids
        * @description Replaces all of its Tags.
        */
@@ -2293,6 +2319,105 @@ export interface components {
       all_day: boolean;
     };
     /**
+     * RepeatAdvancedActivityOut
+     * @description Closing the repeating Task moved it on to its next Occurrence.
+     */
+    RepeatAdvancedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_advanced";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatAdvancedData"];
+    };
+    /**
+     * RepeatAdvancedData
+     * @description Which Occurrence was closed, how, and the one the Task moved on to.
+     */
+    RepeatAdvancedData: {
+      /**
+       * Action
+       * @description Skipped is Won't do.
+       * @enum {string}
+       */
+      action: "completed" | "skipped";
+      /**
+       * Occurrence
+       * Format: date
+       */
+      occurrence: string;
+      /**
+       * Next
+       * Format: date
+       */
+      next: string;
+    };
+    /**
+     * RepeatChangedActivityOut
+     * @description The Task's Repeat was set, changed or stopped.
+     */
+    RepeatChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatChangedData"];
+    };
+    /**
+     * RepeatChangedData
+     * @description The Repeat before and after a change; null when the Task didn't or doesn't repeat.
+     */
+    RepeatChangedData: {
+      old: components["schemas"]["RepeatData"] | null;
+      new: components["schemas"]["RepeatData"] | null;
+    };
+    /**
+     * RepeatData
+     * @description A Task's Repeat at one moment, as a change recorded it.
+     */
+    RepeatData: {
+      /**
+       * Rule
+       * @description An RFC 5545 RRULE.
+       */
+      rule: string;
+      repeat_from: components["schemas"]["RepeatFrom"];
+    };
+    /**
+     * RepeatRemovedActivityOut
+     * @description The Task stopped repeating because it lost its due date or became a Subtask.
+     */
+    RepeatRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatData"];
+    };
+    /**
      * RestoredActivityOut
      * @description The Task was restored from Trash.
      */
@@ -2454,6 +2579,9 @@ export interface components {
         | components["schemas"]["RemindersChangedActivityOut"]
         | components["schemas"]["MovedActivityOut"]
         | components["schemas"]["PersonMergedActivityOut"]
+        | components["schemas"]["RepeatChangedActivityOut"]
+        | components["schemas"]["RepeatRemovedActivityOut"]
+        | components["schemas"]["RepeatAdvancedActivityOut"]
         | components["schemas"]["TagAddedActivityOut"]
         | components["schemas"]["TagRemovedActivityOut"]
         | components["schemas"]["TagsMergedActivityOut"]
@@ -2618,6 +2746,13 @@ export interface components {
       start_date: string | null;
       /** Start Time */
       start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
       /**
        * Is Overdue
        * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.

@@ -35,6 +35,23 @@ class TaskDates:
             "start_time": None if self.start_time is None else self.start_time.isoformat("minutes"),
         }
 
+    @classmethod
+    def from_activity(cls, stored: dict[str, str | None]) -> TaskDates:
+        """Return dates as `as_activity` stored them."""
+
+        def day(value: str | None) -> date | None:
+            return None if value is None else date.fromisoformat(value)
+
+        def clock(value: str | None) -> time | None:
+            return None if value is None else time.fromisoformat(value)
+
+        return cls(
+            day(stored["due_date"]),
+            clock(stored["due_time"]),
+            day(stored["start_date"]),
+            clock(stored["start_time"]),
+        )
+
     def anchor(self) -> datetime | None:
         """Return the clock time Reminders count from: the start of a range, else the due.
 

@@ -16,6 +16,7 @@ from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import MentionError
 from apps.tasks.pagination import InvalidCursorError, Page
 from apps.tasks.reminders import ReminderRuleError
+from apps.tasks.repeat import RepeatRuleError
 from apps.tasks.schemas.activity import TaskActivityListOut
 from apps.tasks.schemas.reminders import ReminderOut
 from apps.tasks.schemas.tasks import (
@@ -250,6 +251,7 @@ def update_task(
         services.TaskRuleError,
         MentionError,
         ReminderRuleError,
+        RepeatRuleError,
         ArchivedProjectError,
     ) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
@@ -358,6 +360,8 @@ def _edit(
         if patch.reminders is None
         else [timedelta(minutes=offset) for offset in patch.reminders],
         project=project,
+        repeat_rule=patch.repeat_rule,
+        repeat_from=patch.repeat_from,
     )
     return edit, picked
 

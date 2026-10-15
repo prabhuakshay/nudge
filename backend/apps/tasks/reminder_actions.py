@@ -80,6 +80,7 @@ def complete(user: User, notification_id: int) -> services.TaskChange | None:
 
     Raises:
         ArchivedProjectError: The Task is in an archived Project.
+        RepeatRuleError: The Task repeats and its Occurrence isn't due yet.
     """
     notification = _reminder_notification(user, notification_id)
     if notification is None or notification.reminder is None:

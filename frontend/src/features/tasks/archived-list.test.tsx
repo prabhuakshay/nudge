@@ -16,9 +16,9 @@ describe("An archived Project's list", () => {
     expect(screen.getByText(/This project is archived/)).toBeInTheDocument();
   });
 
-  it("opens a Task read-only in the drawer", async () => {
+  it("opens a Task read-only in the drawer, offering only its link", async () => {
     mockApi([BULBS]);
-    renderList({ project: GARDEN });
+    const user = renderList({ project: GARDEN });
 
     // user-event treats everything in a disabled fieldset as disabled, but browsers only disable
     // its form controls and still deliver clicks to the rows, so this clicks the plain way.
@@ -27,6 +27,8 @@ describe("An archived Project's list", () => {
     const drawer = await screen.findByRole("dialog");
     expect(await within(drawer).findByRole("textbox", { name: "Title" })).toBeDisabled();
     expect(within(drawer).getByRole("button", { name: /Status/ })).toBeDisabled();
+    await user.click(within(drawer).getByRole("button", { name: "More actions" }));
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Copy link"]);
   });
 
   it("unarchives the Project from its banner", async () => {

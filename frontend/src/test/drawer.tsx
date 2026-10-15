@@ -1,14 +1,21 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import {
+  createMemoryHistory,
+  createRootRoute,
+  createRouter,
+  RouterProvider,
+} from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { validateTaskSearch } from "@/features/tasks/open-task";
 import { TaskList } from "@/features/tasks/task-list";
 import type { SidebarProject, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
 import { makeTask } from "@/test/tasks";
 
-/* A stand-in server and a rendered list for the drawer's tests, shared by their test files. */
+/* A stand-in server and a rendered list for the tasks feature's tests, shared by their files. */
 
 export const INBOX: SidebarProject = {
   kind: "project",
@@ -42,7 +49,8 @@ export const GARDEN: SidebarProject = {
 
 export const task = makeTask;
 
-function json(body: unknown, status = 200) {
+/** A JSON response, as the mocked `fetch` returns it. */
+export function json(body: unknown, status = 200) {
   return Promise.resolve(
     new Response(JSON.stringify(body), {
       status,
@@ -110,6 +118,37 @@ export async function patches(fetchSpy: ReturnType<typeof mockApi>) {
   );
 }
 
+/**
+ * Render a Project's TaskList, the Inbox's by default, at `url` in a router of its own, as a
+ * list route renders it.
+ * Returns the router, to read the URL, and a user to drive the page.
+ */
+export function renderTaskList({ url = "/", project = INBOX } = {}) {
+  const user = userEvent.setup();
+  const rootRoute = createRootRoute({
+    validateSearch: validateTaskSearch,
+    component: () => (
+      <TooltipProvider>
+        <TaskList project={project} />
+        <Toaster />
+      </TooltipProvider>
+    ),
+  });
+  const router = createRouter({
+    routeTree: rootRoute,
+    history: createMemoryHistory({ initialEntries: [url] }),
+  });
+  render(
+    <QueryClientProvider
+      client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+    >
+      <RouterProvider router={router} />
+    </QueryClientProvider>,
+  );
+  return { user, router };
+}
+
+/** Render the list at the given width, as the drawer's tests need it. */
 export function renderList({ wide = true, project = INBOX } = {}) {
   vi.stubGlobal("matchMedia", (query: string) => ({
     media: query,
@@ -117,15 +156,7 @@ export function renderList({ wide = true, project = INBOX } = {}) {
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TooltipProvider>
-        <TaskList project={project} />
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
-  return userEvent.setup();
+  return renderTaskList({ project }).user;
 }
 
 export async function openTask(user: ReturnType<typeof userEvent.setup>, title: string) {

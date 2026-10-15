@@ -1,36 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen, within } from "@testing-library/react";
 
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { INBOX, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
 
-import { TaskList } from "./task-list";
-import type { SidebarProject, Task } from "./tasks";
-
-const INBOX: SidebarProject = {
-  kind: "project",
-  id: 7,
-  name: "Inbox",
-  color: "blue",
-  icon: "inbox",
-  folder_id: null,
-  is_inbox: true,
-  is_archived: false,
-  open_count: 2,
-};
+import type { Task } from "./tasks";
 
 const task = makeTask;
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
-}
 
 /** A small stand-in for the server: open Tasks, pages of Closed ones, and Task creation. */
 function mockApi({
@@ -82,15 +57,7 @@ function requests(fetchSpy: ReturnType<typeof mockApi>) {
 }
 
 function renderList() {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TooltipProvider>
-        <TaskList project={INBOX} />
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
-  return userEvent.setup();
+  return renderTaskList().user;
 }
 
 function titlesIn(group: string) {
@@ -101,13 +68,15 @@ function titlesIn(group: string) {
 
 describe("TaskList", () => {
   it("lists the open Tasks in the server's order with the open count", async () => {
-    mockApi({ open: [task({ id: 1, title: "Buy milk" }), task({ id: 2, title: "Call mum" })] });
+    mockApi({
+      open: [task({ id: 1, title: "Buy milk" }), task({ id: 2, title: "Call mum" })],
+    });
 
     renderList();
 
     expect(await screen.findByText("Call mum")).toBeInTheDocument();
     expect(titlesIn("Tasks")).toEqual(["Buy milk", "Call mum"]);
-    expect(screen.getByText("2 open")).toBeInTheDocument();
+    expect(screen.getByText("3 open")).toBeInTheDocument();
   });
 
   it("counts a Task's Attachments in its row and shows nothing for none", async () => {
@@ -145,7 +114,7 @@ describe("TaskList", () => {
     const fetchSpy = mockApi();
     const user = renderList();
 
-    await user.type(screen.getByRole("textbox", { name: "New task" }), "   {Enter}");
+    await user.type(await screen.findByRole("textbox", { name: "New task" }), "   {Enter}");
 
     expect(requests(fetchSpy)).not.toContain("POST /api/v1/tasks");
   });

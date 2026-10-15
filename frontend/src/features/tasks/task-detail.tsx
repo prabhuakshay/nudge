@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronUp, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
@@ -14,6 +14,8 @@ import { cn } from "@/lib/utils";
 import { ActivityFeed } from "./activity-feed";
 import { Attachments } from "./attachments";
 import { PropertyChips } from "./property-chips";
+import { SubtaskSection } from "./subtask-section";
+import { TaskActionsMenu } from "./task-actions";
 import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
 import { isClosed } from "./task-properties";
@@ -49,7 +51,9 @@ type TaskDetailProps = {
 export function TaskDetail(props: TaskDetailProps) {
   const wide = useMediaQuery("(min-width: 640px)");
   const { taskId, onClose } = props;
-  const { data: task } = useQuery({ ...taskQuery(taskId ?? 0), enabled: taskId !== null });
+  const { data: task, isError } = useQuery({ ...taskQuery(taskId ?? 0), enabled: taskId !== null });
+  // A link to a Task that is gone, or never was the user's, just shows the list.
+  const open = taskId !== null && !isError;
   const [snap, setSnap] = useState<number | string | null>(PEEK);
   const [lastOpened, setLastOpened] = useState(taskId);
   if (taskId !== null && taskId !== lastOpened) {
@@ -74,7 +78,7 @@ export function TaskDetail(props: TaskDetailProps) {
 
   if (wide) {
     return (
-      <Sheet open={taskId !== null} onOpenChange={onOpenChange}>
+      <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
           showClose={false}
@@ -96,7 +100,7 @@ export function TaskDetail(props: TaskDetailProps) {
   }
   return (
     <Drawer
-      open={taskId !== null}
+      open={open}
       onOpenChange={onOpenChange}
       snapPoints={SNAP_POINTS}
       activeSnapPoint={snap}
@@ -154,10 +158,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-1 border-b border-border px-3 sm:px-4">
-        <p className="flex min-w-0 flex-1 items-center gap-1.5 text-xs font-semibold text-muted-foreground">
-          <ProjectIcon project={taskProject} className="size-3.5" />
-          <span className="truncate">{taskProject.name}</span>
-        </p>
+        <Breadcrumb task={task} project={taskProject} onOpen={onOpen} />
         <HeaderButton
           label="Previous task"
           shortcut="K"
@@ -178,6 +179,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
         >
           <ChevronDown className="size-4" aria-hidden />
         </HeaderButton>
+        <TaskActionsMenu task={task} readOnly={readOnly} />
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
         <HeaderButton label="Close" shortcut="Esc" onClick={onClose}>
           <X className="size-4" aria-hidden />
@@ -228,6 +230,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
                   <DescriptionField task={task} />
                 </div>
               </section>
+              <SubtaskSection task={task} onOpen={onOpen} />
               <Attachments taskId={task.id} />
             </fieldset>
           </TabsContent>
@@ -238,6 +241,43 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
         </Tabs>
       </div>
     </div>
+  );
+}
+
+/** Where the Task lives: its Project, then each parent from the root down, each one a link. */
+function Breadcrumb({
+  task,
+  project,
+  onOpen,
+}: {
+  task: Task;
+  project: SidebarProject;
+  onOpen: (taskId: number) => void;
+}) {
+  return (
+    <nav
+      aria-label="Breadcrumb"
+      className="flex min-w-0 flex-1 items-center gap-1 text-xs text-muted-foreground"
+    >
+      <span className="flex shrink-0 items-center gap-1.5 font-semibold">
+        <ProjectIcon project={project} className="size-3.5" />
+        {project.name}
+      </span>
+      {task.ancestors.map((ancestor) => (
+        <span key={ancestor.id} className="flex min-w-0 items-center gap-1">
+          <ChevronRight className="size-3 shrink-0 opacity-60" aria-hidden />
+          <button
+            type="button"
+            onClick={() => {
+              onOpen(ancestor.id);
+            }}
+            className="truncate rounded px-1 py-0.5 hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            {ancestor.title}
+          </button>
+        </span>
+      ))}
+    </nav>
   );
 }
 

@@ -1,23 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen, within } from "@testing-library/react";
 
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { INBOX, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
 
-import { INBOX as DRAWER_INBOX } from "@/test/drawer";
-import { TaskList } from "./task-list";
 import type { TaskDetail } from "./tasks";
 
-const INBOX = { ...DRAWER_INBOX, open_count: 1 };
-
 const task = makeTask;
-
-function json(body: unknown) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), { headers: { "Content-Type": "application/json" } }),
-  );
-}
 
 /** A stand-in server holding one Task, which saves PATCHed dates to it. */
 function mockApi(saved: TaskDetail) {
@@ -54,14 +42,7 @@ function renderList({ wide = true } = {}) {
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TooltipProvider>
-        <TaskList project={INBOX} />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
-  return userEvent.setup();
+  return renderTaskList().user;
 }
 
 beforeEach(() => {

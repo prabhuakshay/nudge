@@ -9,7 +9,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 from django.utils import timezone
 
-from apps.tasks import projects, services
+from apps.tasks import attachments, projects, services
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import Project, Task
 
@@ -168,6 +168,49 @@ def test_changing_a_task_in_an_archived_project_is_refused(
 
 
 @pytest.mark.django_db
+def test_adding_a_subtask_in_an_archived_project_is_refused(
+    client: Client,
+    archived: Project,
+) -> None:
+    parent = archived.tasks.get()
+
+    response = _post(client, "/api/v1/tasks", {"title": "Dig", "parent_id": parent.pk})
+
+    assert response.status_code == 422
+    assert response.json() == _ARCHIVED
+    assert archived.tasks.count() == 1
+
+
+@pytest.mark.django_db
+def test_duplicating_a_task_in_an_archived_project_is_refused(
+    client: Client,
+    archived: Project,
+) -> None:
+    task = archived.tasks.get()
+
+    response = _post(client, f"/api/v1/tasks/{task.pk}/duplicate")
+
+    assert response.status_code == 422
+    assert response.json() == _ARCHIVED
+    assert archived.tasks.count() == 1
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("pinned", [True, False])
+def test_pinning_a_task_in_an_archived_project_is_refused(
+    client: Client,
+    archived: Project,
+    *,
+    pinned: bool,
+) -> None:
+    task = archived.tasks.get()
+
+    response = _patch(client, f"/api/v1/tasks/{task.pk}", {"pinned": pinned})
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
 def test_moving_a_task_out_of_an_archived_project_is_refused(
     client: Client,
     ada: User,
@@ -223,7 +266,7 @@ def test_deleting_a_file_from_a_task_in_an_archived_project_is_refused(
 ) -> None:
     project = projects.create_project(ada, "Garden")
     task = services.create_task(project, "Plant bulbs")
-    attachment = services.attach_file(task, SimpleUploadedFile("plan.txt", b"rows"))
+    attachment = attachments.attach_file(task, SimpleUploadedFile("plan.txt", b"rows"))
     projects.archive_project(ada, project.pk)
 
     response = client.delete(f"/api/v1/attachments/{attachment.pk}")

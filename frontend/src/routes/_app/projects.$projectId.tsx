@@ -4,10 +4,12 @@ import { FolderX } from "lucide-react";
 
 import { EmptyState } from "@/components/layout/empty-state";
 import { findProject } from "@/features/projects/projects";
+import { validateTaskSearch } from "@/features/tasks/open-task";
 import { TaskList } from "@/features/tasks/task-list";
 import { sidebarQuery } from "@/features/tasks/tasks";
 
 export const Route = createFileRoute("/_app/projects/$projectId")({
+  validateSearch: validateTaskSearch,
   loader: ({ context }) => context.queryClient.query(sidebarQuery),
   component: ProjectPage,
 });
@@ -25,6 +27,6 @@ function ProjectPage() {
       />
     );
   }
-  // Keyed so switching Projects starts with a closed drawer and a collapsed Closed group.
+  // Keyed so switching Projects starts with a collapsed Closed group.
   return <TaskList key={project.id} project={project} />;
 }

@@ -188,26 +188,57 @@ def _event(task: Task, kind: TaskActivity.Kind, data: dict[str, str]) -> TaskAct
     return TaskActivity(task=task, kind=kind, data=data)
 
 
+def _resolve(user: User, tags: Iterable[Tag | str]) -> list[Tag]:
+    """Return the Tags given, with each name turned into the user's Tag of that name."""
+    given = list(tags)
+    names = [tag for tag in given if isinstance(tag, str)]
+    return [*(tag for tag in given if isinstance(tag, Tag)), *tags_named(user, names)]
+
+
 def create_tagged_task(
     project: Project,
     title: str,
     dates: TaskDates | None = None,
     *,
-    tags: Iterable[Tag] = (),
-    tag_names: Iterable[str] = (),
+    priority: Task.Priority = Task.Priority.NONE,
+    tags: Iterable[Tag | str] = (),
 ) -> Task:
     """Create a Task as `services.create_task` does, with Tags, in one transaction.
 
-    It gets `tags` and the owner's Tags called `tag_names`, which are created if they're new.
+    `tags` holds Tags, or names of the owner's Tags, which are created if they're new.
 
     Raises:
         MentionError: The title mentions a Person who isn't the owner's.
         ArchivedProjectError: The Project is archived.
     """
     with transaction.atomic():
-        task = services.create_task(project, title, dates)
-        task.tags.add(*tags, *tags_named(project.owner, tag_names))
+        task = services.create_task(project, title, dates, priority=priority)
+        task.tags.add(*_resolve(project.owner, tags))
     return task
+
+
+def create_tagged_subtask(
+    parent: Task,
+    title: str,
+    *,
+    priority: Task.Priority = Task.Priority.NONE,
+    tags: Iterable[Tag | str] = (),
+) -> services.TaskChange:
+    """Create a Subtask as `services.create_subtask` does, with Tags, in one transaction.
+
+    `tags` holds Tags, or names of the owner's Tags, which are created if they're new.
+
+    Raises:
+        TaskRuleError: The parent is already at the deepest level.
+        MentionError: The title mentions a Person who isn't the owner's.
+        ArchivedProjectError: The parent is in an archived Project.
+    """
+    with transaction.atomic():
+        change = services.create_subtask(parent, title, priority=priority)
+        change.task.tags.add(*_resolve(parent.owner, tags))
+    # The row came with its Tags prefetched, before these were added.
+    fresh = as_rows(Task.objects.filter(pk=change.task.pk), parent.owner).get()
+    return services.TaskChange(task=fresh, affected=change.affected)
 
 
 def update_tagged_task(

@@ -7,6 +7,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
+  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
@@ -69,6 +70,10 @@ export function PriorityMenu({ task, children }: { task: Task; children: ReactNo
                 aria-hidden
               />
               {PRIORITY[priority].long}
+              {priority > 0 && (
+                // What to type in Quick add for this Priority.
+                <DropdownMenuShortcut aria-hidden>!{priority}</DropdownMenuShortcut>
+              )}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

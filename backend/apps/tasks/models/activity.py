@@ -36,6 +36,9 @@ class TaskActivity(models.Model):
         TAGS_MERGED = "tags_merged", "Tags merged"
         PERSON_MERGED = "person_merged", "Person merged"
         REMINDERS_CHANGED = "reminders_changed", "Reminders changed"
+        REPEAT_CHANGED = "repeat_changed", "Repeat changed"
+        REPEAT_REMOVED = "repeat_removed", "Repeat removed"
+        REPEAT_ADVANCED = "repeat_advanced", "Repeat advanced"
         TRASHED = "trashed", "Moved to Trash"
         RESTORED = "restored", "Restored"
 

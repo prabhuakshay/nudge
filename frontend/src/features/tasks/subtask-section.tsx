@@ -1,19 +1,19 @@
-import { ChevronRight, GripVertical, Plus } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { ChevronRight, GripVertical } from "lucide-react";
+import { useCallback, useMemo } from "react";
 
-import { Kbd } from "@/components/ui/kbd";
 import { MentionText } from "@/features/people/mention-text";
 import { plainMentions } from "@/features/people/mentions";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
+import { AddSubtask } from "./add-subtask";
 import { SortableTree, type DragHandle, type SortableRowProps } from "./sortable-tree";
 import { SubtaskCount } from "./subtask-count";
 import { TaskCheckbox } from "./task-checkbox";
 import type { Placement } from "./task-drag";
 import { isClosed } from "./task-properties";
 import { MAX_DEPTH, treeRows, type SubtaskProgress } from "./task-tree";
-import { useCreateSubtask, useMoveTask } from "./task-placement";
+import { useMoveTask } from "./task-placement";
 import { useSetTaskStatus, type Task, type TaskDetail } from "./tasks";
 
 /** How far each level of Subtasks steps in inside the drawer, in pixels. */
@@ -169,51 +169,6 @@ function SubtaskItem({
       )}
       <SubtaskCount {...subtasks} />
       <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" aria-hidden />
-    </div>
-  );
-}
-
-/** A one-line field that adds a Subtask last under the Task and stays ready for the next. */
-function AddSubtask({ parentId, bordered }: { parentId: number; bordered: boolean }) {
-  const [title, setTitle] = useState("");
-  const { mutate: create } = useCreateSubtask(parentId);
-  const add = () => {
-    const trimmed = title.trim();
-    if (!trimmed) return;
-    create(trimmed);
-    setTitle("");
-  };
-  return (
-    <div
-      className={cn(
-        "flex min-h-11 items-center gap-2 px-3 sm:min-h-10",
-        bordered && "border-t border-border/70",
-      )}
-    >
-      <Plus className="size-4 shrink-0 text-primary" aria-hidden />
-      <input
-        aria-label="Add a subtask"
-        value={title}
-        autoComplete="off"
-        maxLength={500}
-        placeholder="Add a subtask"
-        onChange={(event) => {
-          setTitle(event.target.value);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && !event.nativeEvent.isComposing) {
-            event.preventDefault();
-            add();
-          } else if (event.key === "Escape" && title) {
-            // Clear the field first; a second Escape closes the drawer.
-            event.stopPropagation();
-            setTitle("");
-          }
-        }}
-        // 16px on touch screens: iOS Safari zooms the page into any smaller input.
-        className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground pointer-coarse:h-11 pointer-coarse:text-base"
-      />
-      {title.trim() && <Kbd>Enter</Kbd>}
     </div>
   );
 }

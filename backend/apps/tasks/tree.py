@@ -129,7 +129,7 @@ def _close_descendants(task: Task) -> list[AffectedTask]:
         affected.append(
             AffectedTask(descendant.pk, Task.Status(descendant.status), descendant.blocked_reason),
         )
-        _set_status(descendant, Task.Status(task.status), via={"via_parent": task.title})
+        set_status(descendant, Task.Status(task.status), via={"via_parent": task.title})
     return affected
 
 
@@ -140,12 +140,12 @@ def reopen_ancestors(task: Task) -> list[AffectedTask]:
     while ancestor is not None:
         if ancestor.status in CLOSED_STATUSES:
             affected.append(AffectedTask(ancestor.pk, Task.Status(ancestor.status), ""))
-            _set_status(ancestor, Task.Status.OPEN, via={"via_subtask": task.title})
+            set_status(ancestor, Task.Status.OPEN, via={"via_subtask": task.title})
         ancestor = ancestor.parent
     return affected
 
 
-def _set_status(task: Task, status: Task.Status, via: dict[str, str]) -> None:
+def set_status(task: Task, status: Task.Status, via: dict[str, str]) -> None:
     """Give a Task a Status as the knock-on effect of a change to a relative, and log why."""
     data = {"old": task.status, "new": status, "blocked_reason": "", **via}
     task.status = status

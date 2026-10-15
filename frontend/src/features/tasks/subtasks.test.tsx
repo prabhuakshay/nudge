@@ -227,7 +227,7 @@ describe("Subtasks in the drawer", () => {
     const drawer = await open(user, "Groceries");
 
     await user.type(
-      await within(drawer).findByRole("textbox", { name: "Add a subtask" }),
+      await within(drawer).findByRole("combobox", { name: "Add a subtask" }),
       "Oat milk{Enter}",
     );
 
@@ -236,6 +236,30 @@ describe("Subtasks in the drawer", () => {
       .find((request) => request.method === "POST");
     expect(await post?.json()).toEqual({ title: "Oat milk", parent_id: 2 });
     expect(await within(drawer).findByText("Oat milk")).toBeInTheDocument();
+  });
+
+  it("reads Priority and Tags in a new Subtask, but leaves `~project` as text", async () => {
+    const fetchSpy = mockApi();
+    const user = renderList();
+    const drawer = await open(user, "Groceries");
+
+    await user.type(
+      await within(drawer).findByRole("combobox", { name: "Add a subtask" }),
+      "Oat milk !2 #dairy{Escape} ~Work{Enter}",
+    );
+
+    await vi.waitFor(async () => {
+      const post = fetchSpy.mock.calls
+        .map(([input]) => input as Request)
+        .find((request) => request.method === "POST");
+      expect(await post?.clone().json()).toEqual({
+        title: "Oat milk ~Work",
+        parent_id: 2,
+        priority: 2,
+        tags: ["dairy"],
+      });
+    });
+    expect(drawer).toBeInTheDocument();
   });
 
   it("offers no Pin action for a Subtask", async () => {
@@ -261,6 +285,6 @@ describe("Subtasks in the drawer", () => {
     expect(
       await within(drawer).findByText("This is the fourth level, so it can't have Subtasks."),
     ).toBeInTheDocument();
-    expect(within(drawer).queryByRole("textbox", { name: "Add a subtask" })).toBeNull();
+    expect(within(drawer).queryByRole("combobox", { name: "Add a subtask" })).toBeNull();
   });
 });

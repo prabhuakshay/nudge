@@ -10,7 +10,7 @@ describe("An archived Project's list", () => {
     renderList({ project: GARDEN });
 
     const row = await screen.findByRole("row", { name: /Plant bulbs/ });
-    expect(screen.queryByRole("textbox", { name: "New task" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "New task" })).not.toBeInTheDocument();
     expect(within(row).getByRole("checkbox")).toBeDisabled();
     expect(within(row).getByRole("button", { name: /Status/ })).toBeDisabled();
     expect(screen.getByText(/This project is archived/)).toBeInTheDocument();

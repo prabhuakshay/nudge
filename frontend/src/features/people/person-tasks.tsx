@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ProjectIcon } from "@/features/projects/project-icon";
 import { allProjects } from "@/features/projects/projects";
 import { useOpenTask } from "@/features/tasks/open-task";
+import { QuickAddCard } from "@/features/tasks/quick-add-card";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { ClosedGroup, Group, TaskTableHeader } from "@/features/tasks/task-list";
 import { useRowContext } from "@/features/tasks/row-context";
@@ -30,8 +31,8 @@ function byProject(tasks: Task[], projects: SidebarProject[]) {
 }
 
 /**
- * A Person's view: every open Task that mentions them, flat and grouped by Project in sidebar
- * order, then a collapsed Closed group. Rows open in the drawer like any list's, and the URL's
+ * A Person's view: Quick add, which mentions them in new Tasks, then every open Task that mentions
+ * them, flat and grouped by Project in sidebar order, then a collapsed Closed group. Rows open in the drawer like any list's, and the URL's
  * `?task=` follows the open Task.
  */
 export function PersonTasks({ person }: { person: Person }) {
@@ -66,6 +67,8 @@ export function PersonTasks({ person }: { person: Person }) {
           {open.length} open
         </Badge>
       </header>
+
+      <QuickAddCard view={{ kind: "person", person }} />
 
       <div
         role="treegrid"

@@ -11,6 +11,7 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 
 import { remindersAfter } from "./reminders";
+import { advances } from "./repeat";
 import type { ScheduleView } from "./schedule";
 import { offerStatusUndo } from "./status-undo";
 import { openTrees } from "./task-tree";
@@ -23,6 +24,7 @@ export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"]
 export type Attachment = components["schemas"]["AttachmentOut"];
 export type DatesChange = components["schemas"]["DatesChangedData"];
 export type RemindersChange = components["schemas"]["RemindersChangedData"];
+export type RepeatChange = components["schemas"]["RepeatChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 
@@ -218,8 +220,9 @@ export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
  * replaces all four date fields at once, and removing them removes the Reminders. `reminders`
  * replaces the Reminders, as offsets in minutes, and `tags` all of its Tags.
  */
+type Editable = "title" | "description" | "status" | "priority" | "blocked_reason";
 export type TaskChange = { id: number; pinned?: boolean } & Partial<
-  Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason" | "tags">
+  Pick<TaskDetail, Editable | "tags" | "repeat_rule" | "repeat_from">
 > & { dates?: DatesIn; reminders?: number[] };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
@@ -248,6 +251,8 @@ function withChange<T extends Task>(
     pinned_at: pinnedAt(task, pinned),
     ...change,
     ...(dates !== undefined && { ...UNDATED, ...dates }),
+    // An undated Task can't repeat, so the server drops the Repeat with the dates.
+    ...(dates === null && { repeat_rule: "" }),
     // Only the drawer's Task carries its Reminders; list rows don't.
     ...("reminders" in task && remindersAfter(reminders, dates)),
   };
@@ -308,43 +313,46 @@ export function useSetTaskStatus() {
   return useMutation({
     mutationFn: ({ task, status }: { task: Task; status: TaskStatus }) =>
       patchTask({ id: task.id, status }),
-    onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
-    onSuccess: ({ affected }, { task, status }) => {
-      offerStatusUndo(update, task.title, status, affected);
+    // A repeating Task moves on rather than closing, so it stays where it is until the server says.
+    onMutate: ({ task, status }) =>
+      advances(task, status) ? undefined : showChange(queryClient, { id: task.id, status }),
+    onSuccess: ({ task, affected }, { status }) => {
+      offerStatusUndo(update, task, status, affected);
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => refreshTasks(queryClient),
   });
 }
 
+/** A new Task as the API takes it. */
+export type NewTask = components["schemas"]["TaskIn"];
+
 /**
- * Add a Task from Quick add, with the dates and Tag the view gives it, if any. It appears first
- * in its Project and its Tag's list, as the server places it, and wherever its dates put it.
+ * Add a Task from Quick add. It appears first in its Project's list, as the server places it, and
+ * wherever its dates, Tags and Mentions put it.
  */
-export function useCreateTask(projectId: number, dates?: DatesIn, tagId?: number) {
+export function useCreateTask() {
   const queryClient = useQueryClient();
-  const tagged = tagId === undefined ? {} : { tag_ids: [tagId] };
   return useMutation({
-    mutationFn: async (title: string) => {
-      const { data } = await api.POST("/api/v1/tasks", {
-        body: { title, project_id: projectId, ...(dates && { dates }), ...tagged },
-      });
+    mutationFn: async (task: NewTask) => {
+      const { data } = await api.POST("/api/v1/tasks", { body: task });
       if (!data) {
         throw new Error("Could not add the task.");
       }
       return data;
     },
     onSuccess: (task) => {
-      queryClient.setQueryData(openTasksQuery(projectId).queryKey, (tasks) =>
-        tasks ? [task, ...tasks] : [task],
+      queryClient.setQueryData(
+        openTasksQuery(task.project_id).queryKey,
+        (tasks) => tasks && [task, ...tasks],
       );
     },
     onError: (error) => toast.error(error.message),
     onSettled: () =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "today"] }),
-        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "upcoming"] }),
-        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "tag"] }),
+        ...["today", "upcoming", "tag", "person"].map((list) =>
+          queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, list] }),
+        ),
         queryClient.invalidateQueries(sidebarQuery),
       ]),
   });

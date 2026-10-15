@@ -75,6 +75,55 @@ export function useRestoreTask() {
   });
 }
 
+/** The same Trash row: Tasks and Projects have separate ids. */
+function sameRow(a: TrashedRow, b: TrashedRow) {
+  return a.kind === b.kind && a.id === b.id;
+}
+
+/** Delete Trash rows for good: each takes the whole unit it went to Trash with. */
+export function useDeleteForever() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (rows: TrashedRow[]) => {
+      const ids = (kind: TrashedRow["kind"]) =>
+        rows.filter((row) => row.kind === kind).map((row) => row.id);
+      const { error } = await api.POST("/api/v1/trash/delete", {
+        body: { task_ids: ids("task"), project_ids: ids("project") },
+      });
+      if (error) {
+        throw new Error("Could not delete it forever.");
+      }
+    },
+    onMutate: async (gone) => {
+      await queryClient.cancelQueries(trashQuery);
+      queryClient.setQueryData(trashQuery.queryKey, (rows) =>
+        rows?.filter((row) => !gone.some((other) => sameRow(row, other))),
+      );
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => queryClient.invalidateQueries(trashQuery),
+  });
+}
+
+/** Delete everything in the Trash for good. */
+export function useEmptyTrash() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const { response } = await api.DELETE("/api/v1/trash");
+      if (!response.ok) {
+        throw new Error("Could not empty the Trash.");
+      }
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries(trashQuery);
+      queryClient.setQueryData(trashQuery.queryKey, []);
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => queryClient.invalidateQueries(trashQuery),
+  });
+}
+
 /**
  * Move a Task and its Subtasks to Trash, then offer Undo in a toast. It leaves every list and
  * drawer before the server answers.

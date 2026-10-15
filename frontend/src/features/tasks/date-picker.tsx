@@ -3,9 +3,11 @@ import { useQuery } from "@tanstack/react-query";
 import {
   AlarmClock,
   CalendarArrowUp,
+  CalendarCheck,
   CalendarRange,
   CalendarX,
   Clock,
+  Repeat,
   Sun,
   Sunrise,
   type LucideIcon,
@@ -19,7 +21,8 @@ import { cn } from "@/lib/utils";
 
 import { shortTime, type Dates } from "./due";
 import { ReminderPicker } from "./reminder-picker";
-import { useSaveDates } from "./save-dates";
+import { REPEAT_FROM, repeatLabel, repeatOptions, type RepeatFrom } from "./repeat";
+import { useSaveDates, type DatedTask } from "./save-dates";
 import { taskQuery, useUpdateTask } from "./tasks";
 
 const TIMES = Array.from(
@@ -35,16 +38,16 @@ const isoDate = (day: Date) => format(day, "yyyy-MM-dd");
 
 /**
  * A Task's dates in one popover, like TickTick's: quick days, a calendar for the due date, its
- * time (none = all-day), an optional start for ranges and the Reminders. Each change saves
- * straight away. The trigger is `children`, so the Due cell and the drawer's Date chip style it
- * their own way.
+ * time (none = all-day), an optional start for ranges, the Repeat and the Reminders. Each change
+ * saves straight away. The trigger is `children`, so the Due cell and the drawer's Date chip style
+ * it their own way.
  */
 export function DatePicker({
   task,
   children,
   align = "start",
 }: {
-  task: Dates & { id: number };
+  task: DatedTask;
   children: ReactNode;
   align?: "start" | "center" | "end";
 }) {
@@ -76,6 +79,7 @@ export function DatePicker({
           className="mx-auto"
         />
         <TimeFields dates={task} onChange={save} />
+        <RepeatRows task={task} today={today} />
         <RemindRow task={task} />
         <div className="flex justify-end border-t border-border p-2">
           <Button
@@ -175,6 +179,63 @@ function TimeFields({ dates, onChange }: DatesFieldProps) {
           )}
         </div>
       </Row>
+    </div>
+  );
+}
+
+/**
+ * How the Task repeats, from presets for its due date, and what the next date counts from. Only
+ * a top-level Task repeats, and an undated one is dated today when it starts to.
+ */
+function RepeatRows({ task, today }: { task: DatedTask; today: Date }) {
+  const { mutate: update } = useUpdateTask();
+  const isRoot = task.parent_id === null;
+  const due = task.due_date ?? isoDate(today);
+  const options = repeatOptions(due);
+  if (task.repeat_rule && !options.some((option) => option.rule === task.repeat_rule)) {
+    options.unshift({ rule: task.repeat_rule, label: repeatLabel(task.repeat_rule) });
+  }
+  return (
+    <div className="space-y-1 border-t border-border p-2">
+      <Row icon={Repeat} label="Repeat" hint={isRoot ? undefined : "Only top-level Tasks repeat"}>
+        <select
+          aria-label="Repeat"
+          value={task.repeat_rule}
+          disabled={!isRoot}
+          onChange={(event) => {
+            const rule = event.target.value;
+            const dates = task.due_date === null && rule ? { due_date: due } : undefined;
+            update({ id: task.id, repeat_rule: rule, ...(dates && { dates }) });
+          }}
+          className={cn(FIELD, "w-40")}
+        >
+          <option value="">Never</option>
+          {options.map(({ rule, label }) => (
+            <option key={rule} value={rule}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </Row>
+      {task.repeat_rule && (
+        <Row icon={CalendarCheck} label="From">
+          <select
+            aria-label="Repeat from"
+            value={task.repeat_from}
+            onChange={(event) => {
+              // The options are exactly the RepeatFrom values.
+              update({ id: task.id, repeat_from: event.target.value as RepeatFrom });
+            }}
+            className={cn(FIELD, "w-40")}
+          >
+            {Object.entries(REPEAT_FROM).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Row>
+      )}
     </div>
   );
 }

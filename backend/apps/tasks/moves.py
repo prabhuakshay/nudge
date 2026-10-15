@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 from fractional_indexing import generate_key_between
 
+from apps.tasks import repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, OPEN_STATUSES, Project, Task, TaskActivity
 from apps.tasks.rows import as_rows
@@ -48,8 +49,8 @@ def move_task(task: Task, destination: Destination) -> TaskChange:
     """Move the Task and its Subtasks to the destination.
 
     A change of Project or parent is logged; a reorder among the same siblings isn't. A Task that
-    becomes a Subtask drops its pin, since only roots can be pinned, and an open Task moved under
-    Closed work reopens it.
+    becomes a Subtask drops its pin and its Repeat, since only roots have them, and an open Task
+    moved under Closed work reopens it.
 
     Raises:
         TaskRuleError: The destination is under the Task itself, nests too deep, or names a
@@ -69,12 +70,24 @@ def move_task(task: Task, destination: Destination) -> TaskChange:
         if parent is not None and task.pinned_at is not None:
             task.pinned_at = None
             events.append(TaskActivity(task=task, kind=TaskActivity.Kind.UNPINNED))
+        if parent is not None:
+            events.extend(repeat.remove(task))
         if project.pk != task.project_id:
             move_descendants(task, project)
         relocated = project.pk != task.project_id or task.parent_id != _pk(parent)
         task.position = _key_after(project, parent, task, destination.after_id)
         task.project, task.parent = project, parent
-        task.save(update_fields=["project", "parent", "position", "pinned_at", "updated_at"])
+        task.save(
+            update_fields=[
+                "project",
+                "parent",
+                "position",
+                "pinned_at",
+                "repeat_rule",
+                "repeat_anchor",
+                "updated_at",
+            ],
+        )
         if relocated:
             events.append(moved_event(task, from_project, from_parent))
         TaskActivity.objects.bulk_create(events)

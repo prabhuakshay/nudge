@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003 - Pydantic needs the type at runtime
-from typing import Annotated, Literal
+from typing import Annotated, Literal, Self
 
 from ninja import Field, Schema
+from pydantic import model_validator
 
 from apps.core.palette import PaletteColor  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.tasks.models import Project  # noqa: TC001 - Pydantic needs the type at runtime
@@ -46,3 +47,23 @@ class TaskRestoreOut(Schema):
 
     task: TaskOut
     project: ProjectOut
+
+
+class TrashDeleteIn(Schema):
+    """The trashed Tasks and Projects whose units to delete for good; at least one id."""
+
+    task_ids: list[int] = Field(
+        default=[],
+        description="Trashed Tasks; each takes the whole unit it went to Trash with.",
+    )
+    project_ids: list[int] = Field(
+        default=[],
+        description="Trashed Projects; each takes the Tasks that went to Trash with it.",
+    )
+
+    @model_validator(mode="after")
+    def _names_something(self) -> Self:
+        if not self.task_ids and not self.project_ids:
+            msg = "Give at least one Task or Project id."
+            raise ValueError(msg)
+        return self

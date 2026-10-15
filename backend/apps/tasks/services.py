@@ -1,4 +1,4 @@
-"""Business rules for Projects and Tasks: the Inbox, ordering, listing, Status, pins and Activity.
+"""Business rules for Projects and Tasks: Inbox, order, Status, pins, dates, Attachments, Activity.
 
 Every function takes the user first and reaches Projects and Tasks through that user's related
 managers, so another user's ids behave as if they don't exist. A change and the Activity event
@@ -7,18 +7,24 @@ that records it are saved in one transaction, so a Task's history never misses o
 
 from __future__ import annotations
 
+import mimetypes
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from django.conf import settings
 from django.db import transaction
-from django.db.models import F
+from django.db.models import Case, Count, F, OuterRef, Q, Subquery, When
+from django.db.models.functions import Coalesce
+from django.template.defaultfilters import filesizeformat
 from django.utils import timezone
 from fractional_indexing import generate_key_between
 
+from apps.accounts.services import local_zone
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
     OPEN_STATUSES,
+    Attachment,
     Project,
     Task,
     TaskActivity,
@@ -26,6 +32,9 @@ from apps.tasks.models import (
 from apps.tasks.pagination import Page, newest_first
 
 if TYPE_CHECKING:
+    from datetime import date, time
+
+    from django.core.files.uploadedfile import UploadedFile
     from django.db.models import QuerySet
 
     from apps.accounts.models import User
@@ -36,8 +45,37 @@ class TaskRuleError(Exception):
 
 
 @dataclass(frozen=True)
+class TaskDates:
+    """A Task's due date, time and range, as clock times in the owner's zone; all None = undated."""
+
+    due_date: date | None = None
+    due_time: time | None = None
+    start_date: date | None = None
+    start_time: time | None = None
+
+    @classmethod
+    def of(cls, task: Task) -> TaskDates:
+        """Return the Task's current dates."""
+        return cls(task.due_date, task.due_time, task.start_date, task.start_time)
+
+    def as_activity(self) -> dict[str, str | None] | None:
+        """Return the dates as Activity stores them: ISO strings, or None when undated."""
+        if self.due_date is None:
+            return None
+        return {
+            "due_date": self.due_date.isoformat(),
+            "due_time": None if self.due_time is None else self.due_time.isoformat("minutes"),
+            "start_date": None if self.start_date is None else self.start_date.isoformat(),
+            "start_time": None if self.start_time is None else self.start_time.isoformat("minutes"),
+        }
+
+
+@dataclass(frozen=True)
 class TaskEdit:
-    """The fields of a Task to change; a field left as None stays as it is."""
+    """The fields of a Task to change; a field left as None stays as it is.
+
+    `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them.
+    """
 
     title: str | None = None
     description: str | None = None
@@ -45,6 +83,7 @@ class TaskEdit:
     blocked_reason: str | None = None
     priority: Task.Priority | None = None
     pinned: bool | None = None
+    dates: TaskDates | None = None
 
 
 @dataclass(frozen=True)
@@ -79,8 +118,33 @@ def live_project(user: User, project_id: int) -> Project | None:
     return user.projects.filter(pk=project_id, deleted_at__isnull=True).first()
 
 
+def _with_counts(tasks: QuerySet[Task]) -> QuerySet[Task]:
+    # A subquery rather than a join: grouping would drop the model's default ordering.
+    attachments = (
+        Attachment.objects.filter(task=OuterRef("pk"))
+        .order_by()
+        .values("task")
+        .annotate(count=Count("pk"))
+        .values("count")
+    )
+    return tasks.annotate(attachment_count=Coalesce(Subquery(attachments), 0))
+
+
+def _with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
+    """Annotate each Task with `is_overdue`, judged by the user's clock right now.
+
+    Times are floating, so the comparison is on the user's local date and time: an all-day Task
+    is overdue once its day ends, a timed one once its time passes, a range once its end passes.
+    """
+    now = timezone.now().astimezone(local_zone(user))
+    overdue = Q(completed_at__isnull=True) & (
+        Q(due_date__lt=now.date()) | Q(due_date=now.date(), due_time__lt=now.time())
+    )
+    return tasks.annotate(is_overdue=Case(When(overdue, then=True), default=False))
+
+
 def _live_tasks(project: Project) -> QuerySet[Task]:
-    return project.tasks.filter(deleted_at__isnull=True)
+    return _with_overdue(_with_counts(project.tasks.filter(deleted_at__isnull=True)), project.owner)
 
 
 def open_tasks(project: Project) -> QuerySet[Task]:
@@ -121,7 +185,7 @@ def create_task(project: Project, title: str) -> Task:
             position=position,
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
-        return task
+    return _with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)
 
 
 def duplicate_task(user: User, task_id: int) -> Task | None:
@@ -135,12 +199,8 @@ def duplicate_task(user: User, task_id: int) -> Task | None:
     with transaction.atomic():
         # Locking the Project serialises inserts into it, so two Tasks never get the same key.
         Project.objects.select_for_update().get(pk=original.project_id)
-        following = (
-            original.project.tasks.filter(position__gt=original.position)
-            .order_by("position")
-            .values_list("position", flat=True)
-            .first()
-        )
+        later = original.project.tasks.filter(position__gt=original.position).order_by("position")
+        following = later.values_list("position", flat=True).first()
         task = Task.objects.create(
             owner=user,
             project_id=original.project_id,
@@ -150,12 +210,13 @@ def duplicate_task(user: User, task_id: int) -> Task | None:
             position=str(generate_key_between(original.position, following)),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
-        return task
+    return _with_overdue(user.tasks.all(), user).get(pk=task.pk)
 
 
 def live_task(user: User, task_id: int) -> Task | None:
     """Return one of the user's Tasks that isn't in Trash, or None."""
-    return user.tasks.filter(pk=task_id, deleted_at__isnull=True).first()
+    tasks = _with_counts(user.tasks.filter(pk=task_id, deleted_at__isnull=True))
+    return _with_overdue(tasks, user).first()
 
 
 _EDITABLE_FIELDS = (
@@ -166,6 +227,10 @@ _EDITABLE_FIELDS = (
     "priority",
     "completed_at",
     "pinned_at",
+    "due_date",
+    "due_time",
+    "start_date",
+    "start_time",
 )
 
 
@@ -179,6 +244,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     if task is None:
         return None
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
+    dates_before = TaskDates.of(task)
     _apply(task, edit)
     changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
     affected = []
@@ -189,8 +255,10 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     with transaction.atomic():
         if changed:
             task.save(update_fields=[*changed, "updated_at"])
-        TaskActivity.objects.bulk_create(_activity(task, before))
-    return TaskChange(task=task, affected=affected)
+        TaskActivity.objects.bulk_create(_activity(task, before, dates_before))
+    # Re-read, because a change of dates or Status can change whether the Task is overdue.
+    fresh = _with_overdue(_with_counts(user.tasks.all()), user).get(pk=task.pk)
+    return TaskChange(task=fresh, affected=affected)
 
 
 def _apply(task: Task, edit: TaskEdit) -> None:
@@ -200,6 +268,15 @@ def _apply(task: Task, edit: TaskEdit) -> None:
         task.description = edit.description
     if edit.priority is not None:
         task.priority = edit.priority
+    _apply_status(task, edit)
+    if edit.pinned is not None and edit.pinned != (task.pinned_at is not None):
+        task.pinned_at = timezone.now() if edit.pinned else None
+    if edit.dates is not None:
+        task.due_date, task.due_time = edit.dates.due_date, edit.dates.due_time
+        task.start_date, task.start_time = edit.dates.start_date, edit.dates.start_time
+
+
+def _apply_status(task: Task, edit: TaskEdit) -> None:
     if edit.status is not None and edit.status != task.status:
         task.status = edit.status
         task.completed_at = timezone.now() if edit.status in CLOSED_STATUSES else None
@@ -210,11 +287,13 @@ def _apply(task: Task, edit: TaskEdit) -> None:
             message = "Only a Blocked task can have a Blocked reason."
             raise TaskRuleError(message)
         task.blocked_reason = edit.blocked_reason
-    if edit.pinned is not None and edit.pinned != (task.pinned_at is not None):
-        task.pinned_at = timezone.now() if edit.pinned else None
 
 
-def _activity(task: Task, before: dict[str, object]) -> list[TaskActivity]:
+def _activity(
+    task: Task,
+    before: dict[str, object],
+    dates_before: TaskDates,
+) -> list[TaskActivity]:
     """Return the history events for the difference between `before` and the Task as it is now."""
     events = []
     if task.title != before["title"]:
@@ -231,6 +310,10 @@ def _activity(task: Task, before: dict[str, object]) -> list[TaskActivity]:
     if (task.pinned_at is None) != (before["pinned_at"] is None):
         kind = TaskActivity.Kind.UNPINNED if task.pinned_at is None else TaskActivity.Kind.PINNED
         events.append(TaskActivity(task=task, kind=kind))
+    dates = TaskDates.of(task)
+    if dates != dates_before:
+        data = {"old": dates_before.as_activity(), "new": dates.as_activity()}
+        events.append(TaskActivity(task=task, kind=TaskActivity.Kind.DATES_CHANGED, data=data))
     return events
 
 
@@ -246,3 +329,73 @@ def task_activity(task: Task, cursor: str | None = None) -> Page[TaskActivity]:
 def activity_count(task: Task) -> int:
     """Return how many events the Task's history holds."""
     return task.activity.count()
+
+
+class AttachmentTooLargeError(Exception):
+    """The uploaded file is bigger than `ATTACHMENT_MAX_SIZE` allows."""
+
+
+def attachments(task: Task) -> QuerySet[Attachment]:
+    """Return the Task's Attachments, oldest first."""
+    return task.attachments.all()
+
+
+def attach_file(task: Task, upload: UploadedFile[bytes]) -> Attachment:
+    """Store an uploaded file against the Task and record it in the Task's Activity.
+
+    The content type comes from the file's name, never from the client, so the download serves
+    a type the server chose.
+
+    Raises:
+        AttachmentTooLargeError: The file is bigger than `ATTACHMENT_MAX_SIZE`.
+    """
+    limit: int = settings.ATTACHMENT_MAX_SIZE
+    size = upload.size or 0
+    if size > limit:
+        message = f"Files can be at most {filesizeformat(limit)}."
+        raise AttachmentTooLargeError(message)
+    name = upload.name or "file"
+    content_type, _encoding = mimetypes.guess_type(name, strict=False)
+    attachment = Attachment(
+        task=task,
+        name=name,
+        size=size,
+        content_type=content_type or "application/octet-stream",
+    )
+    with transaction.atomic():
+        attachment.file.save(name, upload, save=False)
+        attachment.save()
+        TaskActivity.objects.create(
+            task=task,
+            kind=TaskActivity.Kind.ATTACHMENT_ADDED,
+            data={"name": name},
+        )
+    return attachment
+
+
+def live_attachment(user: User, attachment_id: int) -> Attachment | None:
+    """Return one of the user's Attachments on a Task that isn't in Trash, or None."""
+    return Attachment.objects.filter(
+        pk=attachment_id,
+        task__owner=user,
+        task__deleted_at__isnull=True,
+    ).first()
+
+
+def delete_attachment(user: User, attachment_id: int) -> bool:
+    """Delete one of the user's Attachments for good; return False if it isn't theirs.
+
+    The file goes only once the deletion commits, so a rolled-back delete never loses it.
+    """
+    attachment = live_attachment(user, attachment_id)
+    if attachment is None:
+        return False
+    with transaction.atomic():
+        attachment.delete()
+        TaskActivity.objects.create(
+            task=attachment.task,
+            kind=TaskActivity.Kind.ATTACHMENT_REMOVED,
+            data={"name": attachment.name},
+        )
+        transaction.on_commit(lambda: attachment.file.delete(save=False))
+    return True

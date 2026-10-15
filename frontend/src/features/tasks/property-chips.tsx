@@ -1,8 +1,11 @@
-import { ChevronDown, Flag } from "lucide-react";
+import { CalendarDays, ChevronDown, Flag } from "lucide-react";
 import type { ComponentProps } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { DatePicker } from "./date-picker";
+import { dueName } from "./due";
+import { DueBadge } from "./due-badge";
 import { PriorityMenu } from "./task-priority";
 import { PRIORITY, STATUS } from "./task-properties";
 import { StatusMenu } from "./task-status";
@@ -54,6 +57,20 @@ export function PropertyChips({ task }: { task: Task }) {
           {task.priority > 0 ? priorityLabel : "Priority"}
         </Chip>
       </PriorityMenu>
+
+      <DatePicker task={task}>
+        <Chip
+          aria-label={`Date: ${dueName(task, new Date())}`}
+          className={
+            task.due_date === null
+              ? "border-dashed border-border text-muted-foreground hover:bg-surface-muted"
+              : "border-transparent bg-surface-muted hover:brightness-95"
+          }
+        >
+          <CalendarDays className="size-3.5 text-muted-foreground" aria-hidden />
+          {task.due_date === null ? "Date" : <DueBadge task={task} />}
+        </Chip>
+      </DatePicker>
     </div>
   );
 }

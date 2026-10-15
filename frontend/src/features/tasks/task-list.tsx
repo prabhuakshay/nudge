@@ -10,8 +10,8 @@ import { cn } from "@/lib/utils";
 import { useOpenTask } from "./open-task";
 import { QuickAddCard } from "./quick-add-card";
 import { TaskDetail } from "./task-detail";
-import { isClosed } from "./task-properties";
 import { GRID, TaskRow, type OpenTask, type ToggleStatus } from "./task-row";
+import { isClosed } from "./task-properties";
 import {
   closedTasksQuery,
   openTasksQuery,
@@ -85,6 +85,12 @@ export function TaskList({ project }: { project: SidebarProject }) {
           </span>
           <span role="columnheader" className="px-2">
             Priority
+          </span>
+          <span role="columnheader" className="px-2">
+            Due
+          </span>
+          <span role="columnheader" className="px-2 text-right">
+            Activity
           </span>
           <span role="columnheader" aria-label="Actions" />
         </div>

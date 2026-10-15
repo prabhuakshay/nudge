@@ -118,6 +118,7 @@ def update_task(
         blocked_reason=patch.blocked_reason,
         priority=patch.priority,
         pinned=patch.pinned,
+        dates=_dates(patch),
     )
     try:
         change = services.update_task(signed_in_user(request), task_id, edit)
@@ -142,6 +143,16 @@ def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Stat
     if copy is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     return Status(_HTTP_CREATED, TaskOut.from_orm(copy))
+
+
+def _dates(patch: TaskPatchIn) -> services.TaskDates | None:
+    """Return the dates the patch sets, an empty set when it clears them, or None if neither."""
+    if "dates" not in patch.model_fields_set:
+        return None
+    if patch.dates is None:
+        return services.TaskDates()
+    dates = patch.dates
+    return services.TaskDates(dates.due_date, dates.due_time, dates.start_date, dates.start_time)
 
 
 @router.get(

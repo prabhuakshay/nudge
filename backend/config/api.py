@@ -16,6 +16,7 @@ from ninja.security import django_auth
 from apps.accounts.api import router as accounts_router
 from apps.core.api import router as core_router
 from apps.notifications.api import router as notifications_router
+from apps.tasks.api.attachments import router as attachments_router
 from apps.tasks.api.sidebar import router as sidebar_router
 from apps.tasks.api.tasks import router as tasks_router
 
@@ -33,3 +34,4 @@ api.add_router("/auth", accounts_router, tags=["auth"])
 api.add_router("/notifications", notifications_router, tags=["notifications"])
 api.add_router("/sidebar", sidebar_router, tags=["sidebar"])
 api.add_router("/tasks", tasks_router, tags=["tasks"])
+api.add_router("/", attachments_router, tags=["attachments"])

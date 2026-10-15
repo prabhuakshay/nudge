@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
+import uuid
 from typing import ClassVar, override
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 INBOX_NAME = "Inbox"
@@ -53,6 +54,10 @@ class Task(models.Model):
     `position` is a fractional-indexing key: a new Task gets a key between its neighbours, so
     reordering writes one row. Keys compare byte by byte, hence the C collation.
 
+    Dates are floating: a time means that clock time in the owner's `time_zone`, wherever it is,
+    so 09:00 stays 09:00 when the user travels. A due date without a time is all-day; a start
+    date turns the Task into a range that ends on the due date.
+
     Completed and Won't do are Closed and record when in `completed_at`. Blocked is still open
     work, and only a Blocked Task keeps a `blocked_reason`. A pinned Task records when in
     `pinned_at` and lists above the rest, oldest pin first.
@@ -89,6 +94,10 @@ class Task(models.Model):
     priority = models.PositiveSmallIntegerField(choices=Priority, default=Priority.NONE)
     completed_at = models.DateTimeField(null=True, blank=True)
     pinned_at = models.DateTimeField(null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    due_time = models.TimeField(null=True, blank=True, help_text="Empty for an all-day Task.")
+    start_date = models.DateField(null=True, blank=True, help_text="Set for a range.")
+    start_time = models.TimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -106,6 +115,28 @@ class Task(models.Model):
                 condition=Q(status__in=["open", "blocked"], completed_at__isnull=True)
                 | Q(status__in=["completed", "wont_do"], completed_at__isnull=False),
                 name="tasks_task_completed_at_matches_status",
+            ),
+            models.CheckConstraint(
+                condition=Q(start_date__isnull=True) | Q(due_date__isnull=False),
+                name="tasks_task_start_needs_due",
+            ),
+            models.CheckConstraint(
+                condition=(Q(due_time__isnull=True) | Q(due_date__isnull=False))
+                & (Q(start_time__isnull=True) | Q(start_date__isnull=False)),
+                name="tasks_task_time_needs_its_date",
+            ),
+            models.CheckConstraint(
+                condition=Q(start_date__isnull=True)
+                | Q(start_time__isnull=True, due_time__isnull=True)
+                | Q(start_time__isnull=False, due_time__isnull=False),
+                name="tasks_task_range_all_day_or_timed",
+            ),
+            models.CheckConstraint(
+                condition=Q(start_date__isnull=True)
+                | Q(start_date__lt=F("due_date"))
+                | Q(start_date=F("due_date"), start_time__isnull=True)
+                | Q(start_date=F("due_date"), start_time__lte=F("due_time")),
+                name="tasks_task_range_starts_by_due",
             ),
             models.CheckConstraint(
                 condition=Q(status="blocked") | Q(blocked_reason=""),
@@ -136,10 +167,13 @@ class TaskActivity(models.Model):
         CREATED = "created", "Created"
         TITLE_CHANGED = "title_changed", "Title changed"
         DESCRIPTION_EDITED = "description_edited", "Description edited"
+        DATES_CHANGED = "dates_changed", "Dates changed"
         STATUS_CHANGED = "status_changed", "Status changed"
         PRIORITY_CHANGED = "priority_changed", "Priority changed"
         PINNED = "pinned", "Pinned"
         UNPINNED = "unpinned", "Unpinned"
+        ATTACHMENT_ADDED = "attachment_added", "Attachment added"
+        ATTACHMENT_REMOVED = "attachment_removed", "Attachment removed"
 
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="activity")
     kind = models.CharField(max_length=32, choices=Kind)
@@ -158,3 +192,33 @@ class TaskActivity(models.Model):
     def __str__(self) -> str:
         """Return what happened, which is how the admin lists events."""
         return self.get_kind_display()
+
+
+def _attachment_key(attachment: Attachment, _filename: str) -> str:
+    """Return a fresh storage key, so a file's name never reaches the file system."""
+    return f"attachments/{attachment.task.owner_id}/{uuid.uuid4().hex}"
+
+
+class Attachment(models.Model):
+    """A file uploaded against a Task.
+
+    The original name lives only here; the stored file is named by a generated key. Deleting an
+    Attachment is for good: the service removes its file once the deletion commits.
+    """
+
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="attachments")
+    name = models.CharField(max_length=255)
+    size = models.PositiveBigIntegerField()
+    content_type = models.CharField(max_length=255)
+    file = models.FileField(upload_to=_attachment_key, max_length=255)
+    created_at = models.DateTimeField(default=timezone.now)
+
+    class Meta:
+        """Model options."""
+
+        ordering = ("created_at", "id")
+
+    @override
+    def __str__(self) -> str:
+        """Return the file's original name, which is how the user knows it."""
+        return self.name

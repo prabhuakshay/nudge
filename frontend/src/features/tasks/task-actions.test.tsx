@@ -1,7 +1,11 @@
 import { screen, within } from "@testing-library/react";
 
-import { json, renderTaskList, task } from "./testing";
+import { makeTask } from "@/test/tasks";
+
+import { json, renderTaskList } from "./testing";
 import type { TaskDetail } from "./tasks";
+
+const task = makeTask;
 
 /**
  * A stand-in for the server holding a few Tasks: it lists the open ones pinned first, saves
@@ -16,6 +20,9 @@ function mockApi(tasks: TaskDetail[]) {
     const found = tasks.find((item) => item.id === Number(id));
     if (action === "activity") {
       return json({ items: [], next_cursor: null, count: 0 });
+    }
+    if (action === "attachments") {
+      return json([]);
     }
     if (action === "duplicate" && found) {
       const copy = { ...found, id: nextId++, status: "open" as const, pinned_at: null };

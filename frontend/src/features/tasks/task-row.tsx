@@ -1,9 +1,12 @@
+import { Paperclip } from "lucide-react";
 import { memo } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { CountIcon } from "./count-icon";
+import { DueBadge } from "./due-badge";
 import { TaskActionsMenu, TaskContextMenu } from "./task-actions";
-import { PriorityCell, StatusCell } from "./task-cells";
+import { DueCell, PriorityCell, StatusCell } from "./task-cells";
 import { TaskCheckbox } from "./task-checkbox";
 import { PriorityFlag } from "./task-priority";
 import { isClosed } from "./task-properties";
@@ -11,7 +14,7 @@ import { BlockedNote, StatusBadge } from "./task-status";
 import type { Task } from "./tasks";
 
 /** One grid for the header and every row, so the columns line up from `lg`. */
-export const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_2.5rem]";
+export const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_6.5rem_2.5rem]";
 
 export type ToggleStatus = (task: Task) => void;
 export type OpenTask = (taskId: number) => void;
@@ -101,6 +104,8 @@ export const TaskRow = memo(function TaskRow({
           {task.status === "wont_do" && <StatusBadge status={task.status} />}
           {blocked && <BlockedNote task={task} className="max-w-full" />}
           <PriorityFlag priority={task.priority} />
+          <DueBadge task={task} />
+          <ActivityCounts task={task} />
         </div>
 
         <div role="gridcell" className="hidden min-w-0 lg:block">
@@ -108,6 +113,12 @@ export const TaskRow = memo(function TaskRow({
         </div>
         <div role="gridcell" className="hidden min-w-0 lg:block">
           <PriorityCell task={task} />
+        </div>
+        <div role="gridcell" className="hidden min-w-0 lg:block">
+          <DueCell task={task} />
+        </div>
+        <div role="gridcell" className="hidden min-w-0 items-center justify-end gap-2 pr-1 lg:flex">
+          <ActivityCounts task={task} />
         </div>
         {/* Its own column, shown on hover or focus, so it never covers a cell. */}
         <div
@@ -120,3 +131,7 @@ export const TaskRow = memo(function TaskRow({
     </TaskContextMenu>
   );
 });
+
+function ActivityCounts({ task }: { task: Task }) {
+  return <CountIcon icon={Paperclip} count={task.attachment_count} label="attachments" />;
+}

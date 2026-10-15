@@ -4,29 +4,50 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 import { activityTime, exactTime } from "./activity-time";
+import { describeDates } from "./due";
 import { PRIORITY, STATUS_VERB } from "./task-properties";
-import { taskActivityQuery, type TaskActivity } from "./tasks";
+import { taskActivityQuery, type DatesChange, type TaskActivity } from "./tasks";
+
+/** The events whose kind says all there is to say, and how each reads. */
+const PLAIN = {
+  created: "Created this task",
+  description_edited: "Edited the description",
+  pinned: "Pinned to the top",
+  unpinned: "Unpinned",
+} as const;
+
+type PlainEvent = Extract<TaskActivity, { kind: keyof typeof PLAIN }>;
+
+function isPlain(event: TaskActivity): event is PlainEvent {
+  return event.kind in PLAIN;
+}
 
 /** What an event says happened, in the user's words rather than the API's. */
 function describe(event: TaskActivity): string {
+  if (isPlain(event)) return PLAIN[event.kind];
   switch (event.kind) {
-    case "created":
-      return "Created this task";
     case "title_changed":
       return `Renamed from “${event.data.old}” to “${event.data.new}”`;
-    case "description_edited":
-      return "Edited the description";
     case "status_changed": {
       const { new: status, blocked_reason: reason } = event.data;
       return reason ? `${STATUS_VERB[status]}: “${reason}”` : STATUS_VERB[status];
     }
     case "priority_changed":
       return `Changed priority from ${PRIORITY[event.data.old].short} to ${PRIORITY[event.data.new].short}`;
-    case "pinned":
-      return "Pinned to the top";
-    case "unpinned":
-      return "Unpinned";
+    case "attachment_added":
+      return `Attached “${event.data.name}”`;
+    case "attachment_removed":
+      return `Deleted the attachment “${event.data.name}”`;
+    case "dates_changed":
+      return describeDatesChange(event.data);
   }
+}
+
+function describeDatesChange({ old, new: next }: DatesChange): string {
+  if (old === null)
+    return next === null ? "Removed the date" : `Set the date to ${describeDates(next)}`;
+  if (next === null) return `Removed the date (was ${describeDates(old)})`;
+  return `Changed the date from ${describeDates(old)} to ${describeDates(next)}`;
 }
 
 /** A Task's history as a timeline, newest first, with older events a click away. */

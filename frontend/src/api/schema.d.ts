@@ -354,6 +354,9 @@ export interface paths {
     /**
      * Change a Task
      * @description Change a Task's fields, returning it and every Task whose Status changed.
+     *
+     *     Each changed Task comes with its Status and Blocked reason from before, so the client can
+     *     offer Undo without the server keeping anything.
      */
     patch: operations["apps_tasks_api_tasks_update_task"];
     trace?: never;
@@ -561,11 +564,17 @@ export interface components {
       open_count: number;
     };
     /**
+     * Priority
+     * @description How urgent a Task is; P1 is the most urgent.
+     * @enum {integer}
+     */
+    Priority: 0 | 1 | 2 | 3 | 4;
+    /**
      * Status
      * @description Where a Task stands.
      * @enum {string}
      */
-    Status: "open" | "completed";
+    Status: "open" | "completed" | "wont_do" | "blocked";
     /**
      * TaskListOut
      * @description Tasks for a list, and the cursor for the next page when the list is paginated.
@@ -591,7 +600,17 @@ export interface components {
       /** Title */
       title: string;
       status: components["schemas"]["Status"];
-      /** Completed At */
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
       completed_at: string | null;
       /** Due Date */
       due_date: string | null;
@@ -648,7 +667,17 @@ export interface components {
       /** Title */
       title: string;
       status: components["schemas"]["Status"];
-      /** Completed At */
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
       completed_at: string | null;
       /** Due Date */
       due_date: string | null;
@@ -693,6 +722,8 @@ export interface components {
       /** Id */
       id: number;
       prior_status: components["schemas"]["Status"];
+      /** Prior Blocked Reason */
+      prior_blocked_reason: string;
     };
     /**
      * TaskChangeOut
@@ -735,7 +766,14 @@ export interface components {
        * @description Markdown.
        */
       description?: string | null;
+      /** @description Changing it clears the Blocked reason unless one is given with it. */
       status?: components["schemas"]["Status"] | null;
+      /**
+       * Blocked Reason
+       * @description Only a Blocked Task can have one; send an empty string to clear it.
+       */
+      blocked_reason?: string | null;
+      priority?: components["schemas"]["Priority"] | null;
       /** @description Replaces all of the Task's dates; null removes them. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
     };
@@ -827,6 +865,62 @@ export interface components {
      */
     NoActivityData: Record<string, never>;
     /**
+     * PriorityChangedActivityOut
+     * @description The Task's Priority changed.
+     */
+    PriorityChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "priority_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["PriorityChangedData"];
+    };
+    /**
+     * PriorityChangedData
+     * @description The Priority before and after a change.
+     */
+    PriorityChangedData: {
+      old: components["schemas"]["Priority"];
+      new: components["schemas"]["Priority"];
+    };
+    /**
+     * StatusChangedActivityOut
+     * @description The Task's Status changed.
+     */
+    StatusChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "status_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["StatusChangedData"];
+    };
+    /**
+     * StatusChangedData
+     * @description The Status before and after a change, and the Blocked reason it was given, if any.
+     */
+    StatusChangedData: {
+      old: components["schemas"]["Status"];
+      new: components["schemas"]["Status"];
+      /** Blocked Reason */
+      blocked_reason: string;
+    };
+    /**
      * TaskActivityListOut
      * @description A page of a Task's history, newest first.
      */
@@ -836,6 +930,8 @@ export interface components {
         | components["schemas"]["CreatedActivityOut"]
         | components["schemas"]["TitleChangedActivityOut"]
         | components["schemas"]["DescriptionEditedActivityOut"]
+        | components["schemas"]["StatusChangedActivityOut"]
+        | components["schemas"]["PriorityChangedActivityOut"]
         | components["schemas"]["DatesChangedActivityOut"]
       )[];
       /**
@@ -1398,6 +1494,15 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
         headers: {
           [name: string]: unknown;
         };

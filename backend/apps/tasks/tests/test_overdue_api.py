@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 def _task(user: User, dates: services.TaskDates) -> Task:
     task = services.create_task(services.inbox(user), "Dated")
-    services.update_task(user, task.pk, services.TaskPatch(dates=dates))
+    services.update_task(user, task.pk, services.TaskEdit(dates=dates))
     return task
 
 
@@ -168,17 +168,28 @@ def test_a_task_due_at_a_dst_change_is_overdue_by_the_wall_clock(
 
 
 @pytest.mark.django_db
-def test_a_completed_task_is_never_overdue(
+@pytest.mark.parametrize(
+    ("status", "overdue"),
+    [
+        (Task.Status.COMPLETED, False),
+        (Task.Status.WONT_DO, False),
+        (Task.Status.BLOCKED, True),
+    ],
+)
+def test_only_open_work_is_overdue(
     client: Client,
     kolkata: User,
     freeze_time: Callable[[datetime], None],
+    status: Task.Status,
+    *,
+    overdue: bool,
 ) -> None:
     task = _task(kolkata, services.TaskDates(due_date=date(2026, 10, 1)))
-    services.update_task(kolkata, task.pk, services.TaskPatch(status=Task.Status.COMPLETED))
+    services.update_task(kolkata, task.pk, services.TaskEdit(status=status))
 
     freeze_time(datetime(2026, 10, 15, tzinfo=UTC))
 
-    assert _is_overdue(client, task) is False
+    assert _is_overdue(client, task) is overdue
 
 
 @pytest.mark.django_db

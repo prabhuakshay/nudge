@@ -3,30 +3,14 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { makeTask } from "@/test/tasks";
 
 import { TaskList } from "./task-list";
 import type { TaskDetail } from "./tasks";
 
 const INBOX = { id: 7, name: "Inbox", open_count: 1 };
 
-function task(overrides: Partial<TaskDetail>): TaskDetail {
-  return {
-    id: 1,
-    project_id: INBOX.id,
-    title: "Report",
-    description: "",
-    status: "open",
-    completed_at: null,
-    due_date: null,
-    due_time: null,
-    start_date: null,
-    start_time: null,
-    is_overdue: false,
-    created_at: "2026-10-15T09:00:00Z",
-    updated_at: "2026-10-15T09:00:00Z",
-    ...overrides,
-  };
-}
+const task = makeTask;
 
 function json(body: unknown) {
   return Promise.resolve(
@@ -109,7 +93,7 @@ describe("Due dates", () => {
     mockApi(task({ due_date: "2026-10-16" }));
     renderList({ wide: false });
 
-    const row = await screen.findByRole("row", { name: /Report/ });
+    const row = await screen.findByRole("row", { name: /Buy milk/ });
 
     expect(within(row).getAllByText("Tomorrow").length).toBeGreaterThan(0);
   });
@@ -132,7 +116,7 @@ describe("Due dates", () => {
   it("adds a time and a start to the date from the drawer's Date chip", async () => {
     const fetchSpy = mockApi(task({ due_date: "2026-10-20" }));
     const user = renderList();
-    await user.click(await screen.findByText("Report"));
+    await user.click(await screen.findByText("Buy milk"));
     const drawer = await screen.findByRole("dialog", { name: "Task details" });
 
     await user.click(within(drawer).getByRole("button", { name: "Date: Tuesday" }));

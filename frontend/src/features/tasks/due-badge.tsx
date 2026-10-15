@@ -2,6 +2,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { cn } from "@/lib/utils";
 
 import { describeDates, DUE_TONE_CLASS, dueLabel, dueTone, type Dates } from "./due";
+import { isClosed } from "./task-properties";
 import type { Task } from "./tasks";
 
 /** A Task's due date coloured by how soon it is, with the full dates in a tooltip. */
@@ -20,7 +21,7 @@ export function DueBadge({
         <span
           className={cn(
             "inline-flex items-center text-xs font-medium whitespace-nowrap tabular-nums",
-            task.status === "open" ? DUE_TONE_CLASS[dueTone(task, now)] : "text-muted-foreground",
+            isClosed(task.status) ? "text-muted-foreground" : DUE_TONE_CLASS[dueTone(task, now)],
             className,
           )}
         >

@@ -94,7 +94,7 @@ def test_saving_unchanged_text_records_nothing(client: Client, ada: User) -> Non
 def test_events_come_newest_first_in_pages_of_fifty(client: Client, ada: User) -> None:
     task = services.create_task(services.inbox(ada), "Title 0")
     for number in range(1, 55):
-        services.update_task(ada, task.pk, services.TaskPatch(title=f"Title {number}"))
+        services.update_task(ada, task.pk, services.TaskEdit(title=f"Title {number}"))
     start = datetime(2026, 10, 1, 9, tzinfo=UTC)
     for minute, event in enumerate(task.activity.order_by("id")):
         TaskActivity.objects.filter(pk=event.pk).update(at=start + timedelta(minutes=minute))
@@ -137,3 +137,52 @@ def test_activity_of_a_trashed_task_is_not_found(client: Client, ada: User) -> N
     response = client.get(f"/api/v1/tasks/{task.pk}/activity")
 
     assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_blocking_records_the_status_change_with_its_reason(client: Client, ada: User) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+
+    client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"status": "blocked", "blocked_reason": "Waiting on review"},
+        content_type="application/json",
+    )
+
+    newest = client.get(f"/api/v1/tasks/{task.pk}/activity").json()["items"][0]
+    assert newest["kind"] == "status_changed"
+    assert newest["data"] == {
+        "old": "open",
+        "new": "blocked",
+        "blocked_reason": "Waiting on review",
+    }
+
+
+@pytest.mark.django_db
+def test_closing_records_the_status_change(client: Client, ada: User) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+
+    client.patch(
+        f"/api/v1/tasks/{task.pk}",
+        {"status": "wont_do"},
+        content_type="application/json",
+    )
+
+    newest = client.get(f"/api/v1/tasks/{task.pk}/activity").json()["items"][0]
+    assert newest["kind"] == "status_changed"
+    assert newest["data"] == {"old": "open", "new": "wont_do", "blocked_reason": ""}
+
+
+@pytest.mark.django_db
+def test_changing_the_priority_records_the_old_and_new_priority(
+    client: Client,
+    ada: User,
+) -> None:
+    task = services.create_task(services.inbox(ada), "Ship the release")
+
+    client.patch(f"/api/v1/tasks/{task.pk}", {"priority": 2}, content_type="application/json")
+    client.patch(f"/api/v1/tasks/{task.pk}", {"priority": 2}, content_type="application/json")
+
+    response = client.get(f"/api/v1/tasks/{task.pk}/activity")
+    assert _kinds(response) == ["priority_changed", "created"]
+    assert response.json()["items"][0]["data"] == {"old": 0, "new": 2}

@@ -3,15 +3,19 @@ import {
   queryOptions,
   useMutation,
   useQueryClient,
+  type QueryClient,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 
+import { isClosed, STATUS_VERB } from "./task-properties";
+
 export type Task = components["schemas"]["TaskOut"];
 export type TaskDetail = components["schemas"]["TaskDetailOut"];
 export type TaskStatus = components["schemas"]["Status"];
+export type TaskPriority = components["schemas"]["Priority"];
 export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"][number];
 export type DatesChange = components["schemas"]["DatesChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
@@ -31,11 +35,13 @@ export const sidebarQuery = queryOptions({
 
 /** The key prefix of every Task list, so one invalidation refreshes them all. */
 const TASKS_KEY = ["tasks"] as const;
+/** The key prefix of every open-Task list, so a change can show in all of them at once. */
+const OPEN_KEY = [...TASKS_KEY, "open"] as const;
 
 /** A Project's open Tasks, in the user's manual order. */
 export function openTasksQuery(projectId: number) {
   return queryOptions({
-    queryKey: [...TASKS_KEY, projectId, "open"],
+    queryKey: [...OPEN_KEY, projectId],
     queryFn: async (): Promise<Task[]> => {
       const { data } = await api.GET("/api/v1/tasks", {
         params: { query: { project: projectId } },
@@ -51,7 +57,7 @@ export function openTasksQuery(projectId: number) {
 /** A Project's Closed Tasks, most recently completed first, a page at a time. */
 export function closedTasksQuery(projectId: number) {
   return infiniteQueryOptions({
-    queryKey: [...TASKS_KEY, projectId, "closed"],
+    queryKey: [...TASKS_KEY, "closed", projectId],
     queryFn: async ({ pageParam }) => {
       const { data } = await api.GET("/api/v1/tasks", {
         params: {
@@ -105,35 +111,104 @@ export function taskActivityQuery(taskId: number) {
 /** A Task's dates as the API takes them; null removes them all. */
 export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
 
-/** The fields the drawer and the list's cells edit in place. */
-export type TaskChange = { id: number } & Partial<Pick<TaskDetail, "title" | "description">> & {
-    dates?: DatesIn;
-  };
+/**
+ * A change to a Task: the fields to set, which are all left as they are when absent. `dates`
+ * replaces all four date fields at once.
+ */
+export type TaskChange = { id: number } & Partial<
+  Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason">
+> & { dates?: DatesIn };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
-/** Save a Task's title, Description or dates. The drawer shows the change before the server answers. */
+async function patchTask({ id, ...change }: TaskChange) {
+  const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
+    params: { path: { task_id: id } },
+    body: change,
+  });
+  if (!data) {
+    throw new Error("Could not save the task.");
+  }
+  return data;
+}
+
+/** The Task as the server will return it after the change, for showing the change straight away. */
+function withChange<T extends Task>(task: T, { dates, ...change }: TaskChange): T {
+  const leavesStatus = change.status !== undefined && change.status !== task.status;
+  // The server drops the Blocked reason on any Status change, unless the change sets one.
+  return {
+    ...task,
+    ...(leavesStatus && { blocked_reason: "" }),
+    ...change,
+    ...(dates !== undefined && { ...UNDATED, ...dates }),
+  };
+}
+
+/** Show a change in the drawer and in every open list before the server answers. */
+async function showChange(queryClient: QueryClient, change: TaskChange) {
+  const detailKey = taskQuery(change.id).queryKey;
+  await queryClient.cancelQueries({ queryKey: detailKey });
+  await queryClient.cancelQueries({ queryKey: OPEN_KEY });
+  queryClient.setQueryData(detailKey, (task) => task && withChange(task, change));
+  queryClient.setQueriesData<Task[]>({ queryKey: OPEN_KEY }, (tasks) =>
+    tasks?.flatMap((task) => {
+      if (task.id !== change.id) return [task];
+      const changed = withChange(task, change);
+      return isClosed(changed.status) ? [] : [changed];
+    }),
+  );
+}
+
+/** Refetch everything a Task change can touch: the lists, the drawer, Activity and counts. */
+function refresh(queryClient: QueryClient) {
+  return Promise.all([
+    queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+    queryClient.invalidateQueries(sidebarQuery),
+  ]);
+}
+
+/** Change a Task's fields. The drawer and the lists show the change before the server answers. */
 export function useUpdateTask() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ id, ...change }: TaskChange) => {
-      const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
-        params: { path: { task_id: id } },
-        body: change,
+    mutationFn: patchTask,
+    onMutate: (change) => showChange(queryClient, change),
+    onError: (error) => toast.error(error.message),
+    onSettled: () => refresh(queryClient),
+  });
+}
+
+/**
+ * Set a Task's Status, then offer Undo in a toast. Undo gives every Task the change touched back
+ * the Status and Blocked reason it had, as the server reported them.
+ */
+export function useSetTaskStatus() {
+  const queryClient = useQueryClient();
+  const { mutate: update } = useUpdateTask();
+  return useMutation({
+    mutationFn: ({ task, status }: { task: Task; status: TaskStatus }) =>
+      patchTask({ id: task.id, status }),
+    onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
+    onSuccess: ({ affected }, { task, status }) => {
+      toast(`${STATUS_VERB[status]} “${task.title}”`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            for (const prior of affected) {
+              update({
+                id: prior.id,
+                status: prior.prior_status,
+                ...(prior.prior_status === "blocked" && {
+                  blocked_reason: prior.prior_blocked_reason,
+                }),
+              });
+            }
+          },
+        },
       });
-      if (!data) {
-        throw new Error("Could not save the task.");
-      }
-      return data;
-    },
-    onMutate: async ({ id, dates, ...change }) => {
-      const detailKey = taskQuery(id).queryKey;
-      await queryClient.cancelQueries({ queryKey: detailKey });
-      const flatDates = dates === undefined ? {} : { ...UNDATED, ...dates };
-      queryClient.setQueryData(detailKey, (task) => task && { ...task, ...change, ...flatDates });
     },
     onError: (error) => toast.error(error.message),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+    onSettled: () => refresh(queryClient),
   });
 }
 
@@ -157,35 +232,5 @@ export function useCreateTask(projectId: number) {
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries(sidebarQuery),
-  });
-}
-
-/** Complete or reopen a Task. Completing takes it out of the open list straight away. */
-export function useSetTaskStatus(projectId: number) {
-  const queryClient = useQueryClient();
-  const openKey = openTasksQuery(projectId).queryKey;
-  return useMutation({
-    mutationFn: async ({ id, status }: { id: number; status: TaskStatus }) => {
-      const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
-        params: { path: { task_id: id } },
-        body: { status },
-      });
-      if (!data) {
-        throw new Error("Could not update the task.");
-      }
-      return data;
-    },
-    onMutate: async ({ id, status }) => {
-      if (status !== "open") {
-        await queryClient.cancelQueries({ queryKey: openKey });
-        queryClient.setQueryData(openKey, (tasks) => tasks?.filter((task) => task.id !== id));
-      }
-    },
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
-        queryClient.invalidateQueries(sidebarQuery),
-      ]),
   });
 }

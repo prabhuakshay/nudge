@@ -56,6 +56,9 @@ class Task(models.Model):
     Dates are floating: a time means that clock time in the owner's `time_zone`, wherever it is,
     so 09:00 stays 09:00 when the user travels. A due date without a time is all-day; a start
     date turns the Task into a range that ends on the due date.
+
+    Completed and Won't do are Closed and record when in `completed_at`. Blocked is still open
+    work, and only a Blocked Task keeps a `blocked_reason`.
     """
 
     class Status(models.TextChoices):
@@ -63,6 +66,17 @@ class Task(models.Model):
 
         OPEN = "open", "Open"
         COMPLETED = "completed", "Completed"
+        WONT_DO = "wont_do", "Won't do"
+        BLOCKED = "blocked", "Blocked"
+
+    class Priority(models.IntegerChoices):
+        """How urgent a Task is; P1 is the most urgent."""
+
+        NONE = 0, "None"
+        P1 = 1, "P1"
+        P2 = 2, "P2"
+        P3 = 3, "P3"
+        P4 = 4, "P4"
 
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -74,6 +88,8 @@ class Task(models.Model):
     title = models.CharField(max_length=500)
     description = models.TextField(blank=True, default="")
     status = models.CharField(max_length=16, choices=Status, default=Status.OPEN)
+    blocked_reason = models.TextField(blank=True, default="")
+    priority = models.PositiveSmallIntegerField(choices=Priority, default=Priority.NONE)
     completed_at = models.DateTimeField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
     due_time = models.TimeField(null=True, blank=True, help_text="Empty for an all-day Task.")
@@ -93,8 +109,8 @@ class Task(models.Model):
         ]
         constraints: ClassVar = [
             models.CheckConstraint(
-                condition=Q(status="open", completed_at__isnull=True)
-                | Q(status="completed", completed_at__isnull=False),
+                condition=Q(status__in=["open", "blocked"], completed_at__isnull=True)
+                | Q(status__in=["completed", "wont_do"], completed_at__isnull=False),
                 name="tasks_task_completed_at_matches_status",
             ),
             models.CheckConstraint(
@@ -119,12 +135,21 @@ class Task(models.Model):
                 | Q(start_date=F("due_date"), start_time__lte=F("due_time")),
                 name="tasks_task_range_starts_by_due",
             ),
+            models.CheckConstraint(
+                condition=Q(status="blocked") | Q(blocked_reason=""),
+                name="tasks_task_blocked_reason_needs_blocked",
+            ),
         ]
 
     @override
     def __str__(self) -> str:
         """Return the title, which is what the user sees in every list."""
         return self.title
+
+
+# Blocked work is still to be done, so it sorts and counts with open Tasks.
+OPEN_STATUSES = (Task.Status.OPEN, Task.Status.BLOCKED)
+CLOSED_STATUSES = (Task.Status.COMPLETED, Task.Status.WONT_DO)
 
 
 class TaskActivity(models.Model):
@@ -140,6 +165,8 @@ class TaskActivity(models.Model):
         TITLE_CHANGED = "title_changed", "Title changed"
         DESCRIPTION_EDITED = "description_edited", "Description edited"
         DATES_CHANGED = "dates_changed", "Dates changed"
+        STATUS_CHANGED = "status_changed", "Status changed"
+        PRIORITY_CHANGED = "priority_changed", "Priority changed"
 
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="activity")
     kind = models.CharField(max_length=32, choices=Kind)

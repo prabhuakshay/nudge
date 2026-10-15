@@ -1,5 +1,6 @@
 import "@testing-library/jest-dom/vitest";
 import { cleanup } from "@testing-library/react";
+import { toast } from "sonner";
 import { afterEach } from "vitest";
 
 // jsdom has no pointer capture, which sonner and Radix call on pointer down.
@@ -20,4 +21,6 @@ Object.defineProperty(window, "matchMedia", {
 
 afterEach(() => {
   cleanup();
+  // Toasts live in sonner's module state, which a new Toaster replays; start each test without any.
+  toast.dismiss();
 });

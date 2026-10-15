@@ -11,6 +11,7 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 
 import { isClosed, STATUS_VERB } from "./task-properties";
+import { openTrees } from "./task-tree";
 
 export type Task = components["schemas"]["TaskOut"];
 export type TaskDetail = components["schemas"]["TaskDetailOut"];
@@ -36,8 +37,10 @@ export const sidebarQuery = queryOptions({
 const TASKS_KEY = ["tasks"] as const;
 /** The key prefix of every open-Task list, so a change can show in all of them at once. */
 const OPEN_KEY = [...TASKS_KEY, "open"] as const;
+/** The key prefix of every drawer's Task, so a change can show in a parent's Subtasks too. */
+const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
 
-/** A Project's open Tasks, in the user's manual order. */
+/** A Project's open Tasks with every Subtask under them, as flat rows in manual order. */
 export function openTasksQuery(projectId: number) {
   return queryOptions({
     queryKey: [...OPEN_KEY, projectId],
@@ -53,7 +56,7 @@ export function openTasksQuery(projectId: number) {
   });
 }
 
-/** A Project's Closed Tasks, most recently completed first, a page at a time. */
+/** A Project's Closed Tasks with their Subtasks, most recently completed first, a page at a time. */
 export function closedTasksQuery(projectId: number) {
   return infiniteQueryOptions({
     queryKey: [...TASKS_KEY, "closed", projectId],
@@ -76,7 +79,7 @@ export function closedTasksQuery(projectId: number) {
 /** One Task with everything the drawer shows. Keyed under the Task lists so list changes refresh it. */
 export function taskQuery(taskId: number) {
   return queryOptions({
-    queryKey: [...TASKS_KEY, "detail", taskId],
+    queryKey: [...DETAIL_KEY, taskId],
     queryFn: async (): Promise<TaskDetail> => {
       const { data } = await api.GET("/api/v1/tasks/{task_id}", {
         params: { path: { task_id: taskId } },
@@ -130,18 +133,29 @@ function withChange<T extends Task>(task: T, change: TaskChange): T {
   return { ...task, ...(leavesStatus && { blocked_reason: "" }), ...change };
 }
 
-/** Show a change in the drawer and in every open list before the server answers. */
+/** The Task with the change applied if it's the one changed, else the Task as it is. */
+function applyTo<T extends Task>(task: T, change: TaskChange): T {
+  return task.id === change.id ? withChange(task, change) : task;
+}
+
+/**
+ * Show a change in every drawer and open list before the server answers. A list drops a tree
+ * once its root closes; the server's answer then brings in what the change did to relatives.
+ */
 async function showChange(queryClient: QueryClient, change: TaskChange) {
-  const detailKey = taskQuery(change.id).queryKey;
-  await queryClient.cancelQueries({ queryKey: detailKey });
+  await queryClient.cancelQueries({ queryKey: DETAIL_KEY });
   await queryClient.cancelQueries({ queryKey: OPEN_KEY });
-  queryClient.setQueryData(detailKey, (task) => task && withChange(task, change));
-  queryClient.setQueriesData<Task[]>({ queryKey: OPEN_KEY }, (tasks) =>
-    tasks?.flatMap((task) => {
-      if (task.id !== change.id) return [task];
-      const changed = withChange(task, change);
-      return isClosed(changed.status) ? [] : [changed];
-    }),
+  queryClient.setQueriesData<TaskDetail>(
+    { queryKey: DETAIL_KEY },
+    (task) =>
+      task && {
+        ...applyTo(task, change),
+        subtasks: task.subtasks.map((subtask) => applyTo(subtask, change)),
+      },
+  );
+  queryClient.setQueriesData<Task[]>(
+    { queryKey: OPEN_KEY },
+    (tasks) => tasks && openTrees(tasks.map((task) => applyTo(task, change))),
   );
 }
 
@@ -176,7 +190,7 @@ export function useSetTaskStatus() {
       patchTask({ id: task.id, status }),
     onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
     onSuccess: ({ affected }, { task, status }) => {
-      toast(`${STATUS_VERB[status]} “${task.title}”`, {
+      toast(statusMessage(task, status, affected.length - 1), {
         action: {
           label: "Undo",
           onClick: () => {
@@ -196,6 +210,16 @@ export function useSetTaskStatus() {
     onError: (error) => toast.error(error.message),
     onSettled: () => refresh(queryClient),
   });
+}
+
+/** What a Status change did, counting the relatives it closed or reopened along with the Task. */
+function statusMessage(task: Task, status: TaskStatus, relatives: number) {
+  const message = `${STATUS_VERB[status]} “${task.title}”`;
+  if (relatives === 0) return message;
+  if (isClosed(status)) {
+    return `${message} with ${String(relatives)} ${relatives === 1 ? "Subtask" : "Subtasks"}`;
+  }
+  return `${message} and ${relatives === 1 ? "its parent" : `${String(relatives)} parents`}`;
 }
 
 /** Add a Task from Quick add. It appears first in its Project, as the server places it. */
@@ -218,5 +242,26 @@ export function useCreateTask(projectId: number) {
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries(sidebarQuery),
+  });
+}
+
+/**
+ * Add a Subtask last under a Task. The server reopens the parent if it was Closed, so every list
+ * and drawer refetches.
+ */
+export function useCreateSubtask(parentId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (title: string) => {
+      const { data } = await api.POST("/api/v1/tasks", {
+        body: { title, parent_id: parentId },
+      });
+      if (!data) {
+        throw new Error("Could not add the subtask.");
+      }
+      return data;
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => refresh(queryClient),
   });
 }

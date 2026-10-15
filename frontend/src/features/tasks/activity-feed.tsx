@@ -7,6 +7,20 @@ import { activityTime, exactTime } from "./activity-time";
 import { PRIORITY, STATUS_VERB } from "./task-properties";
 import { taskActivityQuery, type TaskActivity } from "./tasks";
 
+type StatusChange = Extract<TaskActivity, { kind: "status_changed" }>["data"];
+
+/** A Status change, naming the relative whose change caused it, or the Subtasks it closed too. */
+function describeStatus(change: StatusChange): string {
+  const verb = STATUS_VERB[change.new];
+  const closedSubtasks = change.closed_subtasks;
+  if (change.via_parent) return `${verb} via parent “${change.via_parent}”`;
+  if (change.via_subtask) return `${verb} via Subtask “${change.via_subtask}”`;
+  if (closedSubtasks > 0) {
+    return `${verb} with ${String(closedSubtasks)} ${closedSubtasks === 1 ? "Subtask" : "Subtasks"}`;
+  }
+  return change.blocked_reason ? `${verb}: “${change.blocked_reason}”` : verb;
+}
+
 /** What an event says happened, in the user's words rather than the API's. */
 function describe(event: TaskActivity): string {
   switch (event.kind) {
@@ -16,10 +30,8 @@ function describe(event: TaskActivity): string {
       return `Renamed from “${event.data.old}” to “${event.data.new}”`;
     case "description_edited":
       return "Edited the description";
-    case "status_changed": {
-      const { new: status, blocked_reason: reason } = event.data;
-      return reason ? `${STATUS_VERB[status]}: “${reason}”` : STATUS_VERB[status];
-    }
+    case "status_changed":
+      return describeStatus(event.data);
     case "priority_changed":
       return `Changed priority from ${PRIORITY[event.data.old].short} to ${PRIORITY[event.data.new].short}`;
   }

@@ -51,6 +51,8 @@ const SIDEBAR: Sidebar = {
   items: [WORK, PERSONAL],
   tags: [],
   archived: [],
+  today_count: 0,
+  upcoming_count: 0,
 };
 
 function json(body: unknown, status = 200) {

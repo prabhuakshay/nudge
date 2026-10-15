@@ -1,13 +1,39 @@
 import { arrayMove } from "@dnd-kit/sortable";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import { HUE } from "@/features/projects/project-style";
 import type { PaletteColor } from "@/features/projects/projects";
-import { sidebarQuery, type SidebarTag, type Tag } from "@/features/tasks/tasks";
+import {
+  closedPagesQuery,
+  sidebarQuery,
+  TAG_KEY,
+  type SidebarTag,
+  type Tag,
+  type Task,
+} from "@/features/tasks/tasks";
 
 export type { SidebarTag, Tag };
+
+/** A Tag's open Tasks across Projects as flat rows, a Subtask with its parent's title. */
+export function tagTasksQuery(tagId: number) {
+  return queryOptions({
+    queryKey: [...TAG_KEY, tagId],
+    queryFn: async (): Promise<Task[]> => {
+      const { data } = await api.GET("/api/v1/tasks", { params: { query: { tag: tagId } } });
+      if (!data) {
+        throw new Error("Could not load your tasks.");
+      }
+      return data.items;
+    },
+  });
+}
+
+/** A Tag's Closed Tasks as flat rows, most recently completed first, a page at a time. */
+export function closedTagTasksQuery(tagId: number) {
+  return closedPagesQuery({ tag: tagId });
+}
 
 /** The fields a Tag is created or edited with; a null colour shows it grey. */
 export type TagFields = { name: string; color: PaletteColor | null };

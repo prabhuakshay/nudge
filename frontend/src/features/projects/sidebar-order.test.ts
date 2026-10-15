@@ -29,6 +29,8 @@ const SIDEBAR: Sidebar = {
   items: [WORK, PERSONAL, READING],
   tags: [],
   archived: [],
+  today_count: 0,
+  upcoming_count: 0,
 };
 
 /** The sidebar as `name` lines, Projects in a Folder indented. */

@@ -9,6 +9,7 @@ from ninja import Field, Schema
 from pydantic import StringConstraints, field_validator, model_validator
 
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
+from apps.tasks.schedule import View  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.tasks.schemas.tags import TagName, TagOut  # noqa: TC001 - Pydantic needs it at runtime
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
@@ -64,6 +65,25 @@ class TaskDetailOut(TaskOut):
     )
 
 
+class TaskListQuery(Schema):
+    """Which Tasks to list: one Project's, Person's, Tag's or view's, open or Closed."""
+
+    project: int | None = None
+    person: int | None = None
+    tag: int | None = None
+    view: View | None = Field(default=None, description="Today or Upcoming, picked by date.")
+    closed: bool = Field(default=False, description="List Closed Tasks, a page at a time.")
+    cursor: str | None = Field(default=None, description="From the previous page of Closed ones.")
+
+    @model_validator(mode="after")
+    def _at_most_one_source(self) -> Self:
+        sources = (self.project, self.person, self.tag, self.view)
+        if sum(source is not None for source in sources) > 1:
+            message = "Give only one of project, person, tag or view."
+            raise ValueError(message)
+        return self
+
+
 class TaskListOut(Schema):
     """Tasks for a list, and the cursor for the next page when the list is paginated."""
 
@@ -71,25 +91,6 @@ class TaskListOut(Schema):
     next_cursor: str | None = Field(
         description="Pass as `cursor` to get the next page; null on the last page.",
     )
-
-
-class TaskIn(Schema):
-    """A new Task from Quick add."""
-
-    title: Title
-    project_id: int | None = Field(
-        default=None,
-        description="Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.",
-    )
-    parent_id: int | None = Field(
-        default=None,
-        description="Makes the Task the last Subtask of this one; reopens it if it's Closed.",
-    )
-    tags: list[TagName] = Field(
-        default_factory=list,
-        description="Tag names, in any case; Tags the user doesn't have yet are created.",
-    )
-    tag_ids: list[int] = Field(default_factory=list, description="Tags picked by id.")
 
 
 class TaskDatesIn(Schema):
@@ -129,6 +130,29 @@ class TaskDatesIn(Schema):
             message = "A range can't start after it's due."
             raise ValueError(message)
         return self
+
+
+class TaskIn(Schema):
+    """A new Task from Quick add."""
+
+    title: Title
+    project_id: int | None = Field(
+        default=None,
+        description="Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.",
+    )
+    parent_id: int | None = Field(
+        default=None,
+        description="Makes the Task the last Subtask of this one; reopens it if it's Closed.",
+    )
+    dates: TaskDatesIn | None = Field(
+        default=None,
+        description="Dates the Task from the start, such as today in Today. Not for a Subtask.",
+    )
+    tags: list[TagName] = Field(
+        default_factory=list,
+        description="Tag names, in any case; Tags the user doesn't have yet are created.",
+    )
+    tag_ids: list[int] = Field(default_factory=list, description="Tags picked by id.")
 
 
 class TaskPatchIn(Schema):

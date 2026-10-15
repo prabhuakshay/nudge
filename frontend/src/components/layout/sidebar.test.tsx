@@ -46,4 +46,28 @@ describe("Sidebar", () => {
       "/upcoming",
     ]);
   });
+
+  it("counts Today, Overdue included, and Upcoming", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          inbox: { id: 7, name: "Inbox", open_count: 0 },
+          items: [],
+          archived: [],
+          today_count: 4,
+          upcoming_count: 2,
+        }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <Sidebar user={ada} />
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByRole("link", { name: "Today, 4 open" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Upcoming, 2 open" })).toBeInTheDocument();
+  });
 });

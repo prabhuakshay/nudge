@@ -190,6 +190,7 @@ def _event(task: Task, kind: TaskActivity.Kind, data: dict[str, str]) -> TaskAct
 def create_tagged_task(
     project: Project,
     title: str,
+    dates: services.TaskDates | None = None,
     *,
     tags: Iterable[Tag] = (),
     tag_names: Iterable[str] = (),
@@ -199,10 +200,11 @@ def create_tagged_task(
     It gets `tags` and the owner's Tags called `tag_names`, which are created if they're new.
 
     Raises:
+        MentionError: The title mentions a Person who isn't the owner's.
         ArchivedProjectError: The Project is archived.
     """
     with transaction.atomic():
-        task = services.create_task(project, title)
+        task = services.create_task(project, title, dates)
         task.tags.add(*tags, *tags_named(project.owner, tag_names))
     return task
 

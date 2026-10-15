@@ -529,7 +529,7 @@ export interface paths {
     };
     /**
      * Get the sidebar
-     * @description Return the Inbox, Folders and ungrouped Projects in order, archived Projects, then Tags.
+     * @description Return everything the sidebar lists, with open counts for Projects, Tags and views.
      */
     get: operations["apps_tasks_api_sidebar_sidebar"];
     put?: never;
@@ -632,12 +632,14 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * List a Project's, a Person's or a Tag's Tasks
-     * @description Return the open Tasks of a Project, Person or Tag, or, with `closed`, a page of Closed ones.
+     * List a Project's, a Person's, a Tag's or a view's Tasks
+     * @description Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.
      *
-     *     A Project's Tasks come in manual order. A Person's are the Tasks that mention them, and a
-     *     Tag's the Tasks it's on, flat, in each Project's manual order. Closed Tasks come most recently
-     *     completed first, in pages; open Tasks come all at once.
+     *     A Project's Tasks come in manual order. A Person's are the Tasks that mention them and a
+     *     Tag's the Tasks it's on, flat, in each Project's manual order. Today and Upcoming list flat
+     *     rows by date, with Overdue first in Today; Today's Closed Tasks are those closed today, and
+     *     Upcoming has none. Closed Tasks come most recently completed first, in pages; open Tasks come
+     *     all at once.
      */
     get: operations["apps_tasks_api_tasks_list_tasks"];
     put?: never;
@@ -1245,6 +1247,16 @@ export interface components {
        */
       archived: components["schemas"]["SidebarProjectOut"][];
       /**
+       * Today Count
+       * @description Open Tasks in Today, Overdue ones included.
+       */
+      today_count: number;
+      /**
+       * Upcoming Count
+       * @description Open Tasks in Upcoming.
+       */
+      upcoming_count: number;
+      /**
        * Tags
        * @description In the user's order.
        */
@@ -1351,6 +1363,37 @@ export interface components {
       /** Into Id */
       into_id: number;
     };
+    /**
+     * TaskListQuery
+     * @description Which Tasks to list: one Project's, Person's, Tag's or view's, open or Closed.
+     */
+    TaskListQuery: {
+      /** Project */
+      project?: number | null;
+      /** Person */
+      person?: number | null;
+      /** Tag */
+      tag?: number | null;
+      /** @description Today or Upcoming, picked by date. */
+      view?: components["schemas"]["View"] | null;
+      /**
+       * Closed
+       * @description List Closed Tasks, a page at a time.
+       * @default false
+       */
+      closed: boolean;
+      /**
+       * Cursor
+       * @description From the previous page of Closed ones.
+       */
+      cursor?: string | null;
+    };
+    /**
+     * View
+     * @description A list of Tasks picked by their dates rather than by Project.
+     * @enum {string}
+     */
+    View: "today" | "upcoming";
     /**
      * Priority
      * @description How urgent a Task is; P1 is the most urgent.
@@ -1467,6 +1510,26 @@ export interface components {
       attachment_count: number;
     };
     /**
+     * TaskDatesIn
+     * @description A Task's due date, time and range, all clock times in the user's time zone.
+     *
+     *     Without a time the Task is all-day. A start turns it into a range ending at the due date;
+     *     start and due are then both all-day or both timed. Times have minute precision.
+     */
+    TaskDatesIn: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Due Time */
+      due_time?: string | null;
+      /** Start Date */
+      start_date?: string | null;
+      /** Start Time */
+      start_time?: string | null;
+    };
+    /**
      * TaskIn
      * @description A new Task from Quick add.
      */
@@ -1483,6 +1546,8 @@ export interface components {
        * @description Makes the Task the last Subtask of this one; reopens it if it's Closed.
        */
       parent_id?: number | null;
+      /** @description Dates the Task from the start, such as today in Today. Not for a Subtask. */
+      dates?: components["schemas"]["TaskDatesIn"] | null;
       /**
        * Tags
        * @description Tag names, in any case; Tags the user doesn't have yet are created.
@@ -1628,26 +1693,6 @@ export interface components {
       task: components["schemas"]["TaskDetailOut"];
       /** Affected */
       affected: components["schemas"]["AffectedTaskOut"][];
-    };
-    /**
-     * TaskDatesIn
-     * @description A Task's due date, time and range, all clock times in the user's time zone.
-     *
-     *     Without a time the Task is all-day. A start turns it into a range ending at the due date;
-     *     start and due are then both all-day or both timed. Times have minute precision.
-     */
-    TaskDatesIn: {
-      /**
-       * Due Date
-       * Format: date
-       */
-      due_date: string;
-      /** Due Time */
-      due_time?: string | null;
-      /** Start Date */
-      start_date?: string | null;
-      /** Start Time */
-      start_time?: string | null;
     };
     /**
      * TaskPatchIn
@@ -3233,7 +3278,11 @@ export interface operations {
         project?: number | null;
         person?: number | null;
         tag?: number | null;
+        /** @description Today or Upcoming, picked by date. */
+        view?: components["schemas"]["View"] | null;
+        /** @description List Closed Tasks, a page at a time. */
         closed?: boolean;
+        /** @description From the previous page of Closed ones. */
         cursor?: string | null;
       };
       header?: never;

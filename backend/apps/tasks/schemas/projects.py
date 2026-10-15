@@ -108,4 +108,6 @@ class SidebarOut(Schema):
         Field(description="Folders and ungrouped Projects in the user's order.")
     )
     archived: list[SidebarProjectOut] = Field(description="Archived Projects, by name.")
+    today_count: int = Field(description="Open Tasks in Today, Overdue ones included.")
+    upcoming_count: int = Field(description="Open Tasks in Upcoming.")
     tags: list[SidebarTagOut] = Field(description="In the user's order.")

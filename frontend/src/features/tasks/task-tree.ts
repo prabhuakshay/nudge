@@ -48,6 +48,14 @@ export function treeRows(rows: Task[], collapsed: ReadonlySet<number> = new Set(
   return outline;
 }
 
+/**
+ * Tasks as flat rows, all at the top level, for views that pick Tasks one by one. A Subtask
+ * stands on its own there, with its parent's title as a breadcrumb.
+ */
+export function flatRows(tasks: Task[]): TreeRow[] {
+  return tasks.map((task) => ({ task, level: 0, subtasks: { done: 0, total: 0 } }));
+}
+
 /** The ids of the Tasks that have Subtasks among the rows, which Collapse all folds. */
 export function parentsOf(rows: Task[]): number[] {
   const parents = new Set(rows.map((row) => row.parent_id));

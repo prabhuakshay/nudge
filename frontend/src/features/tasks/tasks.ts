@@ -11,6 +11,7 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { plainMentions } from "@/features/people/mentions";
 
+import type { ScheduleView } from "./schedule";
 import { statusMessage } from "./task-properties";
 import { openTrees } from "./task-tree";
 
@@ -25,9 +26,6 @@ export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 export type Tag = components["schemas"]["TagOut"];
 export type SidebarTag = components["schemas"]["SidebarTagOut"];
-
-/** Where a list's Tasks come from: one Project, or one Tag across Projects. */
-export type TaskSource = { project: number } | { tag: number };
 
 /** The sidebar: the Inbox, Folders and Projects with open counts. Task changes invalidate it. */
 export const sidebarQuery = queryOptions({
@@ -46,14 +44,18 @@ export const TASKS_KEY = ["tasks"] as const;
 /** The key prefix of every open-Task list, so a change can show in all of them at once. */
 export const OPEN_KEY = [...TASKS_KEY, "open"] as const;
 /** The key prefix of every drawer's Task, so a change can show in a parent's Subtasks too. */
-const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
+export const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
+/** The key prefix of every Tag's open-Task list. */
+export const TAG_KEY = [...OPEN_KEY, "tag"] as const;
 
-/** A Project's open Tasks with every Subtask under them, or a Tag's open Tasks, as flat rows. */
-export function openTasksQuery(source: TaskSource) {
+/** A Project's open Tasks with every Subtask under them, as flat rows in manual order. */
+export function openTasksQuery(projectId: number) {
   return queryOptions({
-    queryKey: [...OPEN_KEY, source],
+    queryKey: [...OPEN_KEY, projectId],
     queryFn: async (): Promise<Task[]> => {
-      const { data } = await api.GET("/api/v1/tasks", { params: { query: source } });
+      const { data } = await api.GET("/api/v1/tasks", {
+        params: { query: { project: projectId } },
+      });
       if (!data) {
         throw new Error("Could not load your tasks.");
       }
@@ -62,8 +64,36 @@ export function openTasksQuery(source: TaskSource) {
   });
 }
 
-/** A Project's (with Subtasks) or Tag's Closed Tasks, newest first, a page at a time. */
-export function closedTasksQuery(source: TaskSource) {
+/** Where a list's Tasks come from: a Project, a Tag, or a view that picks them by date. */
+type ListSource = { project: number } | { tag: number } | { view: ScheduleView };
+
+/**
+ * A view's open Tasks as flat rows, in the order the view lists them: Today has Overdue first,
+ * Upcoming goes day by day.
+ */
+export function viewTasksQuery(view: ScheduleView) {
+  return queryOptions({
+    queryKey: [...OPEN_KEY, view],
+    queryFn: async (): Promise<Task[]> => {
+      const { data } = await api.GET("/api/v1/tasks", { params: { query: { view } } });
+      if (!data) {
+        throw new Error("Could not load your tasks.");
+      }
+      return data.items;
+    },
+  });
+}
+
+/** A Project's Closed Tasks with their Subtasks, most recently completed first, a page at a time. */
+export function closedTasksQuery(projectId: number) {
+  return closedPagesQuery({ project: projectId });
+}
+
+/** The Tasks in Today that were closed today, most recently closed first, a page at a time. */
+export const closedTodayQuery = closedPagesQuery({ view: "today" });
+
+/** A list's Closed Tasks, most recently completed first, a page at a time. */
+export function closedPagesQuery(source: ListSource) {
   return infiniteQueryOptions({
     queryKey: [...TASKS_KEY, "closed", source],
     queryFn: async ({ pageParam }) => {
@@ -303,15 +333,20 @@ export function useSetTaskStatus() {
 }
 
 /**
- * Add a Task from Quick add, with the given Tag if any. It appears first in its Project, as the
- * server places it, and first in the Tag's list.
+ * Add a Task from Quick add, with the dates and Tag the view gives it, if any. It appears first
+ * in its Project and its Tag's list, as the server places it, and wherever its dates put it.
  */
-export function useCreateTask(projectId: number, tagId?: number) {
+export function useCreateTask(projectId: number, dates?: DatesIn, tagId?: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (title: string) => {
       const { data } = await api.POST("/api/v1/tasks", {
-        body: { title, project_id: projectId, ...(tagId !== undefined && { tag_ids: [tagId] }) },
+        body: {
+          title,
+          project_id: projectId,
+          ...(dates && { dates }),
+          ...(tagId !== undefined && { tag_ids: [tagId] }),
+        },
       });
       if (!data) {
         throw new Error("Could not add the task.");
@@ -319,15 +354,17 @@ export function useCreateTask(projectId: number, tagId?: number) {
       return data;
     },
     onSuccess: (task) => {
-      const sources: TaskSource[] = [{ project: projectId }];
-      if (tagId !== undefined) sources.push({ tag: tagId });
-      for (const source of sources) {
-        queryClient.setQueryData(openTasksQuery(source).queryKey, (tasks) =>
-          tasks ? [task, ...tasks] : [task],
-        );
-      }
+      queryClient.setQueryData(openTasksQuery(projectId).queryKey, (tasks) =>
+        tasks ? [task, ...tasks] : [task],
+      );
     },
     onError: (error) => toast.error(error.message),
-    onSettled: () => queryClient.invalidateQueries(sidebarQuery),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "today"] }),
+        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "upcoming"] }),
+        queryClient.invalidateQueries({ queryKey: TAG_KEY }),
+        queryClient.invalidateQueries(sidebarQuery),
+      ]),
   });
 }

@@ -11,18 +11,12 @@ import { ClosedGroup, Group, TaskTableHeader } from "@/features/tasks/task-list"
 import { isClosed } from "@/features/tasks/task-properties";
 import { TreeRows, type RowContext, type ToggleStatus } from "@/features/tasks/task-row";
 import type { TreeRow } from "@/features/tasks/task-tree";
-import {
-  closedTasksQuery,
-  openTasksQuery,
-  sidebarQuery,
-  useSetTaskStatus,
-  type Task,
-} from "@/features/tasks/tasks";
+import { sidebarQuery, useSetTaskStatus, type Task } from "@/features/tasks/tasks";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 import { groupByProject } from "./group-by-project";
 import { TagHeader } from "./tag-header";
-import type { SidebarTag } from "./tags";
+import { closedTagTasksQuery, tagTasksQuery, type SidebarTag } from "./tags";
 
 /** A Tag's list shows every Task flat, a Subtask with its parent's title rather than nested. */
 function flatRows(tasks: Task[]): TreeRow[] {
@@ -38,9 +32,9 @@ const NO_COLLAPSED: ReadonlySet<number> = new Set();
  */
 export function TagTaskList({ tag }: { tag: SidebarTag }) {
   const { data: sidebar } = useQuery(sidebarQuery);
-  const { data: open = [] } = useQuery(openTasksQuery({ tag: tag.id }));
+  const { data: open = [] } = useQuery(tagTasksQuery(tag.id));
   const [showClosed, setShowClosed] = useState(false);
-  const closed = useInfiniteQuery({ ...closedTasksQuery({ tag: tag.id }), enabled: showClosed });
+  const closed = useInfiniteQuery({ ...closedTagTasksQuery(tag.id), enabled: showClosed });
   const closedTasks = useMemo(
     () => (showClosed ? (closed.data?.pages.flatMap((page) => page.items) ?? []) : []),
     [showClosed, closed.data],

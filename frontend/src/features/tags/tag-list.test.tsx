@@ -18,7 +18,7 @@ import { TagTaskList } from "./tag-task-list";
 
 const [WORK_TAG] = TAGS as [(typeof TAGS)[number]];
 
-/** A stand-in server with the given open Tasks for the Tag, which records Task creation. */
+/** A stand-in server with the open Tasks for the Tag, to which a created Task is added. */
 function mockApi(open: Task[]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = input as Request;
@@ -28,7 +28,9 @@ function mockApi(open: Task[]) {
     }
     if (request.method === "POST") {
       const body = (await request.clone().json()) as { title: string };
-      return json(makeTask({ id: 99, title: body.title, project_id: INBOX.id }), 201);
+      const created = makeTask({ id: 99, title: body.title, project_id: INBOX.id });
+      open.unshift(created);
+      return json(created, 201);
     }
     return json({ items: open, next_cursor: null });
   });

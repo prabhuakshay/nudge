@@ -1,30 +1,33 @@
+import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarCheck } from "lucide-react";
 
-import { EmptyState } from "@/components/layout/empty-state";
-import { PageHeader } from "@/components/layout/page-header";
+import { sessionQuery } from "@/features/auth/session";
+import { validateTaskSearch } from "@/features/tasks/open-task";
+import { ScheduleList } from "@/features/tasks/schedule-list";
+import { sidebarQuery } from "@/features/tasks/tasks";
 import { greetingFor } from "@/features/today/greeting";
 
 export const Route = createFileRoute("/_app/")({
+  validateSearch: validateTaskSearch,
+  loader: ({ context }) => context.queryClient.query(sidebarQuery),
   component: TodayPage,
 });
 
 function TodayPage() {
-  const { user } = Route.useRouteContext();
-  const now = new Date();
+  const { user: signedIn } = Route.useRouteContext();
+  const { data: session } = useQuery(sessionQuery);
+  // The cached session follows a time zone changed in Settings; the route context doesn't.
+  const user = session ?? signedIn;
+  const { data: sidebar } = useSuspenseQuery(sidebarQuery);
+  const greeting = greetingFor(new Date());
   const firstName = user.full_name.trim().split(/\s+/)[0];
 
   return (
-    <>
-      <PageHeader
-        title="Today"
-        description={firstName ? `${greetingFor(now)}, ${firstName}.` : `${greetingFor(now)}.`}
-      />
-      <EmptyState
-        icon={CalendarCheck}
-        title="Nothing due today"
-        description="Tasks due today and anything overdue will show up here."
-      />
-    </>
+    <ScheduleList
+      view="today"
+      inbox={sidebar.inbox}
+      timeZone={user.time_zone}
+      description={firstName ? `${greeting}, ${firstName}.` : `${greeting}.`}
+    />
   );
 }

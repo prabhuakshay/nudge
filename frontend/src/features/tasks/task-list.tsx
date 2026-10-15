@@ -5,27 +5,16 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ArchivedNotice } from "@/features/projects/archived-notice";
 import { ProjectHeader } from "@/features/projects/project-header";
-import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { ExpandCollapse } from "./expand-collapse";
 import { useOpenTask } from "./open-task";
 import { QuickAddCard } from "./quick-add-card";
 import { TaskDetail } from "./task-detail";
-import { isClosed } from "./task-properties";
-import {
-  GRID,
-  TreeRows,
-  type RowContext,
-  type ToggleCollapsed,
-  type ToggleStatus,
-} from "./task-row";
+import { useRowContext } from "./row-context";
+import { GRID, TreeRows, type RowContext, type ToggleCollapsed } from "./task-row";
 import { parentsOf, treeRows, treesWhere, type TreeRow } from "./task-tree";
-import { closedTasksQuery, openTasksQuery, useSetTaskStatus, type SidebarProject } from "./tasks";
-
-/** How far each level of Subtasks steps in, in pixels; nesting eats width, so less on phones. */
-const INDENT = 22;
-const PHONE_INDENT = 20;
+import { closedTasksQuery, openTasksQuery, type SidebarProject } from "./tasks";
 
 /**
  * A Project's Tasks as a table: the page header, Quick add, then the pinned Task trees, the other
@@ -35,12 +24,12 @@ const PHONE_INDENT = 20;
  * read-only: a notice replaces Quick add and every control that changes a Task is disabled.
  */
 export function TaskList({ project }: { project: SidebarProject }) {
-  const { data: open = [] } = useQuery(openTasksQuery({ project: project.id }));
+  const { data: open = [] } = useQuery(openTasksQuery(project.id));
   const pinned = useMemo(() => treesWhere(open, (root) => root.pinned_at !== null), [open]);
   const unpinned = useMemo(() => treesWhere(open, (root) => root.pinned_at === null), [open]);
   const [showClosed, setShowClosed] = useState(false);
   const closed = useInfiniteQuery({
-    ...closedTasksQuery({ project: project.id }),
+    ...closedTasksQuery(project.id),
     enabled: showClosed,
   });
   const closedTasks = useMemo(
@@ -59,16 +48,6 @@ export function TaskList({ project }: { project: SidebarProject }) {
     [pinned, unpinned, closedTasks],
   );
   const { openTaskId: openId, setOpenTask: setOpenId } = useOpenTask();
-  const indent = useMediaQuery("(min-width: 1024px)") ? INDENT : PHONE_INDENT;
-  const touch = useMediaQuery("(pointer: coarse)");
-  const { mutate: setStatus } = useSetTaskStatus();
-  // Stable, so memoized rows don't re-render when the list does.
-  const toggle = useCallback<ToggleStatus>(
-    (task) => {
-      setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
-    },
-    [setStatus],
-  );
   const toggleCollapsed = useCallback<ToggleCollapsed>((taskId) => {
     setCollapsed((current) => {
       const next = new Set(current);
@@ -76,18 +55,11 @@ export function TaskList({ project }: { project: SidebarProject }) {
       return next;
     });
   }, []);
-  const context = useMemo<RowContext>(
-    () => ({
-      openId,
-      collapsed,
-      indent,
-      contextMenu: !touch && !project.is_archived,
-      onToggle: toggle,
-      onOpen: setOpenId,
-      onToggleCollapsed: toggleCollapsed,
-    }),
-    [openId, collapsed, indent, touch, project.is_archived, toggle, toggleCollapsed, setOpenId],
-  );
+  const context = useRowContext({
+    collapsed,
+    onToggleCollapsed: toggleCollapsed,
+    readOnly: project.is_archived,
+  });
 
   return (
     // `data-wide` lets the app shell drop its reading width for this table.
@@ -204,11 +176,14 @@ export function TaskTableHeader() {
 export function Group({
   icon,
   label,
+  hint,
   count,
   children,
 }: {
   icon: ReactNode;
   label: string;
+  /** Quieter text after the label, such as a weekday's date. */
+  hint?: string | null;
   count: number;
   children: ReactNode;
 }) {
@@ -217,6 +192,7 @@ export function Group({
       <h2 className="flex h-9 items-center gap-2 border-b border-border/70 bg-surface-muted/50 px-3 text-xs font-semibold text-foreground">
         {icon}
         {label}
+        {hint && <span className="font-normal text-muted-foreground">{hint}</span>}
         <span className="rounded-full bg-surface px-1.5 py-px text-[11px] font-medium text-muted-foreground tabular-nums ring-1 ring-border">
           {count}
         </span>
@@ -228,12 +204,14 @@ export function Group({
 
 /** Closed Tasks stay out of the way, and aren't fetched, until the group is opened. */
 export function ClosedGroup({
+  label = "Closed",
   query: closed,
   rows,
   expanded,
   onExpandedChange,
   context,
 }: {
+  label?: string;
   query: UseInfiniteQueryResult;
   rows: TreeRow[];
   expanded: boolean;
@@ -241,7 +219,7 @@ export function ClosedGroup({
   context: RowContext;
 }) {
   return (
-    <section aria-label="Closed">
+    <section aria-label={label}>
       <button
         type="button"
         aria-expanded={expanded}
@@ -259,7 +237,7 @@ export function ClosedGroup({
           <ChevronRight className="size-4" aria-hidden />
         )}
         <CircleCheck className="size-3.5 text-success" aria-hidden />
-        Closed
+        {label}
       </button>
       {expanded && (
         <div className="border-t border-border/60 pb-1">

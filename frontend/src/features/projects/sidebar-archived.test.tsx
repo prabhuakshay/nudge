@@ -30,6 +30,8 @@ function sidebar(archived: SidebarProject[]): Sidebar {
     items: [],
     archived,
     tags: [],
+    today_count: 0,
+    upcoming_count: 0,
   };
 }
 

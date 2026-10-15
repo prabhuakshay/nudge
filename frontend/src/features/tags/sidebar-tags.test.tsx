@@ -27,7 +27,14 @@ vi.mock("@tanstack/react-router", () => ({
 
 const WORK_TAG = { id: 21, name: "work", color: "teal", open_count: 3, task_count: 5 } as const;
 const HOME_TAG = { id: 22, name: "home", color: null, open_count: 0, task_count: 1 };
-const SIDEBAR: Sidebar = { inbox: INBOX, items: [], archived: [], tags: [WORK_TAG, HOME_TAG] };
+const SIDEBAR: Sidebar = {
+  inbox: INBOX,
+  items: [],
+  archived: [],
+  tags: [WORK_TAG, HOME_TAG],
+  today_count: 0,
+  upcoming_count: 0,
+};
 
 function json(body: unknown, status = 200) {
   return Promise.resolve(

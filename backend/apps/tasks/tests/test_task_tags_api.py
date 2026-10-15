@@ -215,11 +215,11 @@ def test_tag_view_cannot_reach_another_users_tag(client: Client, grace: User) ->
 
 
 @pytest.mark.django_db
-def test_listing_needs_a_project_a_person_or_a_tag(client: Client) -> None:
+def test_listing_needs_a_project_a_person_a_tag_or_a_view(client: Client) -> None:
     response = client.get("/api/v1/tasks")
 
     assert response.status_code == 422
-    assert response.json() == {"detail": "Give a project, a person or a tag."}
+    assert response.json() == {"detail": "Give one of project, person, tag or view."}
 
 
 @pytest.mark.django_db

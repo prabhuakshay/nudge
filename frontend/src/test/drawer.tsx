@@ -31,6 +31,15 @@ export const WORK: SidebarProject = {
   is_archived: false,
 };
 
+export const GARDEN: SidebarProject = {
+  ...WORK,
+  id: 9,
+  name: "Garden",
+  color: "green",
+  icon: "leaf",
+  is_archived: true,
+};
+
 export const task = makeTask;
 
 function json(body: unknown, status = 200) {
@@ -56,7 +65,7 @@ export function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
     const request = input as Request;
     const url = new URL(request.url);
     if (url.pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [WORK] });
+      return json({ inbox: INBOX, items: [WORK], archived: [GARDEN] });
     }
     if (url.pathname.endsWith("/activity")) {
       return json({ items: activity, next_cursor: null, count: activity.length });
@@ -101,7 +110,7 @@ export async function patches(fetchSpy: ReturnType<typeof mockApi>) {
   );
 }
 
-export function renderList({ wide = true } = {}) {
+export function renderList({ wide = true, project = INBOX } = {}) {
   vi.stubGlobal("matchMedia", (query: string) => ({
     media: query,
     matches: wide,
@@ -111,7 +120,7 @@ export function renderList({ wide = true } = {}) {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <TooltipProvider>
-        <TaskList project={INBOX} />
+        <TaskList project={project} />
         <Toaster />
       </TooltipProvider>
     </QueryClientProvider>,

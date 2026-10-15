@@ -5,7 +5,10 @@ import { ProjectIcon } from "./project-icon";
 import { HUE } from "./project-style";
 import type { SidebarProject } from "./projects";
 
-/** A Project's page title: its icon on a tile of its colour, its name and its open count. */
+/**
+ * A Project's page title: its icon on a tile of its colour, its name, and its open count or that
+ * it is archived.
+ */
 export function ProjectHeader({ project }: { project: SidebarProject }) {
   return (
     <header className="mb-4 flex items-center gap-2.5 sm:gap-3">
@@ -21,7 +24,7 @@ export function ProjectHeader({ project }: { project: SidebarProject }) {
         {project.name}
       </h1>
       <Badge variant="secondary" className="shrink-0 tabular-nums">
-        {project.open_count} open
+        {project.is_archived ? "Archived" : `${String(project.open_count)} open`}
       </Badge>
     </header>
   );

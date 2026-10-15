@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { FolderX } from "lucide-react";
 
 import { EmptyState } from "@/components/layout/empty-state";
-import { allProjects } from "@/features/projects/projects";
+import { findProject } from "@/features/projects/projects";
 import { TaskList } from "@/features/tasks/task-list";
 import { sidebarQuery } from "@/features/tasks/tasks";
 
@@ -15,7 +15,7 @@ export const Route = createFileRoute("/_app/projects/$projectId")({
 function ProjectPage() {
   const { projectId } = Route.useParams();
   const { data } = useSuspenseQuery(sidebarQuery);
-  const project = allProjects(data).find((candidate) => String(candidate.id) === projectId);
+  const project = findProject(data, Number(projectId));
   if (!project) {
     return (
       <EmptyState

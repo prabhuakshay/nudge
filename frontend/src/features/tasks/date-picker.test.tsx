@@ -29,7 +29,7 @@ function mockApi(saved: TaskDetail) {
       Object.assign(saved, dates ?? {});
       return json({ task: saved, affected: [] });
     }
-    if (url.pathname.endsWith("/sidebar")) return json({ inbox: INBOX, items: [] });
+    if (url.pathname.endsWith("/sidebar")) return json({ inbox: INBOX, items: [], archived: [] });
     if (url.pathname.endsWith("/activity")) {
       return json({ items: [], next_cursor: null, count: 0 });
     }

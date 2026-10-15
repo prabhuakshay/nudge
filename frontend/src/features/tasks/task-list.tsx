@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, CircleCheck, ListTodo } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ArchivedNotice } from "@/features/projects/archived-notice";
 import { ProjectHeader } from "@/features/projects/project-header";
 import { cn } from "@/lib/utils";
 
@@ -21,7 +22,8 @@ import {
 /**
  * A Project's Tasks as a table: the page header, Quick add, then the open Tasks and a collapsed
  * Closed group. On phones the table collapses into stacked rows. Clicking a row opens the Task in
- * the drawer.
+ * the drawer. An archived Project's list is read-only: a notice replaces Quick add and every
+ * control that changes a Task is disabled.
  */
 export function TaskList({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));
@@ -50,69 +52,76 @@ export function TaskList({ project }: { project: SidebarProject }) {
     <div data-wide className="mx-auto w-full max-w-6xl">
       <ProjectHeader project={project} />
 
-      <QuickAddCard projectId={project.id} />
+      {project.is_archived ? (
+        <ArchivedNotice project={project} />
+      ) : (
+        <QuickAddCard projectId={project.id} />
+      )}
 
-      <div
-        role="treegrid"
-        aria-label={`${project.name} tasks`}
-        className="rounded-xl border border-border bg-surface shadow-sm"
-      >
+      {/* A disabled fieldset disables every control inside, while rows still open the drawer. */}
+      <fieldset disabled={project.is_archived} className="min-w-0">
         <div
-          role="row"
-          className={cn(
-            GRID,
-            "sticky top-14 z-10 hidden h-9 items-center rounded-t-xl border-b border-border bg-surface-muted/95 pr-2 pl-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur",
-          )}
+          role="treegrid"
+          aria-label={`${project.name} tasks`}
+          className="rounded-xl border border-border bg-surface shadow-sm"
         >
-          <span role="columnheader" className="pl-7">
-            Title
-          </span>
-          <span role="columnheader" className="px-2">
-            Status
-          </span>
-          <span role="columnheader" className="px-2">
-            Priority
-          </span>
-          <span role="columnheader" className="px-2">
-            Due
-          </span>
-          <span role="columnheader" className="px-2 text-right">
-            Activity
-          </span>
+          <div
+            role="row"
+            className={cn(
+              GRID,
+              "sticky top-14 z-10 hidden h-9 items-center rounded-t-xl border-b border-border bg-surface-muted/95 pr-2 pl-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur",
+            )}
+          >
+            <span role="columnheader" className="pl-7">
+              Title
+            </span>
+            <span role="columnheader" className="px-2">
+              Status
+            </span>
+            <span role="columnheader" className="px-2">
+              Priority
+            </span>
+            <span role="columnheader" className="px-2">
+              Due
+            </span>
+            <span role="columnheader" className="px-2 text-right">
+              Activity
+            </span>
+          </div>
+
+          <Group
+            icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
+            label="Tasks"
+            count={open.length}
+          >
+            {open.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                Nothing left here. Add a task above.
+              </p>
+            ) : (
+              open.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  selected={task.id === openId}
+                  onToggle={toggle}
+                  onOpen={setOpenId}
+                />
+              ))
+            )}
+          </Group>
+
+          <ClosedGroup
+            query={closed}
+            tasks={closedTasks}
+            expanded={showClosed}
+            onExpandedChange={setShowClosed}
+            openId={openId}
+            onToggle={toggle}
+            onOpen={setOpenId}
+          />
         </div>
-
-        <Group
-          icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
-          label="Tasks"
-          count={open.length}
-        >
-          {open.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Nothing left here. Add a task above.
-            </p>
-          ) : (
-            open.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                selected={task.id === openId}
-                onToggle={toggle}
-                onOpen={setOpenId}
-              />
-            ))
-          )}
-        </Group>
-
-        <ClosedGroup
-          query={closed}
-          tasks={closedTasks}
-          expanded={showClosed}
-          onExpandedChange={setShowClosed}
-          openId={openId}
-          onToggle={toggle}
-          onOpen={setOpenId}
-        />
-      </div>
+      </fieldset>
 
       <TaskDetail
         taskId={openId}

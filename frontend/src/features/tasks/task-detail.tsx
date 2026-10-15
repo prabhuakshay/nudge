@@ -7,7 +7,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ProjectIcon } from "@/features/projects/project-icon";
-import { allProjects } from "@/features/projects/projects";
+import { findProject } from "@/features/projects/projects";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
@@ -128,9 +128,8 @@ function isEditing(target: EventTarget | null) {
 function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps & { task: Task }) {
   const { mutate: setStatus } = useSetTaskStatus();
   const { data: sidebar } = useQuery(sidebarQuery);
-  const taskProject =
-    (sidebar && allProjects(sidebar).find((candidate) => candidate.id === task.project_id)) ??
-    project;
+  const taskProject = (sidebar && findProject(sidebar, task.project_id)) ?? project;
+  const readOnly = taskProject.is_archived;
   const [tab, setTab] = useState("details");
   const { data: activity } = useInfiniteQuery(taskActivityQuery(task.id));
   const activityCount = activity?.pages[0]?.count;
@@ -187,7 +186,8 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
 
       {/* Scrolling the body mustn't drag the bottom sheet. */}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-vaul-no-drag>
-        <div className="px-5 pt-5 sm:px-6">
+        {/* A disabled fieldset makes an archived Project's Task read-only in one place. */}
+        <fieldset disabled={readOnly} className="min-w-0 px-5 pt-5 sm:px-6">
           <div className="flex items-start gap-3">
             <TaskCheckbox
               task={task}
@@ -200,7 +200,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
           </div>
           <PropertyChips task={task} project={taskProject} />
           {task.status === "blocked" && <BlockedReasonField task={task} className="mt-4" />}
-        </div>
+        </fieldset>
 
         <Tabs value={tab} onValueChange={setTab} className="mt-5">
           <div className="sticky top-0 z-10 bg-surface px-5 sm:px-6">
@@ -215,19 +215,21 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
             </TabsList>
           </div>
 
-          <TabsContent value="details" className="space-y-7 px-5 py-5 sm:px-6">
-            <section aria-labelledby="task-description">
-              <h3
-                id="task-description"
-                className="mb-2 text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
-              >
-                Description
-              </h3>
-              <div className="rounded-xl border border-border bg-surface-muted/40 px-3.5 py-3">
-                <DescriptionField task={task} />
-              </div>
-            </section>
-            <Attachments taskId={task.id} />
+          <TabsContent value="details" className="px-5 py-5 sm:px-6">
+            <fieldset disabled={readOnly} className="min-w-0 space-y-7">
+              <section aria-labelledby="task-description">
+                <h3
+                  id="task-description"
+                  className="mb-2 text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+                >
+                  Description
+                </h3>
+                <div className="rounded-xl border border-border bg-surface-muted/40 px-3.5 py-3">
+                  <DescriptionField task={task} />
+                </div>
+              </section>
+              <Attachments taskId={task.id} />
+            </fieldset>
           </TabsContent>
 
           <TabsContent value="activity" className="px-5 py-5 sm:px-6">

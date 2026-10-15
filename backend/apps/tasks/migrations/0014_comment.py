@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('tasks', '0012_people_and_mentions'),
+        ('tasks', '0013_reminders'),
     ]
 
     operations = [

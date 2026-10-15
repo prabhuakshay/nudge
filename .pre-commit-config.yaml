@@ -72,7 +72,7 @@ repos:
         name: Django migrations are up to date
         entry: env NUDGE_DEBUG=true uv run --directory backend python manage.py makemigrations --check --dry-run
         language: system
-        files: ^backend/apps/.*/models\.py$
+        files: ^backend/apps/.*/models(\.py|/.*\.py)$
         pass_filenames: false
 
       - id: openapi-schema

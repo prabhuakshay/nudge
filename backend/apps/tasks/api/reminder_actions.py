@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 from ninja import Router, Status
 
-from apps.accounts.schemas import ErrorOut
+from apps.core.auth import signed_in_user
+from apps.core.schemas import ErrorOut
 from apps.tasks import reminder_actions
-from apps.tasks.api import signed_in_user
 from apps.tasks.api.tasks import task_change_out
 from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.repeat import RepeatRuleError

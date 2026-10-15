@@ -8,7 +8,7 @@ from django.conf import settings
 from ninja import Router, Status
 
 from apps.accounts.models import User
-from apps.accounts.schemas import ErrorOut
+from apps.core.schemas import ErrorOut
 from apps.notifications import services
 from apps.notifications.schemas import (
     NotificationListOut,

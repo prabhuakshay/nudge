@@ -9,9 +9,9 @@ from typing import TYPE_CHECKING
 
 from ninja import Router, Status
 
-from apps.accounts.schemas import ErrorOut
+from apps.core.auth import signed_in_user
+from apps.core.schemas import ErrorOut
 from apps.tasks import project_trash, purge, trash
-from apps.tasks.api import signed_in_user
 from apps.tasks.schemas.projects import ProjectOut
 from apps.tasks.schemas.tasks import TaskOut
 from apps.tasks.schemas.trash import (

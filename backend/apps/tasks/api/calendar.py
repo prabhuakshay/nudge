@@ -13,9 +13,9 @@ from django.http import HttpResponse
 from ninja import Router, Status
 from ninja.throttling import AnonRateThrottle
 
-from apps.accounts.schemas import ErrorOut
+from apps.core.auth import signed_in_user
+from apps.core.schemas import ErrorOut
 from apps.tasks import calendar_feed
-from apps.tasks.api import signed_in_user
 from apps.tasks.schemas.calendar import CalendarFeedOut
 
 if TYPE_CHECKING:

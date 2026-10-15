@@ -6,9 +6,9 @@ from typing import TYPE_CHECKING
 
 from ninja import Router
 
+from apps.core.auth import signed_in_user
 from apps.core.palette import PaletteColor
 from apps.tasks import people, projects, schedule, tags
-from apps.tasks.api import signed_in_user
 from apps.tasks.models import Folder, Project
 from apps.tasks.schemas.people import PersonOut
 from apps.tasks.schemas.projects import SidebarFolderOut, SidebarOut, SidebarProjectOut

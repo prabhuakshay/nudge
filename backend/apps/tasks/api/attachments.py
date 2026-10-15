@@ -12,9 +12,9 @@ from typing import TYPE_CHECKING
 from django.http import FileResponse
 from ninja import File, Router, Status, UploadedFile
 
-from apps.accounts.schemas import ErrorOut
+from apps.core.auth import signed_in_user
+from apps.core.schemas import ErrorOut
 from apps.tasks import attachments, services
-from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.schemas.attachments import AttachmentOut
 

@@ -64,9 +64,3 @@ class ShortcutsIn(Schema):
     """Whether the user wants single-key shortcuts on."""
 
     single_key: bool
-
-
-class ErrorOut(Schema):
-    """A human-readable error message."""
-
-    detail: str

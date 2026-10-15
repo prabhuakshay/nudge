@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from ninja import Query, Router
 
-from apps.tasks.api import signed_in_user
+from apps.core.auth import signed_in_user
 from apps.tasks.schemas.search import TaskSearchOut, TaskSearchQuery
 from apps.tasks.schemas.tasks import TaskOut
 from apps.tasks.search import search_tasks

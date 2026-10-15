@@ -7,6 +7,12 @@ from typing import Literal
 from ninja import Schema
 
 
+class ErrorOut(Schema):
+    """A human-readable error message."""
+
+    detail: str
+
+
 class HealthOut(Schema):
     """Service health, as reported to load balancers and uptime monitors."""
 

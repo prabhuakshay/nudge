@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 
 import { Logo } from "@/components/brand/logo";
 import type { User } from "@/features/auth/session";
+import { SettingsDialog } from "@/features/settings/settings-dialog";
+import { ThemeToggle } from "@/features/theme/theme-toggle";
 
 import { Clock } from "./clock";
 import { NAV_ITEMS } from "./nav-items";
@@ -12,7 +14,10 @@ export function Sidebar({ user }: { user: User }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface lg:flex">
       <div className="flex flex-col gap-1 px-4 pt-5 pb-5">
-        <Logo />
+        <div className="flex items-center justify-between">
+          <Logo />
+          <ThemeToggle />
+        </div>
         <Clock />
       </div>
 
@@ -41,21 +46,21 @@ export function Sidebar({ user }: { user: User }) {
       </section>
 
       <div className="mt-auto border-t border-border p-2">
-        <Link
-          to="/account"
-          className="group flex items-center gap-2.5 rounded-md px-2 py-1.5 transition-colors hover:bg-surface-muted data-[status=active]:bg-primary-soft"
-        >
-          <UserAvatar
-            user={user}
-            className="group-data-[status=active]:bg-primary group-data-[status=active]:text-primary-foreground"
-          />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold">{user.full_name || user.email}</p>
-            {user.full_name && (
-              <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-            )}
-          </div>
-        </Link>
+        <SettingsDialog user={user}>
+          <button
+            type="button"
+            aria-label="Settings"
+            className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-surface-muted"
+          >
+            <UserAvatar user={user} />
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{user.full_name || user.email}</p>
+              {user.full_name && (
+                <p className="truncate text-xs text-muted-foreground">{user.email}</p>
+              )}
+            </div>
+          </button>
+        </SettingsDialog>
       </div>
     </aside>
   );

@@ -55,6 +55,18 @@ describe("LoginForm", () => {
     expect(screen.getByLabelText("Email")).toHaveAttribute("aria-invalid", "true");
   });
 
+  it("clears the error once the user edits a field", async () => {
+    mockFetch(401, { detail: "That email and password don't match an account." });
+    renderWithQueryClient(<LoginForm onSuccess={vi.fn()} />);
+    await signIn("ada@example.com", "wrong");
+    await screen.findByRole("alert");
+
+    await userEvent.setup().type(screen.getByLabelText("Password"), "!");
+
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Email")).not.toHaveAttribute("aria-invalid");
+  });
+
   it("asks the user to wait when rate limited", async () => {
     mockFetch(429, { detail: "Too many requests" });
     renderWithQueryClient(<LoginForm onSuccess={vi.fn()} />);

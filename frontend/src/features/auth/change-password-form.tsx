@@ -2,7 +2,7 @@ import { LoaderCircle } from "lucide-react";
 import { useId, useState, type SubmitEvent } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 
 import { PasswordChangeError, useChangePassword } from "./session";
@@ -60,10 +60,9 @@ export function ChangePasswordForm({ onSuccess, onCancel }: ChangePasswordFormPr
       )}
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={currentId}>Current password</Label>
-        <Input
+        <PasswordInput
           id={currentId}
           name="current_password"
-          type="password"
           autoComplete="current-password"
           required
           {...invalidProps}
@@ -71,10 +70,9 @@ export function ChangePasswordForm({ onSuccess, onCancel }: ChangePasswordFormPr
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={newId}>New password</Label>
-        <Input
+        <PasswordInput
           id={newId}
           name="new_password"
-          type="password"
           autoComplete="new-password"
           required
           {...invalidProps}
@@ -82,10 +80,9 @@ export function ChangePasswordForm({ onSuccess, onCancel }: ChangePasswordFormPr
       </div>
       <div className="flex flex-col gap-1.5">
         <Label htmlFor={confirmId}>Confirm new password</Label>
-        <Input
+        <PasswordInput
           id={confirmId}
           name="confirm_password"
-          type="password"
           autoComplete="new-password"
           required
           {...invalidProps}

@@ -5,7 +5,12 @@ import userEvent from "@testing-library/user-event";
 import { EditNameForm } from "./edit-name-form";
 import { sessionQuery } from "./session";
 
-const ada = { id: 1, email: "ada@example.com", full_name: "Ada Lovelace" };
+const ada = {
+  id: 1,
+  email: "ada@example.com",
+  full_name: "Ada Lovelace",
+  time_zone: "Europe/London",
+};
 
 function renderForm({ onSuccess = vi.fn(), onCancel = vi.fn() } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });

@@ -5,7 +5,12 @@ from __future__ import annotations
 import pytest
 
 from apps.accounts.models import User
-from apps.accounts.services import PasswordChangeError, change_password, update_profile
+from apps.accounts.services import (
+    PasswordChangeError,
+    change_password,
+    set_time_zone,
+    update_profile,
+)
 
 PASSWORD = "an-unusual-passphrase"
 
@@ -44,3 +49,11 @@ def test_update_profile_saves_a_trimmed_name(ada: User) -> None:
 
     ada.refresh_from_db()
     assert ada.full_name == "Augusta Ada King"
+
+
+@pytest.mark.django_db
+def test_set_time_zone_saves_the_zone(ada: User) -> None:
+    set_time_zone(ada, "Europe/London")
+
+    ada.refresh_from_db()
+    assert ada.time_zone == "Europe/London"

@@ -124,6 +124,26 @@ export interface paths {
     patch: operations["apps_accounts_api_profile"];
     trace?: never;
   };
+  "/api/v1/auth/time-zone": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Set time zone
+     * @description Change the signed-in user's time zone and return the updated user.
+     */
+    put: operations["apps_accounts_api_time_zone"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/notifications": {
     parameters: {
       query?: never;
@@ -372,6 +392,11 @@ export interface components {
       email: string;
       /** Full Name */
       full_name: string;
+      /**
+       * Time Zone
+       * @description IANA time zone name, or empty when not set yet.
+       */
+      time_zone: string;
     };
     /**
      * ErrorOut
@@ -408,6 +433,17 @@ export interface components {
     ProfileIn: {
       /** Full Name */
       full_name: string;
+    };
+    /**
+     * TimeZoneIn
+     * @description The user's new time zone.
+     */
+    TimeZoneIn: {
+      /**
+       * Time Zone
+       * @description IANA time zone name, such as Europe/London.
+       */
+      time_zone: string;
     };
     /**
      * NotificationListOut
@@ -732,6 +768,30 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ProfileIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserOut"];
+        };
+      };
+    };
+  };
+  apps_accounts_api_time_zone: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TimeZoneIn"];
       };
     };
     responses: {

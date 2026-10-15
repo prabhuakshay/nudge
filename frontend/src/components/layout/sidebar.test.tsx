@@ -13,7 +13,12 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/features/settings/settings-dialog", () => ({ SettingsDialog: () => null }));
 
-const ada = { id: 1, email: "ada@example.com", full_name: "Ada Lovelace" };
+const ada = {
+  id: 1,
+  email: "ada@example.com",
+  full_name: "Ada Lovelace",
+  time_zone: "Europe/London",
+};
 
 describe("Sidebar", () => {
   it("lists the Inbox first, with its open Task count", async () => {

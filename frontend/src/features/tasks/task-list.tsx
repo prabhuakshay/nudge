@@ -1,11 +1,13 @@
 import { useInfiniteQuery, useQuery, type UseInfiniteQueryResult } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, CircleCheck, ListTodo } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleCheck, ListTodo, Pin } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ProjectHeader } from "@/features/projects/project-header";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
+import { useOpenTask } from "./open-task";
 import { QuickAddCard } from "./quick-add-card";
 import { TaskDetail } from "./task-detail";
 import { GRID, TaskRow, type OpenTask, type ToggleStatus } from "./task-row";
@@ -19,12 +21,14 @@ import {
 } from "./tasks";
 
 /**
- * A Project's Tasks as a table: the page header, Quick add, then the open Tasks and a collapsed
- * Closed group. On phones the table collapses into stacked rows. Clicking a row opens the Task in
- * the drawer.
+ * A Project's Tasks as a table: the page header, Quick add, then the pinned Tasks, the other open
+ * Tasks and a collapsed Closed group. On phones the table collapses into stacked rows. Clicking a
+ * row opens the Task in the drawer, and the URL's `?task=` follows the open Task.
  */
 export function TaskList({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));
+  const pinned = useMemo(() => open.filter((task) => task.pinned_at !== null), [open]);
+  const unpinned = useMemo(() => open.filter((task) => task.pinned_at === null), [open]);
   const [showClosed, setShowClosed] = useState(false);
   const closed = useInfiniteQuery({ ...closedTasksQuery(project.id), enabled: showClosed });
   const closedTasks = useMemo(
@@ -32,10 +36,11 @@ export function TaskList({ project }: { project: SidebarProject }) {
     [showClosed, closed.data],
   );
   const order = useMemo(
-    () => [...open, ...closedTasks].map((task) => task.id),
-    [open, closedTasks],
+    () => [...pinned, ...unpinned, ...closedTasks].map((task) => task.id),
+    [pinned, unpinned, closedTasks],
   );
-  const [openId, setOpenId] = useState<number | null>(null);
+  const { openTaskId: openId, setOpenTask: setOpenId } = useOpenTask();
+  const touch = useMediaQuery("(pointer: coarse)");
   const { mutate: setStatus } = useSetTaskStatus();
   // Stable, so memoized rows don't re-render when the list does.
   const toggle = useCallback<ToggleStatus>(
@@ -79,23 +84,44 @@ export function TaskList({ project }: { project: SidebarProject }) {
           <span role="columnheader" className="px-2 text-right">
             Activity
           </span>
+          <span role="columnheader" aria-label="Actions" />
         </div>
 
-        <Group
-          icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
-          label="Tasks"
-          count={open.length}
-        >
-          {open.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Nothing left here. Add a task above.
-            </p>
-          ) : (
-            open.map((task) => (
+        {pinned.length > 0 && (
+          <Group
+            icon={<Pin className="size-3.5 text-primary" aria-hidden />}
+            label="Pinned"
+            count={pinned.length}
+          >
+            {pinned.map((task) => (
               <TaskRow
                 key={task.id}
                 task={task}
                 selected={task.id === openId}
+                touch={touch}
+                onToggle={toggle}
+                onOpen={setOpenId}
+              />
+            ))}
+          </Group>
+        )}
+
+        <Group
+          icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
+          label="Tasks"
+          count={unpinned.length}
+        >
+          {unpinned.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+              Nothing left here. Add a task above.
+            </p>
+          ) : (
+            unpinned.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                selected={task.id === openId}
+                touch={touch}
                 onToggle={toggle}
                 onOpen={setOpenId}
               />
@@ -109,6 +135,7 @@ export function TaskList({ project }: { project: SidebarProject }) {
           expanded={showClosed}
           onExpandedChange={setShowClosed}
           openId={openId}
+          touch={touch}
           onToggle={toggle}
           onOpen={setOpenId}
         />
@@ -159,6 +186,7 @@ function ClosedGroup({
   expanded,
   onExpandedChange,
   openId,
+  touch,
   onToggle,
   onOpen,
 }: {
@@ -167,6 +195,7 @@ function ClosedGroup({
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   openId: number | null;
+  touch: boolean;
   onToggle: ToggleStatus;
   onOpen: OpenTask;
 }) {
@@ -198,6 +227,7 @@ function ClosedGroup({
               key={task.id}
               task={task}
               selected={task.id === openId}
+              touch={touch}
               onToggle={onToggle}
               onOpen={onOpen}
             />

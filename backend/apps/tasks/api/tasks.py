@@ -1,4 +1,4 @@
-"""Task endpoints: list a Project's Tasks, add one, read one, change one and read its history."""
+"""Task endpoints: list a Project's Tasks, add, read, change and duplicate one, read its history."""
 
 from __future__ import annotations
 
@@ -123,6 +123,7 @@ def update_task(
         status=patch.status,
         blocked_reason=patch.blocked_reason,
         priority=patch.priority,
+        pinned=patch.pinned,
         dates=_dates(patch),
         project=project,
     )
@@ -136,6 +137,19 @@ def update_task(
     return Status(
         _HTTP_OK, TaskChangeOut(task=TaskDetailOut.from_orm(change.task), affected=affected)
     )
+
+
+@router.post(
+    "/{int:task_id}/duplicate",
+    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut},
+    summary="Duplicate a Task",
+)
+def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Status[ErrorOut]:
+    """Add an open copy of a Task right after it, with its title, Description and Priority."""
+    copy = services.duplicate_task(signed_in_user(request), task_id)
+    if copy is None:
+        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    return Status(_HTTP_CREATED, TaskOut.from_orm(copy))
 
 
 def _dates(patch: TaskPatchIn) -> services.TaskDates | None:

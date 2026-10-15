@@ -55,6 +55,7 @@ def test_create_adds_a_trimmed_task_to_the_inbox(client: Client, ada: User) -> N
         "priority": 0,
         "blocked_reason": "",
         "completed_at": None,
+        "pinned_at": None,
         "due_date": None,
         "due_time": None,
         "start_date": None,

@@ -11,6 +11,7 @@ export function makeTask(overrides: Partial<TaskDetail> = {}): TaskDetail {
     priority: 0,
     blocked_reason: "",
     completed_at: null,
+    pinned_at: null,
     due_date: null,
     due_time: null,
     start_date: null,

@@ -485,6 +485,26 @@ export interface paths {
     patch: operations["apps_tasks_api_tasks_update_task"];
     trace?: never;
   };
+  "/api/v1/tasks/{task_id}/duplicate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Duplicate a Task
+     * @description Add an open copy of a Task right after it, with its title, Description and Priority.
+     */
+    post: operations["apps_tasks_api_tasks_duplicate_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/tasks/{task_id}/activity": {
     parameters: {
       query?: never;
@@ -997,6 +1017,11 @@ export interface components {
        * @description When it was Completed or marked Won't do.
        */
       completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
       /** Due Date */
       due_date: string | null;
       /**
@@ -1070,6 +1095,11 @@ export interface components {
        * @description When it was Completed or marked Won't do.
        */
       completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
       /** Due Date */
       due_date: string | null;
       /**
@@ -1171,6 +1201,11 @@ export interface components {
        */
       blocked_reason?: string | null;
       priority?: components["schemas"]["Priority"] | null;
+      /**
+       * Pinned
+       * @description Pin the Task to the top of its lists, or unpin it.
+       */
+      pinned?: boolean | null;
       /** @description Replaces all of the Task's dates; null removes them. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
       /**
@@ -1342,6 +1377,25 @@ export interface components {
      */
     NoActivityData: Record<string, never>;
     /**
+     * PinnedActivityOut
+     * @description The Task was pinned.
+     */
+    PinnedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "pinned";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
      * PriorityChangedActivityOut
      * @description The Task's Priority changed.
      */
@@ -1409,6 +1463,8 @@ export interface components {
         | components["schemas"]["DescriptionEditedActivityOut"]
         | components["schemas"]["StatusChangedActivityOut"]
         | components["schemas"]["PriorityChangedActivityOut"]
+        | components["schemas"]["PinnedActivityOut"]
+        | components["schemas"]["UnpinnedActivityOut"]
         | components["schemas"]["AttachmentAddedActivityOut"]
         | components["schemas"]["AttachmentRemovedActivityOut"]
         | components["schemas"]["DatesChangedActivityOut"]
@@ -1453,6 +1509,25 @@ export interface components {
       old: string;
       /** New */
       new: string;
+    };
+    /**
+     * UnpinnedActivityOut
+     * @description The Task was unpinned.
+     */
+    UnpinnedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "unpinned";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
     };
     /**
      * AttachmentOut
@@ -2260,6 +2335,37 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_duplicate_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

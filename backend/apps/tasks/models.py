@@ -156,7 +156,8 @@ class Task(models.Model):
     date turns the Task into a range that ends on the due date.
 
     Completed and Won't do are Closed and record when in `completed_at`. Blocked is still open
-    work, and only a Blocked Task keeps a `blocked_reason`.
+    work, and only a Blocked Task keeps a `blocked_reason`. A pinned Task records when in
+    `pinned_at` and lists above the rest, oldest pin first.
     """
 
     class Status(models.TextChoices):
@@ -189,6 +190,7 @@ class Task(models.Model):
     blocked_reason = models.TextField(blank=True, default="")
     priority = models.PositiveSmallIntegerField(choices=Priority, default=Priority.NONE)
     completed_at = models.DateTimeField(null=True, blank=True)
+    pinned_at = models.DateTimeField(null=True, blank=True)
     due_date = models.DateField(null=True, blank=True)
     due_time = models.TimeField(null=True, blank=True, help_text="Empty for an all-day Task.")
     start_date = models.DateField(null=True, blank=True, help_text="Set for a range.")
@@ -265,6 +267,8 @@ class TaskActivity(models.Model):
         DATES_CHANGED = "dates_changed", "Dates changed"
         STATUS_CHANGED = "status_changed", "Status changed"
         PRIORITY_CHANGED = "priority_changed", "Priority changed"
+        PINNED = "pinned", "Pinned"
+        UNPINNED = "unpinned", "Unpinned"
         ATTACHMENT_ADDED = "attachment_added", "Attachment added"
         ATTACHMENT_REMOVED = "attachment_removed", "Attachment removed"
         MOVED = "moved", "Moved"

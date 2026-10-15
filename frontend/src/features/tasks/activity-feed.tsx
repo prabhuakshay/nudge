@@ -19,6 +19,8 @@ const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string }
     reason ? `${STATUS_VERB[status]}: “${reason}”` : STATUS_VERB[status],
   priority_changed: (data) =>
     `Changed priority from ${PRIORITY[data.old].short} to ${PRIORITY[data.new].short}`,
+  pinned: () => "Pinned to the top",
+  unpinned: () => "Unpinned",
   attachment_added: (data) => `Attached “${data.name}”`,
   attachment_removed: (data) => `Deleted the attachment “${data.name}”`,
   dates_changed: (data) => describeDatesChange(data),

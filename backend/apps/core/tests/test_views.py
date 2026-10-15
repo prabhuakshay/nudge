@@ -19,6 +19,7 @@ if TYPE_CHECKING:
 def built_frontend(tmp_path: Path, settings: Settings) -> Path:
     (tmp_path / "index.html").write_text("<!doctype html><title>Nudge</title>")
     settings.FRONTEND_DIST_DIR = tmp_path
+    settings.WHITENOISE_ROOT = tmp_path
     return tmp_path
 
 

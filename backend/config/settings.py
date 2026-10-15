@@ -167,12 +167,12 @@ STORAGES = {
 }
 
 # The built React app. WhiteNoise serves its files from the site root; `apps.core.views.spa`
-# returns its index.html for every other non-API path so client-side routing works.
+# returns its index.html for every other non-API path, `/` included, so client-side routing
+# works and index.html is never cached.
 FRONTEND_DIST_DIR = Path(
     env.path("NUDGE_FRONTEND_DIST_DIR", default=REPO_ROOT / "frontend" / "dist"),
 )
 WHITENOISE_ROOT = FRONTEND_DIST_DIR if FRONTEND_DIST_DIR.is_dir() else None
-WHITENOISE_INDEX_FILE = True
 
 _VITE_HASHED_ASSET = re.compile(r"^/assets/.+-[A-Za-z0-9_-]{8,}\.\w+$")
 

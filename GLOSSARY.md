@@ -90,6 +90,20 @@ _Avoid_: Bin, archive
 A file uploaded against a Task.
 _Avoid_: File, upload
 
+## Views
+
+**Today**:
+The view of Tasks due today, ranges that include today, and everything Overdue.
+
+**Upcoming**:
+The view of Tasks due after today, grouped by day for a week and by month after that.
+_Avoid_: Next 7 days, scheduled
+
+**Overdue**:
+An open Task whose date has passed: a timed Task once its time passes, an all-day Task once its
+day ends, a range once its end passes.
+_Avoid_: Late, missed
+
 ## People
 
 **Person**:

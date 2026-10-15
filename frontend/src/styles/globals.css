@@ -84,6 +84,15 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* iOS Safari zooms into inputs under 16px, so touch screens never go below, even at `sm:`. */
+  @media (pointer: coarse) {
+    input,
+    textarea,
+    select {
+      font-size: max(16px, 1em);
+    }
+  }
+
   :focus-visible {
     @apply outline-2 outline-offset-2 outline-ring;
   }

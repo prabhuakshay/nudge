@@ -86,11 +86,12 @@ function monthly(parts: Parts, interval: number): string | null {
   return `${base} on the ${byMonthDay === "-1" ? "last day" : ordinal(Number(byMonthDay))}`;
 }
 
-function yearly(parts: Parts): string {
+function yearly(parts: Parts, interval: number): string {
+  const base = every(interval, "year", "Yearly");
   const month = parts.get("BYMONTH");
   const day = parts.get("BYMONTHDAY");
-  if (month === undefined || day === undefined) return "Yearly";
-  return `Yearly on ${format(new Date(2000, Number(month) - 1, Number(day)), "d MMM")}`;
+  if (month === undefined || day === undefined) return base;
+  return `${base} on ${format(new Date(2000, Number(month) - 1, Number(day)), "d MMM")}`;
 }
 
 /** Each frequency's pattern in words, or null when the rule uses parts the presets don't. */

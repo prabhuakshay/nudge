@@ -34,6 +34,8 @@ export type QuickAddContext = {
   allowProject?: boolean;
   /** False where a Task can't repeat, as in Add subtask, so Repeat phrases stay text. */
   allowRepeat?: boolean;
+  /** Whether 3/11 is 3 November; by default as the browser's locale writes dates. */
+  dayFirst?: boolean;
   picked?: readonly PickedName[];
   /** Matches turned back into text, by `matchKey`. */
   kept?: ReadonlySet<string>;
@@ -217,6 +219,7 @@ export function parseQuickAdd(text: string, context: QuickAddContext): QuickAdd 
   const schedule = readSchedule(text, matches, {
     now: context.now,
     allowRepeat: context.allowRepeat,
+    dayFirst: context.dayFirst,
     isKept: (match) => context.kept?.has(matchKey(match)) ?? false,
   });
   matches.push(...schedule.matches);

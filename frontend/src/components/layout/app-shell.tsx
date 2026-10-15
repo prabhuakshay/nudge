@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { User } from "@/features/auth/session";
 import { NotificationCenter } from "@/features/notifications/notification-center";
+import { GlobalShortcuts } from "@/features/shortcuts/global-shortcuts";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
 import { ThemeToggle } from "@/features/theme/theme-toggle";
 import { TimeZoneBanner } from "@/features/time-zone/time-zone-banner";
@@ -59,6 +60,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
 
         <BottomNav />
         <Toaster />
+        <GlobalShortcuts user={user} />
       </div>
     </TooltipProvider>
   );

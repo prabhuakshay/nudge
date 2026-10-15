@@ -1,7 +1,6 @@
-import { toast } from "sonner";
-
 import type { components } from "@/api/schema";
 import { plainMentions } from "@/features/people/mentions";
+import { toastWithUndo } from "@/lib/undo-toast";
 
 import { statusMessage } from "./task-properties";
 import type { TaskChange, TaskStatus } from "./tasks";
@@ -18,20 +17,15 @@ export function offerStatusUndo(
   status: TaskStatus,
   affected: AffectedTask[],
 ) {
-  toast(statusMessage(plainMentions(title), status, affected.length - 1), {
-    action: {
-      label: "Undo",
-      onClick: () => {
-        for (const prior of affected) {
-          update({
-            id: prior.id,
-            status: prior.prior_status,
-            ...(prior.prior_status === "blocked" && {
-              blocked_reason: prior.prior_blocked_reason,
-            }),
-          });
-        }
-      },
-    },
+  toastWithUndo(statusMessage(plainMentions(title), status, affected.length - 1), () => {
+    for (const prior of affected) {
+      update({
+        id: prior.id,
+        status: prior.prior_status,
+        ...(prior.prior_status === "blocked" && {
+          blocked_reason: prior.prior_blocked_reason,
+        }),
+      });
+    }
   });
 }

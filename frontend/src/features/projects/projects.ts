@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { sidebarQuery, type Sidebar, type SidebarProject } from "@/features/tasks/tasks";
+import { toastWithUndo } from "@/lib/undo-toast";
 
 import { applyPlacement, type Placement, type SiblingRef } from "./sidebar-order";
 
@@ -174,15 +175,14 @@ export function useSetArchived() {
     setArchived.mutate(
       { project, archived },
       {
-        onSuccess: () =>
-          toast(archived ? `Archived “${project.name}”` : `Unarchived “${project.name}”`, {
-            action: {
-              label: "Undo",
-              onClick: () => {
-                setArchived.mutate({ project, archived: !archived });
-              },
+        onSuccess: () => {
+          toastWithUndo(
+            archived ? `Archived “${project.name}”` : `Unarchived “${project.name}”`,
+            () => {
+              setArchived.mutate({ project, archived: !archived });
             },
-          }),
+          );
+        },
       },
     );
   };

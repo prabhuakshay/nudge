@@ -109,6 +109,11 @@ An open Task whose date has passed: a timed Task once its time passes, an all-da
 day ends, a range once its end passes.
 _Avoid_: Late, missed
 
+**Calendar feed**:
+A private, read-only address a calendar app subscribes to, showing each open dated Task as an
+event on its current date.
+_Avoid_: iCal export, calendar sync
+
 ## People
 
 **Person**:

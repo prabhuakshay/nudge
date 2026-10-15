@@ -1,5 +1,8 @@
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useRouter, useSearch } from "@tanstack/react-router";
 import { useCallback } from "react";
+
+import { sidebarQuery } from "./tasks";
 
 /** A list route's search parameters: the Task open in the drawer, if any. */
 export type TaskSearch = { task?: number };
@@ -32,6 +35,29 @@ export function useOpenTask() {
   );
 
   return { openTaskId: task ?? null, setOpenTask };
+}
+
+/**
+ * Show a Task in its own Project's list with the drawer open on it, wherever the user is. Inbox
+ * Tasks show in the Inbox.
+ */
+export function useShowTask() {
+  const { data: sidebar } = useQuery(sidebarQuery);
+  const navigate = useNavigate();
+  return useCallback(
+    (task: { id: number; project_id: number }) => {
+      void navigate(
+        task.project_id === sidebar?.inbox.id
+          ? { to: "/inbox", search: { task: task.id } }
+          : {
+              to: "/projects/$projectId",
+              params: { projectId: String(task.project_id) },
+              search: { task: task.id },
+            },
+      );
+    },
+    [navigate, sidebar],
+  );
 }
 
 /**

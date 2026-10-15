@@ -23,6 +23,11 @@ export type Shortcut = {
 };
 
 export const SHORTCUTS = {
+  openCommandBar: {
+    keys: ["$mod+k", "/"],
+    scope: "global",
+    label: "Open the command bar",
+  },
   quickAdd: { keys: ["c"], scope: "global", label: "Add a task" },
   showShortcuts: { keys: ["Shift+?"], scope: "global", label: "Show keyboard shortcuts" },
   undo: { keys: ["$mod+z"], scope: "global", label: "Undo the last change" },

@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import type { User } from "@/features/auth/session";
+import { CommandBar } from "@/features/command-bar/command-bar";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
 import { undoLatestChange } from "@/lib/undo-toast";
 
@@ -10,16 +11,24 @@ import { useShortcuts } from "./use-shortcuts";
 
 /**
  * The shortcuts that work on every page: `?` for the list of shortcuts, Mod+Z to undo the latest
- * change still in a toast, and the G chords that go to a view or open Settings.
+ * change still in a toast, the G chords that go to a view or open Settings, and Mod+K or `/` for
+ * the command bar, which offers the same actions. Renders the command bar's button for phones,
+ * so it goes in the top bar. `onAddTask` opens the global Quick add with a draft.
  */
-export function GlobalShortcuts({ user }: { user: User }) {
+export function GlobalShortcuts({
+  user,
+  onAddTask,
+}: {
+  user: User;
+  onAddTask: (draft: string) => void;
+}) {
   const navigate = useNavigate();
   const [help, setHelp] = useState(false);
   const [settings, setSettings] = useState(false);
   const goTo = (to: "/" | "/inbox" | "/upcoming" | "/search" | "/trash") => () =>
     void navigate({ to });
 
-  useShortcuts({
+  const actions = {
     showShortcuts: () => {
       setHelp(true);
     },
@@ -32,10 +41,21 @@ export function GlobalShortcuts({ user }: { user: User }) {
     goToSettings: () => {
       setSettings(true);
     },
-  });
+  };
+  useShortcuts(actions);
 
   return (
     <>
+      <CommandBar
+        actions={{
+          ...actions,
+          // Not bound here: on its own, C focuses the page's Quick add card where there is one.
+          quickAdd: () => {
+            onAddTask("");
+          },
+        }}
+        onCreateTask={onAddTask}
+      />
       <ShortcutsDialog open={help} onOpenChange={setHelp} />
       <SettingsDialog user={user} open={settings} onOpenChange={setSettings} />
     </>

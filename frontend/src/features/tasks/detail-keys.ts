@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react";
 
 import { inTextField, useShortcuts } from "@/features/shortcuts/use-shortcuts";
 
-import { forgetDetailAction, requestedDetailAction, useTaskKeys } from "./task-keys";
+import {
+  forgetDetailAction,
+  onDetailActionRequest,
+  requestedDetailAction,
+  useTaskKeys,
+} from "./task-keys";
 import type { TaskDetail } from "./tasks";
 
 /**
@@ -36,6 +41,16 @@ export function useDetailKeys({
   const done = useRef<typeof request>(null);
 
   useEffect(forgetDetailAction, []);
+  useEffect(
+    () =>
+      onDetailActionRequest(() => {
+        const action = requestedDetailAction(task.id);
+        if (!action) return;
+        forgetDetailAction();
+        setRequest({ action });
+      }),
+    [task.id],
+  );
 
   // The chip or field may only show once the Task changes, as the Blocked reason does after B.
   useEffect(() => {

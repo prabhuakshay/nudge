@@ -89,9 +89,12 @@ function KeyHints({ focused, typed }: { focused: boolean; typed: boolean }) {
  */
 export function QuickAddCard({
   view,
+  initialText,
   onAdded,
 }: {
   view: QuickAddView;
+  /** Text to start with, as if typed. */
+  initialText?: string;
   /** Called with each new Task instead of pointing to ones that landed outside the view. */
   onAdded?: (task: Task) => void;
 }) {
@@ -113,6 +116,7 @@ export function QuickAddCard({
   };
   const quick = useQuickAdd({
     inputRef,
+    initialValue: initialText,
     onSubmit: (text, parsed) => {
       setGivenDropped(false);
       void add(text, parsed);

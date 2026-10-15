@@ -9,6 +9,24 @@ import { defineConfig, loadEnv } from "vite";
 // The repository root holds the single .env file shared with the backend.
 const envDir = path.resolve(import.meta.dirname, "..");
 
+/**
+ * Host check and HMR websocket settings for a dev server behind the reverse proxy at the
+ * deployment's public URL, where the browser can't reach Vite's own address.
+ */
+function behindProxy(publicUrl: string | undefined) {
+  if (!publicUrl) return {};
+  const url = new URL(publicUrl);
+  const secure = url.protocol === "https:";
+  return {
+    allowedHosts: [url.hostname],
+    hmr: {
+      host: url.hostname,
+      protocol: secure ? "wss" : "ws",
+      clientPort: Number(url.port || (secure ? 443 : 80)),
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, envDir, "NUDGE_");
   const backendUrl =
@@ -26,6 +44,7 @@ export default defineConfig(({ mode }) => {
       host: env.NUDGE_DEV_FRONTEND_HOST ?? "localhost",
       port: Number(env.NUDGE_DEV_FRONTEND_PORT ?? "5173"),
       strictPort: true,
+      ...behindProxy(env.NUDGE_PUBLIC_URL),
       proxy: {
         "/api": proxyToBackend,
         "/admin": proxyToBackend,

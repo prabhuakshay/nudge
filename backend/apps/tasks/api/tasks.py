@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ninja import Router, Status
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import services
+from apps.tasks import services, tree
 from apps.tasks.api import signed_in_user
 from apps.tasks.pagination import InvalidCursorError
 from apps.tasks.schemas import (
@@ -110,9 +110,9 @@ def _detail(task: Task) -> TaskDetailOut:
         **TaskOut.from_orm(task).model_dump(),
         description=task.description,
         ancestors=[
-            TaskAncestorOut(id=above.pk, title=above.title) for above in services.ancestors(task)
+            TaskAncestorOut(id=above.pk, title=above.title) for above in tree.ancestors(task)
         ],
-        subtasks=[TaskOut.from_orm(below) for below in services.descendants(task)],
+        subtasks=[TaskOut.from_orm(below) for below in tree.descendants(task)],
     )
 
 

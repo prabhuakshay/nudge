@@ -15,6 +15,9 @@ class NotificationOut(Schema):
     title: str
     body: str
     url: str = Field(description="Path in the app to open, or empty.")
+    is_reminder: bool = Field(
+        description="Whether a Reminder sent it, so its Task can be completed or snoozed from it.",
+    )
     created_at: datetime
     read_at: datetime | None
 

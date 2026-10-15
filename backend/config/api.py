@@ -22,6 +22,7 @@ from apps.tasks.api.comments import router as comments_router
 from apps.tasks.api.folders import router as folders_router
 from apps.tasks.api.people import router as people_router
 from apps.tasks.api.projects import router as projects_router
+from apps.tasks.api.reminder_actions import router as reminder_actions_router
 from apps.tasks.api.sidebar import router as sidebar_router
 from apps.tasks.api.tags import router as tags_router
 from apps.tasks.api.tasks import router as tasks_router
@@ -38,6 +39,7 @@ api = NinjaAPI(
 api.add_router("/", core_router, tags=["core"])
 api.add_router("/auth", accounts_router, tags=["auth"])
 api.add_router("/notifications", notifications_router, tags=["notifications"])
+api.add_router("/notifications", reminder_actions_router, tags=["notifications"])
 api.add_router("/folders", folders_router, tags=["folders"])
 api.add_router("/projects", projects_router, tags=["projects"])
 api.add_router("/people", people_router, tags=["people"])

@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.accounts.services import local_zone
@@ -127,35 +128,43 @@ def _may_fire(task: Task) -> bool:
 
 
 def send_due_reminders() -> int:
-    """Fire every Reminder that is due, as a Notification; return how many fired.
+    """Fire every Reminder that is due or whose snooze is over, as a Notification.
 
-    Reminders more than `CATCH_UP` late are dropped instead. Rows are locked and skipped when
-    already locked, so two sweeps running at once never send a Reminder twice.
+    Returns how many fired. Firings more than `CATCH_UP` late are dropped instead. Rows are
+    locked and skipped when already locked, so two sweeps running at once never send twice.
     """
     now = timezone.now()
     fired = 0
     with transaction.atomic():
         Reminder.objects.filter(fire_at__lte=now - CATCH_UP).update(fire_at=None)
+        Reminder.objects.filter(snoozed_until__lte=now - CATCH_UP).update(snoozed_until=None)
         due = (
-            Reminder.objects.filter(fire_at__lte=now)
+            Reminder.objects.filter(Q(fire_at__lte=now) | Q(snoozed_until__lte=now))
             .select_related("task__project", "task__owner")
             .select_for_update(skip_locked=True, of=("self",))
         )
         for reminder in due:
             if _may_fire(reminder.task):
-                _notify(reminder.task, now)
+                _notify(reminder, now)
                 reminder.sent_at = now
                 fired += 1
-            reminder.fire_at = None
-            reminder.save(update_fields=["fire_at", "sent_at"])
+            reminder.fire_at = _unless_due(reminder.fire_at, now)
+            reminder.snoozed_until = _unless_due(reminder.snoozed_until, now)
+            reminder.save(update_fields=["fire_at", "snoozed_until", "sent_at"])
     return fired
 
 
-def _notify(task: Task, now: datetime) -> None:
+def _unless_due(at: datetime | None, now: datetime) -> datetime | None:
+    """Return a fire time that is still ahead; one that is due is used up by this firing."""
+    return at if at is not None and at > now else None
+
+
+def _notify(reminder: Reminder, now: datetime) -> None:
+    task = reminder.task
     project = task.project
     path = "/inbox" if project.is_inbox else f"/projects/{project.pk}"
     body = f"{_when(task, now)} · {project.name}"
-    notify(task.owner, title=task.title, body=body, url=f"{path}?task={task.pk}")
+    notify(task.owner, title=task.title, body=body, url=f"{path}?task={task.pk}", reminder=reminder)
 
 
 def _when(task: Task, now: datetime) -> str:

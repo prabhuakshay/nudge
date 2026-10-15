@@ -9,11 +9,10 @@ import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
-import { plainMentions } from "@/features/people/mentions";
 
 import { remindersAfter } from "./reminders";
 import type { ScheduleView } from "./schedule";
-import { statusMessage } from "./task-properties";
+import { offerStatusUndo } from "./status-undo";
 import { openTrees } from "./task-tree";
 
 export type Task = components["schemas"]["TaskOut"];
@@ -302,10 +301,7 @@ export function useUpdateTask() {
   });
 }
 
-/**
- * Set a Task's Status, then offer Undo in a toast. Undo gives every Task the change touched back
- * the Status and Blocked reason it had, as the server reported them.
- */
+/** Set a Task's Status, then offer Undo in a toast. */
 export function useSetTaskStatus() {
   const queryClient = useQueryClient();
   const { mutate: update } = useUpdateTask();
@@ -314,22 +310,7 @@ export function useSetTaskStatus() {
       patchTask({ id: task.id, status }),
     onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
     onSuccess: ({ affected }, { task, status }) => {
-      toast(statusMessage(plainMentions(task.title), status, affected.length - 1), {
-        action: {
-          label: "Undo",
-          onClick: () => {
-            for (const prior of affected) {
-              update({
-                id: prior.id,
-                status: prior.prior_status,
-                ...(prior.prior_status === "blocked" && {
-                  blocked_reason: prior.prior_blocked_reason,
-                }),
-              });
-            }
-          },
-        },
-      });
+      offerStatusUndo(update, task.title, status, affected);
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => refreshTasks(queryClient),

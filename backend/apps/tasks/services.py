@@ -8,7 +8,7 @@ How a change spreads through a Task's Subtask tree lives in `apps.tasks.tree`.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import TYPE_CHECKING
 
 from django.db import transaction
@@ -164,7 +164,7 @@ def _first_position(project: Project) -> str:
     return str(generate_key_between(None, first))
 
 
-def create_task(project: Project, title: str) -> Task:
+def create_task(project: Project, title: str, dates: TaskDates | None = None) -> Task:
     """Create a Task in the Project, first among its roots, owned by the Project's owner.
 
     Raises:
@@ -179,6 +179,7 @@ def create_task(project: Project, title: str) -> Task:
             project=project,
             title=title,
             position=_first_position(project),
+            **asdict(dates or TaskDates()),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
         sync_mentions(task)

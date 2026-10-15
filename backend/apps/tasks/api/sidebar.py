@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ninja import Router
 
 from apps.core.palette import PaletteColor
-from apps.tasks import projects
+from apps.tasks import projects, schedule
 from apps.tasks.api import signed_in_user
 from apps.tasks.models import Folder, Project
 from apps.tasks.schemas.projects import SidebarFolderOut, SidebarOut, SidebarProjectOut
@@ -49,10 +49,13 @@ def _item_out(
 
 @router.get("", response=SidebarOut, summary="Get the sidebar")
 def sidebar(request: HttpRequest) -> SidebarOut:
-    """Return the Inbox, Folders and ungrouped Projects in order, then archived Projects."""
-    found = projects.sidebar(signed_in_user(request))
+    """Return everything the sidebar lists, with open counts for Projects, Today and Upcoming."""
+    user = signed_in_user(request)
+    found = projects.sidebar(user)
     return SidebarOut(
         inbox=_project_out(found.inbox, found),
         items=[_item_out(item, found) for item in found.items],
         archived=[_project_out(project, found) for project in found.archived],
+        today_count=schedule.open_count(user, schedule.View.TODAY),
+        upcoming_count=schedule.open_count(user, schedule.View.UPCOMING),
     )

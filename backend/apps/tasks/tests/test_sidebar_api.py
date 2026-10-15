@@ -52,6 +52,8 @@ def test_sidebar_shows_the_users_inbox_with_its_open_task_count(
         },
         "items": [],
         "archived": [],
+        "today_count": 0,
+        "upcoming_count": 0,
     }
 
 

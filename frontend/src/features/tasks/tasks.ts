@@ -11,6 +11,7 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { plainMentions } from "@/features/people/mentions";
 
+import type { ScheduleView } from "./schedule";
 import { statusMessage } from "./task-properties";
 import { openTrees } from "./task-tree";
 
@@ -59,15 +60,40 @@ export function openTasksQuery(projectId: number) {
   });
 }
 
+/** Where a list's Tasks come from: a Project, or a view that picks them by date. */
+type ListSource = { project: number } | { view: ScheduleView };
+
+/**
+ * A view's open Tasks as flat rows, in the order the view lists them: Today has Overdue first,
+ * Upcoming goes day by day.
+ */
+export function viewTasksQuery(view: ScheduleView) {
+  return queryOptions({
+    queryKey: [...OPEN_KEY, view],
+    queryFn: async (): Promise<Task[]> => {
+      const { data } = await api.GET("/api/v1/tasks", { params: { query: { view } } });
+      if (!data) {
+        throw new Error("Could not load your tasks.");
+      }
+      return data.items;
+    },
+  });
+}
+
 /** A Project's Closed Tasks with their Subtasks, most recently completed first, a page at a time. */
 export function closedTasksQuery(projectId: number) {
+  return closedPagesQuery({ project: projectId });
+}
+
+/** The Tasks in Today that were closed today, most recently closed first, a page at a time. */
+export const closedTodayQuery = closedPagesQuery({ view: "today" });
+
+function closedPagesQuery(source: ListSource) {
   return infiniteQueryOptions({
-    queryKey: [...TASKS_KEY, "closed", projectId],
+    queryKey: [...TASKS_KEY, "closed", "project" in source ? source.project : source.view],
     queryFn: async ({ pageParam }) => {
       const { data } = await api.GET("/api/v1/tasks", {
-        params: {
-          query: { project: projectId, closed: true, ...(pageParam && { cursor: pageParam }) },
-        },
+        params: { query: { ...source, closed: true, ...(pageParam && { cursor: pageParam }) } },
       });
       if (!data) {
         throw new Error("Could not load your closed tasks.");
@@ -301,13 +327,16 @@ export function useSetTaskStatus() {
   });
 }
 
-/** Add a Task from Quick add. It appears first in its Project, as the server places it. */
-export function useCreateTask(projectId: number) {
+/**
+ * Add a Task from Quick add, with the dates the view gives it, if any. It appears first in its
+ * Project, as the server places it, and wherever its dates put it.
+ */
+export function useCreateTask(projectId: number, dates?: DatesIn) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (title: string) => {
       const { data } = await api.POST("/api/v1/tasks", {
-        body: { title, project_id: projectId },
+        body: { title, project_id: projectId, ...(dates && { dates }) },
       });
       if (!data) {
         throw new Error("Could not add the task.");
@@ -320,6 +349,11 @@ export function useCreateTask(projectId: number) {
       );
     },
     onError: (error) => toast.error(error.message),
-    onSettled: () => queryClient.invalidateQueries(sidebarQuery),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "today"] }),
+        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "upcoming"] }),
+        queryClient.invalidateQueries(sidebarQuery),
+      ]),
   });
 }

@@ -9,6 +9,7 @@ from ninja import Field, Schema
 from pydantic import StringConstraints, field_validator, model_validator
 
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
+from apps.tasks.schedule import View  # noqa: TC001 - Pydantic needs the type at runtime
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
@@ -62,26 +63,29 @@ class TaskDetailOut(TaskOut):
     )
 
 
+class TaskListQuery(Schema):
+    """Which Tasks to list: one Project's, one Person's or one view's, open or Closed."""
+
+    project: int | None = None
+    person: int | None = None
+    view: View | None = Field(default=None, description="Today or Upcoming, picked by date.")
+    closed: bool = Field(default=False, description="List Closed Tasks, a page at a time.")
+    cursor: str | None = Field(default=None, description="From the previous page of Closed ones.")
+
+    @model_validator(mode="after")
+    def _at_most_one_source(self) -> Self:
+        if sum(source is not None for source in (self.project, self.person, self.view)) > 1:
+            message = "Give only one of project, person or view."
+            raise ValueError(message)
+        return self
+
+
 class TaskListOut(Schema):
     """Tasks for a list, and the cursor for the next page when the list is paginated."""
 
     items: list[TaskOut]
     next_cursor: str | None = Field(
         description="Pass as `cursor` to get the next page; null on the last page.",
-    )
-
-
-class TaskIn(Schema):
-    """A new Task from Quick add."""
-
-    title: Title
-    project_id: int | None = Field(
-        default=None,
-        description="Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.",
-    )
-    parent_id: int | None = Field(
-        default=None,
-        description="Makes the Task the last Subtask of this one; reopens it if it's Closed.",
     )
 
 
@@ -122,6 +126,24 @@ class TaskDatesIn(Schema):
             message = "A range can't start after it's due."
             raise ValueError(message)
         return self
+
+
+class TaskIn(Schema):
+    """A new Task from Quick add."""
+
+    title: Title
+    project_id: int | None = Field(
+        default=None,
+        description="Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.",
+    )
+    parent_id: int | None = Field(
+        default=None,
+        description="Makes the Task the last Subtask of this one; reopens it if it's Closed.",
+    )
+    dates: TaskDatesIn | None = Field(
+        default=None,
+        description="Dates the Task from the start, such as today in Today. Not for a Subtask.",
+    )
 
 
 class TaskPatchIn(Schema):

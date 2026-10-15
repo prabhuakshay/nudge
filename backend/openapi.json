@@ -1239,7 +1239,7 @@
             }
           }
         },
-        "description": "Return the Inbox, Folders and ungrouped Projects in order, then archived Projects.",
+        "description": "Return everything the sidebar lists, with open counts for Projects, Today and Upcoming.",
         "tags": [
           "sidebar"
         ],
@@ -1253,7 +1253,7 @@
     "/api/v1/tasks": {
       "get": {
         "operationId": "apps_tasks_api_tasks_list_tasks",
-        "summary": "List a Project's or a Person's Tasks",
+        "summary": "List a Project's, a Person's or a view's Tasks",
         "parameters": [
           {
             "in": "query",
@@ -1289,13 +1289,32 @@
           },
           {
             "in": "query",
+            "name": "view",
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/View"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Today or Upcoming, picked by date."
+            },
+            "required": false,
+            "description": "Today or Upcoming, picked by date."
+          },
+          {
+            "in": "query",
             "name": "closed",
             "schema": {
               "default": false,
+              "description": "List Closed Tasks, a page at a time.",
               "title": "Closed",
               "type": "boolean"
             },
-            "required": false
+            "required": false,
+            "description": "List Closed Tasks, a page at a time."
           },
           {
             "in": "query",
@@ -1309,9 +1328,11 @@
                   "type": "null"
                 }
               ],
+              "description": "From the previous page of Closed ones.",
               "title": "Cursor"
             },
-            "required": false
+            "required": false,
+            "description": "From the previous page of Closed ones."
           }
         ],
         "responses": {
@@ -1346,7 +1367,7 @@
             }
           }
         },
-        "description": "Return the open Tasks of a Project or Person, or, with `closed`, a page of Closed ones.\n\nA Project's Tasks come in manual order. A Person's are the Tasks that mention them, flat, in\neach Project's manual order. Closed Tasks come most recently completed first, in pages; open\nTasks come all at once.",
+        "description": "Return the open Tasks of a Project, Person or view, or, with `closed`, a page of Closed ones.\n\nA Project's Tasks come in manual order. A Person's are the Tasks that mention them, flat, in\neach Project's manual order. Today and Upcoming list flat rows by date, with Overdue first in\nToday; Today's Closed Tasks are those closed today, and Upcoming has none. Closed Tasks come\nmost recently completed first, in pages; open Tasks come all at once.",
         "tags": [
           "tasks"
         ],
@@ -2831,12 +2852,24 @@
             },
             "title": "Archived",
             "type": "array"
+          },
+          "today_count": {
+            "description": "Open Tasks in Today, Overdue ones included.",
+            "title": "Today Count",
+            "type": "integer"
+          },
+          "upcoming_count": {
+            "description": "Open Tasks in Upcoming.",
+            "title": "Upcoming Count",
+            "type": "integer"
           }
         },
         "required": [
           "inbox",
           "items",
-          "archived"
+          "archived",
+          "today_count",
+          "upcoming_count"
         ],
         "title": "SidebarOut",
         "type": "object"
@@ -2901,6 +2934,73 @@
         ],
         "title": "SidebarProjectOut",
         "type": "object"
+      },
+      "TaskListQuery": {
+        "description": "Which Tasks to list: one Project's, one Person's or one view's, open or Closed.",
+        "properties": {
+          "project": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "person": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/View"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Today or Upcoming, picked by date."
+          },
+          "closed": {
+            "default": false,
+            "description": "List Closed Tasks, a page at a time.",
+            "title": "Closed",
+            "type": "boolean"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the previous page of Closed ones.",
+            "title": "Cursor"
+          }
+        },
+        "title": "TaskListQuery",
+        "type": "object"
+      },
+      "View": {
+        "description": "A list of Tasks picked by their dates rather than by Project.",
+        "enum": [
+          "today",
+          "upcoming"
+        ],
+        "title": "View",
+        "type": "string"
       },
       "Priority": {
         "description": "How urgent a Task is; P1 is the most urgent.",
@@ -3138,6 +3238,57 @@
         "title": "TaskOut",
         "type": "object"
       },
+      "TaskDatesIn": {
+        "description": "A Task's due date, time and range, all clock times in the user's time zone.\n\nWithout a time the Task is all-day. A start turns it into a range ending at the due date;\nstart and due are then both all-day or both timed. Times have minute precision.",
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          }
+        },
+        "required": [
+          "due_date"
+        ],
+        "title": "TaskDatesIn",
+        "type": "object"
+      },
       "TaskIn": {
         "description": "A new Task from Quick add.",
         "properties": {
@@ -3170,6 +3321,17 @@
             ],
             "description": "Makes the Task the last Subtask of this one; reopens it if it's Closed.",
             "title": "Parent Id"
+          },
+          "dates": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskDatesIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dates the Task from the start, such as today in Today. Not for a Subtask."
           }
         },
         "required": [
@@ -3446,57 +3608,6 @@
           "affected"
         ],
         "title": "TaskChangeOut",
-        "type": "object"
-      },
-      "TaskDatesIn": {
-        "description": "A Task's due date, time and range, all clock times in the user's time zone.\n\nWithout a time the Task is all-day. A start turns it into a range ending at the due date;\nstart and due are then both all-day or both timed. Times have minute precision.",
-        "properties": {
-          "due_date": {
-            "format": "date",
-            "title": "Due Date",
-            "type": "string"
-          },
-          "due_time": {
-            "anyOf": [
-              {
-                "format": "time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due Time"
-          },
-          "start_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start Date"
-          },
-          "start_time": {
-            "anyOf": [
-              {
-                "format": "time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start Time"
-          }
-        },
-        "required": [
-          "due_date"
-        ],
-        "title": "TaskDatesIn",
         "type": "object"
       },
       "TaskPatchIn": {

@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { ProjectIcon } from "@/features/projects/project-icon";
@@ -7,30 +7,17 @@ import { allProjects } from "@/features/projects/projects";
 import { useOpenTask } from "@/features/tasks/open-task";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { ClosedGroup, Group, TaskTableHeader } from "@/features/tasks/task-list";
-import { isClosed } from "@/features/tasks/task-properties";
-import { TreeRows, type RowContext, type ToggleStatus } from "@/features/tasks/task-row";
-import type { TreeRow } from "@/features/tasks/task-tree";
-import {
-  sidebarQuery,
-  useSetTaskStatus,
-  type SidebarProject,
-  type Task,
-} from "@/features/tasks/tasks";
-import { useMediaQuery } from "@/lib/use-media-query";
+import { useRowContext } from "@/features/tasks/row-context";
+import { TreeRows } from "@/features/tasks/task-row";
+import { flatRows } from "@/features/tasks/task-tree";
+import { sidebarQuery, type SidebarProject, type Task } from "@/features/tasks/tasks";
 
 import { PersonAvatar } from "./person-avatar";
 import { personClosedTasksQuery, personTasksQuery, type Person } from "./people";
 
 /** A Person's view never nests or folds rows, so nothing is ever collapsed. */
 const NOTHING_COLLAPSED: ReadonlySet<number> = new Set();
-
-/**
- * Tasks as flat rows. A Subtask stands on its own, with its parent's title as a breadcrumb,
- * because only the Task whose text holds the Mention belongs in the view.
- */
-function flatRows(tasks: Task[]): TreeRow[] {
-  return tasks.map((task) => ({ task, level: 0, subtasks: { done: 0, total: 0 } }));
-}
+const ignoreFold = () => undefined;
 
 /** Group Tasks by Project in sidebar order, keeping the server's order within each Project. */
 function byProject(tasks: Task[], projects: SidebarProject[]) {
@@ -65,27 +52,7 @@ export function PersonTasks({ person }: { person: Person }) {
     [groups, closedRows],
   );
   const { openTaskId: openId, setOpenTask: setOpenId } = useOpenTask();
-  const touch = useMediaQuery("(pointer: coarse)");
-  const { mutate: setStatus } = useSetTaskStatus();
-  // Stable, so memoized rows don't re-render when the list does.
-  const toggle = useCallback<ToggleStatus>(
-    (task) => {
-      setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
-    },
-    [setStatus],
-  );
-  const context = useMemo<RowContext>(
-    () => ({
-      openId,
-      collapsed: NOTHING_COLLAPSED,
-      indent: 0,
-      contextMenu: !touch,
-      onToggle: toggle,
-      onOpen: setOpenId,
-      onToggleCollapsed: () => undefined,
-    }),
-    [openId, touch, toggle, setOpenId],
-  );
+  const context = useRowContext({ collapsed: NOTHING_COLLAPSED, onToggleCollapsed: ignoreFold });
 
   return (
     // `data-wide` lets the app shell drop its reading width for this table.

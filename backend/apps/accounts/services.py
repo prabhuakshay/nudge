@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
@@ -48,3 +50,8 @@ def set_time_zone(user: User, time_zone: str) -> User:
     user.time_zone = time_zone
     user.save(update_fields=["time_zone"])
     return user
+
+
+def local_zone(user: User) -> ZoneInfo:
+    """Return the zone the user's clock times are in: theirs, or the server's until it's set."""
+    return ZoneInfo(user.time_zone or settings.TIME_ZONE)

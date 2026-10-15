@@ -4,22 +4,31 @@ import userEvent from "@testing-library/user-event";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { makeTask } from "@/test/tasks";
 
 import { TaskList } from "./task-list";
 import { isClosed } from "./task-properties";
-import { INBOX_ID, json, taskDetail, taskRow } from "./test-data";
 import type { Task, TaskDetail } from "./tasks";
 
-const INBOX = { id: INBOX_ID, name: "Inbox", open_count: 4 };
+const INBOX = { id: 7, name: "Inbox", open_count: 4 };
+
+function json(body: unknown, status = 200) {
+  return Promise.resolve(
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+}
 
 /** Trip > Flights > Seats, and Trip > Hotel (done), then Groceries on its own. */
 function seed(): Task[] {
   return [
-    taskRow({ id: 1, title: "Trip" }),
-    taskRow({ id: 2, title: "Groceries" }),
-    taskRow({ id: 3, title: "Flights", parent_id: 1, depth: 1, parent_title: "Trip" }),
-    taskRow({ id: 4, title: "Seats", parent_id: 3, depth: 2, parent_title: "Flights" }),
-    taskRow({
+    makeTask({ id: 1, title: "Trip" }),
+    makeTask({ id: 2, title: "Groceries" }),
+    makeTask({ id: 3, title: "Flights", parent_id: 1, depth: 1, parent_title: "Trip" }),
+    makeTask({ id: 4, title: "Seats", parent_id: 3, depth: 2, parent_title: "Flights" }),
+    makeTask({
       id: 5,
       title: "Hotel",
       parent_id: 1,
@@ -48,6 +57,7 @@ function mockApi(rows: Task[] = seed()) {
     if (url.pathname.endsWith("/activity")) {
       return json({ items: [], next_cursor: null, count: 0 });
     }
+    if (url.pathname.endsWith("/attachments")) return json([]);
     if (task) return json(server.detail(task));
     if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX });
     const closed = url.searchParams.get("closed") === "true";
@@ -71,11 +81,11 @@ function fakeServer(rows: Task[]) {
       for (let up = byId(task.parent_id); up; up = byId(up.parent_id)) {
         ancestors.unshift({ id: up.id, title: up.title });
       }
-      return taskDetail({ ...task, ancestors, subtasks: below(task.id) });
+      return makeTask({ ...task, ancestors, subtasks: below(task.id) });
     },
     create(body: NewSubtask) {
       const parent = byId(body.parent_id);
-      const created = taskRow({
+      const created = makeTask({
         id: nextId++,
         title: body.title,
         parent_id: body.parent_id,
@@ -239,7 +249,7 @@ describe("Subtasks in the drawer", () => {
   it("offers no Subtasks below the fourth level", async () => {
     mockApi([
       ...seed(),
-      taskRow({ id: 6, title: "Aisle", parent_id: 4, depth: 3, parent_title: "Seats" }),
+      makeTask({ id: 6, title: "Aisle", parent_id: 4, depth: 3, parent_title: "Seats" }),
     ]);
     const user = renderList();
 

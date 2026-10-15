@@ -122,6 +122,9 @@ export function TaskList({ project }: { project: SidebarProject }) {
           <span role="columnheader" className="px-2">
             Priority
           </span>
+          <span role="columnheader" className="px-2">
+            Due
+          </span>
           <span role="columnheader" className="px-2 text-right">
             Activity
           </span>

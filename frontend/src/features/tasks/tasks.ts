@@ -18,6 +18,8 @@ export type TaskDetail = components["schemas"]["TaskDetailOut"];
 export type TaskStatus = components["schemas"]["Status"];
 export type TaskPriority = components["schemas"]["Priority"];
 export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"][number];
+export type Attachment = components["schemas"]["AttachmentOut"];
+export type DatesChange = components["schemas"]["DatesChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 
@@ -110,10 +112,87 @@ export function taskActivityQuery(taskId: number) {
   });
 }
 
-/** A change to a Task: the fields to set, which are all left as they are when absent. */
+/** A Task's Attachments, oldest first. Uploads and deletes add Activity, so it shares their key. */
+export function attachmentsQuery(taskId: number) {
+  return queryOptions({
+    queryKey: [...TASKS_KEY, "attachments", taskId],
+    queryFn: async (): Promise<Attachment[]> => {
+      const { data } = await api.GET("/api/v1/tasks/{task_id}/attachments", {
+        params: { path: { task_id: taskId } },
+      });
+      if (!data) {
+        throw new Error("Could not load the attachments.");
+      }
+      return data;
+    },
+  });
+}
+
+/** Where the browser fetches an Attachment's bytes: inline for images and PDFs, else a download. */
+export function attachmentUrl(attachmentId: number) {
+  return `/api/v1/attachments/${String(attachmentId)}/download`;
+}
+
+/** Upload one file to a Task. Several files go up one request each. */
+export function useUploadAttachment(taskId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (file: File) => {
+      const { data, error } = await api.POST("/api/v1/tasks/{task_id}/attachments", {
+        params: { path: { task_id: taskId } },
+        // The schema types a file as a string (OpenAPI's binary format); the File goes as is.
+        body: { file: file as unknown as string },
+        bodySerializer: (body) => {
+          const form = new FormData();
+          form.append("file", body.file);
+          return form;
+        },
+      });
+      if (error) {
+        // The server explains a refusal, such as a file over the size limit.
+        throw new Error(error.detail);
+      }
+      return data;
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+  });
+}
+
+/** Delete an Attachment for good. It leaves the drawer before the server answers. */
+export function useDeleteAttachment(taskId: number) {
+  const queryClient = useQueryClient();
+  const key = attachmentsQuery(taskId).queryKey;
+  return useMutation({
+    mutationFn: async (attachmentId: number) => {
+      const { response } = await api.DELETE("/api/v1/attachments/{attachment_id}", {
+        params: { path: { attachment_id: attachmentId } },
+      });
+      if (!response.ok) {
+        throw new Error("Could not delete the attachment.");
+      }
+    },
+    onMutate: async (attachmentId) => {
+      await queryClient.cancelQueries({ queryKey: key });
+      queryClient.setQueryData(key, (items) => items?.filter((item) => item.id !== attachmentId));
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+  });
+}
+
+/** A Task's dates as the API takes them; null removes them all. */
+export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
+
+/**
+ * A change to a Task: the fields to set, which are all left as they are when absent. `dates`
+ * replaces all four date fields at once.
+ */
 export type TaskChange = { id: number } & Partial<
   Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason">
->;
+> & { dates?: DatesIn };
+
+const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
 async function patchTask({ id, ...change }: TaskChange) {
   const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
@@ -127,10 +206,15 @@ async function patchTask({ id, ...change }: TaskChange) {
 }
 
 /** The Task as the server will return it after the change, for showing the change straight away. */
-function withChange<T extends Task>(task: T, change: TaskChange): T {
+function withChange<T extends Task>(task: T, { dates, ...change }: TaskChange): T {
   const leavesStatus = change.status !== undefined && change.status !== task.status;
   // The server drops the Blocked reason on any Status change, unless the change sets one.
-  return { ...task, ...(leavesStatus && { blocked_reason: "" }), ...change };
+  return {
+    ...task,
+    ...(leavesStatus && { blocked_reason: "" }),
+    ...change,
+    ...(dates !== undefined && { ...UNDATED, ...dates }),
+  };
 }
 
 /** The Task with the change applied if it's the one changed, else the Task as it is. */

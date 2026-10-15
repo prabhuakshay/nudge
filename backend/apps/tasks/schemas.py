@@ -1,12 +1,12 @@
-"""Request and response shapes for the Task, Activity and sidebar endpoints."""
+"""Request and response shapes for the Task, Attachment, Activity and sidebar endpoints."""
 
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TC003 - Pydantic needs the type at runtime
-from typing import Annotated, Literal
+from datetime import date, datetime, time
+from typing import Annotated, Literal, Self
 
 from ninja import Field, Schema
-from pydantic import StringConstraints
+from pydantic import StringConstraints, field_validator, model_validator
 
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
 
@@ -28,8 +28,20 @@ class TaskOut(Schema):
     priority: Task.Priority = Field(description="0 is no Priority; 1 (P1) is the most urgent.")
     blocked_reason: str = Field(description="Why a Blocked Task waits; empty otherwise.")
     completed_at: datetime | None = Field(description="When it was Completed or marked Won't do.")
+    due_date: date | None
+    due_time: time | None = Field(description="Null for an all-day Task.")
+    start_date: date | None = Field(description="Set for a range, which ends on the due date.")
+    start_time: time | None
+    is_overdue: bool = Field(
+        description="Whether the Task is open and its due date or time has passed in the user's "
+        "time zone. A range is overdue only once its end has passed.",
+    )
     created_at: datetime
     updated_at: datetime
+    attachment_count: int = Field(
+        default=0,
+        description="How many Attachments the Task has. A Task just added has none.",
+    )
 
 
 class TaskAncestorOut(Schema):
@@ -72,6 +84,45 @@ class TaskIn(Schema):
     )
 
 
+class TaskDatesIn(Schema):
+    """A Task's due date, time and range, all clock times in the user's time zone.
+
+    Without a time the Task is all-day. A start turns it into a range ending at the due date;
+    start and due are then both all-day or both timed. Times have minute precision.
+    """
+
+    due_date: date
+    due_time: time | None = None
+    start_date: date | None = None
+    start_time: time | None = None
+
+    @field_validator("due_time", "start_time")
+    @classmethod
+    def _whole_minutes(cls, value: time | None) -> time | None:
+        if value is not None and (value.second or value.microsecond):
+            message = "Times have minute precision."
+            raise ValueError(message)
+        return value
+
+    @model_validator(mode="after")
+    def _a_valid_range(self) -> Self:
+        if self.start_date is None:
+            if self.start_time is not None:
+                message = "A start time needs a start date."
+                raise ValueError(message)
+            return self
+        if (self.start_time is None) != (self.due_time is None):
+            message = "A range's start and due are both all-day or both timed."
+            raise ValueError(message)
+        if (self.start_date, self.start_time or time.min) > (
+            self.due_date,
+            self.due_time or time.min,
+        ):
+            message = "A range can't start after it's due."
+            raise ValueError(message)
+        return self
+
+
 class TaskPatchIn(Schema):
     """The fields of a Task to change; fields left out stay as they are."""
 
@@ -86,6 +137,10 @@ class TaskPatchIn(Schema):
         description="Only a Blocked Task can have one; send an empty string to clear it.",
     )
     priority: Task.Priority | None = None
+    dates: TaskDatesIn | None = Field(
+        default=None,
+        description="Replaces all of the Task's dates; null removes them.",
+    )
 
 
 class AffectedTaskOut(Schema):
@@ -112,6 +167,22 @@ class TitleChangedData(Schema):
 
     old: str
     new: str
+
+
+class DatesData(Schema):
+    """A Task's dates at one moment, as a change recorded them."""
+
+    due_date: date
+    due_time: time | None
+    start_date: date | None
+    start_time: time | None
+
+
+class DatesChangedData(Schema):
+    """The dates before and after a change; null when the Task had or has none."""
+
+    old: DatesData | None
+    new: DatesData | None
 
 
 class StatusChangedData(Schema):
@@ -163,6 +234,15 @@ class DescriptionEditedActivityOut(Schema):
     data: NoActivityData
 
 
+class DatesChangedActivityOut(Schema):
+    """The Task's due date, time or range was set, changed or removed."""
+
+    id: int
+    kind: Literal["dates_changed"]
+    at: datetime
+    data: DatesChangedData
+
+
 class StatusChangedActivityOut(Schema):
     """The Task's Status changed."""
 
@@ -181,12 +261,39 @@ class PriorityChangedActivityOut(Schema):
     data: PriorityChangedData
 
 
+class AttachmentData(Schema):
+    """The Attachment an event is about, by the name it had."""
+
+    name: str
+
+
+class AttachmentAddedActivityOut(Schema):
+    """A file was attached to the Task."""
+
+    id: int
+    kind: Literal["attachment_added"]
+    at: datetime
+    data: AttachmentData
+
+
+class AttachmentRemovedActivityOut(Schema):
+    """An Attachment was deleted from the Task."""
+
+    id: int
+    kind: Literal["attachment_removed"]
+    at: datetime
+    data: AttachmentData
+
+
 TaskActivityOut = Annotated[
     CreatedActivityOut
     | TitleChangedActivityOut
     | DescriptionEditedActivityOut
     | StatusChangedActivityOut
-    | PriorityChangedActivityOut,
+    | PriorityChangedActivityOut
+    | AttachmentAddedActivityOut
+    | AttachmentRemovedActivityOut
+    | DatesChangedActivityOut,
     Field(discriminator="kind"),
 ]
 
@@ -199,6 +306,16 @@ class TaskActivityListOut(Schema):
         description="Pass as `cursor` to get the next page; null on the last page.",
     )
     count: int = Field(description="How many events the whole history holds.")
+
+
+class AttachmentOut(Schema):
+    """A file attached to a Task. Its bytes come from the download endpoint."""
+
+    id: int
+    name: str = Field(description="The file's name as it was uploaded.")
+    size: int = Field(description="In bytes.")
+    content_type: str = Field(description="Chosen by the server from the file's name.")
+    created_at: datetime
 
 
 class SidebarProjectOut(Schema):

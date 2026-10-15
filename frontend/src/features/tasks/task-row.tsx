@@ -1,10 +1,12 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Paperclip } from "lucide-react";
 import { memo } from "react";
 
 import { cn } from "@/lib/utils";
 
+import { CountIcon } from "./count-icon";
+import { DueBadge } from "./due-badge";
 import { SubtaskCount } from "./subtask-count";
-import { PriorityCell, StatusCell } from "./task-cells";
+import { DueCell, PriorityCell, StatusCell } from "./task-cells";
 import { TaskCheckbox } from "./task-checkbox";
 import { PriorityFlag } from "./task-priority";
 import { isClosed } from "./task-properties";
@@ -13,7 +15,7 @@ import type { TreeRow } from "./task-tree";
 import type { Task } from "./tasks";
 
 /** One grid for the header and every row, so the columns line up from `lg`. */
-export const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_6.5rem]";
+export const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_6.5rem]";
 
 /** How far a title sits from its row's edge: the chevron and checkbox with their gaps, in pixels. */
 const TITLE_INSET = 54;
@@ -152,8 +154,11 @@ const TaskRow = memo(function TaskRow({
       <div role="gridcell" className="hidden min-w-0 lg:block">
         <PriorityCell task={task} />
       </div>
-      <div role="gridcell" className="hidden min-w-0 items-center justify-end pr-1 lg:flex">
-        <SubtaskCount {...subtasks} />
+      <div role="gridcell" className="hidden min-w-0 lg:block">
+        <DueCell task={task} />
+      </div>
+      <div role="gridcell" className="hidden min-w-0 items-center justify-end gap-2 pr-1 lg:flex">
+        <ActivityCounts task={task} subtasks={subtasks} />
       </div>
     </div>
   );
@@ -205,7 +210,18 @@ function PhoneMeta({
       {task.status === "wont_do" && <StatusBadge status={task.status} />}
       {task.status === "blocked" && <BlockedNote task={task} className="max-w-full" />}
       <PriorityFlag priority={task.priority} />
-      <SubtaskCount {...subtasks} />
+      <DueBadge task={task} />
+      <ActivityCounts task={task} subtasks={subtasks} />
     </div>
+  );
+}
+
+/** The Activity column: the Subtask ring and the Attachment count. */
+function ActivityCounts({ task, subtasks }: { task: Task; subtasks: TreeRow["subtasks"] }) {
+  return (
+    <>
+      <SubtaskCount {...subtasks} />
+      <CountIcon icon={Paperclip} count={task.attachment_count} label="attachments" />
+    </>
   );
 }

@@ -4,12 +4,23 @@ import userEvent from "@testing-library/user-event";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { makeTask } from "@/test/tasks";
 
 import { TaskList } from "./task-list";
-import { INBOX_ID, json, taskRow } from "./test-data";
 import type { Task } from "./tasks";
 
-const INBOX = { id: INBOX_ID, name: "Inbox", open_count: 2 };
+const INBOX = { id: 7, name: "Inbox", open_count: 2 };
+
+const task = makeTask;
+
+function json(body: unknown, status = 200) {
+  return Promise.resolve(
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+}
 
 /** A small stand-in for the server: open Tasks, pages of Closed ones, and Task creation. */
 function mockApi({
@@ -22,7 +33,7 @@ function mockApi({
     const url = new URL(request.url);
     if (request.method === "POST") {
       const body = (await request.clone().json()) as { title: string };
-      const created = taskRow({ id: nextId++, title: body.title });
+      const created = task({ id: nextId++, title: body.title });
       open = [created, ...open];
       return json(created, 201);
     }
@@ -30,7 +41,7 @@ function mockApi({
       const change = (await request.clone().json()) as Partial<Task>;
       const id = Number(url.pathname.split("/").at(-1));
       const before =
-        [...open, ...closedPages.flat()].find((item) => item.id === id) ?? taskRow({ id });
+        [...open, ...closedPages.flat()].find((item) => item.id === id) ?? task({ id });
       const changed = { ...before, ...change };
       const affected = change.status
         ? [{ id, prior_status: before.status, prior_blocked_reason: before.blocked_reason }]
@@ -81,7 +92,7 @@ function titlesIn(group: string) {
 describe("TaskList", () => {
   it("lists the open Tasks in the server's order with the open count", async () => {
     mockApi({
-      open: [taskRow({ id: 1, title: "Buy milk" }), taskRow({ id: 2, title: "Call mum" })],
+      open: [task({ id: 1, title: "Buy milk" }), task({ id: 2, title: "Call mum" })],
     });
 
     renderList();
@@ -91,8 +102,24 @@ describe("TaskList", () => {
     expect(screen.getByText("2 open")).toBeInTheDocument();
   });
 
+  it("counts a Task's Attachments in its row and shows nothing for none", async () => {
+    mockApi({
+      open: [
+        task({ id: 1, title: "File taxes", attachment_count: 2 }),
+        task({ id: 2, title: "Call mum" }),
+      ],
+    });
+
+    renderList();
+
+    const taxes = await screen.findByRole("row", { name: /File taxes/ });
+    const mum = screen.getByRole("row", { name: /Call mum/ });
+    expect(within(taxes).getAllByRole("img", { name: "2 attachments" })).not.toHaveLength(0);
+    expect(within(mum).queryByRole("img")).not.toBeInTheDocument();
+  });
+
   it("adds a Task from Quick add at the top and keeps the input focused", async () => {
-    const fetchSpy = mockApi({ open: [taskRow({ id: 1, title: "Buy milk" })] });
+    const fetchSpy = mockApi({ open: [task({ id: 1, title: "Buy milk" })] });
     const user = renderList();
     await screen.findByText("Buy milk");
 
@@ -126,7 +153,7 @@ describe("TaskList", () => {
   });
 
   it("completes a Task from its checkbox and takes it out of the open list", async () => {
-    const fetchSpy = mockApi({ open: [taskRow({ id: 1, title: "Buy milk" })] });
+    const fetchSpy = mockApi({ open: [task({ id: 1, title: "Buy milk" })] });
     const user = renderList();
 
     await user.click(await screen.findByRole("checkbox", { name: "Complete “Buy milk”" }));
@@ -138,8 +165,8 @@ describe("TaskList", () => {
   it("keeps Closed Tasks collapsed until asked, then loads them a page at a time", async () => {
     const fetchSpy = mockApi({
       closedPages: [
-        [taskRow({ id: 3, title: "Paid rent", status: "completed" })],
-        [taskRow({ id: 4, title: "Filed taxes", status: "completed" })],
+        [task({ id: 3, title: "Paid rent", status: "completed" })],
+        [task({ id: 4, title: "Filed taxes", status: "completed" })],
       ],
     });
     const user = renderList();
@@ -159,7 +186,7 @@ describe("TaskList", () => {
 
   it("reopens a Closed Task from its checkbox", async () => {
     const fetchSpy = mockApi({
-      closedPages: [[taskRow({ id: 3, title: "Paid rent", status: "completed" })]],
+      closedPages: [[task({ id: 3, title: "Paid rent", status: "completed" })]],
     });
     const user = renderList();
     await user.click(await screen.findByRole("button", { name: /Closed/ }));
@@ -173,7 +200,7 @@ describe("TaskList", () => {
   });
 
   it("offers Undo after completing a Task, which reopens it", async () => {
-    const fetchSpy = mockApi({ open: [taskRow({ id: 1, title: "Buy milk" })] });
+    const fetchSpy = mockApi({ open: [task({ id: 1, title: "Buy milk" })] });
     const user = renderList();
 
     await user.click(await screen.findByRole("checkbox", { name: "Complete “Buy milk”" }));
@@ -185,7 +212,7 @@ describe("TaskList", () => {
   });
 
   it("changes the Status and Priority from the row's cells", async () => {
-    const fetchSpy = mockApi({ open: [taskRow({ id: 1, title: "Ship it" })] });
+    const fetchSpy = mockApi({ open: [task({ id: 1, title: "Ship it" })] });
     const user = renderList();
     const row = (await screen.findByText("Ship it")).closest<HTMLElement>("[role=row]");
     if (!row) throw new Error("No row for the Task.");
@@ -210,8 +237,8 @@ describe("TaskList", () => {
   it("shows a Blocked Task's reason and the Priority flag under its title", async () => {
     mockApi({
       open: [
-        taskRow({ id: 1, title: "Ship it", status: "blocked", blocked_reason: "Waiting on Ada" }),
-        taskRow({ id: 2, title: "Pay rent", priority: 1 }),
+        task({ id: 1, title: "Ship it", status: "blocked", blocked_reason: "Waiting on Ada" }),
+        task({ id: 2, title: "Pay rent", priority: 1 }),
       ],
     });
     renderList();

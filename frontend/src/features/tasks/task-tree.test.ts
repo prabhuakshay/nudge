@@ -1,14 +1,15 @@
 import { describe, expect, it } from "vitest";
 
+import { makeTask } from "@/test/tasks";
+
 import { openTrees, parentsOf, treeRows } from "./task-tree";
-import { taskRow } from "./test-data";
 
 const ROWS = [
-  taskRow({ id: 1, title: "Trip" }),
-  taskRow({ id: 2, title: "Groceries" }),
-  taskRow({ id: 3, title: "Flights", parent_id: 1 }),
-  taskRow({ id: 4, title: "Seats", parent_id: 3, status: "completed" }),
-  taskRow({ id: 5, title: "Hotel", parent_id: 1, status: "wont_do" }),
+  makeTask({ id: 1, title: "Trip" }),
+  makeTask({ id: 2, title: "Groceries" }),
+  makeTask({ id: 3, title: "Flights", parent_id: 1 }),
+  makeTask({ id: 4, title: "Seats", parent_id: 3, status: "completed" }),
+  makeTask({ id: 5, title: "Hotel", parent_id: 1, status: "wont_do" }),
 ];
 
 function outline(rows: ReturnType<typeof treeRows>) {

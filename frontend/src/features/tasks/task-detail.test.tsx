@@ -4,12 +4,23 @@ import userEvent from "@testing-library/user-event";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { makeTask } from "@/test/tasks";
 
 import { TaskList } from "./task-list";
-import { INBOX_ID, json, taskDetail } from "./test-data";
 import type { TaskActivity, TaskDetail } from "./tasks";
 
-const INBOX = { id: INBOX_ID, name: "Inbox", open_count: 3 };
+const INBOX = { id: 7, name: "Inbox", open_count: 3 };
+
+const task = makeTask;
+
+function json(body: unknown, status = 200) {
+  return Promise.resolve(
+    new Response(JSON.stringify(body), {
+      status,
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+}
 
 function minutesAgo(minutes: number) {
   return new Date(Date.now() - minutes * 60_000).toISOString();
@@ -27,33 +38,32 @@ function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
     if (url.pathname.endsWith("/activity")) {
       return json({ items: activity, next_cursor: null, count: activity.length });
     }
+    if (url.pathname.endsWith("/attachments")) return json([]);
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);
     if (request.method === "PATCH" && found) {
       const change = (await request.clone().json()) as Partial<TaskDetail>;
-      if (change.title !== undefined) {
-        activity.unshift({
-          id: activity.length + 1,
-          kind: "title_changed",
-          at: minutesAgo(0),
-          data: { old: found.title, new: change.title },
-        });
-      }
-      const statusChanged = change.status !== undefined && change.status !== found.status;
-      const affected = statusChanged
-        ? [{ id, prior_status: found.status, prior_blocked_reason: found.blocked_reason }]
-        : [];
-      Object.assign(found, statusChanged ? { blocked_reason: "" } : {}, change);
-      return json({ task: found, affected });
+      return json(applyPatch(found, change, activity));
     }
-    if (found) {
-      return json(found);
-    }
+    if (found) return json(found);
     if (url.searchParams.get("closed") === "true") {
       return json({ items: [], next_cursor: null });
     }
     return json({ items: tasks, next_cursor: null });
   });
+}
+
+function applyPatch(found: TaskDetail, change: Partial<TaskDetail>, activity: TaskActivity[]) {
+  if (change.title !== undefined) {
+    const data = { old: found.title, new: change.title };
+    activity.unshift({ id: activity.length + 1, kind: "title_changed", at: minutesAgo(0), data });
+  }
+  const statusChanged = change.status !== undefined && change.status !== found.status;
+  const affected = statusChanged
+    ? [{ id: found.id, prior_status: found.status, prior_blocked_reason: found.blocked_reason }]
+    : [];
+  Object.assign(found, statusChanged ? { blocked_reason: "" } : {}, change);
+  return { task: found, affected };
 }
 
 async function patches(fetchSpy: ReturnType<typeof mockApi>) {
@@ -97,7 +107,7 @@ afterEach(() => {
 
 describe("TaskDetail", () => {
   it("opens a Task from a click anywhere on its row, under its Project", async () => {
-    mockApi([taskDetail({ id: 1, title: "Buy milk", description: "Two **litres**" })]);
+    mockApi([task({ id: 1, title: "Buy milk", description: "Two **litres**" })]);
     const user = renderList();
 
     const drawer = await openTask(user, "Buy milk");
@@ -108,7 +118,7 @@ describe("TaskDetail", () => {
   });
 
   it("leaves the drawer closed when the row's checkbox is clicked", async () => {
-    mockApi([taskDetail({ id: 1, title: "Buy milk" })]);
+    mockApi([task({ id: 1, title: "Buy milk" })]);
     const user = renderList();
 
     await user.click(await screen.findByRole("checkbox", { name: "Complete “Buy milk”" }));
@@ -117,7 +127,7 @@ describe("TaskDetail", () => {
   });
 
   it("opens the focused row with Enter", async () => {
-    mockApi([taskDetail({ id: 1, title: "Buy milk" })]);
+    mockApi([task({ id: 1, title: "Buy milk" })]);
     const user = renderList();
     await screen.findByText("Buy milk");
 
@@ -129,7 +139,7 @@ describe("TaskDetail", () => {
   });
 
   it("renames the Task on Enter", async () => {
-    const fetchSpy = mockApi([taskDetail({ id: 1, title: "Buy milk" })]);
+    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
     const user = renderList();
     const drawer = await openTask(user, "Buy milk");
     const title = await within(drawer).findByRole("textbox", { name: "Title" });
@@ -142,7 +152,7 @@ describe("TaskDetail", () => {
   });
 
   it("puts a cleared title back instead of saving it", async () => {
-    const fetchSpy = mockApi([taskDetail({ id: 1, title: "Buy milk" })]);
+    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
     const user = renderList();
     const drawer = await openTask(user, "Buy milk");
     const title = await within(drawer).findByRole("textbox", { name: "Title" });
@@ -155,9 +165,7 @@ describe("TaskDetail", () => {
   });
 
   it("edits the Description as markdown text and saves it on blur", async () => {
-    const fetchSpy = mockApi([
-      taskDetail({ id: 1, title: "Buy milk", description: "Two **litres**" }),
-    ]);
+    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk", description: "Two **litres**" })]);
     const user = renderList();
     const drawer = await openTask(user, "Buy milk");
 
@@ -176,7 +184,7 @@ describe("TaskDetail", () => {
 
   it("renders a Description's raw HTML and script links as inert text", async () => {
     mockApi([
-      taskDetail({
+      task({
         id: 1,
         title: "Buy milk",
         description: '<img src=x onerror="alert(1)"> [click](javascript:alert(1))',
@@ -193,9 +201,9 @@ describe("TaskDetail", () => {
 
   it("steps through the list with J/K and the arrow keys", async () => {
     mockApi([
-      taskDetail({ id: 1, title: "Buy milk" }),
-      taskDetail({ id: 2, title: "Call mum" }),
-      taskDetail({ id: 3, title: "Pay rent" }),
+      task({ id: 1, title: "Buy milk" }),
+      task({ id: 2, title: "Call mum" }),
+      task({ id: 3, title: "Pay rent" }),
     ]);
     const user = renderList();
     await openTask(user, "Buy milk");
@@ -214,7 +222,7 @@ describe("TaskDetail", () => {
   });
 
   it("closes on Esc and hands focus to the row of the Task it showed", async () => {
-    mockApi([taskDetail({ id: 1, title: "Buy milk" }), taskDetail({ id: 2, title: "Call mum" })]);
+    mockApi([task({ id: 1, title: "Buy milk" }), task({ id: 2, title: "Call mum" })]);
     const user = renderList();
     await openTask(user, "Buy milk");
     await user.click(await screen.findByRole("button", { name: "Next task" }));
@@ -227,7 +235,7 @@ describe("TaskDetail", () => {
   });
 
   it("opens as a bottom sheet on a phone", async () => {
-    mockApi([taskDetail({ id: 1, title: "Buy milk" })]);
+    mockApi([task({ id: 1, title: "Buy milk" })]);
     const user = renderList({ wide: false });
 
     const sheet = await openTask(user, "Buy milk");
@@ -237,7 +245,7 @@ describe("TaskDetail", () => {
 
   it("shows the Task's history, newest first, in the Activity tab", async () => {
     mockApi(
-      [taskDetail({ id: 1, title: "Buy oat milk" })],
+      [task({ id: 1, title: "Buy oat milk" })],
       [
         { id: 3, kind: "description_edited", at: minutesAgo(2), data: {} },
         {
@@ -264,7 +272,7 @@ describe("TaskDetail", () => {
 
   it("counts a rename in the Activity tab straight away", async () => {
     mockApi(
-      [taskDetail({ id: 1, title: "Buy milk" })],
+      [task({ id: 1, title: "Buy milk" })],
       [{ id: 1, kind: "created", at: minutesAgo(10), data: {} }],
     );
     const user = renderList();
@@ -279,7 +287,7 @@ describe("TaskDetail", () => {
   });
 
   it("sets the Status from its chip, with an Undo toast that puts it back", async () => {
-    const fetchSpy = mockApi([taskDetail({ id: 1, title: "Buy milk" })]);
+    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
     const user = renderList();
     const drawer = await openTask(user, "Buy milk");
 
@@ -298,7 +306,7 @@ describe("TaskDetail", () => {
   });
 
   it("keeps a Blocked reason in its card and restores it with Undo", async () => {
-    const fetchSpy = mockApi([taskDetail({ id: 1, title: "Ship it" })]);
+    const fetchSpy = mockApi([task({ id: 1, title: "Ship it" })]);
     const user = renderList();
     const drawer = await openTask(user, "Ship it");
 
@@ -324,7 +332,7 @@ describe("TaskDetail", () => {
   });
 
   it("sets the Priority from its chip", async () => {
-    const fetchSpy = mockApi([taskDetail({ id: 1, title: "Buy milk" })]);
+    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
     const user = renderList();
     const drawer = await openTask(user, "Buy milk");
 

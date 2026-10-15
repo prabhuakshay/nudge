@@ -7,7 +7,6 @@ time; resetting rotates it and turning the feed off clears it.
 
 from __future__ import annotations
 
-import re
 import secrets
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING
@@ -19,6 +18,7 @@ from icalendar import Calendar, Event, vDuration
 from apps.accounts.models import User
 from apps.accounts.services import local_zone
 from apps.tasks.archive import active_tasks
+from apps.tasks.mentions import MENTION
 from apps.tasks.models import OPEN_STATUSES
 
 if TYPE_CHECKING:
@@ -32,7 +32,6 @@ _TOKEN_BYTES = 32
 _REFRESH = timedelta(hours=1)
 # A timed Task without a start shows as a short event that ends at its due time.
 _TIMED_LENGTH = timedelta(minutes=30)
-_MENTION = re.compile(r"\[@([^\]]+)\]\(person:\d+\)")
 
 
 def _address(token: str) -> str:
@@ -127,4 +126,4 @@ def _description(task: Task) -> str:
 
 def _plain(text: str) -> str:
     """Return the text with each Mention as the Person's plain name."""
-    return _MENTION.sub(r"\1", text)
+    return MENTION.sub(r"\1", text)

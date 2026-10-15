@@ -11,7 +11,7 @@ from django.test import Client
 from django.utils import timezone
 from icalendar import Calendar
 
-from apps.tasks import projects, services
+from apps.tasks import people, projects, services
 from apps.tasks.models import Project, Task
 
 if TYPE_CHECKING:
@@ -261,9 +261,10 @@ def test_the_summary_shows_mentions_as_plain_names(
     client: Client,
     feed_path: str,
 ) -> None:
+    alice = people.create_person(ada, "Alice Smith")
     task = _task(
         services.inbox(ada),
-        title="Call [@Alice Smith](person:7) about the lease",
+        title=f"Call [@Alice Smith](person:{alice.pk}) about the lease",
         due_date=date(2026, 10, 20),
     )
 

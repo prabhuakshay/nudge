@@ -34,6 +34,13 @@ describe("the shortcut registry", () => {
     expect(SHORTCUTS.goToSettings.keys).toEqual(["g ,"]);
   });
 
+  it("opens the command bar with Mod+K, even from a text field, or with /", () => {
+    expect(matchesShortcut(press("k", { ctrlKey: true }), "openCommandBar")).toBe(true);
+    expect(matchesShortcut(press("/"), "openCommandBar")).toBe(true);
+    expect(worksInTextFields("$mod+k")).toBe(true);
+    expect(worksInTextFields("/")).toBe(false);
+  });
+
   it("matches a key press to its shortcut, modifiers included", () => {
     expect(matchesShortcut(press("d"), "setDate")).toBe(true);
     expect(matchesShortcut(press("D", { shiftKey: true }), "setDate")).toBe(false);

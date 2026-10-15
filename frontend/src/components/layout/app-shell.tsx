@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { LogoMark } from "@/components/brand/logo";
 import { Toaster } from "@/components/ui/sonner";
@@ -18,12 +18,14 @@ import { Sidebar } from "./sidebar";
 import { UserAvatar } from "./user-avatar";
 
 /**
- * The signed-in layout. A top bar holds notifications and the theme switch everywhere. Mobile
- * adds the menu, logo and account there plus bottom navigation; from the `lg` breakpoint those move
- * into a permanent sidebar. It also hosts the toasts and tooltips every page can use, and the
- * Quick add dialog that `C` opens on pages without a Quick add card.
+ * The signed-in layout. A top bar holds notifications and the theme switch everywhere, and the
+ * command bar's button on phones. Mobile adds the menu, logo and account there plus bottom
+ * navigation; from the `lg` breakpoint those move into a permanent sidebar. It also hosts the
+ * toasts and tooltips every page can use, and the Quick add dialog that `C` and the command bar
+ * open.
  */
 export function AppShell({ user, children }: { user: User; children: ReactNode }) {
+  const [quickAddDraft, setQuickAddDraft] = useState<string | null>(null);
   return (
     <TooltipProvider delayDuration={400}>
       <div className="flex min-h-dvh">
@@ -39,6 +41,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
               a backdrop filter would trap fixed children inside the bar. */}
             <Clock />
             <div className="flex items-center gap-1">
+              <GlobalShortcuts user={user} onAddTask={setQuickAddDraft} />
               <NotificationCenter />
               <ThemeToggle />
               <SettingsDialog user={user}>
@@ -61,9 +64,8 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
         </div>
 
         <BottomNav />
-        <GlobalQuickAdd />
+        <GlobalQuickAdd draft={quickAddDraft} onDraftChange={setQuickAddDraft} />
         <Toaster />
-        <GlobalShortcuts user={user} />
       </div>
     </TooltipProvider>
   );

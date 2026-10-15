@@ -29,11 +29,11 @@ const ada = {
   single_key_shortcuts: true,
 };
 
-function renderApp() {
+function renderApp(onAddTask: (draft: string) => void = vi.fn()) {
   const rootRoute = createRootRoute({
     component: () => (
       <>
-        <GlobalShortcuts user={ada} />
+        <GlobalShortcuts user={ada} onAddTask={onAddTask} />
         <Outlet />
         <Toaster />
       </>
@@ -97,6 +97,24 @@ describe("GlobalShortcuts", () => {
       const section = within(dialog).getByRole("region", { name: sections[scope] });
       expect(within(section).getByText(label)).toBeInTheDocument();
     }
+  });
+
+  it("offers the same actions in the command bar, and Quick add for its words", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.reject(new Error("offline")));
+    const onAddTask = vi.fn();
+    const user = renderApp(onAddTask);
+    await screen.findByRole("heading", { name: "Today" });
+
+    await user.keyboard("{Control>}k{/Control}");
+    await user.keyboard("settings{Enter}");
+    expect(await screen.findByText("Settings are open")).toBeInTheDocument();
+
+    await user.keyboard("{Control>}k{/Control}");
+    await user.keyboard("Buy bread");
+    await user.click(screen.getByRole("option", { name: /Create task/ }));
+    await vi.waitFor(() => {
+      expect(onAddTask).toHaveBeenCalledWith("Buy bread");
+    });
   });
 
   it("undoes the latest change still offering Undo with Mod+Z", async () => {

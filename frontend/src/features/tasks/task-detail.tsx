@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
@@ -18,6 +18,7 @@ import { CommentFooter, Comments } from "./comment-section";
 import { backOutOfField, useDetailKeys } from "./detail-keys";
 import { DetailTabsList } from "./detail-tabs";
 import { PropertyChips } from "./property-chips";
+import { rememberTask } from "./recent-tasks";
 import { SubtaskSection } from "./subtask-section";
 import { TaskActionsMenu } from "./task-actions";
 import { TaskCheckbox } from "./task-checkbox";
@@ -135,6 +136,10 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
   const previous = index > 0 ? order[index - 1] : undefined;
   const next = index >= 0 ? order[index + 1] : undefined;
   const body = useDetailKeys({ task, readOnly, previous, next, onOpen, onClose });
+  // On every change too, so a renamed Task is listed by its new title.
+  useEffect(() => {
+    rememberTask(task);
+  }, [task]);
 
   return (
     <div ref={body} className="flex min-h-0 flex-1 flex-col">

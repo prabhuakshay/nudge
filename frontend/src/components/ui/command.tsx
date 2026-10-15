@@ -18,20 +18,29 @@ export function Command({ className, ...props }: ComponentProps<typeof CommandPr
   );
 }
 
-/** The command bar in a dialog. */
+/**
+ * A `Command` in a dialog, full-screen on phones and high on the screen from `sm`. Props other
+ * than the dialog's go to the `Command`.
+ */
 export function CommandDialog({
-  title = "Command",
+  title,
+  open,
+  onOpenChange,
+  onCloseAutoFocus,
   children,
   ...props
-}: ComponentProps<typeof Dialog> & { title?: string }) {
+}: ComponentProps<typeof Command> &
+  Pick<ComponentProps<typeof Dialog>, "open" | "onOpenChange"> &
+  Pick<ComponentProps<typeof DialogContent>, "onCloseAutoFocus"> & { title: string }) {
   return (
-    <Dialog {...props}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         aria-describedby={undefined}
-        className="sm:top-[20%] sm:w-full sm:max-w-lg sm:translate-y-0"
+        onCloseAutoFocus={onCloseAutoFocus}
+        className="sm:top-[15%] sm:w-full sm:max-w-xl sm:translate-y-0"
       >
         <DialogTitle className="sr-only">{title}</DialogTitle>
-        <Command>{children}</Command>
+        <Command {...props}>{children}</Command>
       </DialogContent>
     </Dialog>
   );

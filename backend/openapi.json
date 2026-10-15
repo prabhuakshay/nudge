@@ -4121,6 +4121,17 @@
             ],
             "description": "Dates the Task from the start, such as today in Today. Not for a Subtask."
           },
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Priority"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 (P1) is the most urgent; left out, the Task has no Priority."
+          },
           "tags": {
             "description": "Tag names, in any case; Tags the user doesn't have yet are created.",
             "items": {

@@ -143,7 +143,13 @@ def _first_position(project: Project) -> str:
     return str(generate_key_between(None, first))
 
 
-def create_task(project: Project, title: str, dates: TaskDates | None = None) -> Task:
+def create_task(
+    project: Project,
+    title: str,
+    dates: TaskDates | None = None,
+    *,
+    priority: Task.Priority = Task.Priority.NONE,
+) -> Task:
     """Create a Task in the Project, first among its roots, owned by the Project's owner.
 
     Raises:
@@ -157,6 +163,7 @@ def create_task(project: Project, title: str, dates: TaskDates | None = None) ->
             owner_id=project.owner_id,
             project=project,
             title=title,
+            priority=priority,
             position=_first_position(project),
             **asdict(dates or TaskDates()),
         )
@@ -165,7 +172,12 @@ def create_task(project: Project, title: str, dates: TaskDates | None = None) ->
     return with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)
 
 
-def create_subtask(parent: Task, title: str) -> TaskChange:
+def create_subtask(
+    parent: Task,
+    title: str,
+    *,
+    priority: Task.Priority = Task.Priority.NONE,
+) -> TaskChange:
     """Create a Subtask last under the parent, in the parent's Project.
 
     A Closed Task can't hold open work, so adding under one reopens it and its Closed ancestors.
@@ -189,6 +201,7 @@ def create_subtask(parent: Task, title: str) -> TaskChange:
             project_id=parent.project_id,
             parent=parent,
             title=title,
+            priority=priority,
             position=str(generate_key_between(last, None)),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)

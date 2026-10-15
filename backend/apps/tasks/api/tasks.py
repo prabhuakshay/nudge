@@ -14,6 +14,7 @@ from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import MentionError
+from apps.tasks.models import Task
 from apps.tasks.pagination import InvalidCursorError, Page
 from apps.tasks.reminders import ReminderRuleError
 from apps.tasks.schemas.activity import TaskActivityListOut
@@ -37,7 +38,7 @@ if TYPE_CHECKING:
     from django.http import HttpRequest
 
     from apps.accounts.models import User
-    from apps.tasks.models import Project, Tag, Task
+    from apps.tasks.models import Tag
 
 router = Router()
 
@@ -147,27 +148,19 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
     created with the Task.
     """
     user = signed_in_user(request)
+    picked = tags.owned_tags(user, task.tag_ids)
+    if picked is None:
+        return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
     if task.parent_id is not None:
-        return _create_subtask(user, task.parent_id, task.title)
-    target = _target(user, task)
-    if isinstance(target, Status):
-        return target
-    project, picked = target
-    try:
-        created = tags.create_tagged_task(
-            project,
-            task.title,
-            _dates(task),
-            tags=picked,
-            tag_names=task.tags,
-        )
-    except (MentionError, ArchivedProjectError) as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
-    return Status(_HTTP_CREATED, TaskOut.from_orm(created))
+        return _create_subtask(user, task.parent_id, task, [*picked, *task.tags])
+    return _create_root(user, task, [*picked, *task.tags])
 
 
-def _target(user: User, task: TaskIn) -> tuple[Project, list[Tag]] | Status[ErrorOut]:
-    """Return the Project and picked Tags of a new Task, or a 404 if either isn't the user's."""
+def _create_root(
+    user: User,
+    task: TaskIn,
+    with_tags: list[Tag | str],
+) -> Status[TaskOut] | Status[ErrorOut]:
     project = (
         services.inbox(user)
         if task.project_id is None
@@ -175,18 +168,35 @@ def _target(user: User, task: TaskIn) -> tuple[Project, list[Tag]] | Status[Erro
     )
     if project is None:
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
-    picked = tags.owned_tags(user, task.tag_ids)
-    if picked is None:
-        return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
-    return project, picked
+    try:
+        created = tags.create_tagged_task(
+            project,
+            task.title,
+            _dates(task),
+            priority=task.priority or Task.Priority.NONE,
+            tags=with_tags,
+        )
+    except (MentionError, ArchivedProjectError) as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    return Status(_HTTP_CREATED, TaskOut.from_orm(created))
 
 
-def _create_subtask(user: User, parent_id: int, title: str) -> Status[TaskOut] | Status[ErrorOut]:
+def _create_subtask(
+    user: User,
+    parent_id: int,
+    task: TaskIn,
+    with_tags: list[Tag | str],
+) -> Status[TaskOut] | Status[ErrorOut]:
     parent = services.live_task(user, parent_id)
     if parent is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     try:
-        change = services.create_subtask(parent, title)
+        change = tags.create_tagged_subtask(
+            parent,
+            task.title,
+            priority=task.priority or Task.Priority.NONE,
+            tags=with_tags,
+        )
     except (services.TaskRuleError, MentionError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, TaskOut.from_orm(change.task))

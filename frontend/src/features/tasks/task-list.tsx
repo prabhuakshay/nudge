@@ -1,5 +1,5 @@
 import { useInfiniteQuery, useQuery, type UseInfiniteQueryResult } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, CircleCheck, ListTodo } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleCheck, ListTodo, Pin } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { ExpandCollapse } from "./expand-collapse";
+import { useOpenTask } from "./open-task";
 import { QuickAddCard } from "./quick-add-card";
 import { TaskDetail } from "./task-detail";
 import { isClosed } from "./task-properties";
@@ -18,7 +19,7 @@ import {
   type ToggleCollapsed,
   type ToggleStatus,
 } from "./task-row";
-import { parentsOf, treeRows, type TreeRow } from "./task-tree";
+import { parentsOf, treeRows, treesWhere, type TreeRow } from "./task-tree";
 import { closedTasksQuery, openTasksQuery, useSetTaskStatus, type SidebarProject } from "./tasks";
 
 /** How far each level of Subtasks steps in, in pixels; nesting eats width, so less on phones. */
@@ -26,12 +27,15 @@ const INDENT = 22;
 const PHONE_INDENT = 20;
 
 /**
- * A Project's Tasks as a table: the page header, Quick add, then the open Task trees and a
- * collapsed Closed group. Subtasks nest under their parent and fold away from its chevron. On
- * phones the table collapses into stacked rows. Clicking a row opens the Task in the drawer.
+ * A Project's Tasks as a table: the page header, Quick add, then the pinned Task trees, the other
+ * open trees and a collapsed Closed group. Subtasks nest under their parent and fold away from
+ * its chevron. On phones the table collapses into stacked rows. Clicking a row opens the Task in
+ * the drawer, and the URL's `?task=` follows the open Task.
  */
 export function TaskList({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));
+  const pinned = useMemo(() => treesWhere(open, (root) => root.pinned_at !== null), [open]);
+  const unpinned = useMemo(() => treesWhere(open, (root) => root.pinned_at === null), [open]);
   const [showClosed, setShowClosed] = useState(false);
   const closed = useInfiniteQuery({ ...closedTasksQuery(project.id), enabled: showClosed });
   const closedTasks = useMemo(
@@ -39,16 +43,19 @@ export function TaskList({ project }: { project: SidebarProject }) {
     [showClosed, closed.data],
   );
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set());
-  const openRows = useMemo(() => treeRows(open, collapsed), [open, collapsed]);
+  const pinnedRows = useMemo(() => treeRows(pinned, collapsed), [pinned, collapsed]);
+  const openRows = useMemo(() => treeRows(unpinned, collapsed), [unpinned, collapsed]);
   const closedRows = useMemo(() => treeRows(closedTasks, collapsed), [closedTasks, collapsed]);
   const parents = useMemo(() => parentsOf([...open, ...closedTasks]), [open, closedTasks]);
   // J/K step through every Task in outline order, folded or not, as in the prototype.
   const order = useMemo(
-    () => [...treeRows(open), ...treeRows(closedTasks)].map((row) => row.task.id),
-    [open, closedTasks],
+    () =>
+      [pinned, unpinned, closedTasks].flatMap((rows) => treeRows(rows).map((row) => row.task.id)),
+    [pinned, unpinned, closedTasks],
   );
-  const [openId, setOpenId] = useState<number | null>(null);
+  const { openTaskId: openId, setOpenTask: setOpenId } = useOpenTask();
   const indent = useMediaQuery("(min-width: 1024px)") ? INDENT : PHONE_INDENT;
+  const touch = useMediaQuery("(pointer: coarse)");
   const { mutate: setStatus } = useSetTaskStatus();
   // Stable, so memoized rows don't re-render when the list does.
   const toggle = useCallback<ToggleStatus>(
@@ -69,11 +76,12 @@ export function TaskList({ project }: { project: SidebarProject }) {
       openId,
       collapsed,
       indent,
+      touch,
       onToggle: toggle,
       onOpen: setOpenId,
       onToggleCollapsed: toggleCollapsed,
     }),
-    [openId, collapsed, indent, toggle, toggleCollapsed],
+    [openId, collapsed, indent, touch, toggle, toggleCollapsed, setOpenId],
   );
 
   return (
@@ -121,14 +129,25 @@ export function TaskList({ project }: { project: SidebarProject }) {
           <span role="columnheader" className="px-2 text-right">
             Activity
           </span>
+          <span role="columnheader" aria-label="Actions" />
         </div>
+
+        {pinnedRows.length > 0 && (
+          <Group
+            icon={<Pin className="size-3.5 text-primary" aria-hidden />}
+            label="Pinned"
+            count={pinnedRows.filter((row) => row.level === 0).length}
+          >
+            <TreeRows rows={pinnedRows} context={context} />
+          </Group>
+        )}
 
         <Group
           icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
           label="Tasks"
           count={openRows.filter((row) => row.level === 0).length}
         >
-          {open.length === 0 ? (
+          {unpinned.length === 0 ? (
             <p className="px-4 py-8 text-center text-sm text-muted-foreground">
               Nothing left here. Add a task above.
             </p>

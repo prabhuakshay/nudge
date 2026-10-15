@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { CountIcon } from "./count-icon";
 import { DueBadge } from "./due-badge";
 import { SubtaskCount } from "./subtask-count";
+import { TaskActionsMenu, TaskContextMenu } from "./task-actions";
 import { DueCell, PriorityCell, StatusCell } from "./task-cells";
 import { TaskCheckbox } from "./task-checkbox";
 import { PriorityFlag } from "./task-priority";
@@ -15,7 +16,7 @@ import type { TreeRow } from "./task-tree";
 import type { Task } from "./tasks";
 
 /** One grid for the header and every row, so the columns line up from `lg`. */
-export const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_6.5rem]";
+export const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_6.5rem_2.5rem]";
 
 /** How far a title sits from its row's edge: the chevron and checkbox with their gaps, in pixels. */
 const TITLE_INSET = 54;
@@ -29,6 +30,8 @@ export type RowContext = {
   openId: number | null;
   collapsed: ReadonlySet<number>;
   indent: number;
+  /** On touch screens a long press is for scrolling, so rows have no context menu. */
+  touch: boolean;
   onToggle: ToggleStatus;
   onOpen: OpenTask;
   onToggleCollapsed: ToggleCollapsed;
@@ -45,6 +48,7 @@ export function TreeRows({ rows, context }: { rows: TreeRow[]; context: RowConte
       selected={task.id === context.openId}
       collapsed={context.collapsed.has(task.id)}
       indent={context.indent}
+      touch={context.touch}
       onToggle={context.onToggle}
       onOpen={context.onOpen}
       onToggleCollapsed={context.onToggleCollapsed}
@@ -54,8 +58,9 @@ export function TreeRows({ rows, context }: { rows: TreeRow[]; context: RowConte
 
 /**
  * One Task in the table, stepped in by its level. A click anywhere on it, or Enter, opens the
- * Task; the chevron, checkbox and cell pickers keep their own action. On phones the cells fold
- * into a meta line under the title. Memoized so a change to one row leaves the others alone.
+ * Task; the chevron, checkbox and cell pickers keep their own action. Right-click or the ⋯ button
+ * opens its actions. On phones the cells fold into a meta line under the title. Memoized so a
+ * change to one row leaves the others alone.
  */
 const TaskRow = memo(function TaskRow({
   task,
@@ -64,6 +69,7 @@ const TaskRow = memo(function TaskRow({
   selected,
   collapsed,
   indent,
+  touch,
   onToggle,
   onOpen,
   onToggleCollapsed,
@@ -74,6 +80,7 @@ const TaskRow = memo(function TaskRow({
   selected: boolean;
   collapsed: boolean;
   indent: number;
+  touch: boolean;
   onToggle: ToggleStatus;
   onOpen: OpenTask;
   onToggleCollapsed: ToggleCollapsed;
@@ -81,86 +88,105 @@ const TaskRow = memo(function TaskRow({
   const closed = isClosed(task.status);
   const blocked = task.status === "blocked";
   return (
-    <div
-      role="row"
-      tabIndex={0}
-      data-task-id={task.id}
-      aria-level={level + 1}
-      aria-expanded={subtasks.total > 0 ? !collapsed : undefined}
-      aria-selected={selected}
-      onClick={(event) => {
-        // Clicks in a picker's menu reach the row through React's tree, not the page's.
-        if (event.target instanceof Node && event.currentTarget.contains(event.target)) {
-          onOpen(task.id);
-        }
+    <TaskContextMenu
+      task={task}
+      disabled={touch}
+      onOpen={() => {
+        onOpen(task.id);
       }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" && event.target === event.currentTarget) {
-          event.preventDefault();
-          onOpen(task.id);
-        }
+      onToggle={() => {
+        onToggle(task);
       }}
-      className={cn(
-        GRID,
-        "group/row flex min-h-11 cursor-pointer flex-col justify-center gap-1 border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors outline-none last:border-b-0 lg:min-h-10 lg:items-center lg:gap-0 lg:py-0",
-        "focus-visible:bg-primary-soft/50 focus-visible:shadow-[inset_2px_0_0_var(--primary)]",
-        selected
-          ? "bg-primary-soft/50 shadow-[inset_2px_0_0_var(--primary)]"
-          : "hover:bg-surface-muted/60",
-      )}
     >
       <div
-        role="gridcell"
-        className="flex min-w-0 items-center gap-2.5"
-        style={{ paddingLeft: level * indent }}
+        role="row"
+        tabIndex={0}
+        data-task-id={task.id}
+        aria-level={level + 1}
+        aria-expanded={subtasks.total > 0 ? !collapsed : undefined}
+        aria-selected={selected}
+        onClick={(event) => {
+          // Clicks in a picker's menu reach the row through React's tree, not the page's.
+          if (event.target instanceof Node && event.currentTarget.contains(event.target)) {
+            onOpen(task.id);
+          }
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" && event.target === event.currentTarget) {
+            event.preventDefault();
+            onOpen(task.id);
+          }
+        }}
+        className={cn(
+          GRID,
+          "group/row flex min-h-11 cursor-pointer flex-col justify-center gap-1 border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors outline-none last:border-b-0 lg:min-h-10 lg:items-center lg:gap-0 lg:py-0",
+          "focus-visible:bg-primary-soft/50 focus-visible:shadow-[inset_2px_0_0_var(--primary)]",
+          selected
+            ? "bg-primary-soft/50 shadow-[inset_2px_0_0_var(--primary)]"
+            : "hover:bg-surface-muted/60",
+        )}
       >
-        <span className="-mr-1 flex w-5 shrink-0 justify-center">
-          {subtasks.total > 0 && (
-            <CollapseToggle
-              title={task.title}
-              collapsed={collapsed}
-              onToggle={() => {
-                onToggleCollapsed(task.id);
-              }}
-            />
-          )}
-        </span>
-        <TaskCheckbox
-          task={task}
-          onToggle={() => {
-            onToggle(task);
-          }}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span
-            data-task-title
-            className={cn(
-              "min-w-0 truncate text-sm",
-              closed && "text-muted-foreground line-through",
-              !closed && (level === 0 ? "font-semibold" : "font-medium"),
+        <div
+          role="gridcell"
+          className="flex min-w-0 items-center gap-2.5"
+          style={{ paddingLeft: level * indent }}
+        >
+          <span className="-mr-1 flex w-5 shrink-0 justify-center">
+            {subtasks.total > 0 && (
+              <CollapseToggle
+                title={task.title}
+                collapsed={collapsed}
+                onToggle={() => {
+                  onToggleCollapsed(task.id);
+                }}
+              />
             )}
-          >
-            {task.title}
           </span>
-          {blocked && <BlockedNote task={task} className="hidden lg:flex" />}
+          <TaskCheckbox
+            task={task}
+            onToggle={() => {
+              onToggle(task);
+            }}
+          />
+          <div className="flex min-w-0 flex-1 flex-col">
+            <span
+              data-task-title
+              className={cn(
+                "min-w-0 truncate text-sm",
+                closed && "text-muted-foreground line-through",
+                !closed && (level === 0 ? "font-semibold" : "font-medium"),
+              )}
+            >
+              {task.title}
+            </span>
+            {blocked && <BlockedNote task={task} className="hidden lg:flex" />}
+          </div>
+          <TaskActionsMenu task={task} className="-my-2 lg:hidden" />
+        </div>
+
+        <PhoneMeta task={task} subtasks={subtasks} inset={TITLE_INSET + level * indent} />
+
+        <div role="gridcell" className="hidden min-w-0 lg:block">
+          <StatusCell task={task} />
+        </div>
+        <div role="gridcell" className="hidden min-w-0 lg:block">
+          <PriorityCell task={task} />
+        </div>
+        <div role="gridcell" className="hidden min-w-0 lg:block">
+          <DueCell task={task} />
+        </div>
+        <div role="gridcell" className="hidden min-w-0 items-center justify-end gap-2 pr-1 lg:flex">
+          <ActivityCounts task={task} subtasks={subtasks} />
+        </div>
+        {/* Its own column, shown on hover or focus, so it never covers a cell. */}
+        <div
+          role="gridcell"
+          className="hidden items-center justify-center opacity-0 transition-opacity group-focus-within/row:opacity-100 group-hover/row:opacity-100 has-[[data-state=open]]:opacity-100 lg:flex"
+        >
+          <TaskActionsMenu task={task} />
         </div>
       </div>
-
-      <PhoneMeta task={task} subtasks={subtasks} inset={TITLE_INSET + level * indent} />
-
-      <div role="gridcell" className="hidden min-w-0 lg:block">
-        <StatusCell task={task} />
-      </div>
-      <div role="gridcell" className="hidden min-w-0 lg:block">
-        <PriorityCell task={task} />
-      </div>
-      <div role="gridcell" className="hidden min-w-0 lg:block">
-        <DueCell task={task} />
-      </div>
-      <div role="gridcell" className="hidden min-w-0 items-center justify-end gap-2 pr-1 lg:flex">
-        <ActivityCounts task={task} subtasks={subtasks} />
-      </div>
-    </div>
+    </TaskContextMenu>
   );
 });
 

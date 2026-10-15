@@ -1,4 +1,4 @@
-"""Business rules for Projects and Tasks: Inbox, order, Status, dates, Attachments and Activity.
+"""Business rules for Projects and Tasks: Inbox, order, Status, pins, dates, Attachments, Activity.
 
 Every function takes the user first and reaches Projects and Tasks through that user's related
 managers, so another user's ids behave as if they don't exist. A change and the Activity event
@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Case, Count, OuterRef, Q, Subquery, When
+from django.db.models import Case, Count, F, OuterRef, Q, Subquery, When
 from django.db.models.functions import Coalesce
 from django.template.defaultfilters import filesizeformat
 from django.utils import timezone
@@ -84,6 +84,7 @@ class TaskEdit:
     status: Task.Status | None = None
     blocked_reason: str | None = None
     priority: Task.Priority | None = None
+    pinned: bool | None = None
     dates: TaskDates | None = None
     project: Project | None = None
 
@@ -199,11 +200,16 @@ def ancestors(task: Task) -> list[Task]:
 
 
 def open_tasks(project: Project) -> QuerySet[Task]:
-    """Return the Project's open trees: open roots and every Subtask under them, in manual order.
+    """Return the Project's open trees: open roots and every Subtask under them.
 
-    Subtasks come whatever their Status, so a list can show done steps under open work.
+    Pinned roots come first, then the rest in manual order. Subtasks come whatever their Status,
+    so a list can show done steps under open work.
     """
-    return _live_tasks(project).filter(_root_status_in(OPEN_STATUSES))
+    return (
+        _live_tasks(project)
+        .filter(_root_status_in(OPEN_STATUSES))
+        .order_by(F("pinned_at").asc(nulls_last=True), "position", "id")
+    )
 
 
 def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
@@ -271,6 +277,35 @@ def create_subtask(parent: Task, title: str) -> TaskChange:
     return TaskChange(task=fresh, affected=affected)
 
 
+def duplicate_task(user: User, task_id: int) -> Task | None:
+    """Copy one of the user's Tasks to right after it; return None if it isn't theirs.
+
+    The copy is a fresh open Task with the original's title, Description and Priority, under the
+    same parent. Being open, it reopens any Closed ancestors.
+    """
+    original = live_task(user, task_id)
+    if original is None:
+        return None
+    with transaction.atomic():
+        # Locking the Project serialises inserts into it, so two Tasks never get the same key.
+        Project.objects.select_for_update().get(pk=original.project_id)
+        siblings = original.project.tasks.filter(parent_id=original.parent_id)
+        later = siblings.filter(position__gt=original.position).order_by("position")
+        following = later.values_list("position", flat=True).first()
+        task = Task.objects.create(
+            owner=user,
+            project_id=original.project_id,
+            parent_id=original.parent_id,
+            title=original.title,
+            description=original.description,
+            priority=original.priority,
+            position=str(generate_key_between(original.position, following)),
+        )
+        TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
+        _reopen_ancestors(task)
+    return _as_rows(user.tasks.filter(pk=task.pk), user).get()
+
+
 def live_task(user: User, task_id: int) -> Task | None:
     """Return one of the user's Tasks that isn't in Trash, or None."""
     tasks = _with_counts(user.tasks.filter(pk=task_id, deleted_at__isnull=True))
@@ -284,6 +319,7 @@ _EDITABLE_FIELDS = (
     "blocked_reason",
     "priority",
     "completed_at",
+    "pinned_at",
     "due_date",
     "due_time",
     "start_date",
@@ -303,7 +339,8 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     Project.
 
     Raises:
-        TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked.
+        TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked, or pins a
+            Subtask.
     """
     task = live_task(user, task_id)
     if task is None:
@@ -342,6 +379,18 @@ def _apply(task: Task, edit: TaskEdit) -> None:
         task.description = edit.description
     if edit.priority is not None:
         task.priority = edit.priority
+    _apply_status(task, edit)
+    if edit.pinned and task.parent_id is not None:
+        message = "Only a top-level task can be pinned."
+        raise TaskRuleError(message)
+    if edit.pinned is not None and edit.pinned != (task.pinned_at is not None):
+        task.pinned_at = timezone.now() if edit.pinned else None
+    if edit.dates is not None:
+        task.due_date, task.due_time = edit.dates.due_date, edit.dates.due_time
+        task.start_date, task.start_time = edit.dates.start_date, edit.dates.start_time
+
+
+def _apply_status(task: Task, edit: TaskEdit) -> None:
     if edit.status is not None and edit.status != task.status:
         task.status = edit.status
         task.completed_at = timezone.now() if edit.status in CLOSED_STATUSES else None
@@ -352,9 +401,6 @@ def _apply(task: Task, edit: TaskEdit) -> None:
             message = "Only a Blocked task can have a Blocked reason."
             raise TaskRuleError(message)
         task.blocked_reason = edit.blocked_reason
-    if edit.dates is not None:
-        task.due_date, task.due_time = edit.dates.due_date, edit.dates.due_time
-        task.start_date, task.start_time = edit.dates.start_date, edit.dates.start_time
 
 
 def _cascade_status(task: Task) -> list[AffectedTask]:
@@ -420,6 +466,9 @@ def _activity(
     if task.priority != before["priority"]:
         data = {"old": before["priority"], "new": task.priority}
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.PRIORITY_CHANGED, data=data))
+    if (task.pinned_at is None) != (before["pinned_at"] is None):
+        kind = TaskActivity.Kind.UNPINNED if task.pinned_at is None else TaskActivity.Kind.PINNED
+        events.append(TaskActivity(task=task, kind=kind))
     dates = TaskDates.of(task)
     if dates != dates_before:
         data = {"old": dates_before.as_activity(), "new": dates.as_activity()}

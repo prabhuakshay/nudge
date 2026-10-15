@@ -8,7 +8,8 @@ import { SubtaskCount } from "./subtask-count";
 import { TaskCheckbox } from "./task-checkbox";
 import { isClosed } from "./task-properties";
 import { MAX_DEPTH, treeRows, type TreeRow } from "./task-tree";
-import { useCreateSubtask, useSetTaskStatus, type TaskDetail } from "./tasks";
+import { useCreateSubtask } from "./task-placement";
+import { useSetTaskStatus, type TaskDetail } from "./tasks";
 
 /** How far each level of Subtasks steps in inside the drawer, in pixels. */
 const INDENT = 22;

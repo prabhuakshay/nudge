@@ -15,6 +15,7 @@ import { ActivityFeed } from "./activity-feed";
 import { Attachments } from "./attachments";
 import { PropertyChips } from "./property-chips";
 import { SubtaskSection } from "./subtask-section";
+import { TaskActionsMenu } from "./task-actions";
 import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
 import { isClosed } from "./task-properties";
@@ -50,7 +51,9 @@ type TaskDetailProps = {
 export function TaskDetail(props: TaskDetailProps) {
   const wide = useMediaQuery("(min-width: 640px)");
   const { taskId, onClose } = props;
-  const { data: task } = useQuery({ ...taskQuery(taskId ?? 0), enabled: taskId !== null });
+  const { data: task, isError } = useQuery({ ...taskQuery(taskId ?? 0), enabled: taskId !== null });
+  // A link to a Task that is gone, or never was the user's, just shows the list.
+  const open = taskId !== null && !isError;
   const [snap, setSnap] = useState<number | string | null>(PEEK);
   const [lastOpened, setLastOpened] = useState(taskId);
   if (taskId !== null && taskId !== lastOpened) {
@@ -75,7 +78,7 @@ export function TaskDetail(props: TaskDetailProps) {
 
   if (wide) {
     return (
-      <Sheet open={taskId !== null} onOpenChange={onOpenChange}>
+      <Sheet open={open} onOpenChange={onOpenChange}>
         <SheetContent
           side="right"
           showClose={false}
@@ -97,7 +100,7 @@ export function TaskDetail(props: TaskDetailProps) {
   }
   return (
     <Drawer
-      open={taskId !== null}
+      open={open}
       onOpenChange={onOpenChange}
       snapPoints={SNAP_POINTS}
       activeSnapPoint={snap}
@@ -177,6 +180,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
         >
           <ChevronDown className="size-4" aria-hidden />
         </HeaderButton>
+        <TaskActionsMenu task={task} />
         <span className="mx-1 h-5 w-px bg-border" aria-hidden />
         <HeaderButton label="Close" shortcut="Esc" onClick={onClose}>
           <X className="size-4" aria-hidden />

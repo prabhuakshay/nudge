@@ -12,7 +12,8 @@ import { DueBadge } from "./due-badge";
 import { PriorityMenu } from "./task-priority";
 import { PRIORITY, STATUS } from "./task-properties";
 import { StatusMenu } from "./task-status";
-import { useMoveTaskToProject, type SidebarProject, type Task } from "./tasks";
+import { useMoveTaskToProject } from "./task-placement";
+import type { SidebarProject, Task } from "./tasks";
 
 function Chip({ className, ...props }: ComponentProps<"button">) {
   return (

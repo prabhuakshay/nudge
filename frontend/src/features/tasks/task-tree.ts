@@ -54,12 +54,17 @@ export function parentsOf(rows: Task[]): number[] {
   return rows.filter((row) => parents.has(row.id)).map((row) => row.id);
 }
 
-/** The rows of the trees whose root is still open, as an open list shows them. */
-export function openTrees(rows: Task[]): Task[] {
+/** The rows of the trees whose root passes the test, in the order given. */
+export function treesWhere(rows: Task[], test: (root: Task) => boolean): Task[] {
   const byId = new Map(rows.map((row) => [row.id, row]));
   const rootOf = (row: Task): Task => {
     const parent = row.parent_id === null ? undefined : byId.get(row.parent_id);
     return parent ? rootOf(parent) : row;
   };
-  return rows.filter((row) => !isClosed(rootOf(row).status));
+  return rows.filter((row) => test(rootOf(row)));
+}
+
+/** The rows of the trees whose root is still open, as an open list shows them. */
+export function openTrees(rows: Task[]): Task[] {
+  return treesWhere(rows, (root) => !isClosed(root.status));
 }

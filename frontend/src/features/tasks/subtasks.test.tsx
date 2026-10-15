@@ -1,17 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen, within } from "@testing-library/react";
+import type userEvent from "@testing-library/user-event";
 
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { INBOX as DRAWER_INBOX } from "@/test/drawer";
+import { INBOX, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
 
-import { TaskList } from "./task-list";
 import { isClosed } from "./task-properties";
 import type { Task, TaskDetail } from "./tasks";
-
-const INBOX = { ...DRAWER_INBOX, open_count: 4 };
 
 function json(body: unknown, status = 200) {
   return Promise.resolve(
@@ -112,15 +106,7 @@ function fakeServer(rows: Task[]) {
 }
 
 function renderList() {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TooltipProvider>
-        <TaskList project={INBOX} />
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
-  return userEvent.setup();
+  return renderTaskList().user;
 }
 
 /** The open rows as an outline: one indent per level below the top. */
@@ -248,6 +234,17 @@ describe("Subtasks in the drawer", () => {
       .find((request) => request.method === "POST");
     expect(await post?.json()).toEqual({ title: "Oat milk", parent_id: 2 });
     expect(await within(drawer).findByText("Oat milk")).toBeInTheDocument();
+  });
+
+  it("offers no Pin action for a Subtask", async () => {
+    mockApi();
+    const user = renderList();
+    const drawer = await open(user, "Flights");
+
+    await user.click(await within(drawer).findByRole("button", { name: "More actions" }));
+
+    expect(await screen.findByRole("menuitem", { name: "Duplicate" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Pin to top" })).toBeNull();
   });
 
   it("offers no Subtasks below the fourth level", async () => {

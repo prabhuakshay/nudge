@@ -196,3 +196,29 @@ def test_changing_the_priority_records_the_old_and_new_priority(
     response = client.get(f"/api/v1/tasks/{task.pk}/activity")
     assert _kinds(response) == ["priority_changed", "created"]
     assert response.json()["items"][0]["data"] == {"old": 0, "new": 2}
+
+
+@pytest.mark.django_db
+def test_pinning_and_unpinning_are_recorded_once_each(client: Client, ada: User) -> None:
+    task = services.create_task(services.inbox(ada), "Pay rent")
+
+    for pinned in (True, True, False):
+        client.patch(
+            f"/api/v1/tasks/{task.pk}",
+            {"pinned": pinned},
+            content_type="application/json",
+        )
+
+    response = client.get(f"/api/v1/tasks/{task.pk}/activity")
+    assert _kinds(response) == ["unpinned", "pinned", "created"]
+    assert response.json()["items"][0]["data"] == {}
+
+
+@pytest.mark.django_db
+def test_a_duplicate_starts_its_own_history_with_created(client: Client, ada: User) -> None:
+    original = services.create_task(services.inbox(ada), "Plan the trip")
+    services.update_task(ada, original.pk, services.TaskEdit(title="Plan the holiday"))
+
+    copy = client.post(f"/api/v1/tasks/{original.pk}/duplicate").json()
+
+    assert _kinds(client.get(f"/api/v1/tasks/{copy['id']}/activity")) == ["created"]

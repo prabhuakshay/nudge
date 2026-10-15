@@ -60,7 +60,7 @@ export const PRIORITY: Record<
 /** What a Status change did, counting the relatives it closed or reopened along with the Task. */
 export function statusMessage(title: string, status: TaskStatus, relatives: number): string {
   const message = `${STATUS_VERB[status]} “${title}”`;
-  if (relatives === 0) return message;
+  if (relatives < 1) return message;
   if (isClosed(status)) {
     return `${message} with ${String(relatives)} ${relatives === 1 ? "Subtask" : "Subtasks"}`;
   }

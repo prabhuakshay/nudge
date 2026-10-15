@@ -1,12 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen, within } from "@testing-library/react";
 
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-
-import { TaskList } from "./task-list";
-import { INBOX, json, task } from "./testing";
+import { INBOX, json, renderTaskList, task } from "./testing";
 import type { Task } from "./tasks";
 
 /** A small stand-in for the server: open Tasks, pages of Closed ones, and Task creation. */
@@ -59,15 +53,7 @@ function requests(fetchSpy: ReturnType<typeof mockApi>) {
 }
 
 function renderList() {
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TooltipProvider>
-        <TaskList project={INBOX} />
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
-  return userEvent.setup();
+  return renderTaskList().user;
 }
 
 function titlesIn(group: string) {
@@ -106,7 +92,7 @@ describe("TaskList", () => {
     const fetchSpy = mockApi();
     const user = renderList();
 
-    await user.type(screen.getByRole("textbox", { name: "New task" }), "   {Enter}");
+    await user.type(await screen.findByRole("textbox", { name: "New task" }), "   {Enter}");
 
     expect(requests(fetchSpy)).not.toContain("POST /api/v1/tasks");
   });

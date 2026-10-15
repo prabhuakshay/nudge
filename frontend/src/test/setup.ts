@@ -8,6 +8,9 @@ Element.prototype.setPointerCapture = () => undefined;
 Element.prototype.releasePointerCapture = () => undefined;
 Element.prototype.hasPointerCapture = () => false;
 
+// jsdom doesn't scroll, and logs each call to scrollTo, which the router makes on navigation.
+window.scrollTo = () => undefined;
+
 // jsdom has no media queries either; without a stub nothing matches, like a narrow phone screen.
 Object.defineProperty(window, "matchMedia", {
   writable: true,

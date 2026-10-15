@@ -108,7 +108,7 @@ export function taskActivityQuery(taskId: number) {
 }
 
 /** A change to a Task: the fields to set, which are all left as they are when absent. */
-export type TaskChange = { id: number } & Partial<
+export type TaskChange = { id: number; pinned?: boolean } & Partial<
   Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason">
 >;
 
@@ -124,10 +124,21 @@ async function patchTask({ id, ...change }: TaskChange) {
 }
 
 /** The Task as the server will return it after the change, for showing the change straight away. */
-function withChange<T extends Task>(task: T, change: TaskChange): T {
+function withChange<T extends Task>(task: T, { pinned, ...change }: TaskChange): T {
   const leavesStatus = change.status !== undefined && change.status !== task.status;
-  // The server drops the Blocked reason on any Status change, unless the change sets one.
-  return { ...task, ...(leavesStatus && { blocked_reason: "" }), ...change };
+  return {
+    ...task,
+    // The server drops the Blocked reason on any Status change, unless the change sets one.
+    ...(leavesStatus && { blocked_reason: "" }),
+    pinned_at: pinnedAt(task, pinned),
+    ...change,
+  };
+}
+
+function pinnedAt(task: Task, pinned: boolean | undefined) {
+  if (pinned === undefined || pinned === (task.pinned_at !== null)) return task.pinned_at;
+  // The server sets the real time; now is close enough to show the Task in the right group.
+  return pinned ? new Date().toISOString() : null;
 }
 
 /** Show a change in the drawer and in every open list before the server answers. */
@@ -218,5 +229,23 @@ export function useCreateTask(projectId: number) {
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries(sidebarQuery),
+  });
+}
+
+/** Copy a Task to right after it, as the server places it. */
+export function useDuplicateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (taskId: number) => {
+      const { data } = await api.POST("/api/v1/tasks/{task_id}/duplicate", {
+        params: { path: { task_id: taskId } },
+      });
+      if (!data) {
+        throw new Error("Could not duplicate the task.");
+      }
+      return data;
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => refresh(queryClient),
   });
 }

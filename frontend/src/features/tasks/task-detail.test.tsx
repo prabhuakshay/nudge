@@ -1,12 +1,7 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen, within } from "@testing-library/react";
+import type userEvent from "@testing-library/user-event";
 
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-
-import { TaskList } from "./task-list";
-import { INBOX, json, task } from "./testing";
+import { json, renderTaskList, task } from "./testing";
 import type { TaskActivity, TaskDetail } from "./tasks";
 
 function minutesAgo(minutes: number) {
@@ -73,15 +68,7 @@ function renderList({ wide = true } = {}) {
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TooltipProvider>
-        <TaskList project={INBOX} />
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
-  return userEvent.setup();
+  return renderTaskList().user;
 }
 
 async function openTask(user: ReturnType<typeof userEvent.setup>, title: string) {

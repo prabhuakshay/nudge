@@ -1,18 +1,17 @@
 import { useInfiniteQuery, useQuery, type UseInfiniteQueryResult } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, CircleCheck, Inbox, ListTodo } from "lucide-react";
-import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
+import { ChevronDown, ChevronRight, CircleCheck, Inbox, ListTodo, Pin } from "lucide-react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
+import { useOpenTask } from "./open-task";
 import { QuickAddCard } from "./quick-add-card";
-import { PriorityCell, StatusCell } from "./task-cells";
-import { TaskCheckbox } from "./task-checkbox";
 import { TaskDetail } from "./task-detail";
-import { PriorityFlag } from "./task-priority";
 import { isClosed } from "./task-properties";
-import { BlockedNote, StatusBadge } from "./task-status";
+import { GRID, TaskRow, type OpenTask, type ToggleStatus } from "./task-row";
 import {
   closedTasksQuery,
   openTasksQuery,
@@ -21,19 +20,15 @@ import {
   type Task,
 } from "./tasks";
 
-/** One grid for the header and every row, so the columns line up from `lg`. */
-const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem]";
-
-type ToggleStatus = (task: Task) => void;
-type OpenTask = (taskId: number) => void;
-
 /**
- * A Project's Tasks as a table: the page header, Quick add, then the open Tasks and a collapsed
- * Closed group. On phones the table collapses into stacked rows. Clicking a row opens the Task in
- * the drawer.
+ * A Project's Tasks as a table: the page header, Quick add, then the pinned Tasks, the other open
+ * Tasks and a collapsed Closed group. On phones the table collapses into stacked rows. Clicking a
+ * row opens the Task in the drawer, and the URL's `?task=` follows the open Task.
  */
 export function TaskList({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));
+  const pinned = useMemo(() => open.filter((task) => task.pinned_at !== null), [open]);
+  const unpinned = useMemo(() => open.filter((task) => task.pinned_at === null), [open]);
   const [showClosed, setShowClosed] = useState(false);
   const closed = useInfiniteQuery({ ...closedTasksQuery(project.id), enabled: showClosed });
   const closedTasks = useMemo(
@@ -41,10 +36,11 @@ export function TaskList({ project }: { project: SidebarProject }) {
     [showClosed, closed.data],
   );
   const order = useMemo(
-    () => [...open, ...closedTasks].map((task) => task.id),
-    [open, closedTasks],
+    () => [...pinned, ...unpinned, ...closedTasks].map((task) => task.id),
+    [pinned, unpinned, closedTasks],
   );
-  const [openId, setOpenId] = useState<number | null>(null);
+  const { openTaskId: openId, setOpenTask: setOpenId } = useOpenTask();
+  const touch = useMediaQuery("(pointer: coarse)");
   const { mutate: setStatus } = useSetTaskStatus();
   // Stable, so memoized rows don't re-render when the list does.
   const toggle = useCallback<ToggleStatus>(
@@ -90,23 +86,44 @@ export function TaskList({ project }: { project: SidebarProject }) {
           <span role="columnheader" className="px-2">
             Priority
           </span>
+          <span role="columnheader" aria-label="Actions" />
         </div>
 
-        <Group
-          icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
-          label="Tasks"
-          count={open.length}
-        >
-          {open.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Nothing left here. Add a task above.
-            </p>
-          ) : (
-            open.map((task) => (
+        {pinned.length > 0 && (
+          <Group
+            icon={<Pin className="size-3.5 text-primary" aria-hidden />}
+            label="Pinned"
+            count={pinned.length}
+          >
+            {pinned.map((task) => (
               <TaskRow
                 key={task.id}
                 task={task}
                 selected={task.id === openId}
+                touch={touch}
+                onToggle={toggle}
+                onOpen={setOpenId}
+              />
+            ))}
+          </Group>
+        )}
+
+        <Group
+          icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
+          label="Tasks"
+          count={unpinned.length}
+        >
+          {unpinned.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+              Nothing left here. Add a task above.
+            </p>
+          ) : (
+            unpinned.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                selected={task.id === openId}
+                touch={touch}
                 onToggle={toggle}
                 onOpen={setOpenId}
               />
@@ -120,6 +137,7 @@ export function TaskList({ project }: { project: SidebarProject }) {
           expanded={showClosed}
           onExpandedChange={setShowClosed}
           openId={openId}
+          touch={touch}
           onToggle={toggle}
           onOpen={setOpenId}
         />
@@ -170,6 +188,7 @@ function ClosedGroup({
   expanded,
   onExpandedChange,
   openId,
+  touch,
   onToggle,
   onOpen,
 }: {
@@ -178,6 +197,7 @@ function ClosedGroup({
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
   openId: number | null;
+  touch: boolean;
   onToggle: ToggleStatus;
   onOpen: OpenTask;
 }) {
@@ -209,6 +229,7 @@ function ClosedGroup({
               key={task.id}
               task={task}
               selected={task.id === openId}
+              touch={touch}
               onToggle={onToggle}
               onOpen={onOpen}
             />
@@ -234,86 +255,3 @@ function ClosedGroup({
     </section>
   );
 }
-
-/**
- * One Task in the table. A click anywhere on it, or Enter, opens the Task; the checkbox and the
- * cell pickers keep their own action. On phones the cells fold into a meta line under the title.
- * Memoized so a change to one row leaves the others alone.
- */
-const TaskRow = memo(function TaskRow({
-  task,
-  selected,
-  onToggle,
-  onOpen,
-}: {
-  task: Task;
-  selected: boolean;
-  onToggle: ToggleStatus;
-  onOpen: OpenTask;
-}) {
-  const closed = isClosed(task.status);
-  const blocked = task.status === "blocked";
-  return (
-    <div
-      role="row"
-      tabIndex={0}
-      data-task-id={task.id}
-      aria-level={1}
-      aria-selected={selected}
-      onClick={(event) => {
-        // Clicks in a picker's menu reach the row through React's tree, not the page's.
-        if (event.target instanceof Node && event.currentTarget.contains(event.target)) {
-          onOpen(task.id);
-        }
-      }}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" && event.target === event.currentTarget) {
-          event.preventDefault();
-          onOpen(task.id);
-        }
-      }}
-      className={cn(
-        GRID,
-        "group/row flex min-h-11 cursor-pointer flex-col justify-center gap-1 border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors outline-none last:border-b-0 lg:min-h-10 lg:items-center lg:gap-0 lg:py-0",
-        "focus-visible:bg-primary-soft/50 focus-visible:shadow-[inset_2px_0_0_var(--primary)]",
-        selected
-          ? "bg-primary-soft/50 shadow-[inset_2px_0_0_var(--primary)]"
-          : "hover:bg-surface-muted/60",
-      )}
-    >
-      <div role="gridcell" className="flex min-w-0 items-center gap-2.5">
-        <TaskCheckbox
-          task={task}
-          onToggle={() => {
-            onToggle(task);
-          }}
-        />
-        <div className="flex min-w-0 flex-1 flex-col">
-          <span
-            data-task-title
-            className={cn(
-              "min-w-0 truncate text-sm",
-              closed ? "text-muted-foreground line-through" : "font-semibold",
-            )}
-          >
-            {task.title}
-          </span>
-          {blocked && <BlockedNote task={task} className="hidden lg:flex" />}
-        </div>
-      </div>
-
-      <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 pl-7 empty:hidden lg:hidden">
-        {task.status === "wont_do" && <StatusBadge status={task.status} />}
-        {blocked && <BlockedNote task={task} className="max-w-full" />}
-        <PriorityFlag priority={task.priority} />
-      </div>
-
-      <div role="gridcell" className="hidden min-w-0 lg:block">
-        <StatusCell task={task} />
-      </div>
-      <div role="gridcell" className="hidden min-w-0 lg:block">
-        <PriorityCell task={task} />
-      </div>
-    </div>
-  );
-});

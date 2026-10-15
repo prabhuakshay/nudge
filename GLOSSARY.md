@@ -33,6 +33,11 @@ _Avoid_: Label, category
 One thing to do, owned by one user and living in either one Project or the Inbox.
 _Avoid_: Todo, item
 
+**Quick add**:
+The single line for creating a Task where typed symbols and phrases set its Project, Tags,
+Priority, date, Repeat and Mentions as you type.
+_Avoid_: Smart add, magic input
+
 **Subtask**:
 A Task whose parent is another Task; it always shares its root Task's Project. Nesting stops at
 four levels.

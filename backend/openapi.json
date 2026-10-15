@@ -3317,6 +3317,16 @@
         "title": "Priority",
         "type": "integer"
       },
+      "RepeatFrom": {
+        "description": "What a repeating Task's next Occurrence counts from.",
+        "enum": [
+          "due",
+          "completion",
+          "calendar"
+        ],
+        "title": "RepeatFrom",
+        "type": "string"
+      },
       "Status": {
         "description": "Where a Task stands.",
         "enum": [
@@ -3495,6 +3505,15 @@
             ],
             "title": "Start Time"
           },
+          "repeat_rule": {
+            "description": "An RFC 5545 RRULE; empty when the Task doesn't repeat.",
+            "title": "Repeat Rule",
+            "type": "string"
+          },
+          "repeat_from": {
+            "$ref": "#/components/schemas/RepeatFrom",
+            "description": "What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences."
+          },
           "is_overdue": {
             "description": "Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.",
             "title": "Is Overdue",
@@ -3540,6 +3559,8 @@
           "due_time",
           "start_date",
           "start_time",
+          "repeat_rule",
+          "repeat_from",
           "is_overdue",
           "created_at",
           "updated_at"
@@ -3836,6 +3857,15 @@
             ],
             "title": "Start Time"
           },
+          "repeat_rule": {
+            "description": "An RFC 5545 RRULE; empty when the Task doesn't repeat.",
+            "title": "Repeat Rule",
+            "type": "string"
+          },
+          "repeat_from": {
+            "$ref": "#/components/schemas/RepeatFrom",
+            "description": "What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences."
+          },
           "is_overdue": {
             "description": "Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.",
             "title": "Is Overdue",
@@ -3910,6 +3940,8 @@
           "due_time",
           "start_date",
           "start_time",
+          "repeat_rule",
+          "repeat_from",
           "is_overdue",
           "created_at",
           "updated_at",
@@ -4079,6 +4111,29 @@
             ],
             "description": "Moves the Task first into it.",
             "title": "Project Id"
+          },
+          "repeat_rule": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Makes a dated top-level Task repeat, as an RFC 5545 RRULE; an empty string stops it. Closing a repeating Task moves it on to its next Occurrence instead; setting the Status it had before, straight after, undoes that.",
+            "title": "Repeat Rule"
+          },
+          "repeat_from": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatFrom"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "title": "TaskPatchIn",
@@ -4642,6 +4697,177 @@
         "title": "RemindersChangedData",
         "type": "object"
       },
+      "RepeatAdvancedActivityOut": {
+        "description": "Closing the repeating Task moved it on to its next Occurrence.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "repeat_advanced",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RepeatAdvancedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RepeatAdvancedActivityOut",
+        "type": "object"
+      },
+      "RepeatAdvancedData": {
+        "description": "Which Occurrence was closed, how, and the one the Task moved on to.",
+        "properties": {
+          "action": {
+            "description": "Skipped is Won't do.",
+            "enum": [
+              "completed",
+              "skipped"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "occurrence": {
+            "format": "date",
+            "title": "Occurrence",
+            "type": "string"
+          },
+          "next": {
+            "format": "date",
+            "title": "Next",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "occurrence",
+          "next"
+        ],
+        "title": "RepeatAdvancedData",
+        "type": "object"
+      },
+      "RepeatChangedActivityOut": {
+        "description": "The Task's Repeat was set, changed or stopped.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "repeat_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RepeatChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RepeatChangedActivityOut",
+        "type": "object"
+      },
+      "RepeatChangedData": {
+        "description": "The Repeat before and after a change; null when the Task didn't or doesn't repeat.",
+        "properties": {
+          "old": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "new": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "RepeatChangedData",
+        "type": "object"
+      },
+      "RepeatData": {
+        "description": "A Task's Repeat at one moment, as a change recorded it.",
+        "properties": {
+          "rule": {
+            "description": "An RFC 5545 RRULE.",
+            "title": "Rule",
+            "type": "string"
+          },
+          "repeat_from": {
+            "$ref": "#/components/schemas/RepeatFrom"
+          }
+        },
+        "required": [
+          "rule",
+          "repeat_from"
+        ],
+        "title": "RepeatData",
+        "type": "object"
+      },
+      "RepeatRemovedActivityOut": {
+        "description": "The Task stopped repeating because it lost its due date or became a Subtask.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "repeat_removed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RepeatData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RepeatRemovedActivityOut",
+        "type": "object"
+      },
       "StatusChangedActivityOut": {
         "description": "The Task's Status changed.",
         "properties": {
@@ -4741,6 +4967,9 @@
                   "pinned": "#/components/schemas/PinnedActivityOut",
                   "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
                   "reminders_changed": "#/components/schemas/RemindersChangedActivityOut",
+                  "repeat_advanced": "#/components/schemas/RepeatAdvancedActivityOut",
+                  "repeat_changed": "#/components/schemas/RepeatChangedActivityOut",
+                  "repeat_removed": "#/components/schemas/RepeatRemovedActivityOut",
                   "status_changed": "#/components/schemas/StatusChangedActivityOut",
                   "title_changed": "#/components/schemas/TitleChangedActivityOut",
                   "unpinned": "#/components/schemas/UnpinnedActivityOut"
@@ -4786,6 +5015,15 @@
                 },
                 {
                   "$ref": "#/components/schemas/PersonMergedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RepeatChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RepeatRemovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RepeatAdvancedActivityOut"
                 }
               ]
             },

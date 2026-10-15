@@ -24,6 +24,7 @@ export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"]
 export type Attachment = components["schemas"]["AttachmentOut"];
 export type DatesChange = components["schemas"]["DatesChangedData"];
 export type RemindersChange = components["schemas"]["RemindersChangedData"];
+export type RepeatChange = components["schemas"]["RepeatChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 

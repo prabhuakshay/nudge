@@ -9,6 +9,11 @@ from ninja import Field, Schema
 
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.tasks.schemas.reminders import RemindersChangedActivityOut
+from apps.tasks.schemas.repeat import (
+    RepeatAdvancedActivityOut,
+    RepeatChangedActivityOut,
+    RepeatRemovedActivityOut,
+)
 
 
 class NoActivityData(Schema):
@@ -203,7 +208,10 @@ TaskActivityOut = Annotated[
     | DatesChangedActivityOut
     | RemindersChangedActivityOut
     | MovedActivityOut
-    | PersonMergedActivityOut,
+    | PersonMergedActivityOut
+    | RepeatChangedActivityOut
+    | RepeatRemovedActivityOut
+    | RepeatAdvancedActivityOut,
     Field(discriminator="kind"),
 ]
 

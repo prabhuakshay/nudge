@@ -8,7 +8,7 @@ How a change spreads through a Task's Subtask tree lives in `apps.tasks.tree`.
 
 from __future__ import annotations
 
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 from typing import TYPE_CHECKING
 
 from django.db import transaction
@@ -17,7 +17,7 @@ from django.utils import timezone
 from fractional_indexing import generate_key_between
 
 from apps.core.palette import PaletteColor
-from apps.tasks import reminders
+from apps.tasks import reminders, repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import TEXT_FIELDS, check_mentions, sync_mentions
@@ -71,6 +71,8 @@ class TaskEdit:
     dates: TaskDates | None = None
     reminders: list[timedelta] | None = None
     project: Project | None = None
+    repeat_rule: str | None = None
+    repeat_from: Task.RepeatFrom | None = None
 
 
 @dataclass(frozen=True)
@@ -250,6 +252,9 @@ _EDITABLE_FIELDS = (
     "due_time",
     "start_date",
     "start_time",
+    "repeat_rule",
+    "repeat_anchor",
+    "repeat_from",
 )
 
 
@@ -268,6 +273,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
         TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked, or pins a
             Subtask.
         ReminderRuleError: The edit's Reminders break a Reminder rule.
+        RepeatRuleError: The edit's Repeat breaks a Repeat rule, or closes an Occurrence early.
         ArchivedProjectError: The Task is in an archived Project, or would move into one.
         MentionError: A text mentions a Person the user doesn't have.
     """
@@ -279,8 +285,11 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
         ensure_writable(edit.project)
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
     from_project, from_parent = task.project.name, task.parent_title
-    dates_before = TaskDates.of(task)
-    _apply(task, edit)
+    dates_before, repeat_before = TaskDates.of(task), repeat.Repeat.of(task)
+    # Closing a repeating Task moves it on instead, and reopening it may undo that.
+    step = repeat.plan(task, edit.status)
+    _apply(task, replace(edit, status=None, blocked_reason=None) if step else edit)
+    repeat.apply_edit(task, edit.repeat_rule, edit.repeat_from, dates_before)
     changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
     check_mentions(user, *(getattr(task, name) for name in TEXT_FIELDS if name in changed))
     affected = []
@@ -300,8 +309,12 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
         events = _activity(task, before, dates_before, closed_subtasks)
         if moved:
             events.append(moved_event(task, from_project, from_parent))
+        asked = edit.repeat_rule is not None or edit.repeat_from is not None
+        events.extend(filter(None, [repeat.edit_event(task, repeat_before, asked=asked)]))
         TaskActivity.objects.bulk_create(events)
         reminders.replace(task, edit.reminders, dates_before)
+        if step is not None:
+            affected = step.run(task)
     # Re-read, because a change of dates or Status can change whether the Task is overdue.
     fresh = as_rows(user.tasks.filter(pk=task.pk), user).get()
     return TaskChange(task=fresh, affected=affected + cascaded)

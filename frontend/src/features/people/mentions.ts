@@ -3,6 +3,8 @@
  * it as a chip and edits it as plain `@Name`.
  */
 
+import { escapeRegExp } from "@/lib/utils";
+
 const MENTION = /\[@([^\]]*)\]\(person:(\d+)\)/g;
 
 /** A Mention as it sits in a text: the Person's id and the name it was written with. */
@@ -27,10 +29,6 @@ export function splitMentions(text: string): (string | MentionPart)[] {
 /** The text with each Mention written as `@Name`, for editing and for plain-text places. */
 export function plainMentions(text: string): string {
   return text.replace(MENTION, "@$1");
-}
-
-function escapeRegExp(text: string) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**

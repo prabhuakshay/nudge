@@ -47,7 +47,7 @@ function every(interval: number, unit: string, once: string): string {
   return `Every ${String(interval)} ${unit}s`;
 }
 
-type Parts = Map<string, string>;
+export type Parts = Map<string, string>;
 
 function weekly(parts: Parts, interval: number): string | null {
   const byDay = parts.get("BYDAY");
@@ -58,10 +58,30 @@ function weekly(parts: Parts, interval: number): string | null {
   return days.every((day) => day !== undefined) ? `${base} on ${days.join(", ")}` : null;
 }
 
+const NTH: Record<string, string> = {
+  "1": "first",
+  "2": "second",
+  "3": "third",
+  "4": "fourth",
+  "-1": "last",
+};
+
+/** A weekday of the month, such as "-1FR", in words: "last Friday". */
+function nthDay(byDay: string): string | null {
+  const [, nth = "", day = ""] = /^(-?\d)([A-Z]{2})$/.exec(byDay) ?? [];
+  const nthWord = NTH[nth];
+  const dayName = DAY_NAMES[day];
+  return nthWord && dayName ? `${nthWord} ${dayName}` : null;
+}
+
 function monthly(parts: Parts, interval: number): string | null {
   const base = every(interval, "month", "Monthly");
   const byMonthDay = parts.get("BYMONTHDAY");
-  if (parts.has("BYDAY")) return null;
+  const byDay = parts.get("BYDAY");
+  if (byDay !== undefined) {
+    const day = nthDay(byDay);
+    return day && `${base} on the ${day}`;
+  }
   if (byMonthDay === undefined) return base;
   return `${base} on the ${byMonthDay === "-1" ? "last day" : ordinal(Number(byMonthDay))}`;
 }
@@ -81,11 +101,16 @@ const PATTERNS: Record<string, (parts: Parts, interval: number) => string | null
   YEARLY: yearly,
 };
 
-/** A rule in the user's words, such as "Weekly on Thursday" or "Daily, 5 times". */
-export function repeatLabel(rule: string): string {
-  const parts = new Map(
+/** A rule's parts by name, such as FREQ → WEEKLY. */
+export function ruleParts(rule: string): Parts {
+  return new Map(
     rule.split(";").map((part) => part.split("=", 2) as [string, string]), // Each part is NAME=VALUE.
   );
+}
+
+/** A rule in the user's words, such as "Weekly on Thursday" or "Daily, 5 times". */
+export function repeatLabel(rule: string): string {
+  const parts = ruleParts(rule);
   const describe = PATTERNS[parts.get("FREQ") ?? ""];
   const base = describe?.(parts, Number(parts.get("INTERVAL") ?? "1")) ?? null;
   if (base === null) return "Custom repeat";

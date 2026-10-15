@@ -9,6 +9,7 @@ import {
   type SyntheticEvent,
 } from "react";
 
+import { sessionQuery } from "@/features/auth/session";
 import { peopleQuery, type Person } from "@/features/people/people";
 import { allProjects } from "@/features/projects/projects";
 
@@ -22,6 +23,7 @@ import {
   type QuickAddTag,
 } from "./quick-add";
 import { byRecent, rememberPicks, type RecentKey } from "./recent-picks";
+import { wallClock } from "./schedule";
 import { sidebarQuery, type SidebarProject } from "./tasks";
 
 /** How many of the user's items the picker lists at once. */
@@ -58,7 +60,11 @@ function usedIn(matches: readonly QuickAddMatch[]): RecentKey[] {
   });
 }
 
-function optionsFor(sigil: Sigil, query: string, context: QuickAddContext): PickerOption[] {
+function optionsFor(
+  sigil: Sigil,
+  query: string,
+  context: Pick<QuickAddContext, "tags" | "people" | "projects">,
+): PickerOption[] {
   const all: Exclude<PickerOption, { kind: "new" }>[] =
     sigil === "#"
       ? context.tags.map((item) => ({ kind: "tag", item }))
@@ -76,6 +82,28 @@ function optionsFor(sigil: Sigil, query: string, context: QuickAddContext): Pick
   return [...found, { kind: "new", sigil, name: query }];
 }
 
+/** The user's Projects (none where `~` is off), Tags and People, for reading and picking. */
+function useUserItems(allowProject: boolean) {
+  const { data: sidebar } = useQuery(sidebarQuery);
+  const { data: people = [] } = useQuery(peopleQuery);
+  return useMemo(
+    () => ({
+      projects: sidebar
+        ? allProjects(sidebar).filter((project) => allowProject && !project.is_archived)
+        : [],
+      tags: sidebar?.tags ?? [],
+      people,
+    }),
+    [sidebar, people, allowProject],
+  );
+}
+
+/** Now on the user's clock, or the browser's until their time zone is known. */
+function useWallClock(): Date {
+  const { data: user } = useQuery(sessionQuery);
+  return user?.time_zone ? wallClock(user.time_zone) : new Date();
+}
+
 /**
  * The state of one Quick add input: its text, what the text means, and the `#`/`@`/`~` picker at
  * the caret. Backspace right after a match, or `keep`, turns the match back into plain text.
@@ -86,10 +114,12 @@ function optionsFor(sigil: Sigil, query: string, context: QuickAddContext): Pick
 export function useQuickAdd({
   inputRef,
   allowProject = true,
+  allowRepeat = true,
   onSubmit,
 }: {
   inputRef: RefObject<HTMLInputElement | null>;
   allowProject?: boolean;
+  allowRepeat?: boolean;
   onSubmit: (text: string, parsed: QuickAdd) => void;
 }) {
   const [value, setValueState] = useState("");
@@ -106,19 +136,9 @@ export function useQuickAdd({
     pendingCaret.current = null;
   });
 
-  const { data: sidebar } = useQuery(sidebarQuery);
-  const { data: people = [] } = useQuery(peopleQuery);
-  const items = useMemo(
-    () => ({
-      projects: sidebar
-        ? allProjects(sidebar).filter((project) => allowProject && !project.is_archived)
-        : [],
-      tags: sidebar?.tags ?? [],
-      people,
-    }),
-    [sidebar, people, allowProject],
-  );
-  const parsed = parseQuickAdd(value, { ...items, allowProject, picked, kept });
+  const items = useUserItems(allowProject);
+  const now = useWallClock();
+  const parsed = parseQuickAdd(value, { ...items, now, allowProject, allowRepeat, picked, kept });
 
   const token = pickerClosed ? null : tokenAt(value, caret);
   const options = token ? optionsFor(token.sigil, token.query, items) : [];

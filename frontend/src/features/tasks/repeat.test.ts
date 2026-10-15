@@ -18,7 +18,10 @@ describe("repeatLabel", () => {
     ["FREQ=YEARLY;BYMONTH=10;BYMONTHDAY=15", "Yearly on 15 Oct"],
     ["FREQ=DAILY;COUNT=5", "Daily, 5 times"],
     ["FREQ=WEEKLY;UNTIL=20261231", "Weekly, until 31 Dec 2026"],
-    ["FREQ=MONTHLY;BYDAY=-1FR", "Custom repeat"],
+    ["FREQ=WEEKLY;UNTIL=20261231T235959", "Weekly, until 31 Dec 2026"],
+    ["FREQ=MONTHLY;BYDAY=-1FR", "Monthly on the last Friday"],
+    ["FREQ=MONTHLY;BYDAY=1MO", "Monthly on the first Monday"],
+    ["FREQ=MONTHLY;BYDAY=MO", "Custom repeat"],
   ])("describes %s as “%s”", (rule, label) => {
     expect(repeatLabel(rule)).toBe(label);
   });

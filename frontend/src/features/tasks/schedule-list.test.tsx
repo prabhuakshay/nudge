@@ -120,6 +120,27 @@ describe("ScheduleList", () => {
     });
   });
 
+  it("lets a typed date take the place of the view's", async () => {
+    const fetchSpy = mockApi();
+    const user = renderView("today");
+    const field = await screen.findByRole("combobox", { name: "New task" });
+
+    await user.type(field, "Water plants friday 5pm");
+    expect(screen.queryByRole("button", { name: "Remove Today" })).not.toBeInTheDocument();
+    expect(screen.getByText("Tomorrow, 17:00")).toBeInTheDocument();
+    await user.keyboard("{Enter}");
+
+    await vi.waitFor(async () => {
+      expect(await requestsTo(fetchSpy, "POST")).toEqual([
+        {
+          title: "Water plants",
+          project_id: INBOX.id,
+          dates: { due_date: "2026-10-16", due_time: "17:00", start_date: null, start_time: null },
+        },
+      ]);
+    });
+  });
+
   it("groups Upcoming by day for a week, then by month", async () => {
     mockApi({
       open: [

@@ -115,7 +115,7 @@ describe("Repeat", () => {
     const picker = await openPicker(user);
 
     expect(within(picker).getByRole("combobox", { name: "Repeat" })).toHaveDisplayValue(
-      "Custom repeat",
+      "Monthly on the last Friday",
     );
   });
 

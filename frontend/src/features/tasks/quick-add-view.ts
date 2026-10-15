@@ -36,16 +36,25 @@ export function viewDefault(view: QuickAddView): ViewDefault | null {
   }
 }
 
-/** The Priority and Tags typed in Quick add as a new Task's fields, leaving out unset ones. */
+/** The Priority, Tags, dates and Repeat typed in Quick add as a new Task's fields, leaving out unset ones. */
 export function typedFields(
   parsed: QuickAdd,
   tagIds: readonly number[] = parsed.tagIds,
-): Pick<NewTask, "priority" | "tag_ids" | "tags"> {
+): Pick<NewTask, "priority" | "tag_ids" | "tags" | "dates" | "repeat_rule"> {
   return {
     ...(parsed.priority > 0 && { priority: parsed.priority }),
     ...(tagIds.length > 0 && { tag_ids: [...tagIds] }),
     ...(parsed.newTags.length > 0 && { tags: parsed.newTags }),
+    ...(parsed.dates && { dates: parsed.dates }),
+    ...(parsed.repeatRule && { repeat_rule: parsed.repeatRule }),
   };
+}
+
+/** The view's chip still in play: a typed Project or date takes the place of the view's. */
+export function keptDefault(parsed: QuickAdd, given: ViewDefault | null): ViewDefault | null {
+  if (given?.kind === "project" && parsed.projectId !== null) return null;
+  if (given?.kind === "date" && parsed.dates !== null) return null;
+  return given;
 }
 
 /** A new Task's fields besides its title, from what was typed and the view's chip if kept. */
@@ -58,8 +67,8 @@ export function newTaskFields(
   const givenTag = given?.kind === "tag" && !parsed.tagIds.includes(given.tag.id);
   return {
     project_id: parsed.projectId ?? givenProject ?? inboxId,
-    ...typedFields(parsed, givenTag ? [...parsed.tagIds, given.tag.id] : parsed.tagIds),
     ...(given?.kind === "date" && { dates: given.dates }),
+    ...typedFields(parsed, givenTag ? [...parsed.tagIds, given.tag.id] : parsed.tagIds),
   };
 }
 

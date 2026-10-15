@@ -1,15 +1,22 @@
 /**
- * Quick add's parser: it reads `#tag`, `~project`, `!1`–`!4` (or `!p1`–`!p4`) and `@person` out of
- * one line of text. It is pure, so the card can parse on every keystroke and highlight each match.
+ * Quick add's parser: it reads `#tag`, `~project`, `!1`–`!4` (or `!p1`–`!p4`), `@person`, dates and
+ * Repeat phrases out of one line of text. It is pure, so the card can parse on every keystroke and
+ * highlight each match.
  */
 
 import type { Person } from "@/features/people/people";
 import type { Tag } from "@/features/tags/tags";
 
+import {
+  readSchedule,
+  type DateMatch,
+  type QuickAddDates,
+  type RepeatMatch,
+} from "./quick-add-dates";
 import type { SidebarProject, TaskPriority } from "./tasks";
 
 /** The kinds of token Quick add understands. */
-export type QuickAddKind = "priority" | "tag" | "project" | "person";
+export type QuickAddKind = QuickAddMatch["kind"];
 
 /** A name chosen in Quick add's picker. Kept by its exact text, so names with spaces match. */
 export type PickedName = { kind: "tag" | "project" | "person"; id: number; text: string };
@@ -18,23 +25,30 @@ export type QuickAddTag = Pick<Tag, "id" | "name" | "color">;
 
 /** What Quick add knows besides the text: the user's items, and what was picked or turned back. */
 export type QuickAddContext = {
+  /** Now on the user's clock, which dates count forwards from. */
+  now: Date;
   projects: readonly SidebarProject[];
   tags: readonly QuickAddTag[];
   people: readonly Person[];
   /** False where a Task can't choose its Project, as in Add subtask, so `~` stays text. */
   allowProject?: boolean;
+  /** False where a Task can't repeat, as in Add subtask, so Repeat phrases stay text. */
+  allowRepeat?: boolean;
   picked?: readonly PickedName[];
   /** Matches turned back into text, by `matchKey`. */
   kept?: ReadonlySet<string>;
 };
 
 /** A token Quick add understood, where it sits in the text, and what it stands for. */
-export type QuickAddMatch = { start: number; end: number; text: string } & (
-  | { kind: "priority"; priority: Exclude<TaskPriority, 0> }
-  | { kind: "tag"; name: string; tag: QuickAddTag | null }
-  | { kind: "person"; name: string; person: Person | null }
-  | { kind: "project"; project: SidebarProject }
-);
+export type QuickAddMatch =
+  | DateMatch
+  | RepeatMatch
+  | ({ start: number; end: number; text: string } & (
+      | { kind: "priority"; priority: Exclude<TaskPriority, 0> }
+      | { kind: "tag"; name: string; tag: QuickAddTag | null }
+      | { kind: "person"; name: string; person: Person | null }
+      | { kind: "project"; project: SidebarProject }
+    ));
 
 /** What a line of Quick add makes: a title and the fields of the new Task. */
 export type QuickAdd = {
@@ -48,6 +62,9 @@ export type QuickAdd = {
   newTags: string[];
   /** People to create before the Task, so that their Mentions have ids. */
   newPeople: string[];
+  /** The first date typed, or the first day of the Repeat. */
+  dates: QuickAddDates | null;
+  repeatRule: string | null;
 };
 
 /** How a match is remembered once it is turned back into text. */
@@ -64,7 +81,10 @@ const PRIORITY = /^p?([1-4])$/i;
 /** Omit keys from each member of a union, keeping it a union that narrows by `kind`. */
 type DistributiveOmit<T, K extends PropertyKey> = T extends unknown ? Omit<T, K> : never;
 
-type Meaning = DistributiveOmit<QuickAddMatch, "start" | "end" | "text">;
+type Meaning = DistributiveOmit<
+  Exclude<QuickAddMatch, DateMatch | RepeatMatch>,
+  "start" | "end" | "text"
+>;
 
 /** How to read what follows each sigil; null when it means nothing, as an unknown `~project`. */
 const READERS: Record<string, (rest: string, context: QuickAddContext) => Meaning | null> = {
@@ -150,9 +170,11 @@ function unique<T>(items: T[], key: (item: T) => string | number = String): T[] 
   return items.filter((item) => !seen.has(key(item)) && seen.add(key(item)));
 }
 
-/** The fields the matches give a new Task. */
-function fieldsOf(matches: readonly QuickAddMatch[]): Omit<QuickAdd, "title" | "matches"> {
-  const fields: Omit<QuickAdd, "title" | "matches"> = {
+type TokenFields = Omit<QuickAdd, "title" | "matches" | "dates" | "repeatRule">;
+
+/** The fields the token matches give a new Task. */
+function fieldsOf(matches: readonly QuickAddMatch[]): TokenFields {
+  const fields: TokenFields = {
     priority: 0,
     projectId: null,
     tagIds: [],
@@ -164,7 +186,7 @@ function fieldsOf(matches: readonly QuickAddMatch[]): Omit<QuickAdd, "title" | "
     else if (match.kind === "project") fields.projectId = match.project.id;
     else if (match.kind === "tag" && match.tag) fields.tagIds.push(match.tag.id);
     else if (match.kind === "tag") fields.newTags.push(match.name);
-    else if (!match.person) fields.newPeople.push(match.name);
+    else if (match.kind === "person" && !match.person) fields.newPeople.push(match.name);
   }
   return {
     ...fields,
@@ -184,14 +206,26 @@ function fits(match: QuickAddMatch, taken: readonly QuickAddMatch[], context: Qu
 
 /**
  * Read a line of Quick add. Picked names match first, then typed tokens, each ending at the first
- * space; a token overlapping an earlier match, a second Priority or Project, and anything turned
- * back into text stay plain text.
+ * space, then the first Repeat phrase and the first date in what's left. A token overlapping an
+ * earlier match, a second Priority or Project, and anything turned back into text stay plain text.
  */
 export function parseQuickAdd(text: string, context: QuickAddContext): QuickAdd {
   const matches: QuickAddMatch[] = [];
   for (const match of [...pickedMatches(text, context), ...typedMatches(text, context)]) {
     if (fits(match, matches, context)) matches.push(match);
   }
+  const schedule = readSchedule(text, matches, {
+    now: context.now,
+    allowRepeat: context.allowRepeat,
+    isKept: (match) => context.kept?.has(matchKey(match)) ?? false,
+  });
+  matches.push(...schedule.matches);
   matches.sort((a, b) => a.start - b.start);
-  return { title: quickAddTitle(text, matches), matches, ...fieldsOf(matches) };
+  return {
+    title: quickAddTitle(text, matches),
+    matches,
+    ...fieldsOf(matches),
+    dates: schedule.dates,
+    repeatRule: schedule.repeatRule,
+  };
 }

@@ -83,7 +83,7 @@ export function QuickAddChips({
   );
 }
 
-/** What Quick add understands, shown under the input while it's focused. */
+/** What Quick add understands, shown under the input while it's focused: tokens, dates, Repeat. */
 export function QuickAddHint({ allowProject = true }: { allowProject?: boolean }) {
   const hints = [
     ["#", "Tag"],
@@ -98,6 +98,7 @@ export function QuickAddHint({ allowProject = true }: { allowProject?: boolean }
           <Kbd>{key}</Kbd> {label}
         </span>
       ))}
+      <span>“tomorrow 9am”, “every monday”</span>
     </p>
   );
 }

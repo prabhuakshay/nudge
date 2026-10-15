@@ -21,6 +21,7 @@ const PRIYA: Person = { id: 1, name: "Priya", color: "violet" };
 const SAM: Person = { id: 2, name: "Sam Lee", color: "blue" };
 
 const CONTEXT: QuickAddContext = {
+  now: new Date(2026, 9, 15, 14, 30),
   projects: [project(7, "Inbox"), project(8, "Work"), project(10, "Side project")],
   tags: [
     { id: 21, name: "work", color: "teal" },

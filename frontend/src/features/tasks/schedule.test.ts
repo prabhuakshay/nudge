@@ -1,6 +1,6 @@
 import { makeTask } from "@/test/tasks";
 
-import { addDays, todayIn, upcomingGroups } from "./schedule";
+import { addDays, todayIn, upcomingGroups, wallClock } from "./schedule";
 
 describe("todayIn", () => {
   it("reads the date on the user's clock, not the browser's", () => {
@@ -9,6 +9,15 @@ describe("todayIn", () => {
 
     expect(todayIn("Europe/London", now)).toBe("2026-10-15");
     expect(todayIn("Asia/Kolkata", now)).toBe("2026-10-16");
+  });
+});
+
+describe("wallClock", () => {
+  it("reads the time on the user's clock, whatever the browser's zone", () => {
+    const now = new Date("2026-10-15T22:30:00Z");
+    const kolkata = wallClock("Asia/Kolkata", now);
+
+    expect([kolkata.getDate(), kolkata.getHours(), kolkata.getMinutes()]).toEqual([16, 4, 0]);
   });
 });
 

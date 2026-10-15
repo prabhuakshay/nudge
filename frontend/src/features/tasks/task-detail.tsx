@@ -72,6 +72,13 @@ export function TaskDetail(props: TaskDetailProps) {
       event.preventDefault();
     }
   };
+  // Escape in a filled Quick add field, such as Add subtask, first closes its picker or clears it.
+  const keepOpenForTyping = (event: KeyboardEvent) => {
+    const { target } = event;
+    if (target instanceof HTMLInputElement && target.role === "combobox" && target.value) {
+      event.preventDefault();
+    }
+  };
   const returnFocus = (event: Event) => {
     event.preventDefault();
     document.querySelector<HTMLElement>(`[data-task-id="${String(lastOpened)}"]`)?.focus();
@@ -91,6 +98,7 @@ export function TaskDetail(props: TaskDetailProps) {
           }}
           onCloseAutoFocus={returnFocus}
           onInteractOutside={keepOpenForToasts}
+          onEscapeKeyDown={keepOpenForTyping}
           className="gap-0 p-0 sm:max-w-[600px]"
         >
           <SheetTitle className="sr-only">Task details</SheetTitle>
@@ -112,6 +120,7 @@ export function TaskDetail(props: TaskDetailProps) {
         aria-describedby={undefined}
         onCloseAutoFocus={returnFocus}
         onInteractOutside={keepOpenForToasts}
+        onEscapeKeyDown={keepOpenForTyping}
         className="h-[96dvh] max-h-[96dvh]"
       >
         <DrawerTitle className="sr-only">Task details</DrawerTitle>

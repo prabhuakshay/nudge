@@ -13,13 +13,7 @@ import { TaskDetail } from "./task-detail";
 import { ClosedGroup, Group, TaskTableHeader } from "./task-list";
 import { TreeRows, type RowContext } from "./task-row";
 import { flatRows } from "./task-tree";
-import {
-  closedTodayQuery,
-  viewTasksQuery,
-  type DatesIn,
-  type SidebarProject,
-  type Task,
-} from "./tasks";
+import { closedTodayQuery, viewTasksQuery, type SidebarProject, type Task } from "./tasks";
 
 const TITLES: Record<ScheduleView, { title: string; icon: LucideIcon; tone: string }> = {
   today: { title: "Today", icon: CalendarCheck, tone: "bg-hue-green-soft text-hue-green" },
@@ -43,7 +37,7 @@ export function ScheduleList({
   description,
 }: {
   view: ScheduleView;
-  /** Where Quick add puts new Tasks, and the drawer's fallback Project. */
+  /** The drawer's fallback Project; Quick add puts new Tasks there too. */
   inbox: SidebarProject;
   /** The user's zone, which says what date today is. */
   timeZone: string;
@@ -57,7 +51,7 @@ export function ScheduleList({
     [showClosed, closed.data],
   );
   const today = todayIn(timeZone);
-  const dates: DatesIn = { due_date: view === "today" ? today : addDays(today, 1) };
+  const tomorrow = addDays(today, 1);
   const { openTaskId, setOpenTask } = useOpenTask();
   const context = useRowContext({ collapsed: NONE_FOLDED, onToggleCollapsed: ignoreFold });
   const order = [...tasks, ...closedTasks].map((task) => task.id);
@@ -79,7 +73,7 @@ export function ScheduleList({
         </Badge>
       </header>
 
-      <QuickAddCard projectId={inbox.id} dates={dates} />
+      <QuickAddCard view={{ kind: view, today, tomorrow }} />
 
       <div
         role="treegrid"

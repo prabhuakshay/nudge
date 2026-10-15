@@ -101,7 +101,7 @@ describe("TaskList", () => {
     const user = renderList();
     await screen.findByText("Buy milk");
 
-    const input = screen.getByRole("textbox", { name: "New task" });
+    const input = screen.getByRole("combobox", { name: "New task" });
     await user.type(input, "  Call mum {Enter}");
 
     expect(await screen.findByText("Call mum")).toBeInTheDocument();
@@ -115,7 +115,7 @@ describe("TaskList", () => {
     const fetchSpy = mockApi();
     const user = renderList();
 
-    await user.type(await screen.findByRole("textbox", { name: "New task" }), "   {Enter}");
+    await user.type(await screen.findByRole("combobox", { name: "New task" }), "   {Enter}");
 
     expect(requests(fetchSpy)).not.toContain("POST /api/v1/tasks");
   });
@@ -126,8 +126,8 @@ describe("TaskList", () => {
 
     await user.keyboard("c");
 
-    expect(screen.getByRole("textbox", { name: "New task" })).toHaveFocus();
-    expect(screen.getByRole("textbox", { name: "New task" })).toHaveValue("");
+    expect(screen.getByRole("combobox", { name: "New task" })).toHaveFocus();
+    expect(screen.getByRole("combobox", { name: "New task" })).toHaveValue("");
   });
 
   it("completes a Task from its checkbox and takes it out of the open list", async () => {

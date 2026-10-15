@@ -11,12 +11,14 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from fractional_indexing import generate_key_between
 
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
+    MAX_DEPTH,
     OPEN_STATUSES,
     Project,
     Task,
@@ -78,44 +80,111 @@ def live_project(user: User, project_id: int) -> Project | None:
 
 
 def _live_tasks(project: Project) -> QuerySet[Task]:
-    return project.tasks.filter(deleted_at__isnull=True)
+    # Three hops reach a root from the deepest Subtask, so a row's depth costs no queries.
+    return project.tasks.filter(deleted_at__isnull=True).select_related("parent__parent__parent")
+
+
+def _root_status_in(statuses: tuple[Task.Status, ...]) -> Q:
+    """Match Tasks whose root, which is the Task itself for a root, has one of the statuses."""
+    match = Q()
+    path = ""
+    for _ in range(MAX_DEPTH + 1):
+        match |= Q(**{f"{path}parent__isnull": True, f"{path}status__in": statuses})
+        path += "parent__"
+    return match
+
+
+def _below(roots: list[Task]) -> QuerySet[Task]:
+    """Return the live descendants of the roots, in manual order within each sibling set."""
+    below = Q(parent__in=roots) | Q(parent__parent__in=roots) | Q(parent__parent__parent__in=roots)
+    return Task.objects.filter(below, deleted_at__isnull=True).select_related(
+        "parent__parent__parent",
+    )
+
+
+def descendants(task: Task) -> list[Task]:
+    """Return every live Subtask below the Task, in manual order within each sibling set."""
+    return list(_below([task]))
+
+
+def ancestors(task: Task) -> list[Task]:
+    """Return the Tasks above the Task, root first."""
+    chain: list[Task] = []
+    parent = task.parent
+    while parent is not None:
+        chain.insert(0, parent)
+        parent = parent.parent
+    return chain
 
 
 def open_tasks(project: Project) -> QuerySet[Task]:
-    """Return the Project's open and Blocked Tasks in the user's manual order."""
-    return _live_tasks(project).filter(status__in=OPEN_STATUSES)
+    """Return the Project's open trees: open roots and every Subtask under them, in manual order.
+
+    Subtasks come whatever their Status, so a list can show done steps under open work.
+    """
+    return _live_tasks(project).filter(_root_status_in(OPEN_STATUSES))
 
 
 def open_task_count(project: Project) -> int:
-    """Return how many open and Blocked Tasks the Project holds."""
-    return open_tasks(project).count()
+    """Return how many open and Blocked Tasks, Subtasks included, the Project holds."""
+    return _live_tasks(project).filter(status__in=OPEN_STATUSES).count()
 
 
 def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
-    """Return a page of the Project's Closed Tasks, most recently completed first.
+    """Return a page of the Project's Closed trees, most recently completed root first.
+
+    Each page holds its Closed roots, newest first, then every Subtask under them in manual
+    order. A Closed root has no open descendants, so the whole tree is Closed.
 
     Raises:
         InvalidCursorError: The cursor wasn't one this function returned.
     """
-    closed = _live_tasks(project).filter(status__in=CLOSED_STATUSES)
-    return newest_first(closed, "completed_at", cursor)
+    roots = _live_tasks(project).filter(parent__isnull=True, status__in=CLOSED_STATUSES)
+    page = newest_first(roots, "completed_at", cursor)
+    return Page(items=[*page.items, *_below(page.items)], next_cursor=page.next_cursor)
 
 
 def create_task(project: Project, title: str) -> Task:
-    """Create a Task in the Project, first among its Tasks, owned by the Project's owner."""
+    """Create a Task in the Project, first among its roots, owned by the Project's owner."""
     with transaction.atomic():
         # Locking the Project serialises inserts into it, so two Tasks never get the same key.
         Project.objects.select_for_update().get(pk=project.pk)
-        first = project.tasks.order_by("position", "id").values_list("position", flat=True).first()
-        position = str(generate_key_between(None, first))
+        roots = project.tasks.filter(parent__isnull=True).order_by("position", "id")
+        first = roots.values_list("position", flat=True).first()
         task = Task.objects.create(
             owner_id=project.owner_id,
             project=project,
             title=title,
-            position=position,
+            position=str(generate_key_between(None, first)),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
         return task
+
+
+def create_subtask(parent: Task, title: str) -> TaskChange:
+    """Create a Subtask last under the parent, in the parent's Project.
+
+    A Closed Task can't hold open work, so adding under one reopens it and its Closed ancestors.
+
+    Raises:
+        TaskRuleError: The parent is already at the deepest level.
+    """
+    if parent.depth >= MAX_DEPTH:
+        message = "Tasks can only nest four levels deep."
+        raise TaskRuleError(message)
+    with transaction.atomic():
+        Project.objects.select_for_update().get(pk=parent.project_id)
+        siblings = parent.subtasks.order_by("-position", "-id")
+        last = siblings.values_list("position", flat=True).first()
+        task = Task.objects.create(
+            owner_id=parent.owner_id,
+            project_id=parent.project_id,
+            parent=parent,
+            title=title,
+            position=str(generate_key_between(last, None)),
+        )
+        TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
+        return TaskChange(task=task, affected=_reopen_ancestors(task))
 
 
 def live_task(user: User, task_id: int) -> Task | None:
@@ -129,6 +198,10 @@ _EDITABLE_FIELDS = ("title", "description", "status", "blocked_reason", "priorit
 def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     """Change the given fields of one of the user's Tasks; return None if it isn't theirs.
 
+    A Status change keeps the tree consistent: closing a Task closes its open descendants with
+    the same Status, and reopening one reopens its Closed ancestors. Every Task the change
+    touched comes back in `affected`.
+
     Raises:
         TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked.
     """
@@ -139,15 +212,18 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     _apply(task, edit)
     changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
     affected = []
-    if "status" in changed:
-        affected.append(
-            AffectedTask(task.pk, Task.Status(before["status"]), before["blocked_reason"]),
-        )
+    cascaded: list[AffectedTask] = []
     with transaction.atomic():
         if changed:
             task.save(update_fields=[*changed, "updated_at"])
-        TaskActivity.objects.bulk_create(_activity(task, before))
-    return TaskChange(task=task, affected=affected)
+        if "status" in changed:
+            affected.append(
+                AffectedTask(task.pk, Task.Status(before["status"]), before["blocked_reason"]),
+            )
+            cascaded = _cascade_status(task)
+        closed_subtasks = len(cascaded) if task.status in CLOSED_STATUSES else 0
+        TaskActivity.objects.bulk_create(_activity(task, before, closed_subtasks))
+    return TaskChange(task=task, affected=affected + cascaded)
 
 
 def _apply(task: Task, edit: TaskEdit) -> None:
@@ -169,7 +245,49 @@ def _apply(task: Task, edit: TaskEdit) -> None:
         task.blocked_reason = edit.blocked_reason
 
 
-def _activity(task: Task, before: dict[str, object]) -> list[TaskActivity]:
+def _cascade_status(task: Task) -> list[AffectedTask]:
+    """Restore "a Closed Task has no open descendants" after the Task's Status changed."""
+    if task.status in CLOSED_STATUSES:
+        return _close_descendants(task)
+    return _reopen_ancestors(task)
+
+
+def _close_descendants(task: Task) -> list[AffectedTask]:
+    """Give every open or Blocked descendant of a Closed Task the Task's Status."""
+    affected = []
+    for descendant in (
+        _below([task]).filter(status__in=OPEN_STATUSES).select_for_update(of=("self",))
+    ):
+        affected.append(
+            AffectedTask(descendant.pk, Task.Status(descendant.status), descendant.blocked_reason),
+        )
+        _set_status(descendant, Task.Status(task.status), via={"via_parent": task.title})
+    return affected
+
+
+def _reopen_ancestors(task: Task) -> list[AffectedTask]:
+    """Reopen every Closed ancestor of an open Task."""
+    affected = []
+    ancestor = task.parent
+    while ancestor is not None:
+        if ancestor.status in CLOSED_STATUSES:
+            affected.append(AffectedTask(ancestor.pk, Task.Status(ancestor.status), ""))
+            _set_status(ancestor, Task.Status.OPEN, via={"via_subtask": task.title})
+        ancestor = ancestor.parent
+    return affected
+
+
+def _set_status(task: Task, status: Task.Status, via: dict[str, str]) -> None:
+    """Give a Task a Status as the knock-on effect of a change to a relative, and log why."""
+    data = {"old": task.status, "new": status, "blocked_reason": "", **via}
+    task.status = status
+    task.completed_at = timezone.now() if status in CLOSED_STATUSES else None
+    task.blocked_reason = ""
+    task.save(update_fields=["status", "completed_at", "blocked_reason", "updated_at"])
+    TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.STATUS_CHANGED, data=data)
+
+
+def _activity(task: Task, before: dict[str, object], closed_subtasks: int) -> list[TaskActivity]:
     """Return the history events for the difference between `before` and the Task as it is now."""
     events = []
     if task.title != before["title"]:
@@ -179,6 +297,8 @@ def _activity(task: Task, before: dict[str, object]) -> list[TaskActivity]:
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.DESCRIPTION_EDITED))
     if task.status != before["status"]:
         data = {"old": before["status"], "new": task.status, "blocked_reason": task.blocked_reason}
+        if closed_subtasks:
+            data["closed_subtasks"] = closed_subtasks
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.STATUS_CHANGED, data=data))
     if task.priority != before["priority"]:
         data = {"old": before["priority"], "new": task.priority}

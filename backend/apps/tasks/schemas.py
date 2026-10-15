@@ -15,10 +15,14 @@ BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_leng
 
 
 class TaskOut(Schema):
-    """A Task as a list row shows it."""
+    """A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`."""
 
     id: int
     project_id: int
+    parent_id: int | None = Field(description="Null for a root Task.")
+    position: str = Field(description="Sorts the Task among its siblings, byte by byte.")
+    depth: int = Field(description="0 for a root Task, up to 3 for the deepest Subtask.")
+    parent_title: str | None = Field(description="The parent's title, for a breadcrumb.")
     title: str
     status: Task.Status
     priority: Task.Priority = Field(description="0 is no Priority; 1 (P1) is the most urgent.")
@@ -28,10 +32,21 @@ class TaskOut(Schema):
     updated_at: datetime
 
 
+class TaskAncestorOut(Schema):
+    """A Task above another in the tree, as a breadcrumb links to it."""
+
+    id: int
+    title: str
+
+
 class TaskDetailOut(TaskOut):
-    """A Task as the detail drawer shows it."""
+    """A Task as the detail drawer shows it, with where it sits in the tree and what's under it."""
 
     description: str = Field(description="Markdown, as the user wrote it.")
+    ancestors: list[TaskAncestorOut] = Field(description="From the root down to the parent.")
+    subtasks: list[TaskOut] = Field(
+        description="Every Subtask below, whatever its Status, as flat rows in manual order.",
+    )
 
 
 class TaskListOut(Schema):
@@ -47,7 +62,14 @@ class TaskIn(Schema):
     """A new Task from Quick add."""
 
     title: Title
-    project_id: int | None = Field(default=None, description="Defaults to the Inbox.")
+    project_id: int | None = Field(
+        default=None,
+        description="Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.",
+    )
+    parent_id: int | None = Field(
+        default=None,
+        description="Makes the Task the last Subtask of this one; reopens it if it's Closed.",
+    )
 
 
 class TaskPatchIn(Schema):
@@ -93,11 +115,18 @@ class TitleChangedData(Schema):
 
 
 class StatusChangedData(Schema):
-    """The Status before and after a change, and the Blocked reason it was given, if any."""
+    """The Status before and after a change, the Blocked reason it was given, and any cascade.
+
+    A change the user made to a relative names that relative: `via_parent` when closing a
+    parent closed this Task, `via_subtask` when reopening a Subtask reopened it.
+    """
 
     old: Task.Status
     new: Task.Status
     blocked_reason: str
+    via_parent: str | None = Field(default=None, description="The Closed parent's title.")
+    via_subtask: str | None = Field(default=None, description="The reopened Subtask's title.")
+    closed_subtasks: int = Field(default=0, description="How many Subtasks closed with it.")
 
 
 class PriorityChangedData(Schema):

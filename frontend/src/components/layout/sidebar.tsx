@@ -5,6 +5,7 @@ import { Logo } from "@/components/brand/logo";
 import type { User } from "@/features/auth/session";
 import { SidebarProjects } from "@/features/projects/sidebar-projects";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
+import { SidebarTags } from "@/features/tags/sidebar-tags";
 import { sidebarQuery } from "@/features/tasks/tasks";
 
 import { NAV_ITEMS } from "./nav-items";
@@ -44,8 +45,8 @@ export function Sidebar({ user }: { user: User }) {
 }
 
 /**
- * The views, then the user's Projects: the body of the desktop sidebar and of the phone menu.
- * `onNavigate` runs when a link is followed, so the phone menu can close.
+ * The views, then the user's Projects and Tags: the body of the desktop sidebar and of the phone
+ * menu. `onNavigate` runs when a link is followed, so the phone menu can close.
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { data: sidebar } = useQuery(sidebarQuery);
@@ -79,6 +80,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
 
       <div className="mt-5">
         <SidebarProjects onNavigate={onNavigate} />
+      </div>
+
+      <div className="mt-5">
+        <SidebarTags onNavigate={onNavigate} />
       </div>
     </>
   );

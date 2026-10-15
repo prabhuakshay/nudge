@@ -1,3 +1,4 @@
+import { arrayMove } from "@dnd-kit/sortable";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -95,6 +96,17 @@ export function moveAfter<T extends { id: number }>(tags: T[], id: number, after
   const rest = tags.filter((tag) => tag.id !== id);
   const index = afterId === null ? 0 : rest.findIndex((tag) => tag.id === afterId) + 1;
   return [...rest.slice(0, index), moving, ...rest.slice(index)];
+}
+
+/**
+ * The Tag a dragged Tag now follows once dropped onto another's place, or null for first. Dropped
+ * lower down it follows the Tag it was dropped on; dropped higher up it takes that Tag's place.
+ */
+export function dropAfter(tags: { id: number }[], id: number, overId: number) {
+  const ids = tags.map((tag) => tag.id);
+  const to = ids.indexOf(overId);
+  const reordered = arrayMove(ids, ids.indexOf(id), to);
+  return reordered[to - 1] ?? null;
 }
 
 /** Merge a Tag into another: its Tasks get the other Tag, and it's deleted. */

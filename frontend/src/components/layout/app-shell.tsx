@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import type { User } from "@/features/auth/session";
 import { NotificationCenter } from "@/features/notifications/notification-center";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
+import { GlobalQuickAdd } from "@/features/tasks/global-quick-add";
 import { ThemeToggle } from "@/features/theme/theme-toggle";
 import { TimeZoneBanner } from "@/features/time-zone/time-zone-banner";
 
@@ -18,7 +19,8 @@ import { UserAvatar } from "./user-avatar";
 /**
  * The signed-in layout. A top bar holds notifications and the theme switch everywhere. Mobile
  * adds the menu, logo and account there plus bottom navigation; from the `lg` breakpoint those move
- * into a permanent sidebar. It also hosts the toasts and tooltips every page can use.
+ * into a permanent sidebar. It also hosts the toasts and tooltips every page can use, and the
+ * Quick add dialog that `C` opens on pages without a Quick add card.
  */
 export function AppShell({ user, children }: { user: User; children: ReactNode }) {
   return (
@@ -58,6 +60,7 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
         </div>
 
         <BottomNav />
+        <GlobalQuickAdd />
         <Toaster />
       </div>
     </TooltipProvider>

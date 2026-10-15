@@ -13,6 +13,7 @@ vi.mock("@/features/notifications/notification-center", () => ({
 vi.mock("@/features/settings/settings-dialog", () => ({ SettingsDialog: () => null }));
 vi.mock("@/features/theme/theme-toggle", () => ({ ThemeToggle: () => null }));
 vi.mock("@/features/time-zone/time-zone-banner", () => ({ TimeZoneBanner: () => null }));
+vi.mock("@/features/tasks/global-quick-add", () => ({ GlobalQuickAdd: () => null }));
 
 const ada = {
   id: 1,

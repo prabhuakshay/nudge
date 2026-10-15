@@ -204,6 +204,18 @@ def test_search_never_returns_trashed_tasks(client: Client, ada: User) -> None:
 
 
 @pytest.mark.django_db
+def test_search_drops_a_task_and_its_subtasks_once_trashed(client: Client, ada: User) -> None:
+    parent = _task(ada, "Lisbon trip")
+    services.create_subtask(parent, "Lisbon hotel")
+
+    assert client.delete(f"/api/v1/tasks/{parent.pk}").status_code == 204
+    assert _search(client, "lisbon") == []
+
+    assert client.post(f"/api/v1/tasks/{parent.pk}/restore").status_code == 200
+    assert set(_titles(client, "lisbon")) == {"Lisbon hotel", "Lisbon trip"}
+
+
+@pytest.mark.django_db
 def test_search_never_returns_another_users_tasks(
     client: Client,
     ada: User,

@@ -57,6 +57,8 @@ const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string }
     `Stopped repeating ${repeatLabel(data.rule)}, as only dated top-level tasks repeat`,
   repeat_advanced: (data) =>
     `${data.action === "completed" ? "Completed" : "Skipped"} ${longDate(data.occurrence)}; next on ${longDate(data.next)}`,
+  trashed: () => "Moved to Trash",
+  restored: () => "Restored from Trash",
 };
 
 function longDate(date: string): string {

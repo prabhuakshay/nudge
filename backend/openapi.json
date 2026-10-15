@@ -1938,6 +1938,55 @@
             "SessionAuth": []
           }
         ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_tasks_delete_task",
+        "summary": "Move a Task to Trash",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Send a Task and its Subtasks to Trash as one unit, which `restore` brings back.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/v1/tasks/{task_id}/move": {
@@ -2768,6 +2817,86 @@
         "description": "Return the feed's owner's open dated Tasks as an iCalendar file.",
         "tags": [
           "calendar"
+        ]
+      }
+    },
+    "/api/v1/trash": {
+      "get": {
+        "operationId": "apps_tasks_api_trash_list_trash",
+        "summary": "List the Trash",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TrashedTaskOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return one row per deleted unit, most recently deleted first.",
+        "tags": [
+          "trash"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/restore": {
+      "post": {
+        "operationId": "apps_tasks_api_trash_restore_task",
+        "summary": "Restore a Task from Trash",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskRestoreOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Bring back a Task with everything deleted along with it, and say where it went.",
+        "tags": [
+          "trash"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
         ]
       }
     }
@@ -5576,6 +5705,36 @@
         "title": "RepeatRemovedActivityOut",
         "type": "object"
       },
+      "RestoredActivityOut": {
+        "description": "The Task was restored from Trash.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "restored",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RestoredActivityOut",
+        "type": "object"
+      },
       "StatusChangedActivityOut": {
         "description": "The Task's Status changed.",
         "properties": {
@@ -5801,11 +5960,13 @@
                   "repeat_advanced": "#/components/schemas/RepeatAdvancedActivityOut",
                   "repeat_changed": "#/components/schemas/RepeatChangedActivityOut",
                   "repeat_removed": "#/components/schemas/RepeatRemovedActivityOut",
+                  "restored": "#/components/schemas/RestoredActivityOut",
                   "status_changed": "#/components/schemas/StatusChangedActivityOut",
                   "tag_added": "#/components/schemas/TagAddedActivityOut",
                   "tag_removed": "#/components/schemas/TagRemovedActivityOut",
                   "tags_merged": "#/components/schemas/TagsMergedActivityOut",
                   "title_changed": "#/components/schemas/TitleChangedActivityOut",
+                  "trashed": "#/components/schemas/TrashedActivityOut",
                   "unpinned": "#/components/schemas/UnpinnedActivityOut"
                 },
                 "propertyName": "kind"
@@ -5867,6 +6028,12 @@
                 },
                 {
                   "$ref": "#/components/schemas/TagsMergedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TrashedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RestoredActivityOut"
                 }
               ]
             },
@@ -5946,6 +6113,36 @@
           "new"
         ],
         "title": "TitleChangedData",
+        "type": "object"
+      },
+      "TrashedActivityOut": {
+        "description": "The Task was moved to Trash.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "trashed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TrashedActivityOut",
         "type": "object"
       },
       "UnpinnedActivityOut": {
@@ -6336,6 +6533,67 @@
           "url"
         ],
         "title": "CalendarFeedOut",
+        "type": "object"
+      },
+      "TrashedTaskOut": {
+        "description": "One Trash unit: a deleted Task, with the Subtasks that went with it counted.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "project_name": {
+            "description": "The Project it was deleted from.",
+            "title": "Project Name",
+            "type": "string"
+          },
+          "subtask_count": {
+            "description": "How many Subtasks went to Trash with it.",
+            "title": "Subtask Count",
+            "type": "integer"
+          },
+          "deleted_at": {
+            "format": "date-time",
+            "title": "Deleted At",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "When it will be deleted for good.",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "project_name",
+          "subtask_count",
+          "deleted_at",
+          "expires_at"
+        ],
+        "title": "TrashedTaskOut",
+        "type": "object"
+      },
+      "TaskRestoreOut": {
+        "description": "A Task back from Trash, and the Project it went back to, which may be the Inbox.",
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/TaskOut"
+          },
+          "project": {
+            "$ref": "#/components/schemas/ProjectOut"
+          }
+        },
+        "required": [
+          "task",
+          "project"
+        ],
+        "title": "TaskRestoreOut",
         "type": "object"
       }
     },

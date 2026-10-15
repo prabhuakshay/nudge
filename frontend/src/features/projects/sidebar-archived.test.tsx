@@ -83,6 +83,24 @@ describe("SidebarArchived", () => {
     });
   });
 
+  it("moves an archived Project to Trash after a confirm", async () => {
+    const fetchSpy = mockApi([GARDEN]);
+    const user = renderArchived();
+
+    await user.click(await screen.findByRole("button", { name: "Archived" }));
+    await user.click(screen.getByRole("button", { name: "Garden options" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      const deletes = fetchSpy.mock.calls
+        .map(([input]) => input as Request)
+        .filter((request) => request.method === "DELETE")
+        .map((request) => new URL(request.url).pathname);
+      expect(deletes).toEqual(["/api/v1/projects/3"]);
+    });
+  });
+
   it("shows nothing while no Project is archived", async () => {
     const fetchSpy = mockApi([]);
     renderArchived();

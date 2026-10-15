@@ -4,8 +4,9 @@ import { RotateCcw, Trash2 } from "lucide-react";
 import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { plainMentions } from "@/features/people/mentions";
+import { ProjectIcon } from "@/features/projects/project-icon";
 
-import { trashQuery, useRestoreTask, type TrashedTask } from "./trash";
+import { trashQuery, useRestoreProject, useRestoreTask, type TrashedRow } from "./trash";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -19,18 +20,22 @@ function plural(count: number, noun: string) {
 }
 
 /** Where a unit came from, what went with it and how long it has left, on one line. */
-function details(row: TrashedTask) {
-  return [
-    row.project_name,
-    ...(row.subtask_count > 0 ? [plural(row.subtask_count, "Subtask")] : []),
-    `${plural(daysLeft(row.expires_at), "day")} left`,
-  ].join(" · ");
+function details(row: TrashedRow) {
+  const contents =
+    row.kind === "project"
+      ? ["Project", plural(row.task_count, "task")]
+      : [
+          row.project_name,
+          ...(row.subtask_count > 0 ? [plural(row.subtask_count, "Subtask")] : []),
+        ];
+  return [...contents, `${plural(daysLeft(row.expires_at), "day")} left`].join(" · ");
 }
 
-/** The Trash: one row per deleted unit, newest first, each with a Restore button. */
+/** The Trash: one row per deleted Task or Project, newest first, each with a Restore button. */
 export function TrashList() {
   const { data: rows } = useQuery(trashQuery);
-  const { mutate: restore } = useRestoreTask();
+  const { mutate: restoreTask } = useRestoreTask();
+  const { mutate: restoreProject } = useRestoreProject();
   return (
     <div className="mx-auto w-full max-w-3xl">
       <header className="mb-4 flex items-center gap-2.5 sm:gap-3">
@@ -43,18 +48,19 @@ export function TrashList() {
         <EmptyState
           icon={Trash2}
           title="Trash is empty"
-          description="Deleted tasks wait here for a while, so you can bring them back."
+          description="Deleted tasks and projects wait here for a while, so you can bring them back."
         />
       )}
       {rows && rows.length > 0 && (
         <ul className="overflow-hidden rounded-xl border border-border bg-surface">
           {rows.map((row) => {
-            const title = plainMentions(row.title);
+            const title = row.kind === "project" ? row.name : plainMentions(row.title);
             return (
               <li
-                key={row.id}
+                key={`${row.kind}-${String(row.id)}`}
                 className="flex min-h-14 items-center gap-3 border-b border-border/60 py-2 pr-2 pl-4 last:border-b-0"
               >
+                {row.kind === "project" && <ProjectIcon project={row} />}
                 <div className="flex min-w-0 flex-1 flex-col">
                   <span data-title className="truncate text-sm font-semibold">
                     {title}
@@ -65,7 +71,8 @@ export function TrashList() {
                   variant="ghost"
                   aria-label={`Restore “${title}”`}
                   onClick={() => {
-                    restore(row.id);
+                    if (row.kind === "project") restoreProject(row.id);
+                    else restoreTask(row.id);
                   }}
                 >
                   <RotateCcw className="size-4" aria-hidden />

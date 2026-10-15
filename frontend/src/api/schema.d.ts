@@ -422,7 +422,11 @@ export interface paths {
     get?: never;
     put?: never;
     post?: never;
-    delete?: never;
+    /**
+     * Move a Project to Trash
+     * @description Move a Project and its Tasks to Trash as one unit. The Inbox can't be deleted.
+     */
+    delete: operations["apps_tasks_api_projects_delete_project"];
     options?: never;
     head?: never;
     /**
@@ -983,7 +987,7 @@ export interface paths {
     };
     /**
      * List the Trash
-     * @description Return one row per deleted unit, most recently deleted first.
+     * @description Return one row per deleted Task or Project unit, most recently deleted first.
      */
     get: operations["apps_tasks_api_trash_list_trash"];
     put?: never;
@@ -1008,6 +1012,26 @@ export interface paths {
      * @description Bring back a Task with everything deleted along with it, and say where it went.
      */
     post: operations["apps_tasks_api_trash_restore_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/projects/{project_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restore a Project from Trash
+     * @description Bring back a Project with its Tasks, renamed "<Name> (2)" if its name was taken.
+     */
+    post: operations["apps_tasks_api_trash_restore_project"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2707,10 +2731,48 @@ export interface components {
       url: string | null;
     };
     /**
+     * TrashedProjectOut
+     * @description One Trash unit: a deleted Project, with the Tasks that went with it counted.
+     */
+    TrashedProjectOut: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "project";
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      color: components["schemas"]["PaletteColor"];
+      icon: components["schemas"]["Icon"];
+      /**
+       * Task Count
+       * @description How many Tasks went to Trash with it.
+       */
+      task_count: number;
+      /**
+       * Deleted At
+       * Format: date-time
+       */
+      deleted_at: string;
+      /**
+       * Expires At
+       * Format: date-time
+       * @description When it will be deleted for good.
+       */
+      expires_at: string;
+    };
+    /**
      * TrashedTaskOut
      * @description One Trash unit: a deleted Task, with the Subtasks that went with it counted.
      */
     TrashedTaskOut: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "task";
       /** Id */
       id: number;
       /** Title */
@@ -3328,6 +3390,44 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["ProjectOut"];
         };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_delete_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Not Found */
       404: {
@@ -4649,7 +4749,9 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["TrashedTaskOut"][];
+          "application/json": (
+            components["schemas"]["TrashedTaskOut"] | components["schemas"]["TrashedProjectOut"]
+          )[];
         };
       };
     };
@@ -4672,6 +4774,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TaskRestoreOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_trash_restore_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
         };
       };
       /** @description Not Found */

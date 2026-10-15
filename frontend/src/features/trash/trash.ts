@@ -13,12 +13,14 @@ import {
 } from "@/features/tasks/tasks";
 
 export type TrashedTask = components["schemas"]["TrashedTaskOut"];
+export type TrashedProject = components["schemas"]["TrashedProjectOut"];
+export type TrashedRow = TrashedTask | TrashedProject;
 type Restored = components["schemas"]["TaskRestoreOut"];
 
-/** The Trash: one row per deleted unit, most recently deleted first. */
+/** The Trash: one row per deleted Task or Project unit, most recently deleted first. */
 export const trashQuery = queryOptions({
   queryKey: ["trash"],
-  queryFn: async (): Promise<TrashedTask[]> => {
+  queryFn: async (): Promise<TrashedRow[]> => {
     const { data } = await api.GET("/api/v1/trash");
     if (!data) {
       throw new Error("Could not load the Trash.");
@@ -63,7 +65,7 @@ export function useRestoreTask() {
     onMutate: async (taskId) => {
       await queryClient.cancelQueries(trashQuery);
       queryClient.setQueryData(trashQuery.queryKey, (rows) =>
-        rows?.filter((row) => row.id !== taskId),
+        rows?.filter((row) => row.kind !== "task" || row.id !== taskId),
       );
     },
     onSuccess: (restored) => toast(restoredMessage(restored)),
@@ -111,6 +113,35 @@ export function useDeleteTask() {
         },
       });
     },
+    onError: (error) => toast.error(error.message),
+    onSettled: () =>
+      Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),
+  });
+}
+
+/**
+ * Bring a Project back from Trash with the Tasks deleted along with it. The toast names it, as
+ * it comes back renamed when its name was taken in the meantime.
+ */
+export function useRestoreProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (projectId: number) => {
+      const { data } = await api.POST("/api/v1/projects/{project_id}/restore", {
+        params: { path: { project_id: projectId } },
+      });
+      if (!data) {
+        throw new Error("Could not restore the project.");
+      }
+      return data;
+    },
+    onMutate: async (projectId) => {
+      await queryClient.cancelQueries(trashQuery);
+      queryClient.setQueryData(trashQuery.queryKey, (rows) =>
+        rows?.filter((row) => row.kind !== "project" || row.id !== projectId),
+      );
+    },
+    onSuccess: (project) => toast(`Restored “${project.name}”`),
     onError: (error) => toast.error(error.message),
     onSettled: () =>
       Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),

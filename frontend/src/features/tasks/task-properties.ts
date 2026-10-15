@@ -56,3 +56,13 @@ export const PRIORITY: Record<
   3: { short: "P3", long: "Priority 3", text: "text-p3", soft: "bg-p3-soft", border: "border-p3" },
   4: { short: "P4", long: "Priority 4", text: "text-p4", soft: "bg-p4-soft", border: "border-p4" },
 };
+
+/** What a Status change did, counting the relatives it closed or reopened along with the Task. */
+export function statusMessage(title: string, status: TaskStatus, relatives: number): string {
+  const message = `${STATUS_VERB[status]} “${title}”`;
+  if (relatives === 0) return message;
+  if (isClosed(status)) {
+    return `${message} with ${String(relatives)} ${relatives === 1 ? "Subtask" : "Subtasks"}`;
+  }
+  return `${message} and ${relatives === 1 ? "its parent" : `${String(relatives)} parents`}`;
+}

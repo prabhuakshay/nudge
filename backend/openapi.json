@@ -490,6 +490,379 @@
         ]
       }
     },
+    "/api/v1/folders": {
+      "post": {
+        "operationId": "apps_tasks_api_folders_create_folder",
+        "summary": "Create a Folder",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create an expanded Folder last in the sidebar.",
+        "tags": [
+          "folders"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/folders/{folder_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_folders_update_folder",
+        "summary": "Change a Folder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folder_id",
+            "schema": {
+              "title": "Folder Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rename a Folder, or collapse or expand it.",
+        "tags": [
+          "folders"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_folders_delete_folder",
+        "summary": "Delete a Folder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folder_id",
+            "schema": {
+              "title": "Folder Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete a Folder for good; its Projects stay, ungrouped, where it was.",
+        "tags": [
+          "folders"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/folders/{folder_id}/move": {
+      "post": {
+        "operationId": "apps_tasks_api_folders_move_folder",
+        "summary": "Move a Folder in the sidebar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folder_id",
+            "schema": {
+              "title": "Folder Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Put a Folder right after a top-level sibling, or first.",
+        "tags": [
+          "folders"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects": {
+      "post": {
+        "operationId": "apps_tasks_api_projects_create_project",
+        "summary": "Create a Project",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a Project last in its Folder, or last in the sidebar.",
+        "tags": [
+          "projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_projects_update_project",
+        "summary": "Change a Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rename, recolour or change the icon of a Project. The Inbox can't be changed.",
+        "tags": [
+          "projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/move": {
+      "post": {
+        "operationId": "apps_tasks_api_projects_move_project",
+        "summary": "Move a Project in the sidebar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Put a Project in a Folder or on the top level, right after a sibling or first.",
+        "tags": [
+          "projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/sidebar": {
       "get": {
         "operationId": "apps_tasks_api_sidebar_sidebar",
@@ -507,7 +880,7 @@
             }
           }
         },
-        "description": "Return the user's Inbox with its open Task count.",
+        "description": "Return the Inbox, then Folders and ungrouped Projects in order, with open Task counts.",
         "tags": [
           "sidebar"
         ],
@@ -1369,15 +1742,412 @@
         "title": "PushUnsubscribeIn",
         "type": "object"
       },
+      "FolderOut": {
+        "description": "A Folder's own fields.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "collapsed": {
+            "title": "Collapsed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "collapsed"
+        ],
+        "title": "FolderOut",
+        "type": "object"
+      },
+      "FolderIn": {
+        "description": "A new Folder.",
+        "properties": {
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "FolderIn",
+        "type": "object"
+      },
+      "FolderPatchIn": {
+        "description": "The fields of a Folder to change; fields left out stay as they are.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "collapsed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collapsed"
+          }
+        },
+        "title": "FolderPatchIn",
+        "type": "object"
+      },
+      "FolderMoveIn": {
+        "description": "Where a Folder goes on the sidebar's top level.",
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiblingIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The item it now follows; first when left out, last when it isn't there."
+          }
+        },
+        "title": "FolderMoveIn",
+        "type": "object"
+      },
+      "SiblingIn": {
+        "description": "A Folder or Project in the sidebar. Both kinds share the top level's order.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "folder",
+              "project"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "SiblingIn",
+        "type": "object"
+      },
+      "Icon": {
+        "description": "The Lucide icons a Project can show. Only the Inbox shows the `inbox` icon.",
+        "enum": [
+          "inbox",
+          "list",
+          "briefcase",
+          "house",
+          "heart-pulse",
+          "rocket",
+          "book-open",
+          "hammer",
+          "shopping-cart",
+          "plane",
+          "graduation-cap",
+          "dumbbell",
+          "music",
+          "camera",
+          "code",
+          "palette",
+          "wallet",
+          "piggy-bank",
+          "gift",
+          "car",
+          "utensils",
+          "coffee",
+          "leaf",
+          "sun",
+          "moon",
+          "star",
+          "flag",
+          "target",
+          "lightbulb",
+          "calendar",
+          "users",
+          "user",
+          "baby",
+          "dog",
+          "gamepad-2",
+          "film",
+          "pencil",
+          "wrench",
+          "globe",
+          "mail",
+          "phone"
+        ],
+        "title": "Icon",
+        "type": "string"
+      },
+      "PaletteColor": {
+        "description": "A colour a user can give a Project, Tag or Person.",
+        "enum": [
+          "red",
+          "orange",
+          "amber",
+          "green",
+          "teal",
+          "blue",
+          "violet",
+          "pink"
+        ],
+        "title": "PaletteColor",
+        "type": "string"
+      },
+      "ProjectOut": {
+        "description": "A Project's own fields.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/Icon"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "is_inbox": {
+            "title": "Is Inbox",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "icon",
+          "folder_id",
+          "is_inbox"
+        ],
+        "title": "ProjectOut",
+        "type": "object"
+      },
+      "ProjectIn": {
+        "description": "A new Project.",
+        "properties": {
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Random when left out."
+          },
+          "icon": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Icon"
+              }
+            ],
+            "default": "list"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ungrouped when left out.",
+            "title": "Folder Id"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ProjectIn",
+        "type": "object"
+      },
+      "ProjectPatchIn": {
+        "description": "The fields of a Project to change; fields left out stay as they are.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Icon"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ProjectPatchIn",
+        "type": "object"
+      },
+      "ProjectMoveIn": {
+        "description": "Where a Project goes: into a Folder or onto the top level, after a sibling.",
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiblingIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The item it now follows; first when left out, last when it isn't there."
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The top level when left out.",
+            "title": "Folder Id"
+          }
+        },
+        "title": "ProjectMoveIn",
+        "type": "object"
+      },
+      "SidebarFolderOut": {
+        "description": "A Folder as the sidebar lists it, with its Projects in order.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "collapsed": {
+            "title": "Collapsed",
+            "type": "boolean"
+          },
+          "kind": {
+            "const": "folder",
+            "title": "Kind",
+            "type": "string"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/SidebarProjectOut"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "collapsed",
+          "kind",
+          "projects"
+        ],
+        "title": "SidebarFolderOut",
+        "type": "object"
+      },
       "SidebarOut": {
         "description": "Everything the sidebar shows.",
         "properties": {
           "inbox": {
             "$ref": "#/components/schemas/SidebarProjectOut"
+          },
+          "items": {
+            "description": "Folders and ungrouped Projects in the user's order.",
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "folder": "#/components/schemas/SidebarFolderOut",
+                  "project": "#/components/schemas/SidebarProjectOut"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/SidebarFolderOut"
+                },
+                {
+                  "$ref": "#/components/schemas/SidebarProjectOut"
+                }
+              ]
+            },
+            "title": "Items",
+            "type": "array"
           }
         },
         "required": [
-          "inbox"
+          "inbox",
+          "items"
         ],
         "title": "SidebarOut",
         "type": "object"
@@ -1393,6 +2163,32 @@
             "title": "Name",
             "type": "string"
           },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/Icon"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "is_inbox": {
+            "title": "Is Inbox",
+            "type": "boolean"
+          },
+          "kind": {
+            "const": "project",
+            "title": "Kind",
+            "type": "string"
+          },
           "open_count": {
             "title": "Open Count",
             "type": "integer"
@@ -1401,6 +2197,11 @@
         "required": [
           "id",
           "name",
+          "color",
+          "icon",
+          "folder_id",
+          "is_inbox",
+          "kind",
           "open_count"
         ],
         "title": "SidebarProjectOut",
@@ -2047,6 +2848,18 @@
               }
             ],
             "description": "Replaces all of the Task's dates; null removes them."
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Moves the Task first into it.",
+            "title": "Project Id"
           }
         },
         "title": "TaskPatchIn",
@@ -2301,6 +3114,55 @@
         "title": "DescriptionEditedActivityOut",
         "type": "object"
       },
+      "MovedActivityOut": {
+        "description": "The Task moved to another Project.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "moved",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MovedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "MovedActivityOut",
+        "type": "object"
+      },
+      "MovedData": {
+        "description": "The Projects a Task moved between, by their names at the time.",
+        "properties": {
+          "from_project": {
+            "title": "From Project",
+            "type": "string"
+          },
+          "to_project": {
+            "title": "To Project",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_project",
+          "to_project"
+        ],
+        "title": "MovedData",
+        "type": "object"
+      },
       "NoActivityData": {
         "description": "The details of an event whose kind says it all.",
         "properties": {},
@@ -2448,6 +3310,7 @@
                   "created": "#/components/schemas/CreatedActivityOut",
                   "dates_changed": "#/components/schemas/DatesChangedActivityOut",
                   "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
+                  "moved": "#/components/schemas/MovedActivityOut",
                   "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
                   "status_changed": "#/components/schemas/StatusChangedActivityOut",
                   "title_changed": "#/components/schemas/TitleChangedActivityOut"
@@ -2478,6 +3341,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/DatesChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/MovedActivityOut"
                 }
               ]
             },

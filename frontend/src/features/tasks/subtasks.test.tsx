@@ -4,13 +4,14 @@ import userEvent from "@testing-library/user-event";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { INBOX as DRAWER_INBOX } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
 
 import { TaskList } from "./task-list";
 import { isClosed } from "./task-properties";
 import type { Task, TaskDetail } from "./tasks";
 
-const INBOX = { id: 7, name: "Inbox", open_count: 4 };
+const INBOX = { ...DRAWER_INBOX, open_count: 4 };
 
 function json(body: unknown, status = 200) {
   return Promise.resolve(
@@ -59,7 +60,7 @@ function mockApi(rows: Task[] = seed()) {
     }
     if (url.pathname.endsWith("/attachments")) return json([]);
     if (task) return json(server.detail(task));
-    if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX });
+    if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX, items: [] });
     const closed = url.searchParams.get("closed") === "true";
     return json({ items: server.trees(closed), next_cursor: null });
   });
@@ -201,15 +202,18 @@ describe("Subtasks in the drawer", () => {
     return screen.findByRole("dialog", { name: "Task details" });
   }
 
-  it("shows the parent breadcrumb, which opens a parent", async () => {
+  it("shows the parent breadcrumb, which opens a parent, and no Project chip", async () => {
     mockApi();
     const user = renderList();
     const drawer = await open(user, "Seats");
     const breadcrumb = await within(drawer).findByRole("navigation", { name: "Breadcrumb" });
+    const projectChip = { name: "Project: Inbox. Move to another project" };
+    expect(within(drawer).queryByRole("button", projectChip)).toBeNull();
 
     await user.click(within(breadcrumb).getByRole("button", { name: "Trip" }));
 
     expect(await within(drawer).findByRole("textbox", { name: "Title" })).toHaveValue("Trip");
+    expect(within(drawer).getByRole("button", projectChip)).toBeInTheDocument();
   });
 
   it("lists the Subtasks nested and opens one from its title", async () => {

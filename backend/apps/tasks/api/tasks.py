@@ -144,6 +144,12 @@ def update_task(
     Each changed Task comes with its Status and Blocked reason from before, so the client can
     offer Undo without the server keeping anything.
     """
+    user = signed_in_user(request)
+    project = None
+    if patch.project_id is not None:
+        project = services.live_project(user, patch.project_id)
+        if project is None:
+            return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
     edit = services.TaskEdit(
         title=patch.title,
         description=patch.description,
@@ -151,9 +157,10 @@ def update_task(
         blocked_reason=patch.blocked_reason,
         priority=patch.priority,
         dates=_dates(patch),
+        project=project,
     )
     try:
-        change = services.update_task(signed_in_user(request), task_id, edit)
+        change = services.update_task(user, task_id, edit)
     except services.TaskRuleError as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:

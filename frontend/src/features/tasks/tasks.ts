@@ -10,7 +10,7 @@ import { toast } from "sonner";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 
-import { isClosed, STATUS_VERB } from "./task-properties";
+import { statusMessage } from "./task-properties";
 import { openTrees } from "./task-tree";
 
 export type Task = components["schemas"]["TaskOut"];
@@ -23,7 +23,7 @@ export type DatesChange = components["schemas"]["DatesChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 
-/** The sidebar: the Inbox and its open count. Every Task change invalidates it. */
+/** The sidebar: the Inbox, Folders and Projects with open counts. Task changes invalidate it. */
 export const sidebarQuery = queryOptions({
   queryKey: ["sidebar"],
   queryFn: async (): Promise<Sidebar> => {
@@ -274,7 +274,7 @@ export function useSetTaskStatus() {
       patchTask({ id: task.id, status }),
     onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
     onSuccess: ({ affected }, { task, status }) => {
-      toast(statusMessage(task, status, affected.length - 1), {
+      toast(statusMessage(task.title, status, affected.length - 1), {
         action: {
           label: "Undo",
           onClick: () => {
@@ -294,16 +294,6 @@ export function useSetTaskStatus() {
     onError: (error) => toast.error(error.message),
     onSettled: () => refresh(queryClient),
   });
-}
-
-/** What a Status change did, counting the relatives it closed or reopened along with the Task. */
-function statusMessage(task: Task, status: TaskStatus, relatives: number) {
-  const message = `${STATUS_VERB[status]} “${task.title}”`;
-  if (relatives === 0) return message;
-  if (isClosed(status)) {
-    return `${message} with ${String(relatives)} ${relatives === 1 ? "Subtask" : "Subtasks"}`;
-  }
-  return `${message} and ${relatives === 1 ? "its parent" : `${String(relatives)} parents`}`;
 }
 
 /** Add a Task from Quick add. It appears first in its Project, as the server places it. */
@@ -326,6 +316,25 @@ export function useCreateTask(projectId: number) {
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries(sidebarQuery),
+  });
+}
+
+/** Move a Task to another Project, where it goes first. Both lists and the sidebar refresh. */
+export function useMoveTaskToProject() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, projectId }: { id: number; projectId: number }) => {
+      const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
+        params: { path: { task_id: id } },
+        body: { project_id: projectId },
+      });
+      if (!data) {
+        throw new Error("Could not move the task.");
+      }
+      return data;
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => refresh(queryClient),
   });
 }
 

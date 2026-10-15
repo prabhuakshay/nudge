@@ -288,6 +288,130 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/folders": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a Folder
+     * @description Create an expanded Folder last in the sidebar.
+     */
+    post: operations["apps_tasks_api_folders_create_folder"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/folders/{folder_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Folder
+     * @description Delete a Folder for good; its Projects stay, ungrouped, where it was.
+     */
+    delete: operations["apps_tasks_api_folders_delete_folder"];
+    options?: never;
+    head?: never;
+    /**
+     * Change a Folder
+     * @description Rename a Folder, or collapse or expand it.
+     */
+    patch: operations["apps_tasks_api_folders_update_folder"];
+    trace?: never;
+  };
+  "/api/v1/folders/{folder_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Folder in the sidebar
+     * @description Put a Folder right after a top-level sibling, or first.
+     */
+    post: operations["apps_tasks_api_folders_move_folder"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/projects": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a Project
+     * @description Create a Project last in its Folder, or last in the sidebar.
+     */
+    post: operations["apps_tasks_api_projects_create_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/projects/{project_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Change a Project
+     * @description Rename, recolour or change the icon of a Project. The Inbox can't be changed.
+     */
+    patch: operations["apps_tasks_api_projects_update_project"];
+    trace?: never;
+  };
+  "/api/v1/projects/{project_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Project in the sidebar
+     * @description Put a Project in a Folder or on the top level, right after a sibling or first.
+     */
+    post: operations["apps_tasks_api_projects_move_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/sidebar": {
     parameters: {
       query?: never;
@@ -297,7 +421,7 @@ export interface paths {
     };
     /**
      * Get the sidebar
-     * @description Return the user's Inbox with its open Task count.
+     * @description Return the Inbox, then Folders and ungrouped Projects in order, with open Task counts.
      */
     get: operations["apps_tasks_api_sidebar_sidebar"];
     put?: never;
@@ -612,11 +736,197 @@ export interface components {
       endpoint: string;
     };
     /**
+     * FolderOut
+     * @description A Folder's own fields.
+     */
+    FolderOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** Collapsed */
+      collapsed: boolean;
+    };
+    /**
+     * FolderIn
+     * @description A new Folder.
+     */
+    FolderIn: {
+      /** Name */
+      name: string;
+    };
+    /**
+     * FolderPatchIn
+     * @description The fields of a Folder to change; fields left out stay as they are.
+     */
+    FolderPatchIn: {
+      /** Name */
+      name?: string | null;
+      /** Collapsed */
+      collapsed?: boolean | null;
+    };
+    /**
+     * FolderMoveIn
+     * @description Where a Folder goes on the sidebar's top level.
+     */
+    FolderMoveIn: {
+      /** @description The item it now follows; first when left out, last when it isn't there. */
+      after?: components["schemas"]["SiblingIn"] | null;
+    };
+    /**
+     * SiblingIn
+     * @description A Folder or Project in the sidebar. Both kinds share the top level's order.
+     */
+    SiblingIn: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "folder" | "project";
+      /** Id */
+      id: number;
+    };
+    /**
+     * Icon
+     * @description The Lucide icons a Project can show. Only the Inbox shows the `inbox` icon.
+     * @enum {string}
+     */
+    Icon:
+      | "inbox"
+      | "list"
+      | "briefcase"
+      | "house"
+      | "heart-pulse"
+      | "rocket"
+      | "book-open"
+      | "hammer"
+      | "shopping-cart"
+      | "plane"
+      | "graduation-cap"
+      | "dumbbell"
+      | "music"
+      | "camera"
+      | "code"
+      | "palette"
+      | "wallet"
+      | "piggy-bank"
+      | "gift"
+      | "car"
+      | "utensils"
+      | "coffee"
+      | "leaf"
+      | "sun"
+      | "moon"
+      | "star"
+      | "flag"
+      | "target"
+      | "lightbulb"
+      | "calendar"
+      | "users"
+      | "user"
+      | "baby"
+      | "dog"
+      | "gamepad-2"
+      | "film"
+      | "pencil"
+      | "wrench"
+      | "globe"
+      | "mail"
+      | "phone";
+    /**
+     * PaletteColor
+     * @description A colour a user can give a Project, Tag or Person.
+     * @enum {string}
+     */
+    PaletteColor: "red" | "orange" | "amber" | "green" | "teal" | "blue" | "violet" | "pink";
+    /**
+     * ProjectOut
+     * @description A Project's own fields.
+     */
+    ProjectOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      color: components["schemas"]["PaletteColor"];
+      icon: components["schemas"]["Icon"];
+      /** Folder Id */
+      folder_id: number | null;
+      /** Is Inbox */
+      is_inbox: boolean;
+    };
+    /**
+     * ProjectIn
+     * @description A new Project.
+     */
+    ProjectIn: {
+      /** Name */
+      name: string;
+      /** @description Random when left out. */
+      color?: components["schemas"]["PaletteColor"] | null;
+      /** @default list */
+      icon: components["schemas"]["Icon"];
+      /**
+       * Folder Id
+       * @description Ungrouped when left out.
+       */
+      folder_id?: number | null;
+    };
+    /**
+     * ProjectPatchIn
+     * @description The fields of a Project to change; fields left out stay as they are.
+     */
+    ProjectPatchIn: {
+      /** Name */
+      name?: string | null;
+      color?: components["schemas"]["PaletteColor"] | null;
+      icon?: components["schemas"]["Icon"] | null;
+    };
+    /**
+     * ProjectMoveIn
+     * @description Where a Project goes: into a Folder or onto the top level, after a sibling.
+     */
+    ProjectMoveIn: {
+      /** @description The item it now follows; first when left out, last when it isn't there. */
+      after?: components["schemas"]["SiblingIn"] | null;
+      /**
+       * Folder Id
+       * @description The top level when left out.
+       */
+      folder_id?: number | null;
+    };
+    /**
+     * SidebarFolderOut
+     * @description A Folder as the sidebar lists it, with its Projects in order.
+     */
+    SidebarFolderOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** Collapsed */
+      collapsed: boolean;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "folder";
+      /** Projects */
+      projects: components["schemas"]["SidebarProjectOut"][];
+    };
+    /**
      * SidebarOut
      * @description Everything the sidebar shows.
      */
     SidebarOut: {
       inbox: components["schemas"]["SidebarProjectOut"];
+      /**
+       * Items
+       * @description Folders and ungrouped Projects in the user's order.
+       */
+      items: (
+        components["schemas"]["SidebarFolderOut"] | components["schemas"]["SidebarProjectOut"]
+      )[];
     };
     /**
      * SidebarProjectOut
@@ -627,6 +937,17 @@ export interface components {
       id: number;
       /** Name */
       name: string;
+      color: components["schemas"]["PaletteColor"];
+      icon: components["schemas"]["Icon"];
+      /** Folder Id */
+      folder_id: number | null;
+      /** Is Inbox */
+      is_inbox: boolean;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "project";
       /** Open Count */
       open_count: number;
     };
@@ -920,6 +1241,11 @@ export interface components {
       priority?: components["schemas"]["Priority"] | null;
       /** @description Replaces all of the Task's dates; null removes them. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
+      /**
+       * Project Id
+       * @description Moves the Task first into it.
+       */
+      project_id?: number | null;
     };
     /**
      * AttachmentAddedActivityOut
@@ -1050,6 +1376,35 @@ export interface components {
       data: components["schemas"]["NoActivityData"];
     };
     /**
+     * MovedActivityOut
+     * @description The Task moved to another Project.
+     */
+    MovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "moved";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["MovedData"];
+    };
+    /**
+     * MovedData
+     * @description The Projects a Task moved between, by their names at the time.
+     */
+    MovedData: {
+      /** From Project */
+      from_project: string;
+      /** To Project */
+      to_project: string;
+    };
+    /**
      * NoActivityData
      * @description The details of an event whose kind says it all.
      */
@@ -1144,6 +1499,7 @@ export interface components {
         | components["schemas"]["AttachmentAddedActivityOut"]
         | components["schemas"]["AttachmentRemovedActivityOut"]
         | components["schemas"]["DatesChangedActivityOut"]
+        | components["schemas"]["MovedActivityOut"]
       )[];
       /**
        * Next Cursor
@@ -1578,6 +1934,255 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  apps_tasks_api_folders_create_folder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FolderIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FolderOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_folders_delete_folder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        folder_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_folders_update_folder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        folder_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FolderPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FolderOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_folders_move_folder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        folder_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FolderMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_create_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProjectIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_update_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProjectPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_move_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProjectMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
       };
     };
   };

@@ -1,105 +1,6 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, within } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { screen, within } from "@testing-library/react";
 
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { makeTask } from "@/test/tasks";
-
-import { TaskList } from "./task-list";
-import type { TaskActivity, TaskDetail } from "./tasks";
-
-const INBOX = { id: 7, name: "Inbox", open_count: 3 };
-
-const task = makeTask;
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
-}
-
-function minutesAgo(minutes: number) {
-  return new Date(Date.now() - minutes * 60_000).toISOString();
-}
-
-/**
- * A stand-in for the server holding a few Tasks, which saves PATCHes to them. Each Task starts
- * with the given history, and a rename adds to it as the real server does.
- */
-function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
-  const activity = [...history];
-  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = input as Request;
-    const url = new URL(request.url);
-    if (url.pathname.endsWith("/activity")) {
-      return json({ items: activity, next_cursor: null, count: activity.length });
-    }
-    if (url.pathname.endsWith("/attachments")) return json([]);
-    const id = Number(url.pathname.split("/").at(-1));
-    const found = tasks.find((item) => item.id === id);
-    if (request.method === "PATCH" && found) {
-      const change = (await request.clone().json()) as Partial<TaskDetail>;
-      return json(applyPatch(found, change, activity));
-    }
-    if (found) return json(found);
-    if (url.searchParams.get("closed") === "true") {
-      return json({ items: [], next_cursor: null });
-    }
-    return json({ items: tasks, next_cursor: null });
-  });
-}
-
-function applyPatch(found: TaskDetail, change: Partial<TaskDetail>, activity: TaskActivity[]) {
-  if (change.title !== undefined) {
-    const data = { old: found.title, new: change.title };
-    activity.unshift({ id: activity.length + 1, kind: "title_changed", at: minutesAgo(0), data });
-  }
-  const statusChanged = change.status !== undefined && change.status !== found.status;
-  const affected = statusChanged
-    ? [{ id: found.id, prior_status: found.status, prior_blocked_reason: found.blocked_reason }]
-    : [];
-  Object.assign(found, statusChanged ? { blocked_reason: "" } : {}, change);
-  return { task: found, affected };
-}
-
-async function patches(fetchSpy: ReturnType<typeof mockApi>) {
-  const requests = fetchSpy.mock.calls
-    .map(([input]) => input as Request)
-    .filter((request) => request.method === "PATCH");
-  return Promise.all(
-    requests.map(async (request) => [
-      new URL(request.url).pathname,
-      (await request.json()) as unknown,
-    ]),
-  );
-}
-
-function renderList({ wide = true } = {}) {
-  vi.stubGlobal("matchMedia", (query: string) => ({
-    media: query,
-    matches: wide,
-    addEventListener: () => undefined,
-    removeEventListener: () => undefined,
-  }));
-  render(
-    <QueryClientProvider client={new QueryClient()}>
-      <TooltipProvider>
-        <TaskList project={INBOX} />
-        <Toaster />
-      </TooltipProvider>
-    </QueryClientProvider>,
-  );
-  return userEvent.setup();
-}
-
-async function openTask(user: ReturnType<typeof userEvent.setup>, title: string) {
-  await user.click(await screen.findByText(title));
-  return screen.findByRole("dialog", { name: "Task details" });
-}
+import { minutesAgo, mockApi, openTask, patches, renderList, task } from "@/test/drawer";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -113,7 +14,9 @@ describe("TaskDetail", () => {
     const drawer = await openTask(user, "Buy milk");
 
     expect(within(drawer).getByRole("textbox", { name: "Title" })).toHaveValue("Buy milk");
-    expect(within(drawer).getByText("Inbox")).toBeInTheDocument();
+    expect(
+      within(drawer).getByRole("button", { name: "Project: Inbox. Move to another project" }),
+    ).toBeInTheDocument();
     expect(await within(drawer).findByText("litres")).toContainHTML("<strong>litres</strong>");
   });
 
@@ -284,63 +187,5 @@ describe("TaskDetail", () => {
     await user.type(title, "Buy oat milk{Enter}");
 
     expect(await within(drawer).findByRole("tab", { name: "Activity 2" })).toBeInTheDocument();
-  });
-
-  it("sets the Status from its chip, with an Undo toast that puts it back", async () => {
-    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
-    const user = renderList();
-    const drawer = await openTask(user, "Buy milk");
-
-    await user.click(within(drawer).getByRole("button", { name: "Status: Open" }));
-    await user.click(screen.getByRole("menuitemradio", { name: "Won't do" }));
-
-    expect(await within(drawer).findByRole("button", { name: "Status: Won't do" })).toBeVisible();
-    expect(await screen.findByText("Marked Won't do “Buy milk”")).toBeInTheDocument();
-    await user.click(screen.getByRole("button", { name: "Undo" }));
-
-    expect(await within(drawer).findByRole("button", { name: "Status: Open" })).toBeVisible();
-    expect(await patches(fetchSpy)).toEqual([
-      ["/api/v1/tasks/1", { status: "wont_do" }],
-      ["/api/v1/tasks/1", { status: "open" }],
-    ]);
-  });
-
-  it("keeps a Blocked reason in its card and restores it with Undo", async () => {
-    const fetchSpy = mockApi([task({ id: 1, title: "Ship it" })]);
-    const user = renderList();
-    const drawer = await openTask(user, "Ship it");
-
-    await user.click(within(drawer).getByRole("button", { name: "Status: Open" }));
-    await user.click(screen.getByRole("menuitemradio", { name: "Blocked" }));
-    const reason = await within(drawer).findByRole("textbox", { name: "Blocked reason" });
-    await user.type(reason, "Waiting on Ada");
-    await user.tab();
-    await user.click(within(drawer).getByRole("checkbox", { name: "Complete “Ship it”" }));
-    const toast = (await screen.findByText("Completed “Ship it”")).closest<HTMLElement>("li");
-    if (!toast) throw new Error("No toast for the change.");
-    await user.click(within(toast).getByRole("button", { name: "Undo" }));
-
-    expect(await within(drawer).findByRole("textbox", { name: "Blocked reason" })).toHaveValue(
-      "Waiting on Ada",
-    );
-    expect(await patches(fetchSpy)).toEqual([
-      ["/api/v1/tasks/1", { status: "blocked" }],
-      ["/api/v1/tasks/1", { blocked_reason: "Waiting on Ada" }],
-      ["/api/v1/tasks/1", { status: "completed" }],
-      ["/api/v1/tasks/1", { status: "blocked", blocked_reason: "Waiting on Ada" }],
-    ]);
-  });
-
-  it("sets the Priority from its chip", async () => {
-    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
-    const user = renderList();
-    const drawer = await openTask(user, "Buy milk");
-
-    await user.click(within(drawer).getByRole("button", { name: "Priority: No priority" }));
-    await user.click(screen.getByRole("menuitemradio", { name: /Priority 1/ }));
-
-    const chip = await within(drawer).findByRole("button", { name: "Priority: Priority 1" });
-    expect(chip).toBeVisible();
-    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { priority: 1 }]]);
   });
 });

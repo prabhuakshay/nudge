@@ -1,4 +1,4 @@
-"""Tests for the Project and Task models."""
+"""Tests for the Folder, Project and Task models."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.db import IntegrityError, transaction
 
-from apps.tasks import services
+from apps.tasks import projects, services
 from apps.tasks.models import Attachment, Task
 
 if TYPE_CHECKING:
@@ -21,6 +21,11 @@ def test_a_project_and_a_task_read_as_their_name_and_title(ada: User) -> None:
     task = services.create_task(inbox, "Buy milk")
 
     assert (str(inbox), str(task)) == ("Inbox", "Buy milk")
+
+
+@pytest.mark.django_db
+def test_a_folder_reads_as_its_name(ada: User) -> None:
+    assert str(projects.create_folder(ada, "Personal")) == "Personal"
 
 
 @pytest.mark.django_db

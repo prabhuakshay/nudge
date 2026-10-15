@@ -20,6 +20,7 @@ from django.utils import timezone
 from fractional_indexing import generate_key_between
 
 from apps.accounts.services import local_zone
+from apps.core.palette import PaletteColor
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
@@ -84,6 +85,7 @@ class TaskEdit:
     blocked_reason: str | None = None
     priority: Task.Priority | None = None
     dates: TaskDates | None = None
+    project: Project | None = None
 
 
 @dataclass(frozen=True)
@@ -105,7 +107,13 @@ class TaskChange:
 
 def create_inbox(user: User) -> Project:
     """Create the user's Inbox."""
-    return Project.objects.create(owner=user, name=INBOX_NAME, is_inbox=True)
+    return Project.objects.create(
+        owner=user,
+        name=INBOX_NAME,
+        color=PaletteColor.BLUE,
+        icon=Project.Icon.INBOX,
+        is_inbox=True,
+    )
 
 
 def inbox(user: User) -> Project:
@@ -198,11 +206,6 @@ def open_tasks(project: Project) -> QuerySet[Task]:
     return _live_tasks(project).filter(_root_status_in(OPEN_STATUSES))
 
 
-def open_task_count(project: Project) -> int:
-    """Return how many open and Blocked Tasks, Subtasks included, the Project holds."""
-    return _live_tasks(project).filter(status__in=OPEN_STATUSES).count()
-
-
 def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
     """Return a page of the Project's Closed trees, most recently completed root first.
 
@@ -218,18 +221,23 @@ def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
     return Page(items=rows, next_cursor=page.next_cursor)
 
 
+def _first_position(project: Project) -> str:
+    """Return a key before every root Task in the Project. Call it inside a transaction."""
+    # Locking the Project serialises inserts into it, so two Tasks never get the same key.
+    Project.objects.select_for_update().get(pk=project.pk)
+    roots = project.tasks.filter(parent__isnull=True).order_by("position", "id")
+    first = roots.values_list("position", flat=True).first()
+    return str(generate_key_between(None, first))
+
+
 def create_task(project: Project, title: str) -> Task:
     """Create a Task in the Project, first among its roots, owned by the Project's owner."""
     with transaction.atomic():
-        # Locking the Project serialises inserts into it, so two Tasks never get the same key.
-        Project.objects.select_for_update().get(pk=project.pk)
-        roots = project.tasks.filter(parent__isnull=True).order_by("position", "id")
-        first = roots.values_list("position", flat=True).first()
         task = Task.objects.create(
             owner_id=project.owner_id,
             project=project,
             title=title,
-            position=str(generate_key_between(None, first)),
+            position=_first_position(project),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
     return _with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)
@@ -290,6 +298,10 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     the same Status, and reopening one reopens its Closed ancestors. Every Task the change
     touched comes back in `affected`.
 
+    Moving it to another of the user's Projects puts it first among the roots there, with its
+    Subtasks under it; a Subtask moved out becomes a root, since Subtasks share their root's
+    Project.
+
     Raises:
         TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked.
     """
@@ -297,21 +309,27 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     if task is None:
         return None
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
+    before["project_name"] = task.project.name
     dates_before = TaskDates.of(task)
     _apply(task, edit)
     changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
     affected = []
     cascaded: list[AffectedTask] = []
+    target = edit.project if edit.project and edit.project.pk != task.project_id else None
     with transaction.atomic():
-        if changed:
-            task.save(update_fields=[*changed, "updated_at"])
+        moved = [] if target is None else _move_to_project(task, target)
+        if changed or moved:
+            task.save(update_fields=[*changed, *moved, "updated_at"])
         if "status" in changed:
             affected.append(
                 AffectedTask(task.pk, Task.Status(before["status"]), before["blocked_reason"]),
             )
             cascaded = _cascade_status(task)
         closed_subtasks = len(cascaded) if task.status in CLOSED_STATUSES else 0
-        TaskActivity.objects.bulk_create(_activity(task, before, dates_before, closed_subtasks))
+        events = _activity(task, before, dates_before, closed_subtasks)
+        if moved:
+            events.append(_moved(before["project_name"], task))
+        TaskActivity.objects.bulk_create(events)
     # Re-read, because a change of dates or Status can change whether the Task is overdue.
     fresh = _as_rows(user.tasks.filter(pk=task.pk), user).get()
     return TaskChange(task=fresh, affected=affected + cascaded)
@@ -407,6 +425,27 @@ def _activity(
         data = {"old": dates_before.as_activity(), "new": dates.as_activity()}
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.DATES_CHANGED, data=data))
     return events
+
+
+def _move_to_project(task: Task, project: Project) -> list[str]:
+    """Move the Task and its Subtasks into the Project, first among its roots.
+
+    Returns:
+        The Task's fields that changed, for the caller to save.
+    """
+    _below([task]).update(project=project)
+    task.position = _first_position(project)
+    task.project = project
+    task.parent = None
+    return ["project", "position", "parent"]
+
+
+def _moved(from_project: object, task: Task) -> TaskActivity:
+    return TaskActivity(
+        task=task,
+        kind=TaskActivity.Kind.MOVED,
+        data={"from_project": from_project, "to_project": task.project.name},
+    )
 
 
 def task_activity(task: Task, cursor: str | None = None) -> Page[TaskActivity]:

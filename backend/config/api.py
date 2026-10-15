@@ -17,6 +17,8 @@ from apps.accounts.api import router as accounts_router
 from apps.core.api import router as core_router
 from apps.notifications.api import router as notifications_router
 from apps.tasks.api.attachments import router as attachments_router
+from apps.tasks.api.folders import router as folders_router
+from apps.tasks.api.projects import router as projects_router
 from apps.tasks.api.sidebar import router as sidebar_router
 from apps.tasks.api.tasks import router as tasks_router
 
@@ -32,6 +34,8 @@ api = NinjaAPI(
 api.add_router("/", core_router, tags=["core"])
 api.add_router("/auth", accounts_router, tags=["auth"])
 api.add_router("/notifications", notifications_router, tags=["notifications"])
+api.add_router("/folders", folders_router, tags=["folders"])
+api.add_router("/projects", projects_router, tags=["projects"])
 api.add_router("/sidebar", sidebar_router, tags=["sidebar"])
 api.add_router("/tasks", tasks_router, tags=["tasks"])
 api.add_router("/", attachments_router, tags=["attachments"])

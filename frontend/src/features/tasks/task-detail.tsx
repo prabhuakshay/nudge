@@ -1,11 +1,13 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, ChevronUp, Inbox, X } from "lucide-react";
+import { ChevronDown, ChevronRight, ChevronUp, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { ProjectIcon } from "@/features/projects/project-icon";
+import { allProjects } from "@/features/projects/projects";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
@@ -17,7 +19,14 @@ import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
 import { isClosed } from "./task-properties";
 import { BlockedReasonField } from "./task-status";
-import { taskActivityQuery, taskQuery, useSetTaskStatus, type TaskDetail as Task } from "./tasks";
+import {
+  sidebarQuery,
+  taskActivityQuery,
+  taskQuery,
+  useSetTaskStatus,
+  type SidebarProject,
+  type TaskDetail as Task,
+} from "./tasks";
 
 /** The bottom sheet opens at 60% of the screen and drags up to all of it. */
 const PEEK = 0.6;
@@ -26,8 +35,8 @@ const SNAP_POINTS = [PEEK, 1];
 type TaskDetailProps = {
   /** The open Task, or null when the drawer is closed. */
   taskId: number | null;
-  /** The list the Task was opened from, for the header and for stepping. */
-  project: { id: number; name: string };
+  /** The list the Task was opened from. */
+  project: SidebarProject;
   /** Task ids in the list's current order, so J/K step the way the list reads. */
   order: number[];
   onOpen: (taskId: number) => void;
@@ -119,6 +128,10 @@ function isEditing(target: EventTarget | null) {
 
 function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps & { task: Task }) {
   const { mutate: setStatus } = useSetTaskStatus();
+  const { data: sidebar } = useQuery(sidebarQuery);
+  const taskProject =
+    (sidebar && allProjects(sidebar).find((candidate) => candidate.id === task.project_id)) ??
+    project;
   const [tab, setTab] = useState("details");
   const { data: activity } = useInfiniteQuery(taskActivityQuery(task.id));
   const activityCount = activity?.pages[0]?.count;
@@ -143,7 +156,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <header className="flex h-14 shrink-0 items-center gap-1 border-b border-border px-3 sm:px-4">
-        <Breadcrumb task={task} project={project} onOpen={onOpen} />
+        <Breadcrumb task={task} project={taskProject} onOpen={onOpen} />
         <HeaderButton
           label="Previous task"
           shortcut="K"
@@ -183,7 +196,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
             />
             <TitleField task={task} className="flex-1 sm:text-[22px] sm:leading-snug" />
           </div>
-          <PropertyChips task={task} />
+          <PropertyChips task={task} project={taskProject} />
           {task.status === "blocked" && <BlockedReasonField task={task} className="mt-4" />}
         </div>
 
@@ -232,7 +245,7 @@ function Breadcrumb({
   onOpen,
 }: {
   task: Task;
-  project: TaskDetailProps["project"];
+  project: SidebarProject;
   onOpen: (taskId: number) => void;
 }) {
   return (
@@ -241,7 +254,7 @@ function Breadcrumb({
       className="flex min-w-0 flex-1 items-center gap-1 text-xs text-muted-foreground"
     >
       <span className="flex shrink-0 items-center gap-1.5 font-semibold">
-        <Inbox className="size-3.5 shrink-0" aria-hidden />
+        <ProjectIcon project={project} className="size-3.5" />
         {project.name}
       </span>
       {task.ancestors.map((ancestor) => (

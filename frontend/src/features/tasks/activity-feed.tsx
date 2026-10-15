@@ -8,10 +8,10 @@ import { describeDates } from "./due";
 import { PRIORITY, STATUS_VERB } from "./task-properties";
 import { taskActivityQuery, type DatesChange, type TaskActivity } from "./tasks";
 
-type StatusChange = Extract<TaskActivity, { kind: "status_changed" }>["data"];
+type ActivityData = { [E in TaskActivity as E["kind"]]: E["data"] };
 
 /** A Status change, naming the relative whose change caused it, or the Subtasks it closed too. */
-function describeStatus(change: StatusChange): string {
+function describeStatus(change: ActivityData["status_changed"]): string {
   const verb = STATUS_VERB[change.new];
   const closedSubtasks = change.closed_subtasks;
   if (change.via_parent) return `${verb} via parent “${change.via_parent}”`;
@@ -22,26 +22,22 @@ function describeStatus(change: StatusChange): string {
   return change.blocked_reason ? `${verb}: “${change.blocked_reason}”` : verb;
 }
 
-/** What an event says happened, in the user's words rather than the API's. */
-function describe(event: TaskActivity): string {
-  switch (event.kind) {
-    case "created":
-      return "Created this task";
-    case "title_changed":
-      return `Renamed from “${event.data.old}” to “${event.data.new}”`;
-    case "description_edited":
-      return "Edited the description";
-    case "status_changed":
-      return describeStatus(event.data);
-    case "priority_changed":
-      return `Changed priority from ${PRIORITY[event.data.old].short} to ${PRIORITY[event.data.new].short}`;
-    case "attachment_added":
-      return `Attached “${event.data.name}”`;
-    case "attachment_removed":
-      return `Deleted the attachment “${event.data.name}”`;
-    case "dates_changed":
-      return describeDatesChange(event.data);
-  }
+/** What each kind of event says happened, in the user's words rather than the API's. */
+const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string } = {
+  created: () => "Created this task",
+  title_changed: (data) => `Renamed from “${data.old}” to “${data.new}”`,
+  description_edited: () => "Edited the description",
+  status_changed: (data) => describeStatus(data),
+  priority_changed: (data) =>
+    `Changed priority from ${PRIORITY[data.old].short} to ${PRIORITY[data.new].short}`,
+  attachment_added: (data) => `Attached “${data.name}”`,
+  attachment_removed: (data) => `Deleted the attachment “${data.name}”`,
+  dates_changed: (data) => describeDatesChange(data),
+  moved: (data) => `Moved from “${data.from_project}” to “${data.to_project}”`,
+};
+
+function describe<K extends keyof ActivityData>(event: { kind: K; data: ActivityData[K] }) {
+  return DESCRIBE[event.kind](event.data);
 }
 
 function describeDatesChange({ old, new: next }: DatesChange): string {

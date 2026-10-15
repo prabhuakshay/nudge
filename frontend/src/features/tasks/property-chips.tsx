@@ -1,6 +1,9 @@
 import { CalendarDays, ChevronDown, Flag } from "lucide-react";
 import type { ComponentProps } from "react";
+import { toast } from "sonner";
 
+import { ProjectIcon } from "@/features/projects/project-icon";
+import { ProjectPicker } from "@/features/projects/project-picker";
 import { cn } from "@/lib/utils";
 
 import { DatePicker } from "./date-picker";
@@ -9,7 +12,7 @@ import { DueBadge } from "./due-badge";
 import { PriorityMenu } from "./task-priority";
 import { PRIORITY, STATUS } from "./task-properties";
 import { StatusMenu } from "./task-status";
-import type { Task } from "./tasks";
+import { useMoveTaskToProject, type SidebarProject, type Task } from "./tasks";
 
 function Chip({ className, ...props }: ComponentProps<"button">) {
   return (
@@ -25,7 +28,7 @@ function Chip({ className, ...props }: ComponentProps<"button">) {
 }
 
 /** The drawer's row of property chips under the title, each coloured by its value and opening its picker. */
-export function PropertyChips({ task }: { task: Task }) {
+export function PropertyChips({ task, project }: { task: Task; project: SidebarProject }) {
   const status = STATUS[task.status];
   const StatusIcon = status.icon;
   const priority = PRIORITY[task.priority];
@@ -71,6 +74,33 @@ export function PropertyChips({ task }: { task: Task }) {
           {task.due_date === null ? "Date" : <DueBadge task={task} />}
         </Chip>
       </DatePicker>
+
+      {/* A Subtask lives in its root's Project, so it has no Project of its own to change. */}
+      {task.parent_id === null && <ProjectChip task={task} project={project} />}
     </div>
+  );
+}
+
+/** The Task's Project; picking another Project moves the Task there. */
+function ProjectChip({ task, project }: { task: Task; project: SidebarProject }) {
+  const { mutate: moveTask } = useMoveTaskToProject();
+  return (
+    <ProjectPicker
+      currentId={task.project_id}
+      onSelect={(target) => {
+        moveTask(
+          { id: task.id, projectId: target.id },
+          { onSuccess: () => toast(`Moved to ${target.name}`) },
+        );
+      }}
+    >
+      <Chip
+        aria-label={`Project: ${project.name}. Move to another project`}
+        className="border-border bg-surface text-foreground hover:bg-surface-muted"
+      >
+        <ProjectIcon project={project} className="size-3.5" />
+        {project.name}
+      </Chip>
+    </ProjectPicker>
   );
 }

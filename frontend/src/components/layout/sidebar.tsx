@@ -41,9 +41,12 @@ export function Sidebar({ user }: { user: User }) {
       <div className="mt-auto border-t border-border p-3">
         <Link
           to="/account"
-          className="flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-surface-muted data-[status=active]:bg-primary-soft"
+          className="group flex items-center gap-3 rounded-md px-3 py-2 transition-colors hover:bg-surface-muted data-[status=active]:bg-primary-soft"
         >
-          <UserAvatar user={user} />
+          <UserAvatar
+            user={user}
+            className="group-data-[status=active]:bg-primary group-data-[status=active]:text-primary-foreground"
+          />
           <div className="min-w-0">
             <p className="truncate text-sm font-semibold">{user.full_name || user.email}</p>
             {user.full_name && (

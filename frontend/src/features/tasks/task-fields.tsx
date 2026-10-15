@@ -1,21 +1,27 @@
 import { useCallback, useState } from "react";
 
 import { AutosizeTextarea } from "@/components/ui/textarea";
+import { plainMentions } from "@/features/people/mentions";
+import { useWithMentions } from "@/features/people/people";
 import { cn } from "@/lib/utils";
 
 import { Markdown } from "./markdown";
 import { isClosed } from "./task-properties";
 import { useUpdateTask, type TaskDetail } from "./tasks";
 
-/** The title as a borderless field that grows with it. Saves on blur or Enter, like TickTick. */
+/**
+ * The title as a borderless field that grows with it. Saves on blur or Enter, like TickTick.
+ * Mentions read as `@Name` while editing, as in every text field of a Task.
+ */
 export function TitleField({ task, className }: { task: TaskDetail; className?: string }) {
   const { mutate: update } = useUpdateTask();
+  const withMentions = useWithMentions();
   return (
     <AutosizeTextarea
       // A new key whenever the saved title changes resets the field to it.
       key={`${String(task.id)}-${task.title}`}
       aria-label="Title"
-      defaultValue={task.title}
+      defaultValue={plainMentions(task.title)}
       rows={1}
       maxLength={500}
       onKeyDown={(event) => {
@@ -25,9 +31,9 @@ export function TitleField({ task, className }: { task: TaskDetail; className?: 
         }
       }}
       onBlur={(event) => {
-        const title = event.currentTarget.value.trim();
+        const title = withMentions(event.currentTarget.value.trim());
         if (!title) {
-          event.currentTarget.value = task.title;
+          event.currentTarget.value = plainMentions(task.title);
         } else if (title !== task.title) {
           update({ id: task.id, title });
         }
@@ -44,6 +50,7 @@ export function TitleField({ task, className }: { task: TaskDetail; className?: 
 /** The Description as rendered markdown that turns into a plain-text editor when clicked. */
 export function DescriptionField({ task }: { task: TaskDetail }) {
   const { mutate: update } = useUpdateTask();
+  const withMentions = useWithMentions();
   const [editing, setEditing] = useState(false);
   const focus = useCallback((element: HTMLTextAreaElement | null) => {
     element?.focus();
@@ -55,12 +62,12 @@ export function DescriptionField({ task }: { task: TaskDetail }) {
         key={task.id}
         ref={editing ? focus : undefined}
         aria-label="Description"
-        defaultValue={task.description}
+        defaultValue={plainMentions(task.description)}
         placeholder="Add a description… (markdown works)"
         rows={2}
         onBlur={(event) => {
           setEditing(false);
-          const description = event.currentTarget.value;
+          const description = withMentions(event.currentTarget.value);
           if (description !== task.description) {
             update({ id: task.id, description });
           }

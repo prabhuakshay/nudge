@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
 import { Route as AppUpcomingRouteImport } from './routes/_app/upcoming'
+import { Route as AppPeoplePersonIdRouteImport } from './routes/_app/people.$personId'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects.$projectId'
 
 const AppRoute = AppRouteImport.update({
@@ -40,6 +41,11 @@ const AppUpcomingRoute = AppUpcomingRouteImport.update({
   path: '/upcoming',
   getParentRoute: () => AppRoute,
 } as any)
+const AppPeoplePersonIdRoute = AppPeoplePersonIdRouteImport.update({
+  id: '/people/$personId',
+  path: '/people/$personId',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppProjectsProjectIdRoute = AppProjectsProjectIdRouteImport.update({
   id: '/projects/$projectId',
   path: '/projects/$projectId',
@@ -51,6 +57,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/inbox': typeof AppInboxRoute
   '/upcoming': typeof AppUpcomingRoute
+  '/people/$personId': typeof AppPeoplePersonIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
 }
 export interface FileRoutesByTo {
@@ -58,6 +65,7 @@ export interface FileRoutesByTo {
   '/inbox': typeof AppInboxRoute
   '/upcoming': typeof AppUpcomingRoute
   '/': typeof AppIndexRoute
+  '/people/$personId': typeof AppPeoplePersonIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
 }
 export interface FileRoutesById {
@@ -67,13 +75,26 @@ export interface FileRoutesById {
   '/_app/inbox': typeof AppInboxRoute
   '/_app/upcoming': typeof AppUpcomingRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/people/$personId': typeof AppPeoplePersonIdRoute
   '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/inbox' | '/upcoming' | '/projects/$projectId'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/inbox'
+    | '/upcoming'
+    | '/people/$personId'
+    | '/projects/$projectId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/inbox' | '/upcoming' | '/' | '/projects/$projectId'
+  to:
+    | '/login'
+    | '/inbox'
+    | '/upcoming'
+    | '/'
+    | '/people/$personId'
+    | '/projects/$projectId'
   id:
     | '__root__'
     | '/_app'
@@ -81,6 +102,7 @@ export interface FileRouteTypes {
     | '/_app/inbox'
     | '/_app/upcoming'
     | '/_app/'
+    | '/_app/people/$personId'
     | '/_app/projects/$projectId'
   fileRoutesById: FileRoutesById
 }
@@ -126,6 +148,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUpcomingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/people/$personId': {
+      id: '/_app/people/$personId'
+      path: '/people/$personId'
+      fullPath: '/people/$personId'
+      preLoaderRoute: typeof AppPeoplePersonIdRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/projects/$projectId': {
       id: '/_app/projects/$projectId'
       path: '/projects/$projectId'
@@ -140,6 +169,7 @@ interface AppRouteChildren {
   AppInboxRoute: typeof AppInboxRoute
   AppUpcomingRoute: typeof AppUpcomingRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppPeoplePersonIdRoute: typeof AppPeoplePersonIdRoute
   AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
 }
 
@@ -147,6 +177,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppInboxRoute: AppInboxRoute,
   AppUpcomingRoute: AppUpcomingRoute,
   AppIndexRoute: AppIndexRoute,
+  AppPeoplePersonIdRoute: AppPeoplePersonIdRoute,
   AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
 }
 

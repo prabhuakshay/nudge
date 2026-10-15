@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { ProjectIcon } from "@/features/projects/project-icon";
 import { findProject } from "@/features/projects/projects";
 import { useMediaQuery } from "@/lib/use-media-query";
+import { plainMentions } from "@/features/people/mentions";
 import { cn } from "@/lib/utils";
 
 import { ActivityFeed } from "./activity-feed";
@@ -273,7 +274,7 @@ function Breadcrumb({
             }}
             className="truncate rounded px-1 py-0.5 hover:bg-surface-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
           >
-            {ancestor.title}
+            {plainMentions(ancestor.title)}
           </button>
         </span>
       ))}

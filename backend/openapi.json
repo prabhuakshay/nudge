@@ -969,6 +969,259 @@
         ]
       }
     },
+    "/api/v1/people": {
+      "get": {
+        "operationId": "apps_tasks_api_people_list_people",
+        "summary": "List People",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PersonOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the user's People, A to Z.",
+        "tags": [
+          "people"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_tasks_api_people_create_person",
+        "summary": "Add a Person",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add a Person to the address book.",
+        "tags": [
+          "people"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/people/{person_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_people_update_person",
+        "summary": "Change a Person",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "schema": {
+              "title": "Person Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rename or recolour a Person. A rename shows in every Mention of them.",
+        "tags": [
+          "people"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_people_delete_person",
+        "summary": "Delete a Person",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "schema": {
+              "title": "Person Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete a Person for good; their Mentions become plain `@Name` text.",
+        "tags": [
+          "people"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/people/{person_id}/merge": {
+      "post": {
+        "operationId": "apps_tasks_api_people_merge_person",
+        "summary": "Merge a Person into another",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "schema": {
+              "title": "Person Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Fold a Person into another: their Mentions move over and they are deleted.",
+        "tags": [
+          "people"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonMergeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/sidebar": {
       "get": {
         "operationId": "apps_tasks_api_sidebar_sidebar",
@@ -1000,16 +1253,39 @@
     "/api/v1/tasks": {
       "get": {
         "operationId": "apps_tasks_api_tasks_list_tasks",
-        "summary": "List a Project's Tasks",
+        "summary": "List a Project's or a Person's Tasks",
         "parameters": [
           {
             "in": "query",
             "name": "project",
             "schema": {
-              "title": "Project",
-              "type": "integer"
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
             },
-            "required": true
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "person",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Person"
+            },
+            "required": false
           },
           {
             "in": "query",
@@ -1070,7 +1346,7 @@
             }
           }
         },
-        "description": "Return a Project's open Tasks in manual order, or, with `closed`, a page of Closed ones.\n\nClosed Tasks come most recently completed first, in pages; open Tasks come all at once.",
+        "description": "Return the open Tasks of a Project or Person, or, with `closed`, a page of Closed ones.\n\nA Project's Tasks come in manual order. A Person's are the Tasks that mention them, flat, in\neach Project's manual order. Closed Tasks come most recently completed first, in pages; open\nTasks come all at once.",
         "tags": [
           "tasks"
         ],
@@ -1614,6 +1890,122 @@
           {
             "SessionAuth": []
           }
+        ]
+      }
+    },
+    "/api/v1/calendar/feed": {
+      "get": {
+        "operationId": "apps_tasks_api_calendar_get_feed",
+        "summary": "Get the Calendar feed address",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeedOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the signed-in user's feed address, or null while the feed is off.",
+        "tags": [
+          "calendar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_tasks_api_calendar_turn_on_feed",
+        "summary": "Turn on or reset the Calendar feed",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeedOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Give the user a new feed address; any old address stops working.",
+        "tags": [
+          "calendar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_calendar_turn_off_feed",
+        "summary": "Turn off the Calendar feed",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Clear the user's feed address so it stops working.",
+        "tags": [
+          "calendar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/calendar/{token}.ics": {
+      "get": {
+        "operationId": "apps_tasks_api_calendar_feed",
+        "summary": "Fetch a Calendar feed",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The feed as an iCalendar file.",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the feed's owner's open dated Tasks as an iCalendar file.",
+        "tags": [
+          "calendar"
         ]
       }
     }
@@ -2266,6 +2658,104 @@
           }
         },
         "title": "ProjectMoveIn",
+        "type": "object"
+      },
+      "PersonOut": {
+        "description": "A Person in the user's address book.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color"
+        ],
+        "title": "PersonOut",
+        "type": "object"
+      },
+      "PersonIn": {
+        "description": "A new Person.",
+        "properties": {
+          "name": {
+            "description": "Unique among the user's People, ignoring case.",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[^@\\[\\]()]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Random when left out."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PersonIn",
+        "type": "object"
+      },
+      "PersonPatchIn": {
+        "description": "The fields of a Person to change; fields left out stay as they are.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[^@\\[\\]()]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rewrites every Mention.",
+            "title": "Name"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "PersonPatchIn",
+        "type": "object"
+      },
+      "PersonMergeIn": {
+        "description": "The Person to fold another into.",
+        "properties": {
+          "into_id": {
+            "title": "Into Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "into_id"
+        ],
+        "title": "PersonMergeIn",
         "type": "object"
       },
       "SidebarFolderOut": {
@@ -3472,6 +3962,55 @@
         "title": "NoActivityData",
         "type": "object"
       },
+      "PersonMergedActivityOut": {
+        "description": "A Person the Task mentioned was merged into another.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "person_merged",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PersonMergedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "PersonMergedActivityOut",
+        "type": "object"
+      },
+      "PersonMergedData": {
+        "description": "The People merged, by their names at the time: `from_person` was folded into `to_person`.",
+        "properties": {
+          "from_person": {
+            "title": "From Person",
+            "type": "string"
+          },
+          "to_person": {
+            "title": "To Person",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_person",
+          "to_person"
+        ],
+        "title": "PersonMergedData",
+        "type": "object"
+      },
       "PinnedActivityOut": {
         "description": "The Task was pinned.",
         "properties": {
@@ -3705,6 +4244,7 @@
                   "dates_changed": "#/components/schemas/DatesChangedActivityOut",
                   "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
                   "moved": "#/components/schemas/MovedActivityOut",
+                  "person_merged": "#/components/schemas/PersonMergedActivityOut",
                   "pinned": "#/components/schemas/PinnedActivityOut",
                   "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
                   "reminders_changed": "#/components/schemas/RemindersChangedActivityOut",
@@ -3750,6 +4290,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/MovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/PersonMergedActivityOut"
                 }
               ]
             },
@@ -3897,6 +4440,28 @@
           "created_at"
         ],
         "title": "AttachmentOut",
+        "type": "object"
+      },
+      "CalendarFeedOut": {
+        "description": "The user's Calendar feed address.",
+        "properties": {
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The private `.ics` address, or null while it's off.",
+            "title": "Url"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "CalendarFeedOut",
         "type": "object"
       }
     },

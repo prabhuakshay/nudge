@@ -20,6 +20,7 @@ from apps.core.palette import PaletteColor
 from apps.tasks import reminders
 from apps.tasks.archive import ensure_writable
 from apps.tasks.dates import TaskDates
+from apps.tasks.mentions import TEXT_FIELDS, check_mentions, sync_mentions
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
@@ -146,8 +147,10 @@ def create_task(project: Project, title: str) -> Task:
 
     Raises:
         ArchivedProjectError: The Project is archived.
+        MentionError: The title mentions a Person the owner doesn't have.
     """
     ensure_writable(project)
+    check_mentions(project.owner, title)
     with transaction.atomic():
         task = Task.objects.create(
             owner_id=project.owner_id,
@@ -156,6 +159,7 @@ def create_task(project: Project, title: str) -> Task:
             position=_first_position(project),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
+        sync_mentions(task)
     return with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)
 
 
@@ -167,11 +171,13 @@ def create_subtask(parent: Task, title: str) -> TaskChange:
     Raises:
         TaskRuleError: The parent is already at the deepest level.
         ArchivedProjectError: The parent is in an archived Project.
+        MentionError: The title mentions a Person the owner doesn't have.
     """
     ensure_writable(parent.project)
     if parent.depth >= MAX_DEPTH:
         message = "Tasks can only nest four levels deep."
         raise TaskRuleError(message)
+    check_mentions(parent.owner, title)
     with transaction.atomic():
         Project.objects.select_for_update().get(pk=parent.project_id)
         siblings = parent.subtasks.order_by("-position", "-id")
@@ -184,6 +190,7 @@ def create_subtask(parent: Task, title: str) -> TaskChange:
             position=str(generate_key_between(last, None)),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
+        sync_mentions(task)
         affected = reopen_ancestors(task)
     fresh = as_rows(Task.objects.filter(pk=task.pk), parent.owner).get()
     return TaskChange(task=fresh, affected=affected)
@@ -218,6 +225,7 @@ def duplicate_task(user: User, task_id: int) -> Task | None:
             position=str(generate_key_between(original.position, following)),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
+        sync_mentions(task)
         reopen_ancestors(task)
     return as_rows(user.tasks.filter(pk=task.pk), user).get()
 
@@ -259,6 +267,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
             Subtask.
         ReminderRuleError: The edit's Reminders break a Reminder rule.
         ArchivedProjectError: The Task is in an archived Project, or would move into one.
+        MentionError: A text mentions a Person the user doesn't have.
     """
     task = live_task(user, task_id)
     if task is None:
@@ -271,6 +280,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     dates_before = TaskDates.of(task)
     _apply(task, edit)
     changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
+    check_mentions(user, *(getattr(task, name) for name in TEXT_FIELDS if name in changed))
     affected = []
     cascaded: list[AffectedTask] = []
     target = edit.project if edit.project and edit.project.pk != task.project_id else None
@@ -278,6 +288,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
         moved = [] if target is None else move_tree(task, target, _first_position(target))
         if changed or moved:
             task.save(update_fields=[*changed, *moved, "updated_at"])
+            sync_mentions(task)
         if "status" in changed:
             affected.append(
                 AffectedTask(task.pk, Task.Status(before["status"]), before["blocked_reason"]),

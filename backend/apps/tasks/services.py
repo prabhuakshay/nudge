@@ -1,4 +1,4 @@
-"""Business rules for Projects and Tasks: the Inbox, ordering, listing, Status and Activity.
+"""Business rules for Projects and Tasks: the Inbox, ordering, listing, Status, pins and Activity.
 
 Every function takes the user first and reaches Projects and Tasks through that user's related
 managers, so another user's ids behave as if they don't exist. A change and the Activity event
@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from django.db import transaction
+from django.db.models import F
 from django.utils import timezone
 from fractional_indexing import generate_key_between
 
@@ -43,6 +44,7 @@ class TaskEdit:
     status: Task.Status | None = None
     blocked_reason: str | None = None
     priority: Task.Priority | None = None
+    pinned: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -82,8 +84,12 @@ def _live_tasks(project: Project) -> QuerySet[Task]:
 
 
 def open_tasks(project: Project) -> QuerySet[Task]:
-    """Return the Project's open and Blocked Tasks in the user's manual order."""
-    return _live_tasks(project).filter(status__in=OPEN_STATUSES)
+    """Return the Project's open and Blocked Tasks: pinned ones first, then in manual order."""
+    return (
+        _live_tasks(project)
+        .filter(status__in=OPEN_STATUSES)
+        .order_by(F("pinned_at").asc(nulls_last=True), "position", "id")
+    )
 
 
 def open_task_count(project: Project) -> int:
@@ -118,12 +124,49 @@ def create_task(project: Project, title: str) -> Task:
         return task
 
 
+def duplicate_task(user: User, task_id: int) -> Task | None:
+    """Copy one of the user's Tasks to right after it; return None if it isn't theirs.
+
+    The copy is a fresh open Task with the original's title, Description and Priority.
+    """
+    original = live_task(user, task_id)
+    if original is None:
+        return None
+    with transaction.atomic():
+        # Locking the Project serialises inserts into it, so two Tasks never get the same key.
+        Project.objects.select_for_update().get(pk=original.project_id)
+        following = (
+            original.project.tasks.filter(position__gt=original.position)
+            .order_by("position")
+            .values_list("position", flat=True)
+            .first()
+        )
+        task = Task.objects.create(
+            owner=user,
+            project_id=original.project_id,
+            title=original.title,
+            description=original.description,
+            priority=original.priority,
+            position=str(generate_key_between(original.position, following)),
+        )
+        TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
+        return task
+
+
 def live_task(user: User, task_id: int) -> Task | None:
     """Return one of the user's Tasks that isn't in Trash, or None."""
     return user.tasks.filter(pk=task_id, deleted_at__isnull=True).first()
 
 
-_EDITABLE_FIELDS = ("title", "description", "status", "blocked_reason", "priority", "completed_at")
+_EDITABLE_FIELDS = (
+    "title",
+    "description",
+    "status",
+    "blocked_reason",
+    "priority",
+    "completed_at",
+    "pinned_at",
+)
 
 
 def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
@@ -167,6 +210,8 @@ def _apply(task: Task, edit: TaskEdit) -> None:
             message = "Only a Blocked task can have a Blocked reason."
             raise TaskRuleError(message)
         task.blocked_reason = edit.blocked_reason
+    if edit.pinned is not None and edit.pinned != (task.pinned_at is not None):
+        task.pinned_at = timezone.now() if edit.pinned else None
 
 
 def _activity(task: Task, before: dict[str, object]) -> list[TaskActivity]:
@@ -183,6 +228,9 @@ def _activity(task: Task, before: dict[str, object]) -> list[TaskActivity]:
     if task.priority != before["priority"]:
         data = {"old": before["priority"], "new": task.priority}
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.PRIORITY_CHANGED, data=data))
+    if (task.pinned_at is None) != (before["pinned_at"] is None):
+        kind = TaskActivity.Kind.UNPINNED if task.pinned_at is None else TaskActivity.Kind.PINNED
+        events.append(TaskActivity(task=task, kind=kind))
     return events
 
 

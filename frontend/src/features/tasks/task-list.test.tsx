@@ -6,33 +6,8 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { TaskList } from "./task-list";
+import { INBOX, json, task } from "./testing";
 import type { Task } from "./tasks";
-
-const INBOX = { id: 7, name: "Inbox", open_count: 2 };
-
-function task(overrides: Partial<Task>): Task {
-  return {
-    id: 1,
-    project_id: INBOX.id,
-    title: "Buy milk",
-    status: "open",
-    priority: 0,
-    blocked_reason: "",
-    completed_at: null,
-    created_at: "2026-10-15T09:00:00Z",
-    updated_at: "2026-10-15T09:00:00Z",
-    ...overrides,
-  };
-}
-
-function json(body: unknown, status = 200) {
-  return Promise.resolve(
-    new Response(JSON.stringify(body), {
-      status,
-      headers: { "Content-Type": "application/json" },
-    }),
-  );
-}
 
 /** A small stand-in for the server: open Tasks, pages of Closed ones, and Task creation. */
 function mockApi({
@@ -109,7 +84,7 @@ describe("TaskList", () => {
 
     expect(await screen.findByText("Call mum")).toBeInTheDocument();
     expect(titlesIn("Tasks")).toEqual(["Buy milk", "Call mum"]);
-    expect(screen.getByText("2 open")).toBeInTheDocument();
+    expect(screen.getByText("3 open")).toBeInTheDocument();
   });
 
   it("adds a Task from Quick add at the top and keeps the input focused", async () => {

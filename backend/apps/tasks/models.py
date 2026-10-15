@@ -54,7 +54,8 @@ class Task(models.Model):
     reordering writes one row. Keys compare byte by byte, hence the C collation.
 
     Completed and Won't do are Closed and record when in `completed_at`. Blocked is still open
-    work, and only a Blocked Task keeps a `blocked_reason`.
+    work, and only a Blocked Task keeps a `blocked_reason`. A pinned Task records when in
+    `pinned_at` and lists above the rest, oldest pin first.
     """
 
     class Status(models.TextChoices):
@@ -87,6 +88,7 @@ class Task(models.Model):
     blocked_reason = models.TextField(blank=True, default="")
     priority = models.PositiveSmallIntegerField(choices=Priority, default=Priority.NONE)
     completed_at = models.DateTimeField(null=True, blank=True)
+    pinned_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -136,6 +138,8 @@ class TaskActivity(models.Model):
         DESCRIPTION_EDITED = "description_edited", "Description edited"
         STATUS_CHANGED = "status_changed", "Status changed"
         PRIORITY_CHANGED = "priority_changed", "Priority changed"
+        PINNED = "pinned", "Pinned"
+        UNPINNED = "unpinned", "Unpinned"
 
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="activity")
     kind = models.CharField(max_length=32, choices=Kind)

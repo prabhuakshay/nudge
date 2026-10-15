@@ -22,6 +22,10 @@ function describe(event: TaskActivity): string {
     }
     case "priority_changed":
       return `Changed priority from ${PRIORITY[event.data.old].short} to ${PRIORITY[event.data.new].short}`;
+    case "pinned":
+      return "Pinned to the top";
+    case "unpinned":
+      return "Unpinned";
   }
 }
 

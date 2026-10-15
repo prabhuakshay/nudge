@@ -77,6 +77,26 @@ describe("ActivityFeed", () => {
     ]);
   });
 
+  it("describes pinning and unpinning", async () => {
+    const events = [
+      { id: 2, kind: "unpinned", at: at(15), data: {} },
+      { id: 1, kind: "pinned", at: at(14), data: {} },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 2 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    renderFeed();
+
+    const items = await screen.findAllByRole("listitem");
+    expect(items.map((item) => item.querySelector("p")?.textContent)).toEqual([
+      "Unpinned",
+      "Pinned to the top",
+    ]);
+  });
+
   it("loads older events a page at a time", async () => {
     const fetchSpy = vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
       const cursor = new URL((input as Request).url).searchParams.get("cursor");

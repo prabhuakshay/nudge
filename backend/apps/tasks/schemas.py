@@ -24,6 +24,7 @@ class TaskOut(Schema):
     priority: Task.Priority = Field(description="0 is no Priority; 1 (P1) is the most urgent.")
     blocked_reason: str = Field(description="Why a Blocked Task waits; empty otherwise.")
     completed_at: datetime | None = Field(description="When it was Completed or marked Won't do.")
+    pinned_at: datetime | None = Field(description="When it was pinned; null when it isn't.")
     created_at: datetime
     updated_at: datetime
 
@@ -64,6 +65,10 @@ class TaskPatchIn(Schema):
         description="Only a Blocked Task can have one; send an empty string to clear it.",
     )
     priority: Task.Priority | None = None
+    pinned: bool | None = Field(
+        default=None,
+        description="Pin the Task to the top of its lists, or unpin it.",
+    )
 
 
 class AffectedTaskOut(Schema):
@@ -152,12 +157,32 @@ class PriorityChangedActivityOut(Schema):
     data: PriorityChangedData
 
 
+class PinnedActivityOut(Schema):
+    """The Task was pinned."""
+
+    id: int
+    kind: Literal["pinned"]
+    at: datetime
+    data: NoActivityData
+
+
+class UnpinnedActivityOut(Schema):
+    """The Task was unpinned."""
+
+    id: int
+    kind: Literal["unpinned"]
+    at: datetime
+    data: NoActivityData
+
+
 TaskActivityOut = Annotated[
     CreatedActivityOut
     | TitleChangedActivityOut
     | DescriptionEditedActivityOut
     | StatusChangedActivityOut
-    | PriorityChangedActivityOut,
+    | PriorityChangedActivityOut
+    | PinnedActivityOut
+    | UnpinnedActivityOut,
     Field(discriminator="kind"),
 ]
 

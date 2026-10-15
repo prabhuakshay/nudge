@@ -11,7 +11,7 @@ import {
   CommandList,
   CommandSeparator,
 } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ResponsivePopover } from "@/components/ui/responsive-popover";
 import { sidebarQuery, useUpdateTask, type Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
@@ -49,67 +49,64 @@ export function TagPicker({
   };
 
   return (
-    <Popover
+    <ResponsivePopover
+      label="Tags"
+      trigger={children}
+      align={align}
+      className="w-60"
       onOpenChange={() => {
         setQuery("");
       }}
     >
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent align={align} className="w-60 p-0">
-        <Command>
-          <CommandInput
-            placeholder="Find or create a tag…"
-            value={query}
-            onValueChange={setQuery}
-          />
-          <CommandList>
-            <CommandEmpty>{problem ?? "No tags match."}</CommandEmpty>
-            <CommandGroup>
-              {tags.map((tag) => (
+      <Command>
+        <CommandInput placeholder="Find or create a tag…" value={query} onValueChange={setQuery} />
+        <CommandList>
+          <CommandEmpty>{problem ?? "No tags match."}</CommandEmpty>
+          <CommandGroup>
+            {tags.map((tag) => (
+              <CommandItem
+                key={tag.id}
+                value={`${tag.name} ${String(tag.id)}`}
+                onSelect={() => {
+                  toggle(tag);
+                }}
+              >
+                <span
+                  className={cn("size-2.5 shrink-0 rounded-full", tagHue(tag).bg)}
+                  aria-hidden
+                />
+                <span className="flex-1 truncate">{tag.name}</span>
+                {has(tag) && <Check className="size-4 text-primary" aria-label="On this task" />}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+          {name && !exists && !problem && (
+            <>
+              <CommandSeparator />
+              <CommandGroup>
                 <CommandItem
-                  key={tag.id}
-                  value={`${tag.name} ${String(tag.id)}`}
+                  value={`create ${name}`}
+                  disabled={createTag.isPending}
                   onSelect={() => {
-                    toggle(tag);
+                    createTag.mutate(
+                      { name, color: null },
+                      {
+                        onSuccess: (tag) => {
+                          updateTask({ id: task.id, tags: [...task.tags, tag] });
+                        },
+                      },
+                    );
+                    setQuery("");
                   }}
                 >
-                  <span
-                    className={cn("size-2.5 shrink-0 rounded-full", tagHue(tag).bg)}
-                    aria-hidden
-                  />
-                  <span className="flex-1 truncate">{tag.name}</span>
-                  {has(tag) && <Check className="size-4 text-primary" aria-label="On this task" />}
+                  <Plus className="size-4" aria-hidden />
+                  Create “{name}”
                 </CommandItem>
-              ))}
-            </CommandGroup>
-            {name && !exists && !problem && (
-              <>
-                <CommandSeparator />
-                <CommandGroup>
-                  <CommandItem
-                    value={`create ${name}`}
-                    disabled={createTag.isPending}
-                    onSelect={() => {
-                      createTag.mutate(
-                        { name, color: null },
-                        {
-                          onSuccess: (tag) => {
-                            updateTask({ id: task.id, tags: [...task.tags, tag] });
-                          },
-                        },
-                      );
-                      setQuery("");
-                    }}
-                  >
-                    <Plus className="size-4" aria-hidden />
-                    Create “{name}”
-                  </CommandItem>
-                </CommandGroup>
-              </>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+              </CommandGroup>
+            </>
+          )}
+        </CommandList>
+      </Command>
+    </ResponsivePopover>
   );
 }

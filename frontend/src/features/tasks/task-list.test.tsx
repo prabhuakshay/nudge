@@ -79,10 +79,10 @@ describe("TaskList", () => {
     expect(screen.getByText("3 open")).toBeInTheDocument();
   });
 
-  it("counts a Task's Attachments in its row and shows nothing for none", async () => {
+  it("counts a Task's Comments and Attachments in its row and shows nothing for none", async () => {
     mockApi({
       open: [
-        task({ id: 1, title: "File taxes", attachment_count: 2 }),
+        task({ id: 1, title: "File taxes", comment_count: 3, attachment_count: 2 }),
         task({ id: 2, title: "Call mum" }),
       ],
     });
@@ -91,6 +91,7 @@ describe("TaskList", () => {
 
     const taxes = await screen.findByRole("row", { name: /File taxes/ });
     const mum = screen.getByRole("row", { name: /Call mum/ });
+    expect(within(taxes).getAllByRole("img", { name: "3 comments" })).not.toHaveLength(0);
     expect(within(taxes).getAllByRole("img", { name: "2 attachments" })).not.toHaveLength(0);
     expect(within(mum).queryByRole("img")).not.toBeInTheDocument();
   });

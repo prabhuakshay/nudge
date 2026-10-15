@@ -9,11 +9,10 @@ import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
-import { plainMentions } from "@/features/people/mentions";
 
 import { remindersAfter } from "./reminders";
+import { advances, statusToast } from "./repeat";
 import type { ScheduleView } from "./schedule";
-import { statusMessage } from "./task-properties";
 import { openTrees } from "./task-tree";
 
 export type Task = components["schemas"]["TaskOut"];
@@ -219,8 +218,9 @@ export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
  * replaces all four date fields at once, and removing them removes the Reminders. `reminders`
  * replaces the Reminders, as offsets in minutes.
  */
+type Editable = "title" | "description" | "status" | "priority" | "blocked_reason";
 export type TaskChange = { id: number; pinned?: boolean } & Partial<
-  Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason">
+  Pick<TaskDetail, Editable | "repeat_rule" | "repeat_from">
 > & { dates?: DatesIn; reminders?: number[] };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
@@ -249,6 +249,8 @@ function withChange<T extends Task>(
     pinned_at: pinnedAt(task, pinned),
     ...change,
     ...(dates !== undefined && { ...UNDATED, ...dates }),
+    // An undated Task can't repeat, so the server drops the Repeat with the dates.
+    ...(dates === null && { repeat_rule: "" }),
     // Only the drawer's Task carries its Reminders; list rows don't.
     ...("reminders" in task && remindersAfter(reminders, dates)),
   };
@@ -312,9 +314,11 @@ export function useSetTaskStatus() {
   return useMutation({
     mutationFn: ({ task, status }: { task: Task; status: TaskStatus }) =>
       patchTask({ id: task.id, status }),
-    onMutate: ({ task, status }) => showChange(queryClient, { id: task.id, status }),
-    onSuccess: ({ affected }, { task, status }) => {
-      toast(statusMessage(plainMentions(task.title), status, affected.length - 1), {
+    // A repeating Task moves on rather than closing, so it stays where it is until the server says.
+    onMutate: ({ task, status }) =>
+      advances(task, status) ? undefined : showChange(queryClient, { id: task.id, status }),
+    onSuccess: ({ task: saved, affected }, { task, status }) => {
+      toast(statusToast(task, saved, status, affected.length - 1), {
         action: {
           label: "Undo",
           onClick: () => {

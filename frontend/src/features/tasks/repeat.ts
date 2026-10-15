@@ -2,6 +2,12 @@ import { format, parseISO } from "date-fns";
 
 import type { components } from "@/api/schema";
 
+import { plainMentions } from "@/features/people/mentions";
+
+import { dueLabel } from "./due";
+import { isClosed, STATUS_VERB, statusMessage } from "./task-properties";
+import type { Task, TaskStatus } from "./tasks";
+
 /*
  * A Repeat is an RFC 5545 RRULE, which the server reads and follows. The client only builds the
  * presets the date picker offers and describes rules in the user's words.
@@ -106,4 +112,22 @@ export function repeatOptions(dueDate: string): { rule: string; label: string }[
     "FREQ=DAILY;INTERVAL=3",
   ];
   return rules.map((rule) => ({ rule, label: repeatLabel(rule) }));
+}
+
+/** Whether setting the Status moves a repeating Task on to its next date rather than closing it. */
+export function advances(task: Pick<Task, "repeat_rule" | "status">, status: TaskStatus): boolean {
+  return task.repeat_rule !== "" && isClosed(status) && !isClosed(task.status);
+}
+
+/**
+ * What a Status change did, as its toast says. A repeating Task that moved on says where to:
+ * "Completed “Water”; next due Friday".
+ */
+export function statusToast(task: Task, saved: Task, status: TaskStatus, relatives: number) {
+  const title = plainMentions(task.title);
+  if (!advances(task, status) || isClosed(saved.status)) {
+    return statusMessage(title, status, relatives);
+  }
+  const verb = status === "wont_do" ? "Skipped" : STATUS_VERB[status];
+  return `${verb} “${title}”; next due ${dueLabel(saved, new Date())}`;
 }

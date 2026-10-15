@@ -21,6 +21,11 @@ export type Attachment = components["schemas"]["AttachmentOut"];
 export type DatesChange = components["schemas"]["DatesChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
+export type Tag = components["schemas"]["TagOut"];
+export type SidebarTag = components["schemas"]["SidebarTagOut"];
+
+/** Where a list's Tasks come from: one Project, or one Tag across Projects. */
+export type TaskSource = { project: number } | { tag: number };
 
 /** The sidebar: the Inbox, Folders and Projects with open counts. Task changes invalidate it. */
 export const sidebarQuery = queryOptions({
@@ -39,14 +44,12 @@ const TASKS_KEY = ["tasks"] as const;
 /** The key prefix of every open-Task list, so a change can show in all of them at once. */
 const OPEN_KEY = [...TASKS_KEY, "open"] as const;
 
-/** A Project's open Tasks, in the user's manual order. */
-export function openTasksQuery(projectId: number) {
+/** A Project's or Tag's open Tasks, in the user's manual order. */
+export function openTasksQuery(source: TaskSource) {
   return queryOptions({
-    queryKey: [...OPEN_KEY, projectId],
+    queryKey: [...OPEN_KEY, source],
     queryFn: async (): Promise<Task[]> => {
-      const { data } = await api.GET("/api/v1/tasks", {
-        params: { query: { project: projectId } },
-      });
+      const { data } = await api.GET("/api/v1/tasks", { params: { query: source } });
       if (!data) {
         throw new Error("Could not load your tasks.");
       }
@@ -55,15 +58,13 @@ export function openTasksQuery(projectId: number) {
   });
 }
 
-/** A Project's Closed Tasks, most recently completed first, a page at a time. */
-export function closedTasksQuery(projectId: number) {
+/** A Project's or Tag's Closed Tasks, most recently completed first, a page at a time. */
+export function closedTasksQuery(source: TaskSource) {
   return infiniteQueryOptions({
-    queryKey: [...TASKS_KEY, "closed", projectId],
+    queryKey: [...TASKS_KEY, "closed", source],
     queryFn: async ({ pageParam }) => {
       const { data } = await api.GET("/api/v1/tasks", {
-        params: {
-          query: { project: projectId, closed: true, ...(pageParam && { cursor: pageParam }) },
-        },
+        params: { query: { ...source, closed: true, ...(pageParam && { cursor: pageParam }) } },
       });
       if (!data) {
         throw new Error("Could not load your closed tasks.");
@@ -183,18 +184,18 @@ export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
 
 /**
  * A change to a Task: the fields to set, which are all left as they are when absent. `dates`
- * replaces all four date fields at once.
+ * replaces all four date fields at once, and `tags` all of its Tags.
  */
 export type TaskChange = { id: number } & Partial<
-  Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason">
+  Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason" | "tags">
 > & { dates?: DatesIn };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
-async function patchTask({ id, ...change }: TaskChange) {
+async function patchTask({ id, tags, ...change }: TaskChange) {
   const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
     params: { path: { task_id: id } },
-    body: change,
+    body: { ...change, ...(tags && { tag_ids: tags.map((tag) => tag.id) }) },
   });
   if (!data) {
     throw new Error("Could not save the task.");
@@ -282,13 +283,16 @@ export function useSetTaskStatus() {
   });
 }
 
-/** Add a Task from Quick add. It appears first in its Project, as the server places it. */
-export function useCreateTask(projectId: number) {
+/**
+ * Add a Task from Quick add, with the given Tag if any. It appears first in its Project, as the
+ * server places it, and first in the Tag's list.
+ */
+export function useCreateTask(projectId: number, tagId?: number) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (title: string) => {
       const { data } = await api.POST("/api/v1/tasks", {
-        body: { title, project_id: projectId },
+        body: { title, project_id: projectId, ...(tagId !== undefined && { tag_ids: [tagId] }) },
       });
       if (!data) {
         throw new Error("Could not add the task.");
@@ -296,9 +300,13 @@ export function useCreateTask(projectId: number) {
       return data;
     },
     onSuccess: (task) => {
-      queryClient.setQueryData(openTasksQuery(projectId).queryKey, (tasks) =>
-        tasks ? [task, ...tasks] : [task],
-      );
+      const sources: TaskSource[] = [{ project: projectId }];
+      if (tagId !== undefined) sources.push({ tag: tagId });
+      for (const source of sources) {
+        queryClient.setQueryData(openTasksQuery(source).queryKey, (tasks) =>
+          tasks ? [task, ...tasks] : [task],
+        );
+      }
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => queryClient.invalidateQueries(sidebarQuery),

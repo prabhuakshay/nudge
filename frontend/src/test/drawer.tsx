@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { TaskList } from "@/features/tasks/task-list";
-import type { SidebarProject, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
+import type { SidebarProject, SidebarTag, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
 import { makeTask } from "@/test/tasks";
 
 /* A stand-in server and a rendered list for the drawer's tests, shared by their test files. */
@@ -29,6 +29,11 @@ export const WORK: SidebarProject = {
   is_inbox: false,
 };
 
+export const TAGS: SidebarTag[] = [
+  { id: 21, name: "work", color: "teal", open_count: 1, task_count: 1 },
+  { id: 22, name: "home", color: null, open_count: 0, task_count: 0 },
+];
+
 export const task = makeTask;
 
 function json(body: unknown, status = 200) {
@@ -50,11 +55,18 @@ export function minutesAgo(minutes: number) {
  */
 export function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
   const activity = [...history];
+  const tags = [...TAGS];
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = input as Request;
     const url = new URL(request.url);
     if (url.pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [WORK] });
+      return json({ inbox: INBOX, items: [WORK], tags });
+    }
+    if (url.pathname.endsWith("/tags") && request.method === "POST") {
+      const { name } = (await request.clone().json()) as { name: string };
+      const created = { id: 100 + tags.length, name, color: null, open_count: 0, task_count: 0 };
+      tags.push(created);
+      return json(created, 201);
     }
     if (url.pathname.endsWith("/activity")) {
       return json({ items: activity, next_cursor: null, count: activity.length });
@@ -63,8 +75,8 @@ export function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);
     if (request.method === "PATCH" && found) {
-      const change = (await request.clone().json()) as Partial<TaskDetail>;
-      return json(applyPatch(found, change, activity));
+      const patch = (await request.clone().json()) as TaskPatch;
+      return json(applyPatch(found, withTags(patch, tags), activity));
     }
     if (found) return json(found);
     if (url.searchParams.get("closed") === "true") {
@@ -72,6 +84,13 @@ export function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
     }
     return json({ items: tasks, next_cursor: null });
   });
+}
+
+type TaskPatch = Partial<TaskDetail> & { tag_ids?: number[] };
+
+/** The patch with its Tag ids turned into the Tags the server would return. */
+function withTags({ tag_ids: tagIds, ...change }: TaskPatch, tags: SidebarTag[]) {
+  return tagIds ? { ...change, tags: tags.filter((tag) => tagIds.includes(tag.id)) } : change;
 }
 
 function applyPatch(found: TaskDetail, change: Partial<TaskDetail>, activity: TaskActivity[]) {

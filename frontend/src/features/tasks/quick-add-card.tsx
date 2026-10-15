@@ -18,13 +18,13 @@ function isTyping(target: EventTarget | null) {
 /**
  * The card above a list for adding a Task in one line: type a title and press Enter. The input
  * stays focused so several Tasks can be added in a row, and `C` focuses it from anywhere on the
- * page.
+ * page. In a Tag's list, new Tasks go to the Inbox with that Tag.
  */
-export function QuickAddCard({ projectId }: { projectId: number }) {
+export function QuickAddCard({ projectId, tagId }: { projectId: number; tagId?: number }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [focused, setFocused] = useState(false);
-  const createTask = useCreateTask(projectId);
+  const createTask = useCreateTask(projectId, tagId);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

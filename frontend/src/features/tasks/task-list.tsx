@@ -4,6 +4,10 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { ProjectHeader } from "@/features/projects/project-header";
+import { ProjectIcon } from "@/features/projects/project-icon";
+import { allProjects } from "@/features/projects/projects";
+import { groupByProject } from "@/features/tags/group-by-project";
+import { TagHeader } from "@/features/tags/tag-header";
 import { cn } from "@/lib/utils";
 
 import { QuickAddCard } from "./quick-add-card";
@@ -13,27 +17,66 @@ import { isClosed } from "./task-properties";
 import {
   closedTasksQuery,
   openTasksQuery,
+  sidebarQuery,
   useSetTaskStatus,
+  type Sidebar,
   type SidebarProject,
+  type SidebarTag,
   type Task,
 } from "./tasks";
 
+/** The list to show: one Project's Tasks, or one Tag's Tasks across Projects. */
+export type TaskListProps = { project: SidebarProject } | { tag: SidebarTag };
+
 /**
- * A Project's Tasks as a table: the page header, Quick add, then the open Tasks and a collapsed
- * Closed group. On phones the table collapses into stacked rows. Clicking a row opens the Task in
- * the drawer.
+ * What a list shows its Tasks from, and the Project a Task opened from it falls back to. A Tag's
+ * list falls back to the Inbox, which is also where its Quick add files new Tasks.
  */
-export function TaskList({ project }: { project: SidebarProject }) {
-  const { data: open = [] } = useQuery(openTasksQuery(project.id));
+function listSource(props: TaskListProps, sidebar?: Sidebar) {
+  if ("project" in props) {
+    const { project } = props;
+    return { tag: null, project, source: { project: project.id }, label: project.name };
+  }
+  const { tag } = props;
+  return { tag, project: sidebar?.inbox, source: { tag: tag.id }, label: `#${tag.name}` };
+}
+
+/** A group of open Tasks under its own heading. */
+type Section = { key: string | number; icon: ReactNode; label: string; tasks: Task[] };
+
+/** A Project's open Tasks in one section; a Tag's in one section per Project, in sidebar order. */
+function openSections(open: Task[], tag: SidebarTag | null, sidebar?: Sidebar): Section[] {
+  if (tag && sidebar && open.length > 0) {
+    return groupByProject(open, allProjects(sidebar)).map(({ project, tasks }) => ({
+      key: project.id,
+      icon: <ProjectIcon project={project} className="size-3.5" />,
+      label: project.name,
+      tasks,
+    }));
+  }
+  const icon = <ListTodo className="size-3.5 text-muted-foreground" aria-hidden />;
+  return [{ key: "tasks", icon, label: "Tasks", tasks: open }];
+}
+
+/**
+ * A Project's or Tag's Tasks as a table: the page header, Quick add, then the open Tasks and a
+ * collapsed Closed group. A Tag's open Tasks are grouped by Project in sidebar order. On phones
+ * the table collapses into stacked rows. Clicking a row opens the Task in the drawer.
+ */
+export function TaskList(props: TaskListProps) {
+  const { data: sidebar } = useQuery(sidebarQuery);
+  const { tag, project, source, label } = listSource(props, sidebar);
+  const { data: open = [] } = useQuery(openTasksQuery(source));
+  const sections = openSections(open, tag, sidebar);
   const [showClosed, setShowClosed] = useState(false);
-  const closed = useInfiniteQuery({ ...closedTasksQuery(project.id), enabled: showClosed });
+  const closed = useInfiniteQuery({ ...closedTasksQuery(source), enabled: showClosed });
   const closedTasks = useMemo(
     () => (showClosed ? (closed.data?.pages.flatMap((page) => page.items) ?? []) : []),
     [showClosed, closed.data],
   );
   const order = useMemo(
-    () => [...open, ...closedTasks].map((task) => task.id),
-    [open, closedTasks],
+    () => [...sections.flatMap((section) => section.tasks), ...closedTasks].map((task) => task.id),
+    [sections, closedTasks],
   );
   const [openId, setOpenId] = useState<number | null>(null);
   const { mutate: setStatus } = useSetTaskStatus();
@@ -48,13 +91,17 @@ export function TaskList({ project }: { project: SidebarProject }) {
   return (
     // `data-wide` lets the app shell drop its reading width for this table.
     <div data-wide className="mx-auto w-full max-w-6xl">
-      <ProjectHeader project={project} />
+      {"project" in props ? (
+        <ProjectHeader project={props.project} />
+      ) : (
+        <TagHeader tag={props.tag} />
+      )}
 
-      <QuickAddCard projectId={project.id} />
+      {project && <QuickAddCard projectId={project.id} tagId={tag?.id} />}
 
       <div
         role="treegrid"
-        aria-label={`${project.name} tasks`}
+        aria-label={`${label} tasks`}
         className="rounded-xl border border-border bg-surface shadow-sm"
       >
         <div
@@ -76,32 +123,38 @@ export function TaskList({ project }: { project: SidebarProject }) {
           <span role="columnheader" className="px-2">
             Due
           </span>
+          <span role="columnheader" className="hidden px-2 xl:block">
+            Tags
+          </span>
           <span role="columnheader" className="px-2 text-right">
             Activity
           </span>
         </div>
 
-        <Group
-          icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
-          label="Tasks"
-          count={open.length}
-        >
-          {open.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Nothing left here. Add a task above.
-            </p>
-          ) : (
-            open.map((task) => (
-              <TaskRow
-                key={task.id}
-                task={task}
-                selected={task.id === openId}
-                onToggle={toggle}
-                onOpen={setOpenId}
-              />
-            ))
-          )}
-        </Group>
+        {sections.map((section) => (
+          <Group
+            key={section.key}
+            icon={section.icon}
+            label={section.label}
+            count={section.tasks.length}
+          >
+            {section.tasks.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                Nothing left here. Add a task above.
+              </p>
+            ) : (
+              section.tasks.map((task) => (
+                <TaskRow
+                  key={task.id}
+                  task={task}
+                  selected={task.id === openId}
+                  onToggle={toggle}
+                  onOpen={setOpenId}
+                />
+              ))
+            )}
+          </Group>
+        ))}
 
         <ClosedGroup
           query={closed}
@@ -114,15 +167,17 @@ export function TaskList({ project }: { project: SidebarProject }) {
         />
       </div>
 
-      <TaskDetail
-        taskId={openId}
-        project={project}
-        order={order}
-        onOpen={setOpenId}
-        onClose={() => {
-          setOpenId(null);
-        }}
-      />
+      {project && (
+        <TaskDetail
+          taskId={openId}
+          project={project}
+          order={order}
+          onOpen={setOpenId}
+          onClose={() => {
+            setOpenId(null);
+          }}
+        />
+      )}
     </div>
   );
 }

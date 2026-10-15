@@ -1,11 +1,12 @@
 import { Paperclip } from "lucide-react";
 import { memo } from "react";
 
+import { TagBadge } from "@/features/tags/tag-badge";
 import { cn } from "@/lib/utils";
 
 import { CountIcon } from "./count-icon";
 import { DueBadge } from "./due-badge";
-import { DueCell, PriorityCell, StatusCell } from "./task-cells";
+import { DueCell, PriorityCell, StatusCell, TagsCell } from "./task-cells";
 import { TaskCheckbox } from "./task-checkbox";
 import { PriorityFlag } from "./task-priority";
 import { isClosed } from "./task-properties";
@@ -13,7 +14,8 @@ import { BlockedNote, StatusBadge } from "./task-status";
 import type { Task } from "./tasks";
 
 /** One grid for the header and every row, so the columns line up from `lg`. */
-export const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_6.5rem]";
+export const GRID =
+  "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_6.5rem] xl:grid-cols-[minmax(0,1fr)_7.5rem_4.75rem_8.75rem_11rem_6.5rem]";
 
 export type ToggleStatus = (task: Task) => void;
 export type OpenTask = (taskId: number) => void;
@@ -36,6 +38,7 @@ export const TaskRow = memo(function TaskRow({
 }) {
   const closed = isClosed(task.status);
   const blocked = task.status === "blocked";
+  const firstTag = task.tags[0];
   return (
     <div
       role="row"
@@ -72,14 +75,18 @@ export const TaskRow = memo(function TaskRow({
           }}
         />
         <div className="flex min-w-0 flex-1 flex-col">
-          <span
-            data-task-title
-            className={cn(
-              "min-w-0 truncate text-sm",
-              closed ? "text-muted-foreground line-through" : "font-semibold",
-            )}
-          >
-            {task.title}
+          <span className="flex min-w-0 items-center gap-2">
+            <span
+              data-task-title
+              className={cn(
+                "min-w-0 truncate text-sm",
+                closed ? "text-muted-foreground line-through" : "font-semibold",
+              )}
+            >
+              {task.title}
+            </span>
+            {/* The first Tag sits in the title cell while the Tags column is hidden. */}
+            {firstTag && <TagBadge tag={firstTag} className="hidden shrink-0 lg:flex xl:hidden" />}
           </span>
           {blocked && <BlockedNote task={task} className="hidden lg:flex" />}
         </div>
@@ -90,6 +97,9 @@ export const TaskRow = memo(function TaskRow({
         {blocked && <BlockedNote task={task} className="max-w-full" />}
         <PriorityFlag priority={task.priority} />
         <DueBadge task={task} />
+        {task.tags.map((tag) => (
+          <TagBadge key={tag.id} tag={tag} />
+        ))}
         <ActivityCounts task={task} />
       </div>
 
@@ -101,6 +111,9 @@ export const TaskRow = memo(function TaskRow({
       </div>
       <div role="gridcell" className="hidden min-w-0 lg:block">
         <DueCell task={task} />
+      </div>
+      <div role="gridcell" className="hidden min-w-0 overflow-hidden xl:block">
+        <TagsCell task={task} />
       </div>
       <div role="gridcell" className="hidden min-w-0 items-center justify-end gap-2 pr-1 lg:flex">
         <ActivityCounts task={task} />

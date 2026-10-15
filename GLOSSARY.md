@@ -58,6 +58,22 @@ A root Task held at the top of every list it appears in.
 **Blocked reason**:
 The optional free-text reason a Blocked Task is waiting, which may mention a Person.
 
+**Repeat**:
+The rule that makes a root Task come back on a schedule. Closing it moves the same Task on to its
+next occurrence instead of closing it for good.
+_Avoid_: Recurrence, recurring task
+
+**Occurrence**:
+One date in a repeating Task's schedule. The Task always shows its current occurrence.
+_Avoid_: Instance
+
+**Reminder**:
+A notification set to fire at a fixed distance before or after a Task's date.
+_Avoid_: Alert, alarm
+
+**Snooze**:
+Delaying a fired Reminder by a chosen amount without changing the Task.
+
 **Comment**:
 A timestamped markdown entry added to a Task after it is created; a Task can have many.
 _Avoid_: Note
@@ -81,4 +97,5 @@ A name in one user's private address book that can be mentioned; not an account.
 _Avoid_: Contact, user, member
 
 **Mention**:
-A reference to a Person written with `@` in a Task's title, Description or comments.
+A reference to a Person written with `@` in a Task's title, Description, Comments or Blocked
+reason. It always shows the Person's current name, and it puts the Task in that Person's view.

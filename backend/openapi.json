@@ -2850,6 +2850,25 @@
             "SessionAuth": []
           }
         ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_trash_empty_trash",
+        "summary": "Empty the Trash",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Delete everything in the Trash for good.",
+        "tags": [
+          "trash"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/v1/tasks/{task_id}/restore": {
@@ -2893,6 +2912,47 @@
         "tags": [
           "trash"
         ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/trash/delete": {
+      "post": {
+        "operationId": "apps_tasks_api_trash_delete_forever",
+        "summary": "Delete Tasks in Trash forever",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete the given Trash units for good; nothing goes if any id isn't in the user's Trash.",
+        "tags": [
+          "trash"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrashDeleteIn"
+              }
+            }
+          },
+          "required": true
+        },
         "security": [
           {
             "SessionAuth": []
@@ -6605,6 +6665,25 @@
           "project"
         ],
         "title": "TaskRestoreOut",
+        "type": "object"
+      },
+      "TrashDeleteIn": {
+        "description": "The trashed Tasks whose units to delete for good.",
+        "properties": {
+          "task_ids": {
+            "description": "Trashed Tasks; each takes the whole unit it went to Trash with.",
+            "items": {
+              "type": "integer"
+            },
+            "minItems": 1,
+            "title": "Task Ids",
+            "type": "array"
+          }
+        },
+        "required": [
+          "task_ids"
+        ],
+        "title": "TrashDeleteIn",
         "type": "object"
       }
     },

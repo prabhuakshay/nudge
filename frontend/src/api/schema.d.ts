@@ -988,7 +988,11 @@ export interface paths {
     get: operations["apps_tasks_api_trash_list_trash"];
     put?: never;
     post?: never;
-    delete?: never;
+    /**
+     * Empty the Trash
+     * @description Delete everything in the Trash for good.
+     */
+    delete: operations["apps_tasks_api_trash_empty_trash"];
     options?: never;
     head?: never;
     patch?: never;
@@ -1008,6 +1012,26 @@ export interface paths {
      * @description Bring back a Task with everything deleted along with it, and say where it went.
      */
     post: operations["apps_tasks_api_trash_restore_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/trash/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Delete Tasks in Trash forever
+     * @description Delete the given Trash units for good; nothing goes if any id isn't in the user's Trash.
+     */
+    post: operations["apps_tasks_api_trash_delete_forever"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2881,6 +2905,17 @@ export interface components {
     TaskRestoreOut: {
       task: components["schemas"]["TaskOut"];
       project: components["schemas"]["ProjectOut"];
+    };
+    /**
+     * TrashDeleteIn
+     * @description The trashed Tasks whose units to delete for good.
+     */
+    TrashDeleteIn: {
+      /**
+       * Task Ids
+       * @description Trashed Tasks; each takes the whole unit it went to Trash with.
+       */
+      task_ids: number[];
     };
   };
   responses: never;
@@ -4791,6 +4826,24 @@ export interface operations {
       };
     };
   };
+  apps_tasks_api_trash_empty_trash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
   apps_tasks_api_trash_restore_task: {
     parameters: {
       query?: never;
@@ -4810,6 +4863,37 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["TaskRestoreOut"];
         };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_trash_delete_forever: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TrashDeleteIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Not Found */
       404: {

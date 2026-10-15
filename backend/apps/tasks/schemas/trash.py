@@ -26,3 +26,12 @@ class TaskRestoreOut(Schema):
 
     task: TaskOut
     project: ProjectOut
+
+
+class TrashDeleteIn(Schema):
+    """The trashed Tasks whose units to delete for good."""
+
+    task_ids: list[int] = Field(
+        min_length=1,
+        description="Trashed Tasks; each takes the whole unit it went to Trash with.",
+    )

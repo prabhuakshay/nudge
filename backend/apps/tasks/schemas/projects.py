@@ -9,6 +9,7 @@ from pydantic import StringConstraints
 
 from apps.core.palette import PaletteColor  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.tasks.models import Project
+from apps.tasks.schemas.tags import SidebarTagOut  # noqa: TC001 - Pydantic needs the type at runtime
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
 
@@ -109,3 +110,4 @@ class SidebarOut(Schema):
     archived: list[SidebarProjectOut] = Field(description="Archived Projects, by name.")
     today_count: int = Field(description="Open Tasks in Today, Overdue ones included.")
     upcoming_count: int = Field(description="Open Tasks in Upcoming.")
+    tags: list[SidebarTagOut] = Field(description="In the user's order.")

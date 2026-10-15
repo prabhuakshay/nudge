@@ -1,6 +1,8 @@
-import { CalendarDays, Flag, type LucideIcon } from "lucide-react";
+import { CalendarDays, Flag, Hash, type LucideIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 
+import { TagBadge } from "@/features/tags/tag-badge";
+import { TagPicker } from "@/features/tags/tag-picker";
 import { cn } from "@/lib/utils";
 
 import { DatePicker } from "./date-picker";
@@ -83,5 +85,28 @@ export function DueCell({ task }: { task: Task }) {
         )}
       </CellButton>
     </DatePicker>
+  );
+}
+
+/** The list's Tags cell, from `xl`: the first Tags, a count of the rest, and the Tag picker. */
+export function TagsCell({ task, max = 2 }: { task: Task; max?: number }) {
+  const { tags } = task;
+  return (
+    <TagPicker task={task}>
+      <CellButton
+        aria-label={tags.length ? `Tags: ${tags.map((tag) => tag.name).join(", ")}` : "Add tags"}
+        className="overflow-hidden"
+      >
+        {tags.length === 0 && <Placeholder icon={Hash} label="Tag" />}
+        {tags.slice(0, max).map((tag) => (
+          <TagBadge key={tag.id} tag={tag} className="shrink" />
+        ))}
+        {tags.length > max && (
+          <span className="shrink-0 text-[11px] font-semibold text-muted-foreground">
+            +{tags.length - max}
+          </span>
+        )}
+      </CellButton>
+    </TagPicker>
   );
 }

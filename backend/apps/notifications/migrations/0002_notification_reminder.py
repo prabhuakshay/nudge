@@ -8,7 +8,7 @@ class Migration(migrations.Migration):
 
     dependencies = [
         ('notifications', '0001_initial'),
-        ('tasks', '0014_reminder_snooze'),
+        ('tasks', '0016_reminder_snooze'),
     ]
 
     operations = [

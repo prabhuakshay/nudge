@@ -1,9 +1,11 @@
-import { CalendarDays, ChevronDown, Flag } from "lucide-react";
+import { CalendarDays, ChevronDown, Flag, Hash } from "lucide-react";
 import type { ComponentProps } from "react";
 import { toast } from "sonner";
 
 import { ProjectIcon } from "@/features/projects/project-icon";
 import { ProjectPicker } from "@/features/projects/project-picker";
+import { TagBadge } from "@/features/tags/tag-badge";
+import { TagPicker } from "@/features/tags/tag-picker";
 import { cn } from "@/lib/utils";
 
 import { DatePicker } from "./date-picker";
@@ -13,7 +15,7 @@ import { PriorityMenu } from "./task-priority";
 import { PRIORITY, STATUS } from "./task-properties";
 import { StatusMenu } from "./task-status";
 import { useMoveTaskToProject } from "./task-placement";
-import type { SidebarProject, Task } from "./tasks";
+import { useUpdateTask, type SidebarProject, type Task } from "./tasks";
 
 function Chip({ className, ...props }: ComponentProps<"button">) {
   return (
@@ -78,7 +80,34 @@ export function PropertyChips({ task, project }: { task: Task; project: SidebarP
 
       {/* A Subtask lives in its root's Project, so it has no Project of its own to change. */}
       {task.parent_id === null && <ProjectChip task={task} project={project} />}
+
+      <TagChips task={task} />
     </div>
+  );
+}
+
+/** The Task's Tags, each with a × to take it off, then a chip that opens the Tag picker. */
+function TagChips({ task }: { task: Task }) {
+  const { mutate: updateTask } = useUpdateTask();
+  return (
+    <>
+      {task.tags.map((tag) => (
+        <TagBadge
+          key={tag.id}
+          tag={tag}
+          className="h-8 rounded-lg px-2.5 text-xs"
+          onRemove={() => {
+            updateTask({ id: task.id, tags: task.tags.filter((other) => other.id !== tag.id) });
+          }}
+        />
+      ))}
+      <TagPicker task={task}>
+        <Chip className="border-dashed border-border text-muted-foreground hover:bg-surface-muted">
+          <Hash className="size-3.5" aria-hidden />
+          {task.tags.length ? "Tag" : "Add tag"}
+        </Chip>
+      </TagPicker>
+    </>
   );
 }
 

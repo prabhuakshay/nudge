@@ -1,4 +1,4 @@
-"""Task endpoints: list a Project's or Person's Tasks; add, read, change, move, duplicate one."""
+"""Task endpoints: list Tasks; add, read, change, move or duplicate one; read its history."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 from ninja import Query, Router, Status
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import moves, people, schedule, services, tree
+from apps.tasks import moves, people, schedule, services, tags, tree
 from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.dates import TaskDates
@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from django.http import HttpRequest
 
     from apps.accounts.models import User
-    from apps.tasks.models import Task
+    from apps.tasks.models import Project, Tag, Task
 
 router = Router()
 
@@ -48,24 +48,26 @@ _HTTP_UNPROCESSABLE = 422
 _PROJECT_NOT_FOUND = ErrorOut(detail="Project not found.")
 _TASK_NOT_FOUND = ErrorOut(detail="Task not found.")
 _PERSON_NOT_FOUND = ErrorOut(detail="Person not found.")
-_ONE_SOURCE = ErrorOut(detail="Give one of project, person or view.")
+_TAG_NOT_FOUND = ErrorOut(detail="Tag not found.")
+_ONE_SOURCE = ErrorOut(detail="Give one of project, person, tag or view.")
 
 
 @router.get(
     "",
     response={_HTTP_OK: TaskListOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
-    summary="List a Project's, a Person's or a view's Tasks",
+    summary="List a Project's, a Person's, a Tag's or a view's Tasks",
 )
 def list_tasks(
     request: HttpRequest,
     query: Query[TaskListQuery],
 ) -> Status[TaskListOut] | Status[ErrorOut]:
-    """Return the open Tasks of a Project, Person or view, or, with `closed`, a page of Closed ones.
+    """Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.
 
-    A Project's Tasks come in manual order. A Person's are the Tasks that mention them, flat, in
-    each Project's manual order. Today and Upcoming list flat rows by date, with Overdue first in
-    Today; Today's Closed Tasks are those closed today, and Upcoming has none. Closed Tasks come
-    most recently completed first, in pages; open Tasks come all at once.
+    A Project's Tasks come in manual order. A Person's are the Tasks that mention them and a
+    Tag's the Tasks it's on, flat, in each Project's manual order. Today and Upcoming list flat
+    rows by date, with Overdue first in Today; Today's Closed Tasks are those closed today, and
+    Upcoming has none. Closed Tasks come most recently completed first, in pages; open Tasks come
+    all at once.
     """
     source = _list_source(signed_in_user(request), query)
     if isinstance(source, Status):
@@ -89,10 +91,14 @@ def _list_source(user: User, query: TaskListQuery) -> _ListSource | Status[Error
     """Return how to read the open Tasks and a page of Closed ones of the list asked for."""
     if query.view is not None:
         return _view_source(user, query.view)
-    if query.person is not None:
-        return _person_source(user, query.person)
-    if query.project is not None:
-        return _project_source(user, query.project)
+    by_id = (
+        (query.person, _person_source),
+        (query.tag, _tag_source),
+        (query.project, _project_source),
+    )
+    for source_id, source in by_id:
+        if source_id is not None:
+            return source(user, source_id)
     return Status(_HTTP_UNPROCESSABLE, _ONE_SOURCE)
 
 
@@ -114,6 +120,13 @@ def _nothing_closed(_cursor: str | None) -> Page[Task]:
     return Page(items=[], next_cursor=None)
 
 
+def _tag_source(user: User, tag: int) -> _ListSource | Status[ErrorOut]:
+    found = tags.tag(user, tag)
+    if found is None:
+        return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
+    return partial(tags.open_tasks, found), partial(tags.closed_tasks, found)
+
+
 def _project_source(user: User, project: int) -> _ListSource | Status[ErrorOut]:
     found = services.live_project(user, project)
     if found is None:
@@ -130,11 +143,31 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
     """Add a Task first in its Project, or in the Inbox when no Project is given.
 
     With `parent_id` it is added last under that Task instead, which reopens the parent and its
-    ancestors if they are Closed.
+    ancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are
+    created with the Task.
     """
     user = signed_in_user(request)
     if task.parent_id is not None:
         return _create_subtask(user, task.parent_id, task.title)
+    target = _target(user, task)
+    if isinstance(target, Status):
+        return target
+    project, picked = target
+    try:
+        created = tags.create_tagged_task(
+            project,
+            task.title,
+            _dates(task),
+            tags=picked,
+            tag_names=task.tags,
+        )
+    except (MentionError, ArchivedProjectError) as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    return Status(_HTTP_CREATED, TaskOut.from_orm(created))
+
+
+def _target(user: User, task: TaskIn) -> tuple[Project, list[Tag]] | Status[ErrorOut]:
+    """Return the Project and picked Tags of a new Task, or a 404 if either isn't the user's."""
     project = (
         services.inbox(user)
         if task.project_id is None
@@ -142,11 +175,10 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
     )
     if project is None:
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
-    try:
-        created = services.create_task(project, task.title, _dates(task))
-    except (MentionError, ArchivedProjectError) as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
-    return Status(_HTTP_CREATED, TaskOut.from_orm(created))
+    picked = tags.owned_tags(user, task.tag_ids)
+    if picked is None:
+        return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
+    return project, picked
 
 
 def _create_subtask(user: User, parent_id: int, title: str) -> Status[TaskOut] | Status[ErrorOut]:
@@ -208,26 +240,11 @@ def update_task(
     offer Undo without the server keeping anything.
     """
     user = signed_in_user(request)
-    project = None
-    if patch.project_id is not None:
-        project = services.live_project(user, patch.project_id)
-        if project is None:
-            return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
-    edit = services.TaskEdit(
-        title=patch.title,
-        description=patch.description,
-        status=patch.status,
-        blocked_reason=patch.blocked_reason,
-        priority=patch.priority,
-        pinned=patch.pinned,
-        dates=_dates(patch),
-        reminders=None
-        if patch.reminders is None
-        else [timedelta(minutes=offset) for offset in patch.reminders],
-        project=project,
-    )
+    edit = _edit(user, patch)
+    if isinstance(edit, Status):
+        return edit
     try:
-        change = services.update_task(user, task_id, edit)
+        change = tags.update_tagged_task(user, task_id, *edit)
     except (
         services.TaskRuleError,
         MentionError,
@@ -297,6 +314,35 @@ def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Stat
     if copy is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     return Status(_HTTP_CREATED, TaskOut.from_orm(copy))
+
+
+def _edit(
+    user: User,
+    patch: TaskPatchIn,
+) -> tuple[services.TaskEdit, list[Tag] | None] | Status[ErrorOut]:
+    """Return the edit and Tags the patch asks for, or a 404 for another user's Project or Tag."""
+    project = None
+    if patch.project_id is not None:
+        project = services.live_project(user, patch.project_id)
+        if project is None:
+            return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+    picked = None if patch.tag_ids is None else tags.owned_tags(user, patch.tag_ids)
+    if patch.tag_ids is not None and picked is None:
+        return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
+    edit = services.TaskEdit(
+        title=patch.title,
+        description=patch.description,
+        status=patch.status,
+        blocked_reason=patch.blocked_reason,
+        priority=patch.priority,
+        pinned=patch.pinned,
+        dates=_dates(patch),
+        reminders=None
+        if patch.reminders is None
+        else [timedelta(minutes=offset) for offset in patch.reminders],
+        project=project,
+    )
+    return edit, picked
 
 
 def _dates(body: TaskIn | TaskPatchIn) -> TaskDates | None:

@@ -1,10 +1,10 @@
-"""Django admin registration for Folders, Projects, Tasks and People."""
+"""Django admin registration for Folders, Projects, Tags, Tasks and People."""
 
 from __future__ import annotations
 
 from django.contrib import admin
 
-from apps.tasks.models import Folder, Person, Project, Task
+from apps.tasks.models import Folder, Person, Project, Tag, Task
 
 
 @admin.register(Folder)
@@ -31,6 +31,15 @@ class ProjectAdmin(admin.ModelAdmin[Project]):
     )
     search_fields = ("name", "owner__email")
     raw_id_fields = ("owner", "folder")
+
+
+@admin.register(Tag)
+class TagAdmin(admin.ModelAdmin[Tag]):
+    """Tags, for checking how a user labels their Tasks."""
+
+    list_display = ("name", "owner", "color", "created_at")
+    search_fields = ("name", "owner__email")
+    raw_id_fields = ("owner",)
 
 
 @admin.register(Task)

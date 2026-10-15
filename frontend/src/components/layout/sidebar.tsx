@@ -7,6 +7,7 @@ import { SidebarArchived } from "@/features/projects/sidebar-archived";
 import { SidebarPeople } from "@/features/people/sidebar-people";
 import { SidebarProjects } from "@/features/projects/sidebar-projects";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
+import { SidebarTags } from "@/features/tags/sidebar-tags";
 import { sidebarQuery, type Sidebar as SidebarData } from "@/features/tasks/tasks";
 
 import { NAV_ITEMS, type NavItem } from "./nav-items";
@@ -55,8 +56,8 @@ function navCount(sidebar: SidebarData, to: NavItem["to"]) {
 }
 
 /**
- * The views, then the user's Projects and People: the body of the desktop sidebar and of the phone menu.
- * `onNavigate` runs when a link is followed, so the phone menu can close.
+ * The views, then the user's Projects, Tags and People: the body of the desktop sidebar and of the
+ * phone menu. `onNavigate` runs when a link is followed, so the phone menu can close.
  */
 export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
   const { data: sidebar } = useQuery(sidebarQuery);
@@ -93,6 +94,10 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
       </div>
       <div className="mt-3">
         <SidebarArchived onNavigate={onNavigate} />
+      </div>
+
+      <div className="mt-5">
+        <SidebarTags onNavigate={onNavigate} />
       </div>
 
       <div className="mt-5">

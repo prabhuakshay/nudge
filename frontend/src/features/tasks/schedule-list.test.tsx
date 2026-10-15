@@ -37,7 +37,7 @@ async function requestsTo(fetchSpy: ReturnType<typeof mockApi>, method: string) 
       const url = new URL(request.url);
       return method === "GET"
         ? `${url.pathname}${url.search}`
-        : ((await request.json()) as unknown);
+        : ((await request.clone().json()) as unknown);
     }),
   );
 }
@@ -109,7 +109,7 @@ describe("ScheduleList", () => {
     const user = renderView(view);
 
     await user.type(
-      await screen.findByRole("textbox", { name: "New task" }),
+      await screen.findByRole("combobox", { name: "New task" }),
       "Water plants{Enter}",
     );
 

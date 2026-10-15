@@ -163,6 +163,10 @@ class TaskIn(Schema):
         default=None,
         description="Dates the Task from the start, such as today in Today. Not for a Subtask.",
     )
+    priority: Task.Priority | None = Field(
+        default=None,
+        description="1 (P1) is the most urgent; left out, the Task has no Priority.",
+    )
     tags: list[TagName] = Field(
         default_factory=list,
         description="Tag names, in any case; Tags the user doesn't have yet are created.",

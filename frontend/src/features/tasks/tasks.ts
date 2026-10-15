@@ -324,34 +324,35 @@ export function useSetTaskStatus() {
   });
 }
 
+/** A new Task as the API takes it. */
+export type NewTask = components["schemas"]["TaskIn"];
+
 /**
- * Add a Task from Quick add, with the dates and Tag the view gives it, if any. It appears first
- * in its Project and its Tag's list, as the server places it, and wherever its dates put it.
+ * Add a Task from Quick add. It appears first in its Project's list, as the server places it, and
+ * wherever its dates, Tags and Mentions put it.
  */
-export function useCreateTask(projectId: number, dates?: DatesIn, tagId?: number) {
+export function useCreateTask() {
   const queryClient = useQueryClient();
-  const tagged = tagId === undefined ? {} : { tag_ids: [tagId] };
   return useMutation({
-    mutationFn: async (title: string) => {
-      const { data } = await api.POST("/api/v1/tasks", {
-        body: { title, project_id: projectId, ...(dates && { dates }), ...tagged },
-      });
+    mutationFn: async (task: NewTask) => {
+      const { data } = await api.POST("/api/v1/tasks", { body: task });
       if (!data) {
         throw new Error("Could not add the task.");
       }
       return data;
     },
     onSuccess: (task) => {
-      queryClient.setQueryData(openTasksQuery(projectId).queryKey, (tasks) =>
-        tasks ? [task, ...tasks] : [task],
+      queryClient.setQueryData(
+        openTasksQuery(task.project_id).queryKey,
+        (tasks) => tasks && [task, ...tasks],
       );
     },
     onError: (error) => toast.error(error.message),
     onSettled: () =>
       Promise.all([
-        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "today"] }),
-        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "upcoming"] }),
-        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "tag"] }),
+        ...["today", "upcoming", "tag", "person"].map((list) =>
+          queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, list] }),
+        ),
         queryClient.invalidateQueries(sidebarQuery),
       ]),
   });

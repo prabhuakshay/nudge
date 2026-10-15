@@ -1932,6 +1932,8 @@ export interface components {
       parent_id?: number | null;
       /** @description Dates the Task from the start, such as today in Today. Not for a Subtask. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
+      /** @description 1 (P1) is the most urgent; left out, the Task has no Priority. */
+      priority?: components["schemas"]["Priority"] | null;
       /**
        * Tags
        * @description Tag names, in any case; Tags the user doesn't have yet are created.

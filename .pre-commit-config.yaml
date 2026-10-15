@@ -1,0 +1,105 @@
+# Git hooks, run by prek (https://github.com/j178/prek), a fast drop-in for pre-commit.
+#   prek install          install the hooks once after cloning
+#   prek run --all-files  run every hook on the whole repository
+#
+# Linters and formatters run from the project's own environments (uv and npm), so hooks, CI
+# and editors always use the same tool versions as pyproject.toml and package.json.
+
+default_install_hook_types: [pre-commit, commit-msg]
+default_stages: [pre-commit]
+
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v6.0.0
+    hooks:
+      - id: trailing-whitespace
+        exclude: &generated ^(backend/openapi\.json|frontend/src/routeTree\.gen\.ts|frontend/src/api/schema\.d\.ts)$
+      - id: end-of-file-fixer
+        exclude: *generated
+      - id: mixed-line-ending
+        args: [--fix=lf]
+      - id: check-yaml
+      - id: check-toml
+      - id: check-json
+        exclude: ^frontend/tsconfig.*\.json$
+      - id: check-merge-conflict
+      - id: check-added-large-files
+        args: [--maxkb=600]
+      - id: check-case-conflict
+      - id: check-executables-have-shebangs
+      - id: detect-private-key
+
+  - repo: https://github.com/compilerla/conventional-pre-commit
+    rev: v4.4.0
+    hooks:
+      - id: conventional-pre-commit
+        stages: [commit-msg]
+        args: [--strict, build, chore, ci, docs, feat, fix, perf, refactor, revert, style, test]
+
+  - repo: local
+    hooks:
+      # ------------------------------------------------------------ backend
+      - id: uv-lock
+        name: uv lock is up to date
+        entry: uv lock --check --project backend
+        language: system
+        files: ^backend/(pyproject\.toml|uv\.lock)$
+        pass_filenames: false
+
+      - id: ruff-format
+        name: ruff format
+        entry: uv run --project backend ruff format --config backend/pyproject.toml
+        language: system
+        types: [python]
+        files: ^backend/
+
+      - id: ruff-check
+        name: ruff check
+        entry: uv run --project backend ruff check --fix --config backend/pyproject.toml
+        language: system
+        types: [python]
+        files: ^backend/
+
+      - id: mypy
+        name: mypy
+        entry: env NUDGE_DEBUG=true uv run --directory backend mypy .
+        language: system
+        types: [python]
+        files: ^backend/
+        pass_filenames: false
+
+      - id: django-migrations
+        name: Django migrations are up to date
+        entry: env NUDGE_DEBUG=true uv run --directory backend python manage.py makemigrations --check --dry-run
+        language: system
+        files: ^backend/apps/.*/models\.py$
+        pass_filenames: false
+
+      - id: openapi-schema
+        name: OpenAPI schema and frontend types are up to date
+        entry: sh -c 'NUDGE_DEBUG=true uv run --directory backend python manage.py export_openapi_schema --api config.api.api --indent 2 --output openapi.json && npm --prefix frontend run --silent api:generate && git diff --exit-code -- backend/openapi.json frontend/src/api/schema.d.ts'
+        language: system
+        files: ^backend/apps/.*/(api|schemas)\.py$|^backend/config/api\.py$
+        pass_filenames: false
+
+      # ------------------------------------------------------------ frontend
+      - id: prettier
+        name: prettier
+        # Prettier loads its plugins relative to the working directory, so run it from frontend/.
+        entry: bash -c 'cd frontend && exec node_modules/.bin/prettier --write --ignore-unknown "${@#frontend/}"' --
+        language: system
+        files: ^frontend/
+
+      - id: eslint
+        name: eslint
+        entry: npm --prefix frontend run --silent lint
+        language: system
+        files: ^frontend/.*\.(ts|tsx|js)$
+        pass_filenames: false
+
+      - id: tsc
+        name: tsc
+        entry: npm --prefix frontend run --silent typecheck
+        language: system
+        files: ^frontend/.*\.(ts|tsx)$|^frontend/tsconfig.*\.json$
+        pass_filenames: false

@@ -1,0 +1,50 @@
+# Development stack with hot reload for the backend, the worker and the frontend.
+#   docker compose -f compose.dev.yaml up --build
+# Then open http://localhost:5173 (Vite proxies /api, /admin and /static to Django).
+#
+# Source folders are bind-mounted, so edits apply without rebuilding. Containers use the host's
+# network and PostgreSQL, and run as your user so files they create stay yours.
+
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: docker/Dockerfile
+    target: dev
+  image: nudge:dev
+  network_mode: host
+  user: "${NUDGE_DEV_UID:-1000}:${NUDGE_DEV_GID:-1000}"
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    NUDGE_DEBUG: "true"
+  volumes:
+    - ./backend:/app/backend
+
+services:
+  backend:
+    <<: *backend
+    command: ["sh", "-c", "exec python manage.py runserver ${NUDGE_WEB_HOST:-127.0.0.1}:${NUDGE_WEB_PORT:-8000}"]
+
+  worker:
+    <<: *backend
+    environment:
+      NUDGE_DEBUG: "true"
+      NUDGE_RUN_MIGRATIONS: "false"
+    command: ["watchfiles", "--filter", "python", "python manage.py procrastinate worker", "apps", "config"]
+    depends_on:
+      - backend
+
+  frontend:
+    image: node:24-slim
+    network_mode: host
+    user: "${NUDGE_DEV_UID:-1000}:${NUDGE_DEV_GID:-1000}"
+    working_dir: /app/frontend
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      npm_config_cache: /tmp/.npm
+    volumes:
+      - ./frontend:/app/frontend
+    command: ["sh", "-c", "npm install --no-audit --no-fund && exec npm run dev"]

@@ -1,0 +1,148 @@
+[project]
+name = "nudge"
+version = "0.1.0"
+description = "Backend for Nudge, an open-source, self-hostable task manager."
+license = "MIT"
+authors = [{ name = "Akshay Prabhu" }]
+requires-python = ">=3.14"
+dependencies = [
+    "django>=6.1.2",
+    "django-environ>=0.14.0",
+    "django-ninja>=1.7.1",
+    "django-stubs-ext>=6.1.2",
+    "gunicorn>=26.2.0",
+    "procrastinate>=3.10.0",
+    "psycopg[binary,pool]>=3.3.6",
+    "whitenoise>=6.12.0",
+]
+
+[dependency-groups]
+dev = [
+    "django-stubs>=6.1.2",
+    "mypy>=2.4.0",
+    "pytest>=9.1.1",
+    "pytest-cov>=7.1.0",
+    "pytest-django>=4.14.0",
+    "pytest-env>=1.8.0",
+    "ruff>=0.17.0",
+    "watchfiles>=1.3.0",
+]
+
+[tool.uv]
+package = false
+
+# ---------------------------------------------------------------- ruff
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+# Generated migrations are excluded even when a hook passes them by name.
+extend-exclude = ["**/migrations/*.py"]
+force-exclude = true
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = [
+    # Conflict with the formatter.
+    "COM812",
+    "ISC001",
+    # The project targets English-only docstrings; no need to flag every non-imperative mood edge case.
+    "D401",
+    # Django's own patterns (Meta classes, settings modules) trip these without adding value.
+    "RUF012",
+    # TODO markers are tracked in issues, not linted.
+    "TD",
+    "FIX",
+    # The LICENSE file covers the whole repository; per-file headers add noise.
+    "CPY",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**/*.py" = [
+    "S101",    # assert is how pytest works
+    "PLR2004", # literal values are the point of a test
+    "S105",    # test passwords are not secrets
+    "S106",
+    "D103",    # test names describe the behavior; a docstring would repeat them
+    "D104",
+]
+"**/api.py" = [
+    "ARG001", # Django Ninja requires every endpoint to accept `request`, used or not
+]
+"{conftest,gunicorn.conf,manage}.py" = [
+    "INP001", # top-level scripts, not part of a package
+]
+"config/settings.py" = [
+    "ERA001", # settings sections are separated with comment banners
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.mccabe]
+max-complexity = 8
+
+[tool.ruff.lint.pylint]
+max-args = 5
+max-branches = 10
+max-returns = 4
+max-statements = 40
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.ruff.lint.isort]
+known-first-party = ["apps", "config"]
+required-imports = ["from __future__ import annotations"]
+
+[tool.ruff.format]
+docstring-code-format = true
+
+# ---------------------------------------------------------------- mypy
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+enable_error_code = ["ignore-without-code", "redundant-expr", "truthy-bool", "explicit-override"]
+plugins = ["mypy_django_plugin.main"]
+exclude = ["/migrations/"]
+
+[[tool.mypy.overrides]]
+module = ["environ.*", "procrastinate.*"]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings"
+
+# ---------------------------------------------------------------- pytest
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--cov",
+    "--cov-report=term-missing:skip-covered",
+    "--no-migrations",
+]
+testpaths = ["apps", "config"]
+filterwarnings = [
+    "error",
+    # Tests don't run collectstatic, so STATIC_ROOT doesn't exist.
+    "ignore:No directory at:UserWarning",
+]
+
+[tool.pytest_env]
+NUDGE_SECRET_KEY = "test-only-secret-key"
+NUDGE_DEBUG = "false"
+
+[tool.coverage.run]
+branch = true
+source = ["apps", "config"]
+omit = ["**/migrations/*", "config/wsgi.py", "config/asgi.py", "manage.py"]
+
+[tool.coverage.report]
+fail_under = 90
+show_missing = true
+exclude_also = ["if TYPE_CHECKING:"]

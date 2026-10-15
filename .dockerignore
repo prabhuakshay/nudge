@@ -1,0 +1,22 @@
+# Allowlist: the build context contains only what the Dockerfile copies.
+*
+!backend/
+!frontend/
+!docker/
+
+# Inside the allowed folders, skip local environments, build output and tests.
+backend/.venv
+backend/staticfiles
+backend/**/__pycache__
+backend/**/tests
+backend/conftest.py
+backend/.mypy_cache
+backend/.pytest_cache
+backend/.ruff_cache
+backend/.coverage
+frontend/node_modules
+frontend/dist
+frontend/.vite
+frontend/**/*.test.ts
+frontend/**/*.test.tsx
+frontend/src/test

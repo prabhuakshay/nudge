@@ -1,0 +1,50 @@
+# Production stack. Configure everything in .env (see .env.example), then:
+#   docker compose up -d --build
+#
+# Both services use the host's network so they reach the host's PostgreSQL at the address in
+# DATABASE_URL, and the web server listens directly on NUDGE_WEB_HOST:NUDGE_WEB_PORT for the
+# reverse proxy (Caddy) on the same machine.
+
+x-nudge: &nudge
+  image: nudge:${NUDGE_IMAGE_TAG:-latest}
+  network_mode: host
+  env_file: .env
+  restart: unless-stopped
+  init: true
+  read_only: true
+  tmpfs:
+    - /tmp
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+  logging:
+    driver: json-file
+    options:
+      max-size: 10m
+      max-file: "5"
+
+services:
+  web:
+    <<: *nudge
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      target: production
+    stop_grace_period: 30s
+
+  worker:
+    <<: *nudge
+    command: ["sh", "-c", "exec python manage.py procrastinate worker --concurrency ${NUDGE_WORKER_CONCURRENCY:-4}"]
+    environment:
+      # The web service applies migrations; the worker waits for it to be healthy.
+      NUDGE_RUN_MIGRATIONS: "false"
+    healthcheck:
+      test: ["CMD", "python", "manage.py", "procrastinate", "healthchecks"]
+      interval: 60s
+      timeout: 10s
+      start_period: 30s
+    depends_on:
+      web:
+        condition: service_healthy
+    stop_grace_period: 60s

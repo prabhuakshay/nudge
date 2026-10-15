@@ -1,0 +1,28 @@
+:root {
+  --nudge-blue: #1D4ED8;
+  --nudge-rose: #F43F5E;
+  --nudge-ink: #141A33;
+  --nudge-slate: #5B6380;
+  --nudge-paper: #FFFFFF;
+  --nudge-mist: #EEF1F8;
+  --nudge-night: #0E1224;
+  --nudge-snow: #F2F4FA;
+
+  --color-brand: var(--nudge-blue);
+  --color-accent: var(--nudge-rose);
+  --color-bg: var(--nudge-mist);
+  --color-surface: var(--nudge-paper);
+  --color-text: var(--nudge-ink);
+  --color-text-muted: var(--nudge-slate);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-brand: #3B82F6;
+    --color-accent: #FB7185;
+    --color-bg: var(--nudge-night);
+    --color-surface: #171C33;
+    --color-text: var(--nudge-snow);
+    --color-text-muted: #A3ABC6;
+  }
+}

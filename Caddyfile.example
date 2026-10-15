@@ -1,0 +1,7 @@
+# Example Caddy site for the host. Caddy gets the HTTPS certificate and forwards plain HTTP
+# to Nudge on NUDGE_WEB_HOST:NUDGE_WEB_PORT. Set NUDGE_TRUST_PROXY_HEADERS=true in .env.
+
+nudge.example.com {
+	encode zstd gzip
+	reverse_proxy 127.0.0.1:8000
+}

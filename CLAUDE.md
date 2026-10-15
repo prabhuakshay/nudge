@@ -104,3 +104,17 @@ marks into `frontend/src/assets/brand/`.
 - One logical change per commit. Generated files (`openapi.json`, `schema.d.ts`,
   `routeTree.gen.ts`, migrations) are committed with the change that produced them.
 - Never bypass hooks with `--no-verify`.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`prabhuakshay/nudge`), managed with the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default vocabulary: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.

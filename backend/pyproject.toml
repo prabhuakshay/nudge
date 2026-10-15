@@ -15,6 +15,7 @@ dependencies = [
     "procrastinate>=3.10.0",
     "psycopg[binary,pool]>=3.3.6",
     "pywebpush>=2.5.0",
+    "tzdata>=2026.5",
     "whitenoise>=6.12.0",
 ]
 

@@ -917,6 +917,7 @@ dependencies = [
     { name = "procrastinate" },
     { name = "psycopg", extra = ["binary", "pool"] },
     { name = "pywebpush" },
+    { name = "tzdata" },
     { name = "whitenoise" },
 ]
 
@@ -943,6 +944,7 @@ requires-dist = [
     { name = "procrastinate", specifier = ">=3.10.0" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.3.6" },
     { name = "pywebpush", specifier = ">=2.5.0" },
+    { name = "tzdata", specifier = ">=2026.5" },
     { name = "whitenoise", specifier = ">=6.12.0" },
 ]
 

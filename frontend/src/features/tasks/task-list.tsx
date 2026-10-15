@@ -1,11 +1,12 @@
 import { useInfiniteQuery, useQuery, type UseInfiniteQueryResult } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, CircleCheck, ListTodo, Pin } from "lucide-react";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { ArchivedNotice } from "@/features/projects/archived-notice";
 import { ProjectHeader } from "@/features/projects/project-header";
+import { SHORTCUTS, keyCaps, type ShortcutId } from "@/features/shortcuts/registry";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
@@ -156,16 +157,12 @@ export function TaskList({ project }: { project: SidebarProject }) {
       </fieldset>
 
       {!project.is_archived && (
-        <p className="mt-3 hidden items-center gap-3 text-[11px] text-muted-foreground lg:flex">
-          <span>
-            <Kbd>Enter</Kbd> open
-          </span>
-          <span>
-            <Kbd>Tab</Kbd> nest
-          </span>
-          <span>
-            <Kbd>Alt</Kbd>+<Kbd>↑</Kbd> reorder
-          </span>
+        <p className="mt-3 hidden flex-wrap items-center gap-3 text-[11px] text-muted-foreground lg:flex">
+          <KeyHint shortcut="openTask">open</KeyHint>
+          <KeyHint shortcut="completeTask">complete</KeyHint>
+          <KeyHint shortcut="indent">nest</KeyHint>
+          <KeyHint shortcut="moveUp">reorder</KeyHint>
+          <KeyHint shortcut="showShortcuts">all shortcuts</KeyHint>
           <span>Drag a row sideways to change nesting</span>
         </p>
       )}
@@ -180,6 +177,24 @@ export function TaskList({ project }: { project: SidebarProject }) {
         }}
       />
     </div>
+  );
+}
+
+/** One key in the list's footer, spelled from the shortcut registry, then what it does. */
+function KeyHint({ shortcut, children }: { shortcut: ShortcutId; children: string }) {
+  const [binding = ""] = SHORTCUTS[shortcut].keys;
+  return (
+    <span>
+      {keyCaps(binding)
+        .flat()
+        .map((cap, index) => (
+          <Fragment key={cap}>
+            {index > 0 && "+"}
+            <Kbd>{cap}</Kbd>
+          </Fragment>
+        ))}{" "}
+      {children}
+    </span>
   );
 }
 

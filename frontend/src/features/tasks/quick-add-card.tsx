@@ -1,19 +1,12 @@
 import { Plus } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { Kbd } from "@/components/ui/kbd";
+import { shortcutText } from "@/features/shortcuts/registry";
+import { useShortcuts, useSingleKeyShortcuts } from "@/features/shortcuts/use-shortcuts";
 import { cn } from "@/lib/utils";
 
 import { useCreateTask, type DatesIn } from "./tasks";
-
-/** Whether a key press happened where typing `c` means text, not a shortcut. */
-function isTyping(target: EventTarget | null) {
-  return (
-    target instanceof Element &&
-    target.closest("input, textarea, select, [contenteditable], [role=menu], [role=dialog]") !==
-      null
-  );
-}
 
 /**
  * The card above a list for adding a Task in one line: type a title and press Enter. The input
@@ -33,19 +26,15 @@ export function QuickAddCard({
   const [title, setTitle] = useState("");
   const [focused, setFocused] = useState(false);
   const createTask = useCreateTask(projectId, dates, tagId);
+  const singleKey = useSingleKeyShortcuts();
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== "c" || event.metaKey || event.ctrlKey || event.altKey) return;
-      if (isTyping(event.target)) return;
-      event.preventDefault();
+  useShortcuts({
+    quickAdd: (event) => {
+      // The drawer or another dialog is open over the list.
+      if (event.target instanceof Element && event.target.closest("[role=dialog]")) return;
       inputRef.current?.focus();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, []);
+    },
+  });
 
   const submit = () => {
     const trimmed = title.trim();
@@ -86,6 +75,8 @@ export function QuickAddCard({
             if (event.key === "Enter" && !event.nativeEvent.isComposing) {
               event.preventDefault();
               submit();
+            } else if (event.key === "Escape") {
+              event.currentTarget.blur();
             }
           }}
           onFocus={() => {
@@ -97,9 +88,12 @@ export function QuickAddCard({
           // 16px on touch screens: iOS Safari zooms the page into any smaller input.
           className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground pointer-coarse:h-11 pointer-coarse:text-base"
         />
-        {!focused && !title && (
-          <Kbd className="hidden shrink-0 lg:inline-flex" aria-label="Press C to add a task">
-            C
+        {!focused && !title && singleKey && (
+          <Kbd
+            className="hidden shrink-0 lg:inline-flex"
+            aria-label={`Press ${shortcutText("quickAdd")} to add a task`}
+          >
+            {shortcutText("quickAdd")}
           </Kbd>
         )}
         {focused && title && (

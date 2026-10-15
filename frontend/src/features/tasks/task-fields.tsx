@@ -21,11 +21,15 @@ export function TitleField({ task, className }: { task: TaskDetail; className?: 
       // A new key whenever the saved title changes resets the field to it.
       key={`${String(task.id)}-${task.title}`}
       aria-label="Title"
+      data-shortcut="editTitle"
       defaultValue={plainMentions(task.title)}
       rows={1}
       maxLength={500}
       onKeyDown={(event) => {
-        if (event.key === "Enter") {
+        if (event.key === "Escape") {
+          event.currentTarget.value = plainMentions(task.title);
+          event.currentTarget.blur();
+        } else if (event.key === "Enter") {
           event.preventDefault();
           event.currentTarget.blur();
         }
@@ -65,6 +69,12 @@ export function DescriptionField({ task }: { task: TaskDetail }) {
         defaultValue={plainMentions(task.description)}
         placeholder="Add a description… (markdown works)"
         rows={2}
+        onKeyDown={(event) => {
+          if (event.key === "Escape") {
+            event.currentTarget.value = plainMentions(task.description);
+            event.currentTarget.blur();
+          }
+        }}
         onBlur={(event) => {
           setEditing(false);
           const description = withMentions(event.currentTarget.value);

@@ -8,7 +8,8 @@ import { cn } from "@/lib/utils";
 
 import { CountIcon } from "./count-icon";
 import { DueBadge } from "./due-badge";
-import { rowActivator, rowKeyDown, type MoveByKey } from "./row-drag";
+import { rowActivator, type MoveByKey } from "./row-drag";
+import type { RowKeyDown } from "./row-keys";
 import { Grip } from "./row-grip";
 import type { DragHandle } from "./sortable-tree";
 import { SubtaskCount } from "./subtask-count";
@@ -31,7 +32,6 @@ const TITLE_INSET = 54;
 export type ToggleStatus = (task: Task) => void;
 export type OpenTask = (taskId: number) => void;
 export type ToggleCollapsed = (taskId: number) => void;
-export type DeleteTask = (task: Task) => void;
 
 /** What every row needs from the list, bundled so rows stay memoizable. */
 export type RowContext = {
@@ -46,8 +46,7 @@ export type RowContext = {
   onToggle: ToggleStatus;
   onOpen: OpenTask;
   onToggleCollapsed: ToggleCollapsed;
-  /** Left out where Tasks can't change, in an archived Project. */
-  onDelete?: DeleteTask;
+  onKeyDown: RowKeyDown;
 };
 
 /** Tree rows as table rows, each knowing whether its Subtasks are folded away. */
@@ -65,7 +64,7 @@ export function TreeRows({ rows, context }: { rows: TreeRow[]; context: RowConte
       onToggle={context.onToggle}
       onOpen={context.onOpen}
       onToggleCollapsed={context.onToggleCollapsed}
-      onDelete={context.onDelete}
+      onKeyDown={context.onKeyDown}
     />
   ));
 }
@@ -89,7 +88,7 @@ export const TaskRow = memo(function TaskRow({
   onOpen,
   onToggleCollapsed,
   onMoveByKey,
-  onDelete,
+  onKeyDown,
   handle,
   touch,
 }: {
@@ -105,8 +104,7 @@ export const TaskRow = memo(function TaskRow({
   onToggleCollapsed: ToggleCollapsed;
   /** Tab, Shift+Tab and Alt+↑/↓ move the row; left out where rows don't move. */
   onMoveByKey?: MoveByKey;
-  /** Delete and Backspace send the Task to Trash; left out where Tasks can't change. */
-  onDelete?: DeleteTask;
+  onKeyDown: RowKeyDown;
   /** Left out where rows don't drag. */
   handle?: DragHandle;
   touch?: boolean;
@@ -137,12 +135,7 @@ export const TaskRow = memo(function TaskRow({
           }
         }}
         onKeyDown={(event) => {
-          const deleteTask =
-            onDelete &&
-            (() => {
-              onDelete(task);
-            });
-          rowKeyDown(event, task.id, onOpen, onMoveByKey, deleteTask);
+          onKeyDown(event, task, onMoveByKey);
         }}
         {...rowActivator(handle, touch)}
         className={cn(

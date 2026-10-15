@@ -85,7 +85,7 @@ export function SortableTaskRows({
         onOpen={context.onOpen}
         onToggleCollapsed={context.onToggleCollapsed}
         onMoveByKey={moveByKey}
-        onDelete={context.onDelete}
+        onKeyDown={context.onKeyDown}
         handle={handle}
       />
     ),

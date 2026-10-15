@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   SHORTCUTS,
+  ariaKeyShortcuts,
   isSingleKey,
   keyCaps,
   matchesShortcut,
@@ -58,6 +59,13 @@ describe("the shortcut registry", () => {
     expect(worksInTextFields("$mod+Enter")).toBe(true);
     expect(worksInTextFields("$mod+z")).toBe(false);
     expect(worksInTextFields("c")).toBe(false);
+  });
+
+  it("writes single presses for aria-keyshortcuts", () => {
+    expect(ariaKeyShortcuts("nextTask", false)).toBe("J ArrowDown");
+    expect(ariaKeyShortcuts("undo", false)).toBe("Control+Z");
+    expect(ariaKeyShortcuts("undo", true)).toBe("Meta+Z");
+    expect(ariaKeyShortcuts("goToInbox", false)).toBe("");
   });
 
   it("spells each press of a key binding as key caps", () => {

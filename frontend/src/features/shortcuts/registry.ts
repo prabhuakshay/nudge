@@ -54,7 +54,7 @@ export const SHORTCUTS = {
   markWontDo: { keys: ["w"], scope: "list", label: "Won't do" },
   togglePin: { keys: ["p"], scope: "list", label: "Pin or unpin" },
   editTitle: { keys: ["e", "F2"], scope: "list", label: "Edit title" },
-  deleteTask: { keys: ["Delete", "Backspace"], scope: "list", label: "Delete" },
+  deleteTask: { keys: ["Backspace", "Delete"], scope: "list", label: "Delete" },
 
   previousTask: { keys: ["k", "ArrowUp"], scope: "detail", label: "Previous task" },
   nextTask: { keys: ["j", "ArrowDown"], scope: "detail", label: "Next task" },
@@ -144,6 +144,22 @@ export function keyCaps(binding: string, apple = APPLE): string[][] {
     const name = KEY_NAMES[key] ?? (key.length === 1 ? key.toUpperCase() : key);
     return [...mods.map((mod) => modName(mod, apple)), name];
   });
+}
+
+/**
+ * A shortcut's keys for `aria-keyshortcuts`, such as `K ArrowUp`. Sequences such as `G I` have no
+ * way to be written there, so they are left out.
+ */
+export function ariaKeyShortcuts(id: ShortcutId, apple = APPLE): string {
+  const keys: readonly string[] = SHORTCUTS[id].keys;
+  return keys
+    .filter((binding) => !binding.includes(" "))
+    .map((binding) =>
+      binding
+        .replace("$mod", apple ? "Meta" : "Control")
+        .replace(/(^|\+)([a-z])$/, (_, plus: string, key: string) => plus + key.toUpperCase()),
+    )
+    .join(" ");
 }
 
 /** A shortcut's first key binding as plain text for a tooltip or menu, such as `G then I`. */

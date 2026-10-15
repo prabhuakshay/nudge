@@ -19,6 +19,15 @@ function renderFeed() {
   );
 }
 
+/** Answer the feed's request with one page holding every event. */
+function respondWith(items: unknown[]) {
+  vi.spyOn(globalThis, "fetch").mockResolvedValue(
+    new Response(JSON.stringify({ items, next_cursor: null, count: items.length }), {
+      headers: { "Content-Type": "application/json" },
+    }),
+  );
+}
+
 function at(day: number) {
   return `2026-10-${String(day)}T09:00:00Z`;
 }
@@ -41,11 +50,7 @@ describe("ActivityFeed", () => {
     [{ old: DAY, new: null }, "Removed the date (was 6 Nov 2026)"],
   ])("describes a date change %#", async (data, text) => {
     const events = [{ id: 1, kind: "dates_changed", at: at(15), data }];
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ items: events, next_cursor: null, count: 1 }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    respondWith(events);
 
     renderFeed();
 
@@ -61,11 +66,7 @@ describe("ActivityFeed", () => {
     [{ old: [-5], new: [], all_day: false }, "Removed reminders (was 5 minutes before)"],
   ])("describes a Reminders change %#", async (data, text) => {
     const events = [{ id: 1, kind: "reminders_changed", at: at(15), data }];
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ items: events, next_cursor: null, count: 1 }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    respondWith(events);
 
     renderFeed();
 
@@ -106,11 +107,7 @@ describe("ActivityFeed", () => {
       },
       { id: 1, kind: "priority_changed", at: at(10), data: { old: 0, new: 1 } },
     ];
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ items: events, next_cursor: null, count: 6 }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    respondWith(events);
 
     renderFeed();
 
@@ -153,11 +150,7 @@ describe("ActivityFeed", () => {
         data: { ...status, old: "open", new: "completed", closed_subtasks: 3 },
       },
     ];
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ items: events, next_cursor: null, count: 4 }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    respondWith(events);
 
     renderFeed();
 
@@ -175,11 +168,7 @@ describe("ActivityFeed", () => {
       { id: 2, kind: "unpinned", at: at(15), data: {} },
       { id: 1, kind: "pinned", at: at(14), data: {} },
     ];
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ items: events, next_cursor: null, count: 2 }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    respondWith(events);
 
     renderFeed();
 
@@ -223,11 +212,7 @@ describe("ActivityFeed", () => {
       { id: 2, kind: "attachment_removed", at: NEWER.at, data: { name: "old.pdf" } },
       { id: 1, kind: "attachment_added", at: OLDER.at, data: { name: "receipt.png" } },
     ];
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ items: events, next_cursor: null, count: 2 }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    respondWith(events);
     render(
       <QueryClientProvider client={new QueryClient()}>
         <TooltipProvider>
@@ -247,11 +232,7 @@ describe("ActivityFeed", () => {
       at: NEWER.at,
       data: { from_project: "Inbox", to_project: "Work" },
     };
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ items: [moved], next_cursor: null, count: 1 }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    respondWith([moved]);
     render(
       <QueryClientProvider client={new QueryClient()}>
         <TooltipProvider>
@@ -285,11 +266,7 @@ describe("ActivityFeed", () => {
         data: { from_project: "Inbox", to_project: "Work", from_parent: null, to_parent: "Launch" },
       },
     ];
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ items: events, next_cursor: null, count: 3 }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    respondWith(events);
 
     renderFeed();
 
@@ -313,15 +290,24 @@ describe("ActivityFeed", () => {
         data: { old: "Call Al", new: "Call [@Al](person:4)" },
       },
     ];
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ items: events, next_cursor: null, count: 2 }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
+    respondWith(events);
 
     renderFeed();
 
     expect(await screen.findByText("Merged @Al into @Alice")).toBeInTheDocument();
     expect(screen.getByText("Renamed from “Call Al” to “Call @Al”")).toBeInTheDocument();
+  });
+
+  it("says when the task went to Trash and came back", async () => {
+    const events = [
+      { id: 2, kind: "restored", at: NEWER.at, data: {} },
+      { id: 1, kind: "trashed", at: OLDER.at, data: {} },
+    ];
+    respondWith(events);
+
+    renderFeed();
+
+    expect(await screen.findByText("Restored from Trash")).toBeInTheDocument();
+    expect(screen.getByText("Moved to Trash")).toBeInTheDocument();
   });
 });

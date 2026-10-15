@@ -162,7 +162,15 @@ describe("Task actions", () => {
       within(menu)
         .getAllByRole("menuitem")
         .map((item) => item.textContent),
-    ).toEqual(["OpenEnter", "Complete", "Pin to top", "Won't do", "Duplicate", "Copy link"]);
+    ).toEqual([
+      "OpenEnter",
+      "Complete",
+      "Pin to top",
+      "Won't do",
+      "Duplicate",
+      "Copy link",
+      "Delete⌫",
+    ]);
   });
 
   it("opens the Task from the right-click menu", async () => {

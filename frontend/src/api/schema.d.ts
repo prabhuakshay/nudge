@@ -712,7 +712,11 @@ export interface paths {
     get: operations["apps_tasks_api_tasks_get_task"];
     put?: never;
     post?: never;
-    delete?: never;
+    /**
+     * Move a Task to Trash
+     * @description Send a Task and its Subtasks to Trash as one unit, which `restore` brings back.
+     */
+    delete: operations["apps_tasks_api_tasks_delete_task"];
     options?: never;
     head?: never;
     /**
@@ -964,6 +968,46 @@ export interface paths {
     get: operations["apps_tasks_api_calendar_feed"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/trash": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List the Trash
+     * @description Return one row per deleted unit, most recently deleted first.
+     */
+    get: operations["apps_tasks_api_trash_list_trash"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restore a Task from Trash
+     * @description Bring back a Task with everything deleted along with it, and say where it went.
+     */
+    post: operations["apps_tasks_api_trash_restore_task"];
     delete?: never;
     options?: never;
     head?: never;
@@ -2225,6 +2269,25 @@ export interface components {
       all_day: boolean;
     };
     /**
+     * RestoredActivityOut
+     * @description The Task was restored from Trash.
+     */
+    RestoredActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "restored";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
      * StatusChangedActivityOut
      * @description The Task's Status changed.
      */
@@ -2370,6 +2433,8 @@ export interface components {
         | components["schemas"]["TagAddedActivityOut"]
         | components["schemas"]["TagRemovedActivityOut"]
         | components["schemas"]["TagsMergedActivityOut"]
+        | components["schemas"]["TrashedActivityOut"]
+        | components["schemas"]["RestoredActivityOut"]
       )[];
       /**
        * Next Cursor
@@ -2410,6 +2475,25 @@ export interface components {
       old: string;
       /** New */
       new: string;
+    };
+    /**
+     * TrashedActivityOut
+     * @description The Task was moved to Trash.
+     */
+    TrashedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "trashed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
     };
     /**
      * UnpinnedActivityOut
@@ -2621,6 +2705,45 @@ export interface components {
        * @description The private `.ics` address, or null while it's off.
        */
       url: string | null;
+    };
+    /**
+     * TrashedTaskOut
+     * @description One Trash unit: a deleted Task, with the Subtasks that went with it counted.
+     */
+    TrashedTaskOut: {
+      /** Id */
+      id: number;
+      /** Title */
+      title: string;
+      /**
+       * Project Name
+       * @description The Project it was deleted from.
+       */
+      project_name: string;
+      /**
+       * Subtask Count
+       * @description How many Subtasks went to Trash with it.
+       */
+      subtask_count: number;
+      /**
+       * Deleted At
+       * Format: date-time
+       */
+      deleted_at: string;
+      /**
+       * Expires At
+       * Format: date-time
+       * @description When it will be deleted for good.
+       */
+      expires_at: string;
+    };
+    /**
+     * TaskRestoreOut
+     * @description A Task back from Trash, and the Project it went back to, which may be the Inbox.
+     */
+    TaskRestoreOut: {
+      task: components["schemas"]["TaskOut"];
+      project: components["schemas"]["ProjectOut"];
     };
   };
   responses: never;
@@ -3875,6 +3998,44 @@ export interface operations {
       };
     };
   };
+  apps_tasks_api_tasks_delete_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
   apps_tasks_api_tasks_update_task: {
     parameters: {
       query?: never;
@@ -4460,6 +4621,57 @@ export interface operations {
         };
         content: {
           "text/calendar": string;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_trash_list_trash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TrashedTaskOut"][];
+        };
+      };
+    };
+  };
+  apps_tasks_api_trash_restore_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskRestoreOut"];
         };
       };
       /** @description Not Found */

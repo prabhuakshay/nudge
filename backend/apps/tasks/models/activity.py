@@ -36,6 +36,8 @@ class TaskActivity(models.Model):
         TAGS_MERGED = "tags_merged", "Tags merged"
         PERSON_MERGED = "person_merged", "Person merged"
         REMINDERS_CHANGED = "reminders_changed", "Reminders changed"
+        TRASHED = "trashed", "Moved to Trash"
+        RESTORED = "restored", "Restored"
 
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="activity")
     kind = models.CharField(max_length=32, choices=Kind)

@@ -17,6 +17,7 @@ import { Route as AppSearchRouteImport } from './routes/_app/search'
 import { Route as AppUpcomingRouteImport } from './routes/_app/upcoming'
 import { Route as AppPeoplePersonIdRouteImport } from './routes/_app/people.$personId'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects.$projectId'
+import { Route as AppTagsTagIdRouteImport } from './routes/_app/tags.$tagId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -57,6 +58,11 @@ const AppProjectsProjectIdRoute = AppProjectsProjectIdRouteImport.update({
   path: '/projects/$projectId',
   getParentRoute: () => AppRoute,
 } as any)
+const AppTagsTagIdRoute = AppTagsTagIdRouteImport.update({
+  id: '/tags/$tagId',
+  path: '/tags/$tagId',
+  getParentRoute: () => AppRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/upcoming': typeof AppUpcomingRoute
   '/people/$personId': typeof AppPeoplePersonIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/tags/$tagId': typeof AppTagsTagIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/': typeof AppIndexRoute
   '/people/$personId': typeof AppPeoplePersonIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/tags/$tagId': typeof AppTagsTagIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/_app/': typeof AppIndexRoute
   '/_app/people/$personId': typeof AppPeoplePersonIdRoute
   '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/_app/tags/$tagId': typeof AppTagsTagIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -97,6 +106,7 @@ export interface FileRouteTypes {
     | '/upcoming'
     | '/people/$personId'
     | '/projects/$projectId'
+    | '/tags/$tagId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
@@ -106,6 +116,7 @@ export interface FileRouteTypes {
     | '/'
     | '/people/$personId'
     | '/projects/$projectId'
+    | '/tags/$tagId'
   id:
     | '__root__'
     | '/_app'
@@ -116,6 +127,7 @@ export interface FileRouteTypes {
     | '/_app/'
     | '/_app/people/$personId'
     | '/_app/projects/$projectId'
+    | '/_app/tags/$tagId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -181,6 +193,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppProjectsProjectIdRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/tags/$tagId': {
+      id: '/_app/tags/$tagId'
+      path: '/tags/$tagId'
+      fullPath: '/tags/$tagId'
+      preLoaderRoute: typeof AppTagsTagIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
@@ -191,6 +210,7 @@ interface AppRouteChildren {
   AppIndexRoute: typeof AppIndexRoute
   AppPeoplePersonIdRoute: typeof AppPeoplePersonIdRoute
   AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
+  AppTagsTagIdRoute: typeof AppTagsTagIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
@@ -200,6 +220,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppIndexRoute: AppIndexRoute,
   AppPeoplePersonIdRoute: AppPeoplePersonIdRoute,
   AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
+  AppTagsTagIdRoute: AppTagsTagIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

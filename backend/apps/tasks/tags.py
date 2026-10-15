@@ -16,6 +16,7 @@ from django.db.models import Count
 from fractional_indexing import generate_key_between
 
 from apps.accounts.models import User
+from apps.core.errors import DomainRuleError
 from apps.tasks import repeat, services
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Project, Tag, Task, TaskActivity
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
     from apps.tasks.dates import TaskDates
 
 
-class TagRuleError(Exception):
+class TagRuleError(DomainRuleError):
     """A change to a Tag breaks one of the rules Tags follow."""
 
 

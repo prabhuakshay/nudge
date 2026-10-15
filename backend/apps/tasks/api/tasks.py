@@ -11,13 +11,10 @@ from ninja import Query, Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import moves, people, schedule, services, tags, trash, tree
-from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.dates import TaskDates
-from apps.tasks.mentions import MentionError
 from apps.tasks.models import Task
-from apps.tasks.pagination import InvalidCursorError, Page
-from apps.tasks.reminders import ReminderRuleError
-from apps.tasks.repeat import SUBTASK_REPEAT, Repeat, RepeatRuleError
+from apps.tasks.pagination import Page
+from apps.tasks.repeat import SUBTASK_REPEAT, Repeat
 from apps.tasks.schemas.activity import TaskActivityListOut
 from apps.tasks.schemas.reminders import ReminderOut
 from apps.tasks.schemas.tasks import (
@@ -79,10 +76,7 @@ def list_tasks(
     if not query.closed:
         items = [TaskOut.from_orm(task) for task in open_tasks()]
         return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=None))
-    try:
-        page = closed_page(query.cursor)
-    except InvalidCursorError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    page = closed_page(query.cursor)
     items = [TaskOut.from_orm(task) for task in page.items]
     return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=page.next_cursor))
 
@@ -170,17 +164,14 @@ def _create_root(
     )
     if project is None:
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
-    try:
-        created = tags.create_tagged_task(
-            project,
-            task.title,
-            _dates(task),
-            priority=task.priority or Task.Priority.NONE,
-            tags=with_tags,
-            repeat_with=_repeat(task),
-        )
-    except (MentionError, ArchivedProjectError, RepeatRuleError) as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    created = tags.create_tagged_task(
+        project,
+        task.title,
+        _dates(task),
+        priority=task.priority or Task.Priority.NONE,
+        tags=with_tags,
+        repeat_with=_repeat(task),
+    )
     return Status(_HTTP_CREATED, TaskOut.from_orm(created))
 
 
@@ -195,16 +186,13 @@ def _create_subtask(
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     if task.repeat_rule:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=SUBTASK_REPEAT))
-    try:
-        change = tags.create_tagged_subtask(
-            parent,
-            task.title,
-            _dates(task),
-            priority=task.priority or Task.Priority.NONE,
-            tags=with_tags,
-        )
-    except (services.TaskRuleError, MentionError, ArchivedProjectError) as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    change = tags.create_tagged_subtask(
+        parent,
+        task.title,
+        _dates(task),
+        priority=task.priority or Task.Priority.NONE,
+        tags=with_tags,
+    )
     return Status(_HTTP_CREATED, TaskOut.from_orm(change.task))
 
 
@@ -259,16 +247,7 @@ def update_task(
     edit = _edit(user, patch)
     if isinstance(edit, Status):
         return edit
-    try:
-        change = tags.update_tagged_task(user, task_id, *edit)
-    except (
-        services.TaskRuleError,
-        MentionError,
-        ReminderRuleError,
-        RepeatRuleError,
-        ArchivedProjectError,
-    ) as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    change = tags.update_tagged_task(user, task_id, *edit)
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     return Status(_HTTP_OK, task_change_out(change))
@@ -281,10 +260,7 @@ def update_task(
 )
 def delete_task(request: HttpRequest, task_id: int) -> Status[None] | Status[ErrorOut]:
     """Send a Task and its Subtasks to Trash as one unit, which `restore` brings back."""
-    try:
-        trashed = trash.trash_task(signed_in_user(request), task_id)
-    except ArchivedProjectError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    trashed = trash.trash_task(signed_in_user(request), task_id)
     if not trashed:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     return Status(_HTTP_NO_CONTENT, None)
@@ -312,10 +288,7 @@ def move_task(
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     if isinstance(destination, ErrorOut):
         return Status(_HTTP_NOT_FOUND, destination)
-    try:
-        change = moves.move_task(task, destination)
-    except (services.TaskRuleError, ArchivedProjectError) as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    change = moves.move_task(task, destination)
     return Status(_HTTP_OK, task_change_out(change))
 
 
@@ -340,10 +313,7 @@ def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:
 )
 def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Status[ErrorOut]:
     """Add an open copy of a Task right after it, with its title, Description and Priority."""
-    try:
-        copy = services.duplicate_task(signed_in_user(request), task_id)
-    except ArchivedProjectError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    copy = services.duplicate_task(signed_in_user(request), task_id)
     if copy is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     return Status(_HTTP_CREATED, TaskOut.from_orm(copy))
@@ -415,10 +385,7 @@ def list_activity(
     task = services.live_task(signed_in_user(request), task_id)
     if task is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    try:
-        page = services.task_activity(task, cursor)
-    except InvalidCursorError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    page = services.task_activity(task, cursor)
     activity = TaskActivityListOut.model_validate(
         {
             "items": page.items,

@@ -9,7 +9,6 @@ from ninja import Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import people
-from apps.tasks.people import PersonRuleError
 from apps.tasks.schemas.people import PersonIn, PersonMergeIn, PersonOut, PersonPatchIn
 
 if TYPE_CHECKING:
@@ -38,10 +37,7 @@ def list_people(request: HttpRequest) -> list[PersonOut]:
 )
 def create_person(request: HttpRequest, person: PersonIn) -> Status[PersonOut] | Status[ErrorOut]:
     """Add a Person to the address book."""
-    try:
-        created = people.create_person(signed_in_user(request), person.name, color=person.color)
-    except PersonRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    created = people.create_person(signed_in_user(request), person.name, color=person.color)
     return Status(_HTTP_CREATED, PersonOut.from_orm(created))
 
 
@@ -56,15 +52,12 @@ def update_person(
     patch: PersonPatchIn,
 ) -> Status[PersonOut] | Status[ErrorOut]:
     """Rename or recolour a Person. A rename shows in every Mention of them."""
-    try:
-        found = people.update_person(
-            signed_in_user(request),
-            person_id,
-            name=patch.name,
-            color=patch.color,
-        )
-    except PersonRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    found = people.update_person(
+        signed_in_user(request),
+        person_id,
+        name=patch.name,
+        color=patch.color,
+    )
     if found is None:
         return Status(_HTTP_NOT_FOUND, _PERSON_NOT_FOUND)
     return Status(_HTTP_OK, PersonOut.from_orm(found))
@@ -93,10 +86,7 @@ def merge_person(
     merge: PersonMergeIn,
 ) -> Status[PersonOut] | Status[ErrorOut]:
     """Fold a Person into another: their Mentions move over and they are deleted."""
-    try:
-        merged = people.merge_person(signed_in_user(request), person_id, merge.into_id)
-    except PersonRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    merged = people.merge_person(signed_in_user(request), person_id, merge.into_id)
     if merged is None:
         return Status(_HTTP_NOT_FOUND, _PERSON_NOT_FOUND)
     return Status(_HTTP_OK, PersonOut.from_orm(merged))

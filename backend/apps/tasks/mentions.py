@@ -10,6 +10,7 @@ from __future__ import annotations
 import re
 from typing import TYPE_CHECKING
 
+from apps.core.errors import DomainRuleError
 from apps.tasks.models import Comment, Person, Task, TaskMention
 
 if TYPE_CHECKING:
@@ -21,7 +22,7 @@ MENTION = re.compile(r"\[@([^\]]*)\]\(person:(\d+)\)")
 TEXT_FIELDS = ("title", "description", "blocked_reason")
 
 
-class MentionError(Exception):
+class MentionError(DomainRuleError):
     """A text mentions a Person the user doesn't have."""
 
 

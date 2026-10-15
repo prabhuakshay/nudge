@@ -9,8 +9,6 @@ from ninja import Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import comments, services
-from apps.tasks.archive import ArchivedProjectError
-from apps.tasks.mentions import MentionError
 from apps.tasks.schemas.comments import CommentIn, CommentOut
 
 if TYPE_CHECKING:
@@ -57,10 +55,7 @@ def add_comment(
     task = services.live_task(signed_in_user(request), task_id)
     if task is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    try:
-        added = comments.add_comment(task, comment.body)
-    except (MentionError, ArchivedProjectError) as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    added = comments.add_comment(task, comment.body)
     return Status(_HTTP_CREATED, CommentOut.from_orm(added))
 
 
@@ -75,10 +70,7 @@ def edit_comment(
     comment: CommentIn,
 ) -> Status[CommentOut] | Status[ErrorOut]:
     """Replace a Comment's body."""
-    try:
-        edited = comments.edit_comment(signed_in_user(request), comment_id, comment.body)
-    except (MentionError, ArchivedProjectError) as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    edited = comments.edit_comment(signed_in_user(request), comment_id, comment.body)
     if edited is None:
         return Status(_HTTP_NOT_FOUND, _COMMENT_NOT_FOUND)
     return Status(_HTTP_OK, CommentOut.from_orm(edited))
@@ -91,10 +83,7 @@ def edit_comment(
 )
 def delete_comment(request: HttpRequest, comment_id: int) -> Status[None] | Status[ErrorOut]:
     """Delete a Comment for good."""
-    try:
-        deleted = comments.delete_comment(signed_in_user(request), comment_id)
-    except ArchivedProjectError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    deleted = comments.delete_comment(signed_in_user(request), comment_id)
     if not deleted:
         return Status(_HTTP_NOT_FOUND, _COMMENT_NOT_FOUND)
     return Status(_HTTP_NO_CONTENT, None)

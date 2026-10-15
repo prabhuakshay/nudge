@@ -16,6 +16,7 @@ from django.db.models import F
 from django.utils import timezone
 from fractional_indexing import generate_key_between
 
+from apps.core.errors import DomainRuleError
 from apps.core.palette import PaletteColor
 from apps.tasks import reminders, repeat
 from apps.tasks.archive import ensure_writable
@@ -50,7 +51,7 @@ if TYPE_CHECKING:
     from apps.accounts.models import User
 
 
-class TaskRuleError(Exception):
+class TaskRuleError(DomainRuleError):
     """A change that would break a Task rule. The message says which, in the user's words."""
 
 

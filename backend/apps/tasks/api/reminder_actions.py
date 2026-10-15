@@ -10,8 +10,6 @@ from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import reminder_actions
 from apps.tasks.api.tasks import task_change_out
-from apps.tasks.archive import ArchivedProjectError
-from apps.tasks.repeat import RepeatRuleError
 from apps.tasks.schemas.reminders import SnoozeIn  # noqa: TC001 - Ninja reads the type at runtime
 from apps.tasks.schemas.tasks import TaskChangeOut
 
@@ -37,10 +35,7 @@ def complete(
     notification_id: int,
 ) -> Status[TaskChangeOut] | Status[ErrorOut]:
     """Complete the Task a Reminder notification is about, as ticking it off would."""
-    try:
-        change = reminder_actions.complete(signed_in_user(request), notification_id)
-    except (ArchivedProjectError, RepeatRuleError) as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    change = reminder_actions.complete(signed_in_user(request), notification_id)
     if change is None:
         return Status(_HTTP_NOT_FOUND, _NOT_FOUND)
     return Status(_HTTP_OK, task_change_out(change))

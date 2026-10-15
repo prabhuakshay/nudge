@@ -17,6 +17,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.accounts.services import local_zone
+from apps.core.errors import DomainRuleError
 from apps.notifications.services import notify
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import OPEN_STATUSES, Reminder, Task, TaskActivity
@@ -30,7 +31,7 @@ MAX_OFFSET = timedelta(days=365)
 CATCH_UP = timedelta(hours=1)
 
 
-class ReminderRuleError(Exception):
+class ReminderRuleError(DomainRuleError):
     """A set of Reminders that would break a Reminder rule. The message says which."""
 
 

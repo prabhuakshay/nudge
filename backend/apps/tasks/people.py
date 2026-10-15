@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING
 
 from django.db import IntegrityError, transaction
 
+from apps.core.errors import DomainRuleError
 from apps.core.palette import PaletteColor
 from apps.tasks.mentions import rewrite_mentions, token
 from apps.tasks.models import (
@@ -31,7 +32,7 @@ if TYPE_CHECKING:
     from apps.accounts.models import User
 
 
-class PersonRuleError(Exception):
+class PersonRuleError(DomainRuleError):
     """A change to a Person breaks one of the rules People follow."""
 
 

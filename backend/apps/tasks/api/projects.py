@@ -9,7 +9,7 @@ from ninja import Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import project_trash, projects
-from apps.tasks.projects import ProjectRuleError, SiblingRef
+from apps.tasks.projects import SiblingRef
 from apps.tasks.schemas.projects import ProjectIn, ProjectMoveIn, ProjectOut, ProjectPatchIn
 
 if TYPE_CHECKING:
@@ -41,16 +41,13 @@ def create_project(
         folder = projects.folder(user, project.folder_id)
         if folder is None:
             return Status(_HTTP_NOT_FOUND, _FOLDER_NOT_FOUND)
-    try:
-        created = projects.create_project(
-            user,
-            project.name,
-            color=project.color,
-            icon=project.icon,
-            folder=folder,
-        )
-    except ProjectRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    created = projects.create_project(
+        user,
+        project.name,
+        color=project.color,
+        icon=project.icon,
+        folder=folder,
+    )
     return Status(_HTTP_CREATED, ProjectOut.from_orm(created))
 
 
@@ -65,16 +62,13 @@ def update_project(
     patch: ProjectPatchIn,
 ) -> Status[ProjectOut] | Status[ErrorOut]:
     """Rename, recolour or change the icon of a Project. The Inbox can't be changed."""
-    try:
-        project = projects.update_project(
-            signed_in_user(request),
-            project_id,
-            name=patch.name,
-            color=patch.color,
-            icon=patch.icon,
-        )
-    except ProjectRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    project = projects.update_project(
+        signed_in_user(request),
+        project_id,
+        name=patch.name,
+        color=patch.color,
+        icon=patch.icon,
+    )
     if project is None:
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
     return Status(_HTTP_OK, ProjectOut.from_orm(project))
@@ -98,10 +92,7 @@ def move_project(
         if folder is None:
             return Status(_HTTP_NOT_FOUND, _FOLDER_NOT_FOUND)
     after = None if move.after is None else SiblingRef(move.after.kind, move.after.id)
-    try:
-        moved = projects.move_project(user, project_id, folder, after)
-    except ProjectRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    moved = projects.move_project(user, project_id, folder, after)
     if not moved:
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
     return Status(_HTTP_NO_CONTENT, None)
@@ -114,10 +105,7 @@ def move_project(
 )
 def archive_project(request: HttpRequest, project_id: int) -> Status[ProjectOut] | Status[ErrorOut]:
     """Make a Project read-only and move it to the sidebar's Archived section."""
-    try:
-        project = projects.archive_project(signed_in_user(request), project_id)
-    except ProjectRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    project = projects.archive_project(signed_in_user(request), project_id)
     if project is None:
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
     return Status(_HTTP_OK, ProjectOut.from_orm(project))
@@ -146,10 +134,7 @@ def unarchive_project(
 )
 def delete_project(request: HttpRequest, project_id: int) -> Status[None] | Status[ErrorOut]:
     """Move a Project and its Tasks to Trash as one unit. The Inbox can't be deleted."""
-    try:
-        trashed = project_trash.trash_project(signed_in_user(request), project_id)
-    except ProjectRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    trashed = project_trash.trash_project(signed_in_user(request), project_id)
     if not trashed:
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
     return Status(_HTTP_NO_CONTENT, None)

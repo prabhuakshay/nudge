@@ -14,13 +14,15 @@ from typing import TYPE_CHECKING
 
 from django.db import models
 
+from apps.core.errors import DomainRuleError
+
 if TYPE_CHECKING:
     from django.db.models import QuerySet
 
 PAGE_SIZE = 50
 
 
-class InvalidCursorError(ValueError):
+class InvalidCursorError(DomainRuleError):
     """A pagination cursor that this server didn't hand out."""
 
 

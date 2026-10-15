@@ -15,7 +15,6 @@ from ninja import File, Router, Status, UploadedFile
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import attachments, services
-from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.schemas.attachments import AttachmentOut
 
 if TYPE_CHECKING:
@@ -62,8 +61,6 @@ def upload_attachment(
         attachment = attachments.attach_file(task, file)
     except attachments.AttachmentTooLargeError as error:
         return Status(_HTTP_CONTENT_TOO_LARGE, ErrorOut(detail=str(error)))
-    except ArchivedProjectError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, AttachmentOut.from_orm(attachment))
 
 
@@ -123,10 +120,7 @@ def download_attachment(
 )
 def delete_attachment(request: HttpRequest, attachment_id: int) -> Status[None] | Status[ErrorOut]:
     """Delete an Attachment and its file for good."""
-    try:
-        deleted = attachments.delete_attachment(signed_in_user(request), attachment_id)
-    except ArchivedProjectError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    deleted = attachments.delete_attachment(signed_in_user(request), attachment_id)
     if not deleted:
         return Status(_HTTP_NOT_FOUND, _ATTACHMENT_NOT_FOUND)
     return Status(_HTTP_NO_CONTENT, None)

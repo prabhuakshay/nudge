@@ -31,10 +31,7 @@ _TAG_NOT_FOUND = ErrorOut(detail="Tag not found.")
 )
 def create_tag(request: HttpRequest, tag: TagIn) -> Status[TagOut] | Status[ErrorOut]:
     """Create a Tag last in the user's order."""
-    try:
-        created = tags.create_tag(signed_in_user(request), tag.name, color=tag.color)
-    except tags.TagRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    created = tags.create_tag(signed_in_user(request), tag.name, color=tag.color)
     return Status(_HTTP_CREATED, TagOut.from_orm(created))
 
 
@@ -50,15 +47,12 @@ def update_tag(
 ) -> Status[TagOut] | Status[ErrorOut]:
     """Rename or recolour a Tag; the new name shows on every Task that has it."""
     clears_color = "color" in patch.model_fields_set and patch.color is None
-    try:
-        updated = tags.update_tag(
-            signed_in_user(request),
-            tag_id,
-            name=patch.name,
-            color="" if clears_color else patch.color,
-        )
-    except tags.TagRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    updated = tags.update_tag(
+        signed_in_user(request),
+        tag_id,
+        name=patch.name,
+        color="" if clears_color else patch.color,
+    )
     if updated is None:
         return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
     return Status(_HTTP_OK, TagOut.from_orm(updated))
@@ -87,10 +81,7 @@ def merge_tag(
     merge: TagMergeIn,
 ) -> Status[None] | Status[ErrorOut]:
     """Move every Task of a Tag onto another Tag, then delete the first for good."""
-    try:
-        merged = tags.merge_tag(signed_in_user(request), tag_id, merge.into_id)
-    except tags.TagRuleError as error:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    merged = tags.merge_tag(signed_in_user(request), tag_id, merge.into_id)
     if not merged:
         return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
     return Status(_HTTP_NO_CONTENT, None)

@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 
-import { INBOX, json, renderTaskList } from "@/test/drawer";
+import { GARDEN, INBOX, json, renderTaskList } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
 
 import { moveRow, type Placement } from "./task-drag";
@@ -173,5 +173,16 @@ describe("moving Tasks in the list", () => {
 
     await screen.findByText("Groceries");
     expect(screen.queryByRole("button", { name: /^Drag/ })).not.toBeInTheDocument();
+  });
+
+  it("leaves an archived Project's rows where they are", async () => {
+    const fetchSpy = mockApi(seed().map((row) => ({ ...row, project_id: GARDEN.id })));
+    const { user } = renderTaskList({ project: GARDEN });
+    await focusRow("Groceries");
+
+    await user.keyboard("{Tab}");
+
+    expect(screen.queryByRole("button", { name: /^Drag/ })).not.toBeInTheDocument();
+    expect(await moves(fetchSpy)).toEqual([]);
   });
 });

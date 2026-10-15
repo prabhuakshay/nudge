@@ -14,6 +14,16 @@ from apps.tasks.models import Project, Task
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+# These characters would break a Mention token, `[@Name](person:<id>)`, written around the name.
+PersonName = Annotated[
+    str,
+    StringConstraints(
+        strip_whitespace=True,
+        min_length=1,
+        max_length=64,
+        pattern=r"^[^@\[\]()]+$",
+    ),
+]
 
 
 class TaskOut(Schema):
@@ -274,6 +284,22 @@ class MovedData(Schema):
     to_parent: str | None = Field(default=None, description="Null when it became a root.")
 
 
+class PersonMergedData(Schema):
+    """The People merged, by their names at the time: `from_person` was folded into `to_person`."""
+
+    from_person: str
+    to_person: str
+
+
+class PersonMergedActivityOut(Schema):
+    """A Person the Task mentioned was merged into another."""
+
+    id: int
+    kind: Literal["person_merged"]
+    at: datetime
+    data: PersonMergedData
+
+
 class MovedActivityOut(Schema):
     """The Task moved to another Project or parent."""
 
@@ -354,7 +380,8 @@ TaskActivityOut = Annotated[
     | AttachmentAddedActivityOut
     | AttachmentRemovedActivityOut
     | DatesChangedActivityOut
-    | MovedActivityOut,
+    | MovedActivityOut
+    | PersonMergedActivityOut,
     Field(discriminator="kind"),
 ]
 
@@ -388,6 +415,7 @@ class ProjectOut(Schema):
     icon: Project.Icon
     folder_id: int | None
     is_inbox: bool
+    is_archived: bool = Field(description="Archived Projects are read-only.")
 
 
 class ProjectIn(Schema):
@@ -471,3 +499,32 @@ class SidebarOut(Schema):
     items: list[Annotated[SidebarFolderOut | SidebarProjectOut, Field(discriminator="kind")]] = (
         Field(description="Folders and ungrouped Projects in the user's order.")
     )
+    archived: list[SidebarProjectOut] = Field(description="Archived Projects, by name.")
+
+
+class PersonOut(Schema):
+    """A Person in the user's address book."""
+
+    id: int
+    name: str
+    color: PaletteColor
+
+
+class PersonIn(Schema):
+    """A new Person."""
+
+    name: PersonName = Field(description="Unique among the user's People, ignoring case.")
+    color: PaletteColor | None = Field(default=None, description="Random when left out.")
+
+
+class PersonPatchIn(Schema):
+    """The fields of a Person to change; fields left out stay as they are."""
+
+    name: PersonName | None = Field(default=None, description="Rewrites every Mention.")
+    color: PaletteColor | None = None
+
+
+class PersonMergeIn(Schema):
+    """The Person to fold another into."""
+
+    into_id: int

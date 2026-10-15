@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 from fractional_indexing import generate_key_between
 
+from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, OPEN_STATUSES, Project, Task, TaskActivity
 from apps.tasks.rows import as_rows
 from apps.tasks.services import TaskChange, TaskRuleError
@@ -47,8 +48,11 @@ def move_task(task: Task, destination: Destination) -> TaskChange:
     Raises:
         TaskRuleError: The destination is under the Task itself, nests too deep, or names a
             parent in another Project than the one given.
+        ArchivedProjectError: The Task is in an archived Project, or would move into one.
     """
     project = _target_project(task, destination)
+    ensure_writable(task.project)
+    ensure_writable(project)
     parent = destination.parent
     _check_parent(task, parent)
     from_project, from_parent = task.project.name, task.parent_title

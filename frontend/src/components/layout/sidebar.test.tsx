@@ -13,6 +13,7 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 vi.mock("@/features/settings/settings-dialog", () => ({ SettingsDialog: () => null }));
 vi.mock("@/features/projects/sidebar-projects", () => ({ SidebarProjects: () => null }));
+vi.mock("@/features/people/sidebar-people", () => ({ SidebarPeople: () => null }));
 
 const ada = {
   id: 1,
@@ -24,9 +25,12 @@ const ada = {
 describe("Sidebar", () => {
   it("lists the Inbox first, with its open Task count", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ inbox: { id: 7, name: "Inbox", open_count: 3 }, items: [] }), {
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({ inbox: { id: 7, name: "Inbox", open_count: 3 }, items: [], archived: [] }),
+        {
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
 
     render(

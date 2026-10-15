@@ -63,7 +63,6 @@ export type SortableRowProps = {
   /** The row's level, or while it's dragged, the level it would drop at. */
   level: number;
   handle: DragHandle;
-  dragging: boolean;
 };
 
 // Module constants, not inline objects: dnd-kit memoizes sensors on these options, and new objects
@@ -92,12 +91,15 @@ export function SortableTree({
   indent,
   renderRow,
   onMove,
+  disabled = false,
 }: {
   rows: TreeRow[];
   base: TreeBase;
   indent: number;
   renderRow: (props: SortableRowProps) => ReactNode;
   onMove: (taskId: number, placement: Placement) => void;
+  /** Rows that can't change, as in an archived Project, don't drag. */
+  disabled?: boolean;
 }) {
   const [activeId, setActiveId] = useState<number | null>(null);
   const [overId, setOverId] = useState<number | null>(null);
@@ -157,6 +159,7 @@ export function SortableTree({
             row={row}
             level={row.task.id === activeId && drop ? drop.level : row.level}
             renderRow={renderRow}
+            disabled={disabled}
           />
         ))}
       </SortableContext>
@@ -190,10 +193,12 @@ function SortableRow({
   row,
   level,
   renderRow,
+  disabled,
 }: {
   row: TreeRow;
   level: number;
   renderRow: (props: SortableRowProps) => ReactNode;
+  disabled: boolean;
 }) {
   const {
     attributes,
@@ -203,7 +208,7 @@ function SortableRow({
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: row.task.id });
+  } = useSortable({ id: row.task.id, disabled });
   const handle = useMemo<DragHandle>(
     () => ({
       listeners,
@@ -217,14 +222,12 @@ function SortableRow({
     [listeners, attributes, setActivatorNodeRef],
   );
   return (
-    <div ref={setNodeRef} style={{ transform: CSS.Translate.toString(transform), transition }}>
-      <RowContent
-        renderRow={renderRow}
-        row={row}
-        level={level}
-        handle={handle}
-        dragging={isDragging}
-      />
+    <div
+      ref={setNodeRef}
+      style={{ transform: CSS.Translate.toString(transform), transition }}
+      className={cn(isDragging && "opacity-40")}
+    >
+      <RowContent renderRow={renderRow} row={row} level={level} handle={handle} />
     </div>
   );
 }

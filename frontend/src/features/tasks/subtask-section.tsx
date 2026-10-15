@@ -2,6 +2,8 @@ import { ChevronRight, GripVertical, Plus } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { Kbd } from "@/components/ui/kbd";
+import { MentionText } from "@/features/people/mention-text";
+import { plainMentions } from "@/features/people/mentions";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
@@ -24,9 +26,12 @@ const INDENT = 22;
  */
 export function SubtaskSection({
   task,
+  readOnly = false,
   onOpen,
 }: {
   task: TaskDetail;
+  /** An archived Project's Subtasks don't move. */
+  readOnly?: boolean;
   onOpen: (taskId: number) => void;
 }) {
   const rows = useMemo(() => treeRows(task.subtasks), [task.subtasks]);
@@ -46,13 +51,12 @@ export function SubtaskSection({
   );
   // Stable between drag steps, so Subtasks that don't move skip rendering.
   const renderRow = useCallback(
-    ({ row, level, handle, dragging }: SortableRowProps) => (
+    ({ row, level, handle }: SortableRowProps) => (
       <SubtaskItem
         task={row.task}
         level={level}
         subtasks={row.subtasks}
         handle={handle}
-        dragging={dragging}
         touch={touch}
         onOpen={onOpen}
       />
@@ -80,6 +84,7 @@ export function SubtaskSection({
               indent={INDENT}
               renderRow={renderRow}
               onMove={onMove}
+              disabled={readOnly}
             />
           </div>
         )}
@@ -104,7 +109,6 @@ function SubtaskItem({
   level,
   subtasks,
   handle: { setNode, attributes, listeners, onPointerDown, onTouchStart },
-  dragging,
   touch,
   onOpen,
 }: {
@@ -112,7 +116,6 @@ function SubtaskItem({
   level: number;
   subtasks: SubtaskProgress;
   handle: DragHandle;
-  dragging: boolean;
   touch: boolean;
   onOpen: (taskId: number) => void;
 }) {
@@ -123,11 +126,8 @@ function SubtaskItem({
       ref={touch ? setNode : undefined}
       onTouchStart={touch ? onTouchStart : undefined}
       onPointerDown={touch ? undefined : onPointerDown}
-      className={cn(
-        // No text selection or iOS callout, so a long press starts a drag instead.
-        "group/subtask relative flex min-h-11 items-center gap-2.5 bg-surface pr-2 select-none [-webkit-touch-callout:none] sm:min-h-10",
-        dragging && "opacity-40",
-      )}
+      // No text selection or iOS callout, so a long press starts a drag instead.
+      className="group/subtask relative flex min-h-11 items-center gap-2.5 bg-surface pr-2 select-none [-webkit-touch-callout:none] sm:min-h-10"
       style={{ paddingLeft: 12 + level * INDENT }}
     >
       {!touch && (
@@ -136,7 +136,7 @@ function SubtaskItem({
           ref={setNode}
           {...attributes}
           {...listeners}
-          aria-label={`Drag “${task.title}”`}
+          aria-label={`Drag “${plainMentions(task.title)}”`}
           style={{ left: level * INDENT }}
           className="absolute top-1/2 flex h-6 w-3 -translate-y-1/2 cursor-grab touch-none items-center justify-center text-muted-foreground/60 opacity-0 group-focus-within/subtask:opacity-100 group-hover/subtask:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring active:cursor-grabbing"
         >
@@ -160,7 +160,7 @@ function SubtaskItem({
           isClosed(task.status) && "text-muted-foreground line-through",
         )}
       >
-        {task.title}
+        <MentionText text={task.title} />
       </button>
       {task.status === "blocked" && (
         <span className="rounded bg-warning-soft px-1.5 py-px text-[10px] font-bold text-warning">

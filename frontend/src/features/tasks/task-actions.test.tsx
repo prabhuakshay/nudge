@@ -52,7 +52,7 @@ async function patch(found: TaskDetail, request: Request) {
 /** A list as the server sends it: the Inbox alone, or open Tasks pinned first and no Closed ones. */
 function list(tasks: TaskDetail[], url: URL) {
   if (url.pathname.endsWith("/sidebar")) {
-    return json({ inbox: INBOX, items: [] });
+    return json({ inbox: INBOX, items: [], archived: [] });
   }
   if (url.searchParams.get("closed") === "true") {
     return json({ items: [], next_cursor: null });

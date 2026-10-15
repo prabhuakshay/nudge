@@ -10,26 +10,17 @@ import {
   type Placement,
   type TreeBase,
 } from "./task-drag";
-import {
-  TaskRow,
-  type MoveByKey,
-  type OpenTask,
-  type ToggleCollapsed,
-  type ToggleStatus,
-} from "./task-row";
+import type { MoveByKey } from "./row-drag";
+import { TaskRow, TreeRows, type RowContext } from "./task-row";
 import { MAX_DEPTH, treeRows } from "./task-tree";
 import type { Task } from "./tasks";
 
-/** What every row needs from the list, bundled so rows stay memoizable. */
-export type RowContext = {
-  openId: number | null;
-  collapsed: ReadonlySet<number>;
-  indent: number;
-  /** On touch screens a long press drags, so rows have no context menu and no grip. */
+/** What sortable rows need on top of every row's context. */
+export type SortableRowContext = RowContext & {
+  /** On touch screens a long press drags the row, so rows have no grip. */
   touch: boolean;
-  onToggle: ToggleStatus;
-  onOpen: OpenTask;
-  onToggleCollapsed: ToggleCollapsed;
+  /** False where the rows can't change, as in an archived Project. */
+  sortable: boolean;
   onMove: (taskId: number, placement: Placement) => void;
 };
 
@@ -52,9 +43,16 @@ function keyPlacement(tasks: Task[], taskId: number, move: Parameters<MoveByKey>
 
 /**
  * One group of Task trees as sortable table rows: drag a row to reorder or nest it, or use Tab,
- * Shift+Tab and Alt+↑/↓ on a focused row. Moves stay within the group's trees.
+ * Shift+Tab and Alt+↑/↓ on a focused row. Moves stay within the group's trees. Where rows can't
+ * change, they are plain table rows.
  */
-export function SortableTaskRows({ tasks, context }: { tasks: Task[]; context: RowContext }) {
+export function SortableTaskRows({
+  tasks,
+  context,
+}: {
+  tasks: Task[];
+  context: SortableRowContext;
+}) {
   const rows = useMemo(() => treeRows(tasks, context.collapsed), [tasks, context.collapsed]);
   const { onMove } = context;
   const moveByKey = useCallback<MoveByKey>(
@@ -73,7 +71,7 @@ export function SortableTaskRows({ tasks, context }: { tasks: Task[]; context: R
   );
   // Stable between drag steps, so rows that don't move skip rendering.
   const renderRow = useCallback(
-    ({ row, level, handle, dragging }: SortableRowProps) => (
+    ({ row, level, handle }: SortableRowProps) => (
       <TaskRow
         task={row.task}
         level={level}
@@ -81,17 +79,18 @@ export function SortableTaskRows({ tasks, context }: { tasks: Task[]; context: R
         selected={row.task.id === context.openId}
         collapsed={context.collapsed.has(row.task.id)}
         indent={context.indent}
+        contextMenu={context.contextMenu}
         touch={context.touch}
         onToggle={context.onToggle}
         onOpen={context.onOpen}
         onToggleCollapsed={context.onToggleCollapsed}
         onMoveByKey={moveByKey}
         handle={handle}
-        dragging={dragging}
       />
     ),
     [context, moveByKey],
   );
+  if (!context.sortable) return <TreeRows rows={rows} context={context} />;
   return (
     <SortableTree
       rows={rows}

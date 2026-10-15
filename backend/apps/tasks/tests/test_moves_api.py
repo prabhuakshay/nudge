@@ -273,6 +273,22 @@ def test_a_parent_in_another_project_than_the_one_given_is_refused(
 
 
 @pytest.mark.django_db
+def test_tasks_cannot_move_into_or_out_of_an_archived_project(client: Client, ada: User) -> None:
+    garden = projects.create_project(ada, "Garden")
+    weeds = services.create_task(garden, "Pull weeds")
+    projects.archive_project(ada, garden.pk)
+    (mine,) = _roots(ada, "Mine")
+
+    into = _move(client, mine, project_id=garden.pk)
+    out_of = _move(client, weeds, project_id=mine.project_id)
+
+    archived = {"detail": "“Garden” is archived. Unarchive it to change its tasks."}
+    assert (into.status_code, into.json()) == (422, archived)
+    assert (out_of.status_code, out_of.json()) == (422, archived)
+    assert Task.objects.get(pk=mine.pk).project_id == mine.project_id
+
+
+@pytest.mark.django_db
 @pytest.mark.parametrize("field", ["task", "project_id", "parent_id"])
 def test_a_move_cannot_reach_another_users_tasks_or_projects(
     client: Client,

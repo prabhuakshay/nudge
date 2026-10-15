@@ -54,7 +54,7 @@ function mockApi(rows: Task[] = seed()) {
     }
     if (url.pathname.endsWith("/attachments")) return json([]);
     if (task) return json(server.detail(task));
-    if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX, items: [] });
+    if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX, items: [], archived: [] });
     const closed = url.searchParams.get("closed") === "true";
     return json({ items: server.trees(closed), next_cursor: null });
   });

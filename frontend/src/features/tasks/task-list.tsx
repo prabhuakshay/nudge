@@ -4,6 +4,7 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
+import { ArchivedNotice } from "@/features/projects/archived-notice";
 import { ProjectHeader } from "@/features/projects/project-header";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
@@ -16,7 +17,7 @@ import { isClosed } from "./task-properties";
 import type { Placement } from "./task-drag";
 import { useMoveTask } from "./task-placement";
 import { GRID, type ToggleCollapsed, type ToggleStatus } from "./task-row";
-import { SortableTaskRows, type RowContext } from "./task-rows";
+import { SortableTaskRows, type SortableRowContext } from "./task-rows";
 import { parentsOf, treeRows, treesWhere } from "./task-tree";
 import {
   closedTasksQuery,
@@ -33,8 +34,10 @@ const PHONE_INDENT = 20;
 /**
  * A Project's Tasks as a table: the page header, Quick add, then the pinned Task trees, the other
  * open trees and a collapsed Closed group. Subtasks nest under their parent and fold away from
- * its chevron; dragging a row, or Tab and Alt+↑/↓, reorders and nests it. On phones the table collapses into stacked rows. Clicking a row opens the Task in
- * the drawer, and the URL's `?task=` follows the open Task.
+ * its chevron; dragging a row, or Tab and Alt+↑/↓, reorders and nests it. On phones the table
+ * collapses into stacked rows. Clicking a row opens the Task in
+ * the drawer, and the URL's `?task=` follows the open Task. An archived Project's list is
+ * read-only: a notice replaces Quick add and every control that changes a Task is disabled.
  */
 export function TaskList({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));
@@ -86,18 +89,31 @@ export function TaskList({ project }: { project: SidebarProject }) {
       return next;
     });
   }, []);
-  const context = useMemo<RowContext>(
+  const context = useMemo<SortableRowContext>(
     () => ({
       openId,
       collapsed,
       indent,
+      contextMenu: !touch && !project.is_archived,
       touch,
+      // An archived Project is read-only, so its rows stay put.
+      sortable: !project.is_archived,
       onToggle: toggle,
       onOpen: setOpenId,
       onToggleCollapsed: toggleCollapsed,
       onMove: moveTask,
     }),
-    [openId, collapsed, indent, touch, toggle, toggleCollapsed, setOpenId, moveTask],
+    [
+      openId,
+      collapsed,
+      indent,
+      touch,
+      project.is_archived,
+      toggle,
+      toggleCollapsed,
+      setOpenId,
+      moveTask,
+    ],
   );
 
   return (
@@ -116,83 +132,70 @@ export function TaskList({ project }: { project: SidebarProject }) {
         )}
       </ProjectHeader>
 
-      <QuickAddCard projectId={project.id} />
+      {project.is_archived ? (
+        <ArchivedNotice project={project} />
+      ) : (
+        <QuickAddCard projectId={project.id} />
+      )}
 
-      <div
-        role="treegrid"
-        aria-label={`${project.name} tasks`}
-        className="rounded-xl border border-border bg-surface shadow-sm"
-      >
+      {/* A disabled fieldset disables every control inside, while rows still open the drawer. */}
+      <fieldset disabled={project.is_archived} className="min-w-0">
         <div
-          role="row"
-          className={cn(
-            GRID,
-            "sticky top-14 z-10 hidden h-9 items-center rounded-t-xl border-b border-border bg-surface-muted/95 pr-2 pl-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur",
-          )}
+          role="treegrid"
+          aria-label={`${project.name} tasks`}
+          className="rounded-xl border border-border bg-surface shadow-sm"
         >
-          <span role="columnheader" className="pl-[54px]">
-            Title
-          </span>
-          <span role="columnheader" className="px-2">
-            Status
-          </span>
-          <span role="columnheader" className="px-2">
-            Priority
-          </span>
-          <span role="columnheader" className="px-2">
-            Due
-          </span>
-          <span role="columnheader" className="px-2 text-right">
-            Activity
-          </span>
-          <span role="columnheader" aria-label="Actions" />
-        </div>
+          <TaskTableHeader />
 
-        {pinned.length > 0 && (
+          {pinned.length > 0 && (
+            <Group
+              icon={<Pin className="size-3.5 text-primary" aria-hidden />}
+              label="Pinned"
+              count={rootCount(pinned)}
+            >
+              <SortableTaskRows tasks={pinned} context={context} />
+            </Group>
+          )}
+
           <Group
-            icon={<Pin className="size-3.5 text-primary" aria-hidden />}
-            label="Pinned"
-            count={rootCount(pinned)}
+            icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
+            label="Tasks"
+            count={rootCount(unpinned)}
           >
-            <SortableTaskRows tasks={pinned} context={context} />
+            {unpinned.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                Nothing left here. Add a task above.
+              </p>
+            ) : (
+              <SortableTaskRows tasks={unpinned} context={context} />
+            )}
           </Group>
-        )}
 
-        <Group
-          icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
-          label="Tasks"
-          count={rootCount(unpinned)}
-        >
-          {unpinned.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Nothing left here. Add a task above.
-            </p>
-          ) : (
-            <SortableTaskRows tasks={unpinned} context={context} />
-          )}
-        </Group>
+          <ClosedGroup
+            query={closed}
+            empty={closedTasks.length === 0}
+            expanded={showClosed}
+            onExpandedChange={setShowClosed}
+          >
+            <SortableTaskRows tasks={closedTasks} context={context} />
+          </ClosedGroup>
+        </div>
+      </fieldset>
 
-        <ClosedGroup
-          query={closed}
-          tasks={closedTasks}
-          expanded={showClosed}
-          onExpandedChange={setShowClosed}
-          context={context}
-        />
-      </div>
-
-      <p className="mt-3 hidden items-center gap-3 text-[11px] text-muted-foreground lg:flex">
-        <span>
-          <Kbd>Enter</Kbd> open
-        </span>
-        <span>
-          <Kbd>Tab</Kbd> nest
-        </span>
-        <span>
-          <Kbd>Alt</Kbd>+<Kbd>↑</Kbd> reorder
-        </span>
-        <span>Drag a row sideways to change nesting</span>
-      </p>
+      {!project.is_archived && (
+        <p className="mt-3 hidden items-center gap-3 text-[11px] text-muted-foreground lg:flex">
+          <span>
+            <Kbd>Enter</Kbd> open
+          </span>
+          <span>
+            <Kbd>Tab</Kbd> nest
+          </span>
+          <span>
+            <Kbd>Alt</Kbd>+<Kbd>↑</Kbd> reorder
+          </span>
+          <span>Drag a row sideways to change nesting</span>
+        </p>
+      )}
 
       <TaskDetail
         taskId={openId}
@@ -211,7 +214,38 @@ function rootCount(tasks: Task[]) {
   return tasks.filter((task) => task.parent_id === null).length;
 }
 
-function Group({
+/** The table's column headings, shown from `lg` where the rows become a grid. */
+export function TaskTableHeader() {
+  return (
+    <div
+      role="row"
+      className={cn(
+        GRID,
+        "sticky top-14 z-10 hidden h-9 items-center rounded-t-xl border-b border-border bg-surface-muted/95 pr-2 pl-3 text-[11px] font-semibold tracking-wide text-muted-foreground uppercase backdrop-blur",
+      )}
+    >
+      <span role="columnheader" className="pl-[54px]">
+        Title
+      </span>
+      <span role="columnheader" className="px-2">
+        Status
+      </span>
+      <span role="columnheader" className="px-2">
+        Priority
+      </span>
+      <span role="columnheader" className="px-2">
+        Due
+      </span>
+      <span role="columnheader" className="px-2 text-right">
+        Activity
+      </span>
+      <span role="columnheader" aria-label="Actions" />
+    </div>
+  );
+}
+
+/** A titled section of the table, with a count of the Tasks in it. */
+export function Group({
   icon,
   label,
   count,
@@ -236,19 +270,22 @@ function Group({
   );
 }
 
-/** Closed Tasks stay out of the way, and aren't fetched, until the group is opened. */
-function ClosedGroup({
+/**
+ * Closed Tasks stay out of the way, and aren't fetched, until the group is opened. `children` are
+ * its rows; `empty` says there are none once loaded.
+ */
+export function ClosedGroup({
   query: closed,
-  tasks,
+  empty,
   expanded,
   onExpandedChange,
-  context,
+  children,
 }: {
   query: UseInfiniteQueryResult;
-  tasks: Task[];
+  empty: boolean;
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
-  context: RowContext;
+  children: ReactNode;
 }) {
   return (
     <section aria-label="Closed">
@@ -273,8 +310,8 @@ function ClosedGroup({
       </button>
       {expanded && (
         <div className="border-t border-border/60 pb-1">
-          <SortableTaskRows tasks={tasks} context={context} />
-          {closed.isSuccess && tasks.length === 0 && (
+          {children}
+          {closed.isSuccess && empty && (
             <p className="px-4 py-4 text-center text-sm text-muted-foreground">
               Nothing closed yet.
             </p>

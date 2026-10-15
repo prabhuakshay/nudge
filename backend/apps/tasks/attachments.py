@@ -13,6 +13,7 @@ from django.conf import settings
 from django.db import transaction
 from django.template.defaultfilters import filesizeformat
 
+from apps.tasks.archive import ensure_writable
 from apps.tasks.models import Attachment, TaskActivity
 
 if TYPE_CHECKING:
@@ -40,7 +41,9 @@ def attach_file(task: Task, upload: UploadedFile[bytes]) -> Attachment:
 
     Raises:
         AttachmentTooLargeError: The file is bigger than `ATTACHMENT_MAX_SIZE`.
+        ArchivedProjectError: The Task is in an archived Project.
     """
+    ensure_writable(task.project)
     limit: int = settings.ATTACHMENT_MAX_SIZE
     size = upload.size or 0
     if size > limit:
@@ -78,10 +81,14 @@ def delete_attachment(user: User, attachment_id: int) -> bool:
     """Delete one of the user's Attachments for good; return False if it isn't theirs.
 
     The file goes only once the deletion commits, so a rolled-back delete never loses it.
+
+    Raises:
+        ArchivedProjectError: The Attachment's Task is in an archived Project.
     """
     attachment = live_attachment(user, attachment_id)
     if attachment is None:
         return False
+    ensure_writable(attachment.task.project)
     with transaction.atomic():
         attachment.delete()
         TaskActivity.objects.create(

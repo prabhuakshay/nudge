@@ -688,6 +688,31 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/tasks/bulk": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Change several Tasks at once
+     * @description Apply one action to every Task given, in one transaction.
+     *
+     *     Each Task changes as it would on its own, cascades and Activity included. If any id isn't one
+     *     of the user's Tasks, or the Project or Tag isn't theirs, nothing changes and the answer is
+     *     404; if any Task refuses the change, nothing changes and the answer is 422. Every Task whose
+     *     Status changed comes back with its Status from before, so the client can offer Undo.
+     */
+    post: operations["apps_tasks_api_bulk_bulk_change"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/tasks": {
     parameters: {
       query?: never;
@@ -1931,6 +1956,123 @@ export interface components {
       into_id: number;
     };
     /**
+     * TaskBulkOut
+     * @description Every Task whose Status the action changed, with its Status before, for Undo.
+     */
+    TaskBulkOut: {
+      /** Affected */
+      affected: components["schemas"]["AffectedTaskOut"][];
+    };
+    /**
+     * BulkDatesIn
+     * @description Replace the Tasks' dates; their Reminders keep their offsets.
+     */
+    BulkDatesIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "dates";
+      dates: components["schemas"]["TaskDatesIn"];
+    };
+    /**
+     * BulkDeleteIn
+     * @description Send the Tasks to Trash, each as its own unit with its Subtasks.
+     */
+    BulkDeleteIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "delete";
+    };
+    /**
+     * BulkMoveIn
+     * @description Move the Tasks first into a Project; a Subtask moved alone becomes a root there.
+     */
+    BulkMoveIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "move";
+      /** Project Id */
+      project_id: number;
+    };
+    /**
+     * BulkPriorityIn
+     * @description Set the Tasks' Priority.
+     */
+    BulkPriorityIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "priority";
+      priority: components["schemas"]["Priority"];
+    };
+    /**
+     * BulkStatusIn
+     * @description Set the Tasks' Status, cascading through their trees as a single change does.
+     */
+    BulkStatusIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "status";
+      status: components["schemas"]["Status"];
+    };
+    /**
+     * BulkTagIn
+     * @description Put a Tag on the Tasks, or take it off.
+     */
+    BulkTagIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "add_tag" | "remove_tag";
+      /** Tag Id */
+      tag_id: number;
+    };
+    /**
+     * TaskBulkIn
+     * @description One action for several Tasks.
+     */
+    TaskBulkIn: {
+      /** Ids */
+      ids: number[];
+      /** Action */
+      action:
+        | components["schemas"]["BulkMoveIn"]
+        | components["schemas"]["BulkStatusIn"]
+        | components["schemas"]["BulkPriorityIn"]
+        | components["schemas"]["BulkDatesIn"]
+        | components["schemas"]["BulkTagIn"]
+        | components["schemas"]["BulkDeleteIn"];
+    };
+    /**
+     * TaskDatesIn
+     * @description A Task's due date, time and range, all clock times in the user's time zone.
+     *
+     *     Without a time the Task is all-day. A start turns it into a range ending at the due date;
+     *     start and due are then both all-day or both timed. Times have minute precision.
+     */
+    TaskDatesIn: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Due Time */
+      due_time?: string | null;
+      /** Start Date */
+      start_date?: string | null;
+      /** Start Time */
+      start_time?: string | null;
+    };
+    /**
      * TaskListQuery
      * @description Which Tasks to list: one Project's, Person's, Tag's or view's, open or Closed.
      */
@@ -1973,26 +2115,6 @@ export interface components {
        * @description Pass as `cursor` to get the next page; null on the last page.
        */
       next_cursor: string | null;
-    };
-    /**
-     * TaskDatesIn
-     * @description A Task's due date, time and range, all clock times in the user's time zone.
-     *
-     *     Without a time the Task is all-day. A start turns it into a range ending at the due date;
-     *     start and due are then both all-day or both timed. Times have minute precision.
-     */
-    TaskDatesIn: {
-      /**
-       * Due Date
-       * Format: date
-       */
-      due_date: string;
-      /** Due Time */
-      due_time?: string | null;
-      /** Start Date */
-      start_date?: string | null;
-      /** Start Time */
-      start_time?: string | null;
     };
     /**
      * TaskIn
@@ -4199,6 +4321,48 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_bulk_bulk_change: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskBulkIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskBulkOut"];
+        };
       };
       /** @description Not Found */
       404: {

@@ -55,6 +55,16 @@ class User(AbstractBaseUser, PermissionsMixin):
             "zone. Empty until the browser sets it on the first sign-in."
         ),
     )
+    calendar_feed_token = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        unique=True,
+        help_text=(
+            "The secret in the user's Calendar feed address. Empty while the feed is off; "
+            "stored as is so the address can be copied again at any time."
+        ),
+    )
     is_staff = models.BooleanField(
         default=False,
         help_text="Whether the user can sign in to the admin site.",

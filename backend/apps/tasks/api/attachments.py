@@ -13,7 +13,7 @@ from django.http import FileResponse
 from ninja import File, Router, Status, UploadedFile
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import services
+from apps.tasks import attachments, services
 from apps.tasks.api import signed_in_user
 from apps.tasks.schemas import AttachmentOut
 
@@ -56,8 +56,8 @@ def upload_attachment(
     if task is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     try:
-        attachment = services.attach_file(task, file)
-    except services.AttachmentTooLargeError as error:
+        attachment = attachments.attach_file(task, file)
+    except attachments.AttachmentTooLargeError as error:
         return Status(_HTTP_CONTENT_TOO_LARGE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, AttachmentOut.from_orm(attachment))
 
@@ -75,7 +75,7 @@ def list_attachments(
     task = services.live_task(signed_in_user(request), task_id)
     if task is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    items = [AttachmentOut.from_orm(attachment) for attachment in services.attachments(task)]
+    items = [AttachmentOut.from_orm(attachment) for attachment in attachments.attachments(task)]
     return Status(_HTTP_OK, items)
 
 
@@ -97,7 +97,7 @@ def download_attachment(
     attachment_id: int,
 ) -> FileResponse | Status[ErrorOut]:
     """Send an Attachment's bytes, inline for images and PDFs and as a download otherwise."""
-    attachment = services.live_attachment(signed_in_user(request), attachment_id)
+    attachment = attachments.live_attachment(signed_in_user(request), attachment_id)
     if attachment is None:
         return Status(_HTTP_NOT_FOUND, _ATTACHMENT_NOT_FOUND)
     response = FileResponse(
@@ -118,6 +118,6 @@ def download_attachment(
 )
 def delete_attachment(request: HttpRequest, attachment_id: int) -> Status[None] | Status[ErrorOut]:
     """Delete an Attachment and its file for good."""
-    if not services.delete_attachment(signed_in_user(request), attachment_id):
+    if not attachments.delete_attachment(signed_in_user(request), attachment_id):
         return Status(_HTTP_NOT_FOUND, _ATTACHMENT_NOT_FOUND)
     return Status(_HTTP_NO_CONTENT, None)

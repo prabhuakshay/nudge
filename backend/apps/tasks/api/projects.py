@@ -10,7 +10,7 @@ from apps.accounts.schemas import ErrorOut
 from apps.tasks import projects
 from apps.tasks.api import signed_in_user
 from apps.tasks.projects import ProjectRuleError, SiblingRef
-from apps.tasks.schemas import ProjectIn, ProjectMoveIn, ProjectOut, ProjectPatchIn
+from apps.tasks.schemas.projects import ProjectIn, ProjectMoveIn, ProjectOut, ProjectPatchIn
 
 if TYPE_CHECKING:
     from django.http import HttpRequest

@@ -10,12 +10,13 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.http import HttpResponse
-from ninja import Field, Router, Schema, Status
+from ninja import Router, Status
 from ninja.throttling import AnonRateThrottle
 
 from apps.accounts.schemas import ErrorOut
 from apps.tasks import calendar_feed
 from apps.tasks.api import signed_in_user
+from apps.tasks.schemas.calendar import CalendarFeedOut
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -25,13 +26,6 @@ router = Router()
 _HTTP_OK = 200
 _HTTP_NO_CONTENT = 204
 _HTTP_NOT_FOUND = 404
-
-
-# Kept here rather than in `apps.tasks.schemas`, which is already at its length limit.
-class CalendarFeedOut(Schema):
-    """The user's Calendar feed address."""
-
-    url: str | None = Field(description="The private `.ics` address, or null while it's off.")
 
 
 class _FeedThrottle(AnonRateThrottle):

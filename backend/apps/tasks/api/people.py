@@ -10,7 +10,7 @@ from apps.accounts.schemas import ErrorOut
 from apps.tasks import people
 from apps.tasks.api import signed_in_user
 from apps.tasks.people import PersonRuleError
-from apps.tasks.schemas import PersonIn, PersonMergeIn, PersonOut, PersonPatchIn
+from apps.tasks.schemas.people import PersonIn, PersonMergeIn, PersonOut, PersonPatchIn
 
 if TYPE_CHECKING:
     from django.http import HttpRequest

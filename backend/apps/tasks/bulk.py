@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 from django.db.models import Q
 
-from apps.tasks import moves, services, tags, trash
+from apps.tasks import moves, services, trash
 from apps.tasks.models import Task
 from apps.tasks.tree import ancestors
 
@@ -195,7 +195,7 @@ def tag_tasks(user: User, ids: Iterable[int], tag: Tag, *, add: bool) -> bool:
         for task in tasks:
             current = [found for found in task.tags.all() if found != tag]
             wanted = [*current, tag] if add else current
-            tags.update_tagged_task(user, task.pk, services.TaskEdit(), wanted)
+            services.update_task(user, task.pk, services.TaskEdit(tags=wanted))
     return True
 
 

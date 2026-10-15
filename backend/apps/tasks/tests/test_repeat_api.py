@@ -9,7 +9,7 @@ import pytest
 from django.test import Client
 
 from apps.accounts.services import set_time_zone
-from apps.tasks import services
+from apps.tasks import creation, services
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -37,7 +37,7 @@ def client(ada: User, freeze_time: Callable[[datetime], None]) -> Client:
 
 @pytest.fixture
 def task(ada: User) -> Task:
-    return services.create_task(services.inbox(ada), "Water the plants")
+    return creation.create_task(services.inbox(ada), "Water the plants")
 
 
 def _patch(client: Client, task_id: int, **fields: Any) -> Response:  # noqa: ANN401 - JSON body
@@ -116,7 +116,7 @@ def test_an_undated_task_cannot_repeat(client: Client, task: Task) -> None:
 
 @pytest.mark.django_db
 def test_a_subtask_cannot_repeat(client: Client, task: Task) -> None:
-    subtask = services.create_subtask(task, "Fill the can").task
+    subtask = creation.create_subtask(task, "Fill the can").task
 
     response = _patch(client, subtask.pk, dates=TODAY, repeat_rule="FREQ=DAILY")
 
@@ -160,7 +160,7 @@ def test_undo_puts_back_a_repeat_removed_with_the_due_date(client: Client, task:
 @pytest.mark.django_db
 def test_becoming_a_subtask_removes_the_repeat(client: Client, ada: User, task: Task) -> None:
     _patch(client, task.pk, dates=TODAY, repeat_rule="FREQ=DAILY")
-    parent = services.create_task(services.inbox(ada), "Garden")
+    parent = creation.create_task(services.inbox(ada), "Garden")
 
     response = client.post(
         f"/api/v1/tasks/{task.pk}/move",

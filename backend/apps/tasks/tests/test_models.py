@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.db import IntegrityError, transaction
 
-from apps.tasks import people, projects, services
+from apps.tasks import creation, people, projects, services
 from apps.tasks.models import Attachment, Comment, Task, TaskMention
 
 if TYPE_CHECKING:
@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 @pytest.mark.django_db
 def test_a_project_and_a_task_read_as_their_name_and_title(ada: User) -> None:
     inbox = services.inbox(ada)
-    task = services.create_task(inbox, "Buy milk")
+    task = creation.create_task(inbox, "Buy milk")
 
     assert (str(inbox), str(task)) == ("Inbox", "Buy milk")
 
@@ -31,7 +31,7 @@ def test_a_folder_reads_as_its_name(ada: User) -> None:
 @pytest.mark.django_db
 def test_a_person_and_a_mention_read_as_who_is_mentioned_where(ada: User) -> None:
     priya = people.create_person(ada, "Priya")
-    task = services.create_task(services.inbox(ada), f"Call [@Priya](person:{priya.pk})")
+    task = creation.create_task(services.inbox(ada), f"Call [@Priya](person:{priya.pk})")
 
     mention = TaskMention.objects.get(task=task)
 
@@ -40,7 +40,7 @@ def test_a_person_and_a_mention_read_as_who_is_mentioned_where(ada: User) -> Non
 
 @pytest.mark.django_db
 def test_an_attachment_reads_as_its_original_name(ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "File the taxes")
+    task = creation.create_task(services.inbox(ada), "File the taxes")
 
     attachment = Attachment(task=task, name="receipt.pdf", size=1, content_type="application/pdf")
 
@@ -49,7 +49,7 @@ def test_an_attachment_reads_as_its_original_name(ada: User) -> None:
 
 @pytest.mark.django_db
 def test_a_comment_reads_as_the_start_of_its_body(ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "File the taxes")
+    task = creation.create_task(services.inbox(ada), "File the taxes")
 
     comment = Comment(task=task, body="x" * 60)
 
@@ -94,7 +94,7 @@ def test_a_comment_reads_as_the_start_of_its_body(ada: User) -> None:
     ],
 )
 def test_the_database_rejects_impossible_dates(ada: User, dates: dict[str, date | time]) -> None:
-    task = services.create_task(services.inbox(ada), "Trip")
+    task = creation.create_task(services.inbox(ada), "Trip")
 
     with pytest.raises(IntegrityError), transaction.atomic():
         Task.objects.filter(pk=task.pk).update(**dates)
@@ -102,7 +102,7 @@ def test_the_database_rejects_impossible_dates(ada: User, dates: dict[str, date 
 
 @pytest.mark.django_db
 def test_the_database_accepts_a_timed_range_across_midnight(ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Night train")
+    task = creation.create_task(services.inbox(ada), "Night train")
 
     Task.objects.filter(pk=task.pk).update(
         start_date=date(2026, 11, 3),

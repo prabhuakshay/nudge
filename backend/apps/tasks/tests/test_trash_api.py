@@ -9,7 +9,7 @@ import pytest
 from django.test import Client
 from django.utils import timezone
 
-from apps.tasks import project_trash, projects, services, tags, trash
+from apps.tasks import creation, project_trash, projects, services, tags, trash
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 
@@ -34,7 +34,7 @@ def _inbox_titles(client: Client, user: User) -> list[str]:
 
 
 def _subtask(parent: Task, title: str) -> Task:
-    return services.create_subtask(parent, title).task
+    return creation.create_subtask(parent, title).task
 
 
 def _trash(client: Client) -> list[dict[str, object]]:
@@ -66,9 +66,9 @@ def test_the_trash_never_lists_another_users_tasks_or_projects(
     ada: User,
     grace: User,
 ) -> None:
-    trash.trash_task(grace, services.create_task(services.inbox(grace), "Grace's task").pk)
+    trash.trash_task(grace, creation.create_task(services.inbox(grace), "Grace's task").pk)
     project_trash.trash_project(grace, projects.create_project(grace, "Grace's project").pk)
-    trash.trash_task(ada, services.create_task(services.inbox(ada), "Pay rent").pk)
+    trash.trash_task(ada, creation.create_task(services.inbox(ada), "Pay rent").pk)
 
     rows = _trash(client)
 
@@ -77,8 +77,8 @@ def test_the_trash_never_lists_another_users_tasks_or_projects(
 
 @pytest.mark.django_db
 def test_deleting_a_task_takes_it_out_of_its_list(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Pay rent")
-    services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Pay rent")
+    creation.create_task(services.inbox(ada), "Buy milk")
 
     response = _delete(client, task)
 
@@ -89,7 +89,7 @@ def test_deleting_a_task_takes_it_out_of_its_list(client: Client, ada: User) -> 
 
 @pytest.mark.django_db
 def test_a_deleted_task_takes_its_subtasks_to_trash_as_one_row(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
+    task = creation.create_task(services.inbox(ada), "Move house")
     _subtask(_subtask(task, "Pack"), "Pack books")
 
     _delete(client, task)
@@ -109,7 +109,7 @@ def test_trash_keeps_deleted_tasks_for_the_configured_days(
     settings: Settings,
 ) -> None:
     settings.TRASH_RETENTION_DAYS = 30
-    _delete(client, services.create_task(services.inbox(ada), "Pay rent"))
+    _delete(client, creation.create_task(services.inbox(ada), "Pay rent"))
 
     [row] = _trash(client)
 
@@ -120,14 +120,14 @@ def test_trash_keeps_deleted_tasks_for_the_configured_days(
 def test_trash_lists_the_newest_delete_first(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
     for title in ("First", "Second"):
-        _delete(client, services.create_task(inbox, title))
+        _delete(client, creation.create_task(inbox, title))
 
     assert [row["title"] for row in _trash(client)] == ["Second", "First"]
 
 
 @pytest.mark.django_db
 def test_a_subtask_deleted_alone_stays_its_own_unit(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
+    task = creation.create_task(services.inbox(ada), "Move house")
     pack = _subtask(task, "Pack")
     _delete(client, pack)
     _delete(client, task)
@@ -142,7 +142,7 @@ def test_a_subtask_deleted_alone_stays_its_own_unit(client: Client, ada: User) -
 @pytest.mark.django_db
 def test_a_task_in_an_archived_project_cannot_be_deleted(client: Client, ada: User) -> None:
     project = projects.create_project(ada, "Home")
-    task = services.create_task(project, "Move house")
+    task = creation.create_task(project, "Move house")
     projects.archive_project(ada, project.pk)
 
     response = _delete(client, task)
@@ -153,7 +153,7 @@ def test_a_task_in_an_archived_project_cannot_be_deleted(client: Client, ada: Us
 
 @pytest.mark.django_db
 def test_trash_and_restore_are_logged_in_activity(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
+    task = creation.create_task(services.inbox(ada), "Move house")
     _delete(client, task)
 
     _restore(client, task)
@@ -165,7 +165,9 @@ def test_trash_and_restore_are_logged_in_activity(client: Client, ada: User) -> 
 @pytest.mark.django_db
 def test_a_trashed_task_leaves_the_views_and_counts(client: Client, ada: User) -> None:
     today = timezone.localdate()
-    task = services.create_task(services.inbox(ada), "Pay rent", TaskDates(due_date=today))
+    task = creation.create_task(
+        services.inbox(ada), "Pay rent", creation.NewTask(dates=TaskDates(due_date=today))
+    )
     _subtask(task, "Find the bank details")
     money = tags.create_tag(ada, "money")
     client.patch(
@@ -186,14 +188,14 @@ def test_a_trashed_task_leaves_the_views_and_counts(client: Client, ada: User) -
 
 @pytest.mark.django_db
 def test_restoring_a_live_task_is_not_found(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Pay rent")
+    task = creation.create_task(services.inbox(ada), "Pay rent")
 
     assert _restore(client, task).status_code == 404
 
 
 @pytest.mark.django_db
 def test_deleting_another_users_task_is_not_found(client: Client, grace: User) -> None:
-    task = services.create_task(services.inbox(grace), "Grace's task")
+    task = creation.create_task(services.inbox(grace), "Grace's task")
 
     response = _delete(client, task)
 
@@ -203,7 +205,7 @@ def test_deleting_another_users_task_is_not_found(client: Client, grace: User) -
 
 @pytest.mark.django_db
 def test_restoring_another_users_task_is_not_found(client: Client, grace: User) -> None:
-    task = services.create_task(services.inbox(grace), "Grace's task")
+    task = creation.create_task(services.inbox(grace), "Grace's task")
     graces = Client()
     graces.force_login(grace)
     _delete(graces, task)

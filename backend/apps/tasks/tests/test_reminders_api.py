@@ -9,7 +9,7 @@ import pytest
 from django.test import Client
 
 from apps.accounts.services import set_time_zone
-from apps.tasks import services
+from apps.tasks import creation, services
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Reminder
 
@@ -38,7 +38,7 @@ def client(ada: User, freeze_time: Callable[[datetime], None]) -> Client:
 @pytest.fixture
 def task(ada: User) -> Task:
     set_time_zone(ada, "Europe/London")
-    return services.create_task(services.inbox(ada), "Call the bank")
+    return creation.create_task(services.inbox(ada), "Call the bank")
 
 
 def _patch(client: Client, task_id: int, **fields: Any) -> Response:  # noqa: ANN401 - JSON body
@@ -136,7 +136,7 @@ def test_reminders_cannot_be_set_on_another_users_task(
     client: Client,
     grace: User,
 ) -> None:
-    theirs = services.create_task(services.inbox(grace), "Grace's task")
+    theirs = creation.create_task(services.inbox(grace), "Grace's task")
     dates = TaskDates(due_date=date(2026, 11, 6))
     services.update_task(grace, theirs.pk, services.TaskEdit(dates=dates))
 

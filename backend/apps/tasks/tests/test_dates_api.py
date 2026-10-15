@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import services
+from apps.tasks import creation, services
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -46,7 +46,7 @@ def _dates_of(client: Client, task_id: int) -> dict[str, str | None]:
 
 @pytest.mark.django_db
 def test_a_task_can_get_a_timed_range(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Trip")
+    task = creation.create_task(services.inbox(ada), "Trip")
 
     response = _set_dates(client, task.pk, TRIP)
 
@@ -56,7 +56,7 @@ def test_a_task_can_get_a_timed_range(client: Client, ada: User) -> None:
 
 @pytest.mark.django_db
 def test_a_due_date_without_a_time_is_all_day(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Report")
+    task = creation.create_task(services.inbox(ada), "Report")
 
     _set_dates(client, task.pk, {"due_date": "2026-11-06"})
 
@@ -70,7 +70,7 @@ def test_a_due_date_without_a_time_is_all_day(client: Client, ada: User) -> None
 
 @pytest.mark.django_db
 def test_null_dates_remove_them(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Report")
+    task = creation.create_task(services.inbox(ada), "Report")
     _set_dates(client, task.pk, {"start_date": "2026-11-02", "due_date": "2026-11-06"})
 
     _set_dates(client, task.pk, None)
@@ -80,7 +80,7 @@ def test_null_dates_remove_them(client: Client, ada: User) -> None:
 
 @pytest.mark.django_db
 def test_a_patch_without_dates_keeps_them(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Report")
+    task = creation.create_task(services.inbox(ada), "Report")
     _set_dates(client, task.pk, {"due_date": "2026-11-06", "due_time": "14:00"})
 
     client.patch(
@@ -124,7 +124,7 @@ def test_invalid_dates_are_rejected(
     ada: User,
     dates: dict[str, str | None],
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Report")
+    task = creation.create_task(services.inbox(ada), "Report")
 
     response = _set_dates(client, task.pk, dates)
 
@@ -134,7 +134,7 @@ def test_invalid_dates_are_rejected(
 
 @pytest.mark.django_db
 def test_a_range_may_start_and_end_at_the_same_time(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Workshop")
+    task = creation.create_task(services.inbox(ada), "Workshop")
 
     response = _set_dates(
         client,
@@ -152,7 +152,7 @@ def test_a_range_may_start_and_end_at_the_same_time(client: Client, ada: User) -
 
 @pytest.mark.django_db
 def test_setting_another_users_task_dates_is_not_found(client: Client, grace: User) -> None:
-    task = services.create_task(services.inbox(grace), "Grace's")
+    task = creation.create_task(services.inbox(grace), "Grace's")
 
     response = _set_dates(client, task.pk, {"due_date": "2026-11-06"})
 
@@ -163,7 +163,7 @@ def test_setting_another_users_task_dates_is_not_found(client: Client, grace: Us
 
 @pytest.mark.django_db
 def test_date_changes_are_recorded_old_to_new(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Trip")
+    task = creation.create_task(services.inbox(ada), "Trip")
     _set_dates(client, task.pk, {"due_date": "2026-11-06"})
     _set_dates(client, task.pk, TRIP)
     _set_dates(client, task.pk, None)
@@ -179,7 +179,7 @@ def test_date_changes_are_recorded_old_to_new(client: Client, ada: User) -> None
 
 @pytest.mark.django_db
 def test_setting_the_same_dates_records_nothing(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Report")
+    task = creation.create_task(services.inbox(ada), "Report")
     _set_dates(client, task.pk, {"due_date": "2026-11-06"})
 
     _set_dates(client, task.pk, {"due_date": "2026-11-06"})

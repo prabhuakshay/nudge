@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import services
+from apps.tasks import creation, services
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
@@ -60,9 +60,9 @@ def test_undoing_a_cascaded_close_gives_each_task_back_its_own_status(
     client: Client,
     ada: User,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
-    pack = services.create_subtask(task, "Pack").task
-    van = services.create_subtask(task, "Book a van").task
+    task = creation.create_task(services.inbox(ada), "Move house")
+    pack = creation.create_subtask(task, "Pack").task
+    van = creation.create_subtask(task, "Book a van").task
     services.update_task(
         ada, van.pk, services.TaskEdit(status=Task.Status.BLOCKED, blocked_reason="No licence")
     )
@@ -78,8 +78,8 @@ def test_undoing_a_cascaded_close_gives_each_task_back_its_own_status(
 
 @pytest.mark.django_db
 def test_undoing_a_reopen_closes_the_reopened_ancestors_again(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
-    pack = services.create_subtask(task, "Pack").task
+    task = creation.create_task(services.inbox(ada), "Move house")
+    pack = creation.create_subtask(task, "Pack").task
     _patch_status(client, task, "completed")
     affected = _patch_status(client, pack, "open")
 
@@ -91,8 +91,8 @@ def test_undoing_a_reopen_closes_the_reopened_ancestors_again(client: Client, ad
 
 @pytest.mark.django_db
 def test_statuses_must_name_the_tasks_given(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
-    other = services.create_task(services.inbox(ada), "Pay rent")
+    task = creation.create_task(services.inbox(ada), "Move house")
+    other = creation.create_task(services.inbox(ada), "Pay rent")
 
     response = _set_statuses(client, [{"id": task.pk, "status": "completed"}], ids=[other.pk])
 
@@ -106,8 +106,8 @@ def test_another_users_task_makes_setting_statuses_404(
     ada: User,
     grace: User,
 ) -> None:
-    mine = services.create_task(services.inbox(ada), "Pay rent")
-    theirs = services.create_task(services.inbox(grace), "Buy milk")
+    mine = creation.create_task(services.inbox(ada), "Pay rent")
+    theirs = creation.create_task(services.inbox(grace), "Buy milk")
 
     response = _set_statuses(
         client,

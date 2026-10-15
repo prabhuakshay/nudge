@@ -31,6 +31,7 @@ from fractional_indexing import generate_key_between
 from apps.tasks import reminders, services
 from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, Project, Task, TaskActivity
+from apps.tasks.positions import lock_project
 from apps.tasks.rows import as_rows
 from apps.tasks.tree import below, reopen_ancestors
 
@@ -162,8 +163,7 @@ def _place(user: User, head: Task, height: int) -> None:
     project = head.project if head.project.deleted_at is None else services.inbox(user)
     if parent is None and project == head.project:
         return
-    # Locking the Project serialises inserts into it, so two Tasks never get the same key.
-    Project.objects.select_for_update().get(pk=project.pk)
+    lock_project(project.pk)
     roots = project.tasks.filter(parent__isnull=True).order_by("-position", "-id")
     head.position = str(
         generate_key_between(roots.values_list("position", flat=True).first(), None)

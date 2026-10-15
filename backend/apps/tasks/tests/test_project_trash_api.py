@@ -11,7 +11,7 @@ from django.utils import timezone
 
 from apps.accounts.services import set_time_zone
 from apps.core.palette import PaletteColor
-from apps.tasks import project_trash, projects, services
+from apps.tasks import creation, project_trash, projects, services
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Project, Reminder, Task
 
@@ -63,7 +63,9 @@ def test_deleting_and_restoring_a_project_require_a_session(method: str, path: s
 def test_deleting_a_project_takes_it_and_its_tasks_out_of_view(client: Client, ada: User) -> None:
     home = projects.create_project(ada, "Home")
     projects.create_project(ada, "Work")
-    services.create_task(home, "Fix the tap", TaskDates(due_date=timezone.localdate()))
+    creation.create_task(
+        home, "Fix the tap", creation.NewTask(dates=TaskDates(due_date=timezone.localdate()))
+    )
 
     response = _delete(client, home)
 
@@ -117,9 +119,9 @@ def test_restoring_a_live_project_is_not_found(client: Client, ada: User) -> Non
 @pytest.mark.django_db
 def test_a_deleted_project_is_one_trash_row_with_its_task_count(client: Client, ada: User) -> None:
     home = projects.create_project(ada, "Home", color=PaletteColor.TEAL, icon=Project.Icon.HOUSE)
-    tap = services.create_task(home, "Fix the tap")
-    services.create_subtask(tap, "Buy a washer")
-    services.create_task(home, "Paint the fence")
+    tap = creation.create_task(home, "Fix the tap")
+    creation.create_subtask(tap, "Buy a washer")
+    creation.create_task(home, "Paint the fence")
 
     _delete(client, home)
 
@@ -140,8 +142,8 @@ def test_tasks_trashed_before_their_project_stay_their_own_units(
     ada: User,
 ) -> None:
     home = projects.create_project(ada, "Home")
-    services.create_task(home, "Fix the tap")
-    fence = services.create_task(home, "Paint the fence")
+    creation.create_task(home, "Fix the tap")
+    fence = creation.create_task(home, "Paint the fence")
     client.delete(f"/api/v1/tasks/{fence.pk}")
 
     _delete(client, home)
@@ -157,7 +159,7 @@ def test_a_task_deleted_with_its_project_comes_back_only_with_it(
     ada: User,
 ) -> None:
     home = projects.create_project(ada, "Home")
-    tap = services.create_task(home, "Fix the tap")
+    tap = creation.create_task(home, "Fix the tap")
     _delete(client, home)
 
     response = client.post(f"/api/v1/tasks/{tap.pk}/restore")
@@ -172,8 +174,8 @@ def test_a_restored_project_comes_back_as_it_was(client: Client, ada: User) -> N
     first = projects.create_project(ada, "Garden", folder=folder)
     home = projects.create_project(ada, "Home", color=PaletteColor.TEAL, folder=folder)
     projects.create_project(ada, "Car", folder=folder)
-    tap = services.create_task(home, "Fix the tap")
-    services.create_subtask(tap, "Buy a washer")
+    tap = creation.create_task(home, "Fix the tap")
+    creation.create_subtask(tap, "Buy a washer")
     projects.archive_project(ada, first.pk)
     projects.archive_project(ada, home.pk)
     _delete(client, home)
@@ -255,7 +257,7 @@ def test_trash_and_restore_of_a_project_are_logged_on_its_tasks(
     ada: User,
 ) -> None:
     home = projects.create_project(ada, "Home")
-    tap = services.create_task(home, "Fix the tap")
+    tap = creation.create_task(home, "Fix the tap")
     _delete(client, home)
 
     _restore(client, home)
@@ -273,7 +275,7 @@ def test_a_trashed_projects_reminders_stop_and_resume_on_restore(
     set_time_zone(ada, "UTC")
     home = projects.create_project(ada, "Home")
     dates = TaskDates(due_date=date(2026, 11, 6), due_time=time(14, 0))
-    task = services.create_task(home, "Call the plumber", dates)
+    task = creation.create_task(home, "Call the plumber", creation.NewTask(dates=dates))
     services.update_task(ada, task.pk, services.TaskEdit(reminders=[timedelta(0)]))
 
     project_trash.trash_project(ada, home.pk)

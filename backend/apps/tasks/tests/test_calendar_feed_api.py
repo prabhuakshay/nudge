@@ -11,7 +11,7 @@ from django.test import Client
 from django.utils import timezone
 from icalendar import Calendar
 
-from apps.tasks import people, projects, services
+from apps.tasks import creation, people, projects, services
 from apps.tasks.models import Project, Task
 
 if TYPE_CHECKING:
@@ -44,7 +44,7 @@ def feed_path(client: Client) -> str:
 
 
 def _task(project: Project, *, title: str = "Pay rent", **dates: date | time | None) -> Task:
-    task = services.create_task(project, title)
+    task = creation.create_task(project, title)
     Task.objects.filter(pk=task.pk).update(**dates)
     return task
 
@@ -150,7 +150,7 @@ def test_the_feed_holds_open_and_blocked_dated_tasks_and_subtasks(
     open_task = _task(inbox, due_date=_DUE)
     blocked = _task(inbox, due_date=_DUE)
     Task.objects.filter(pk=blocked.pk).update(status=Task.Status.BLOCKED)
-    subtask = services.create_subtask(open_task, "Find the chequebook").task
+    subtask = creation.create_subtask(open_task, "Find the chequebook").task
     Task.objects.filter(pk=subtask.pk).update(due_date=_DUE)
 
     uids = set(_events(client, feed_path))

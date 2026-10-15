@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from apps.accounts.services import set_time_zone
-from apps.tasks import moves, projects, reminders, services
+from apps.tasks import creation, moves, projects, reminders, services
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Project, Reminder, Task
 
@@ -32,7 +32,7 @@ def _dated_task(
     due_date: date = date(2026, 11, 6),
     due_time: time | None = time(14, 0),
 ) -> Task:
-    task = services.create_task(services.inbox(user), "Call the bank")
+    task = creation.create_task(services.inbox(user), "Call the bank")
     dates = TaskDates(due_date=due_date, due_time=due_time)
     services.update_task(user, task.pk, services.TaskEdit(dates=dates))
     return task
@@ -96,7 +96,7 @@ def test_a_range_reminds_from_its_start(
     freeze_time: Callable[[datetime], None],
 ) -> None:
     freeze_time(NOW)
-    task = services.create_task(services.inbox(london), "Trip")
+    task = creation.create_task(services.inbox(london), "Trip")
     dates = TaskDates(date(2026, 11, 9), time(18, 0), date(2026, 11, 7), time(8, 0))
     services.update_task(london, task.pk, services.TaskEdit(dates=dates))
 
@@ -189,8 +189,8 @@ def test_closing_a_parent_stops_its_subtasks_reminders(
     freeze_time: Callable[[datetime], None],
 ) -> None:
     freeze_time(NOW)
-    parent = services.create_task(services.inbox(london), "Move house")
-    subtask = services.create_subtask(parent, "Book the van").task
+    parent = creation.create_task(services.inbox(london), "Move house")
+    subtask = creation.create_subtask(parent, "Book the van").task
     dates = TaskDates(due_date=date(2026, 11, 6), due_time=time(14, 0))
     services.update_task(london, subtask.pk, services.TaskEdit(dates=dates))
     _remind(london, subtask, THIRTY_MINUTES_BEFORE)
@@ -207,7 +207,7 @@ def test_archiving_a_project_stops_its_reminders_and_unarchiving_restores_them(
 ) -> None:
     freeze_time(NOW)
     work = projects.create_project(london, "Work")
-    task = services.create_task(work, "Send the report")
+    task = creation.create_task(work, "Send the report")
     dates = TaskDates(due_date=date(2026, 11, 6), due_time=time(14, 0))
     services.update_task(london, task.pk, services.TaskEdit(dates=dates))
     _remind(london, task, THIRTY_MINUTES_BEFORE)
@@ -236,8 +236,8 @@ def test_moving_a_task_to_another_project_reschedules_its_subtasks_reminders(
     move: Callable[[User, Task, Project], None],
 ) -> None:
     freeze_time(NOW)
-    parent = services.create_task(services.inbox(london), "Plan the trip")
-    subtask = services.create_subtask(parent, "Book the train").task
+    parent = creation.create_task(services.inbox(london), "Plan the trip")
+    subtask = creation.create_subtask(parent, "Book the train").task
     dates = TaskDates(due_date=date(2026, 11, 6), due_time=time(14, 0))
     services.update_task(london, subtask.pk, services.TaskEdit(dates=dates))
     _remind(london, subtask, THIRTY_MINUTES_BEFORE)
@@ -262,7 +262,7 @@ def test_clearing_the_due_date_deletes_the_reminders(london: User) -> None:
 
 @pytest.mark.django_db
 def test_an_undated_task_cannot_have_reminders(london: User) -> None:
-    task = services.create_task(services.inbox(london), "Someday")
+    task = creation.create_task(services.inbox(london), "Someday")
 
     with pytest.raises(reminders.ReminderRuleError, match="due date"):
         _remind(london, task, THIRTY_MINUTES_BEFORE)

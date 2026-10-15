@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import projects, services
+from apps.tasks import creation, projects, services
 from apps.tasks.models import Project
 
 if TYPE_CHECKING:
@@ -37,8 +37,8 @@ def test_create_adds_the_task_to_the_given_project(client: Client, ada: User) ->
 @pytest.mark.django_db
 def test_patch_moves_a_task_first_into_another_project(client: Client, ada: User) -> None:
     work = projects.create_project(ada, "Work")
-    services.create_task(work, "Already there")
-    task = services.create_task(services.inbox(ada), "Plan launch")
+    creation.create_task(work, "Already there")
+    task = creation.create_task(services.inbox(ada), "Plan launch")
 
     response = _patch(client, task.pk, {"project_id": work.pk})
 
@@ -51,7 +51,7 @@ def test_patch_moves_a_task_first_into_another_project(client: Client, ada: User
 @pytest.mark.django_db
 def test_moving_a_task_is_logged_with_both_project_names(client: Client, ada: User) -> None:
     work = projects.create_project(ada, "Work")
-    task = services.create_task(services.inbox(ada), "Plan launch")
+    task = creation.create_task(services.inbox(ada), "Plan launch")
 
     _patch(client, task.pk, {"project_id": work.pk})
 
@@ -67,7 +67,7 @@ def test_moving_a_task_is_logged_with_both_project_names(client: Client, ada: Us
 
 @pytest.mark.django_db
 def test_patch_to_the_same_project_logs_nothing(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Plan launch")
+    task = creation.create_task(services.inbox(ada), "Plan launch")
 
     _patch(client, task.pk, {"project_id": services.inbox(ada).pk})
 
@@ -80,7 +80,7 @@ def test_patch_into_another_users_project_is_not_found(
     ada: User,
     grace: User,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Plan launch")
+    task = creation.create_task(services.inbox(ada), "Plan launch")
 
     response = _patch(client, task.pk, {"project_id": services.inbox(grace).pk})
 
@@ -94,7 +94,7 @@ def test_patch_into_another_users_project_is_not_found(
 def test_patch_into_a_trashed_project_is_not_found(client: Client, ada: User) -> None:
     trashed = projects.create_project(ada, "Old")
     Project.objects.filter(pk=trashed.pk).update(deleted_at="2026-01-01T00:00Z")
-    task = services.create_task(services.inbox(ada), "Plan launch")
+    task = creation.create_task(services.inbox(ada), "Plan launch")
 
     response = _patch(client, task.pk, {"project_id": trashed.pk})
 
@@ -104,9 +104,9 @@ def test_patch_into_a_trashed_project_is_not_found(client: Client, ada: User) ->
 @pytest.mark.django_db
 def test_moving_a_root_carries_its_subtasks(client: Client, ada: User) -> None:
     work = projects.create_project(ada, "Work")
-    root = services.create_task(services.inbox(ada), "Plan launch")
-    child = services.create_subtask(root, "Write notes").task
-    services.create_subtask(child, "Outline")
+    root = creation.create_task(services.inbox(ada), "Plan launch")
+    child = creation.create_subtask(root, "Write notes").task
+    creation.create_subtask(child, "Outline")
 
     _patch(client, root.pk, {"project_id": work.pk})
 
@@ -124,10 +124,10 @@ def test_moving_a_subtask_makes_it_a_root_first_in_the_other_project(
     ada: User,
 ) -> None:
     work = projects.create_project(ada, "Work")
-    services.create_task(work, "Already there")
-    root = services.create_task(services.inbox(ada), "Plan launch")
-    child = services.create_subtask(root, "Write notes").task
-    services.create_subtask(child, "Outline")
+    creation.create_task(work, "Already there")
+    root = creation.create_task(services.inbox(ada), "Plan launch")
+    child = creation.create_subtask(root, "Write notes").task
+    creation.create_subtask(child, "Outline")
 
     response = _patch(client, child.pk, {"project_id": work.pk})
 

@@ -11,12 +11,12 @@ from ninja import Query, Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
-from apps.tasks import moves, people, schedule, services, tags, trash, tree
+from apps.tasks import creation, moves, people, schedule, services, tags, trash, tree
 from apps.tasks.api.errors import PERSON_NOT_FOUND, PROJECT_NOT_FOUND, TAG_NOT_FOUND, TASK_NOT_FOUND
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 from apps.tasks.pagination import Page
-from apps.tasks.repeat import SUBTASK_REPEAT, Repeat
+from apps.tasks.repeat import Repeat
 from apps.tasks.schemas.activity import TaskActivityListOut
 from apps.tasks.schemas.reminders import ReminderOut
 from apps.tasks.schemas.tasks import (
@@ -165,14 +165,7 @@ def _create_root(
     )
     if project is None:
         return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
-    created = tags.create_tagged_task(
-        project,
-        task.title,
-        _dates(task),
-        priority=task.priority or Task.Priority.NONE,
-        tags=with_tags,
-        repeat_with=_repeat(task),
-    )
+    created = creation.create_task(project, task.title, _new_task(task, with_tags))
     return Status(HTTPStatus.CREATED, TaskOut.from_orm(created))
 
 
@@ -185,16 +178,18 @@ def _create_subtask(
     parent = services.live_task(user, parent_id)
     if parent is None:
         return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
-    if task.repeat_rule:
-        return Status(HTTPStatus.UNPROCESSABLE_ENTITY, ErrorOut(detail=SUBTASK_REPEAT))
-    change = tags.create_tagged_subtask(
-        parent,
-        task.title,
-        _dates(task),
+    change = creation.create_subtask(parent, task.title, _new_task(task, with_tags))
+    return Status(HTTPStatus.CREATED, TaskOut.from_orm(change.task))
+
+
+def _new_task(task: TaskIn, with_tags: list[Tag | str]) -> creation.NewTask:
+    """Return what the new Task starts with besides its title."""
+    return creation.NewTask(
+        dates=_dates(task) or TaskDates(),
         priority=task.priority or Task.Priority.NONE,
         tags=with_tags,
+        repeat=_repeat(task),
     )
-    return Status(HTTPStatus.CREATED, TaskOut.from_orm(change.task))
 
 
 def _detail(task: Task) -> TaskDetailOut:
@@ -252,7 +247,7 @@ def update_task(
     edit = _edit(user, patch)
     if isinstance(edit, Status):
         return edit
-    change = tags.update_tagged_task(user, task_id, *edit)
+    change = services.update_task(user, task_id, edit)
     if change is None:
         return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
     return Status(HTTPStatus.OK, task_change_out(change))
@@ -330,7 +325,7 @@ def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:
 )
 def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Status[ErrorOut]:
     """Add an open copy of a Task right after it, with its title, Description and Priority."""
-    copy = services.duplicate_task(signed_in_user(request), task_id)
+    copy = creation.duplicate_task(signed_in_user(request), task_id)
     if copy is None:
         return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
     return Status(HTTPStatus.CREATED, TaskOut.from_orm(copy))
@@ -339,8 +334,8 @@ def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Stat
 def _edit(
     user: User,
     patch: TaskPatchIn,
-) -> tuple[services.TaskEdit, list[Tag] | None] | Status[ErrorOut]:
-    """Return the edit and Tags the patch asks for, or a 404 for another user's Project or Tag."""
+) -> services.TaskEdit | Status[ErrorOut]:
+    """Return the edit the patch asks for, or a 404 for another user's Project or Tag."""
     project = None
     if patch.project_id is not None:
         project = services.live_project(user, patch.project_id)
@@ -349,7 +344,7 @@ def _edit(
     picked = None if patch.tag_ids is None else tags.owned_tags(user, patch.tag_ids)
     if patch.tag_ids is not None and picked is None:
         return Status(HTTPStatus.NOT_FOUND, TAG_NOT_FOUND)
-    edit = services.TaskEdit(
+    return services.TaskEdit(
         title=patch.title,
         description=patch.description,
         status=patch.status,
@@ -363,8 +358,8 @@ def _edit(
         project=project,
         repeat_rule=patch.repeat_rule,
         repeat_from=patch.repeat_from,
+        tags=picked,
     )
-    return edit, picked
 
 
 def _repeat(task: TaskIn) -> Repeat | None:

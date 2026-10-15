@@ -16,6 +16,7 @@ from fractional_indexing import generate_key_between
 from apps.tasks import repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, Project, Task, TaskActivity
+from apps.tasks.positions import lock_project
 from apps.tasks.rows import as_rows
 from apps.tasks.services import TaskChange, TaskRuleError
 from apps.tasks.tree import (
@@ -60,8 +61,7 @@ def move_task(task: Task, destination: Destination) -> TaskChange:
     _check_parent(task, parent)
     from_project, from_parent = task.project.name, task.parent_title
     with transaction.atomic():
-        # Locking the Project serialises writes to its sibling sets, so keys never collide.
-        Project.objects.select_for_update().get(pk=project.pk)
+        lock_project(project.pk)
         events = []
         if parent is not None and task.pinned_at is not None:
             task.pinned_at = None

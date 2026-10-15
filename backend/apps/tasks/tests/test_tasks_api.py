@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.test import Client
 
-from apps.tasks import services
+from apps.tasks import creation, services
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
@@ -115,8 +115,8 @@ def test_a_new_task_goes_first_in_its_project(client: Client, ada: User) -> None
 
 @pytest.mark.django_db
 def test_list_shows_only_open_tasks_by_default(client: Client, ada: User) -> None:
-    services.create_task(services.inbox(ada), "Open one")
-    done = services.create_task(services.inbox(ada), "Done one")
+    creation.create_task(services.inbox(ada), "Open one")
+    done = creation.create_task(services.inbox(ada), "Done one")
     services.update_task(ada, done.pk, services.TaskEdit(status=Task.Status.COMPLETED))
 
     response = client.get(f"/api/v1/tasks?project={services.inbox(ada).pk}")
@@ -126,7 +126,7 @@ def test_list_shows_only_open_tasks_by_default(client: Client, ada: User) -> Non
 
 @pytest.mark.django_db
 def test_list_another_users_project_is_not_found(client: Client, grace: User) -> None:
-    services.create_task(services.inbox(grace), "Grace's")
+    creation.create_task(services.inbox(grace), "Grace's")
 
     response = client.get(f"/api/v1/tasks?project={services.inbox(grace).pk}")
 
@@ -137,10 +137,10 @@ def test_list_another_users_project_is_not_found(client: Client, grace: User) ->
 def test_closed_tasks_are_newest_completed_first(client: Client, ada: User) -> None:
     start = datetime(2026, 10, 1, 9, tzinfo=UTC)
     for title, day in (("Oldest", 0), ("Newest", 2), ("Middle", 1)):
-        task = services.create_task(services.inbox(ada), title)
+        task = creation.create_task(services.inbox(ada), title)
         services.update_task(ada, task.pk, services.TaskEdit(status=Task.Status.COMPLETED))
         Task.objects.filter(pk=task.pk).update(completed_at=start + timedelta(days=day))
-    services.create_task(services.inbox(ada), "Still open")
+    creation.create_task(services.inbox(ada), "Still open")
 
     response = client.get(f"/api/v1/tasks?project={services.inbox(ada).pk}&closed=true")
 
@@ -150,7 +150,7 @@ def test_closed_tasks_are_newest_completed_first(client: Client, ada: User) -> N
 @pytest.mark.django_db
 def test_closed_tasks_come_in_pages_of_fifty(client: Client, ada: User) -> None:
     for number in range(55):
-        task = services.create_task(services.inbox(ada), f"Task {number}")
+        task = creation.create_task(services.inbox(ada), f"Task {number}")
         services.update_task(ada, task.pk, services.TaskEdit(status=Task.Status.COMPLETED))
     project = services.inbox(ada).pk
 
@@ -175,7 +175,7 @@ def test_closed_tasks_reject_a_malformed_cursor(client: Client, ada: User) -> No
 
 @pytest.mark.django_db
 def test_completing_a_task_closes_it(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -194,7 +194,7 @@ def test_completing_a_task_closes_it(client: Client, ada: User) -> None:
 
 @pytest.mark.django_db
 def test_reopening_a_task_clears_its_completion_time(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
     services.update_task(ada, task.pk, services.TaskEdit(status=Task.Status.COMPLETED))
 
     response = client.patch(
@@ -213,7 +213,7 @@ def test_reopening_a_task_clears_its_completion_time(client: Client, ada: User) 
 
 @pytest.mark.django_db
 def test_patch_without_a_status_change_affects_nothing(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
 
     response = client.patch(f"/api/v1/tasks/{task.pk}", {}, content_type="application/json")
 
@@ -223,7 +223,7 @@ def test_patch_without_a_status_change_affects_nothing(client: Client, ada: User
 
 @pytest.mark.django_db
 def test_patch_another_users_task_is_not_found(client: Client, grace: User) -> None:
-    task = services.create_task(services.inbox(grace), "Grace's")
+    task = creation.create_task(services.inbox(grace), "Grace's")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -238,7 +238,7 @@ def test_patch_another_users_task_is_not_found(client: Client, grace: User) -> N
 
 @pytest.mark.django_db
 def test_get_returns_the_task_with_its_description(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
     Task.objects.filter(pk=task.pk).update(description="Semi-skimmed, **two** litres")
 
     response = client.get(f"/api/v1/tasks/{task.pk}")
@@ -252,7 +252,7 @@ def test_get_returns_the_task_with_its_description(client: Client, ada: User) ->
 
 @pytest.mark.django_db
 def test_get_another_users_task_is_not_found(client: Client, grace: User) -> None:
-    task = services.create_task(services.inbox(grace), "Grace's")
+    task = creation.create_task(services.inbox(grace), "Grace's")
 
     response = client.get(f"/api/v1/tasks/{task.pk}")
 
@@ -261,7 +261,7 @@ def test_get_another_users_task_is_not_found(client: Client, grace: User) -> Non
 
 @pytest.mark.django_db
 def test_get_a_trashed_task_is_not_found(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Gone")
+    task = creation.create_task(services.inbox(ada), "Gone")
     Task.objects.filter(pk=task.pk).update(deleted_at=datetime(2026, 10, 1, tzinfo=UTC))
 
     response = client.get(f"/api/v1/tasks/{task.pk}")
@@ -271,7 +271,7 @@ def test_get_a_trashed_task_is_not_found(client: Client, ada: User) -> None:
 
 @pytest.mark.django_db
 def test_patch_renames_a_task_with_a_trimmed_title(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -289,7 +289,7 @@ def test_patch_renames_a_task_with_a_trimmed_title(client: Client, ada: User) ->
 @pytest.mark.django_db
 @pytest.mark.parametrize("title", ["", "   ", "x" * 501])
 def test_patch_rejects_a_blank_or_overlong_title(client: Client, ada: User, title: str) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -304,7 +304,7 @@ def test_patch_rejects_a_blank_or_overlong_title(client: Client, ada: User, titl
 
 @pytest.mark.django_db
 def test_patch_saves_the_description_as_written(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
     description = "- semi-skimmed\n- two litres\n"
 
     response = client.patch(
@@ -321,7 +321,7 @@ def test_patch_saves_the_description_as_written(client: Client, ada: User) -> No
 
 @pytest.mark.django_db
 def test_patch_leaves_fields_it_was_not_given(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Buy milk")
+    task = creation.create_task(services.inbox(ada), "Buy milk")
     Task.objects.filter(pk=task.pk).update(description="Two litres")
 
     client.patch(
@@ -337,7 +337,7 @@ def test_patch_leaves_fields_it_was_not_given(client: Client, ada: User) -> None
 
 @pytest.mark.django_db
 def test_patch_cannot_rename_another_users_task(client: Client, grace: User) -> None:
-    task = services.create_task(services.inbox(grace), "Grace's")
+    task = creation.create_task(services.inbox(grace), "Grace's")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -353,7 +353,7 @@ def test_patch_cannot_rename_another_users_task(client: Client, grace: User) -> 
 
 @pytest.mark.django_db
 def test_blocking_a_task_keeps_its_reason_and_leaves_it_open(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -376,7 +376,7 @@ def test_leaving_blocked_clears_the_reason_and_reports_it_for_undo(
     client: Client,
     ada: User,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
     services.update_task(
         ada,
         task.pk,
@@ -405,7 +405,7 @@ def test_any_status_can_go_to_any_other(
     before: Task.Status,
     after: Task.Status,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
     services.update_task(ada, task.pk, services.TaskEdit(status=before))
 
     response = client.patch(
@@ -424,11 +424,11 @@ def test_any_status_can_go_to_any_other(
 @pytest.mark.django_db
 def test_wont_do_and_blocked_sort_with_closed_and_open_tasks(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
-    skipped = services.create_task(inbox, "Skipped")
+    skipped = creation.create_task(inbox, "Skipped")
     services.update_task(ada, skipped.pk, services.TaskEdit(status=Task.Status.WONT_DO))
-    waiting = services.create_task(inbox, "Waiting")
+    waiting = creation.create_task(inbox, "Waiting")
     services.update_task(ada, waiting.pk, services.TaskEdit(status=Task.Status.BLOCKED))
-    services.create_task(inbox, "Open")
+    creation.create_task(inbox, "Open")
 
     open_response = client.get(f"/api/v1/tasks?project={inbox.pk}")
     closed_response = client.get(f"/api/v1/tasks?project={inbox.pk}&closed=true")
@@ -439,7 +439,7 @@ def test_wont_do_and_blocked_sort_with_closed_and_open_tasks(client: Client, ada
 
 @pytest.mark.django_db
 def test_a_blocked_reason_needs_a_blocked_task(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -455,7 +455,7 @@ def test_a_blocked_reason_needs_a_blocked_task(client: Client, ada: User) -> Non
 
 @pytest.mark.django_db
 def test_patch_edits_the_reason_of_a_blocked_task(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
     services.update_task(ada, task.pk, services.TaskEdit(status=Task.Status.BLOCKED))
 
     response = client.patch(
@@ -471,7 +471,7 @@ def test_patch_edits_the_reason_of_a_blocked_task(client: Client, ada: User) -> 
 
 @pytest.mark.django_db
 def test_patch_rejects_an_overlong_blocked_reason(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -485,7 +485,7 @@ def test_patch_rejects_an_overlong_blocked_reason(client: Client, ada: User) -> 
 @pytest.mark.django_db
 @pytest.mark.parametrize("priority", [1, 2, 3, 4, 0])
 def test_patch_sets_the_priority(client: Client, ada: User, priority: int) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -501,7 +501,7 @@ def test_patch_sets_the_priority(client: Client, ada: User, priority: int) -> No
 @pytest.mark.django_db
 @pytest.mark.parametrize("priority", [-1, 5])
 def test_patch_rejects_an_unknown_priority(client: Client, ada: User, priority: int) -> None:
-    task = services.create_task(services.inbox(ada), "Ship the release")
+    task = creation.create_task(services.inbox(ada), "Ship the release")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",
@@ -517,7 +517,7 @@ def test_patch_cannot_change_another_users_priority_or_status(
     client: Client,
     grace: User,
 ) -> None:
-    task = services.create_task(services.inbox(grace), "Grace's")
+    task = creation.create_task(services.inbox(grace), "Grace's")
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",

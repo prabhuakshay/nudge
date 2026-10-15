@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from apps.accounts.services import set_time_zone
-from apps.tasks import services, trash
+from apps.tasks import creation, services, trash
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Reminder
 
@@ -26,7 +26,7 @@ def task(ada: User, freeze_time: Callable[[datetime], None]) -> Task:
     freeze_time(NOW)
     set_time_zone(ada, "UTC")
     dates = TaskDates(due_date=date(2026, 11, 6), due_time=time(14, 0))
-    task = services.create_task(services.inbox(ada), "Call the bank", dates)
+    task = creation.create_task(services.inbox(ada), "Call the bank", creation.NewTask(dates=dates))
     services.update_task(ada, task.pk, services.TaskEdit(reminders=[timedelta(0)]))
     return task
 
@@ -44,7 +44,7 @@ def test_a_trashed_tasks_reminders_stop(ada: User, task: Task) -> None:
 
 @pytest.mark.django_db
 def test_a_trashed_subtasks_reminders_stop_with_its_parent(ada: User, task: Task) -> None:
-    parent = services.create_task(services.inbox(ada), "Sort out money")
+    parent = creation.create_task(services.inbox(ada), "Sort out money")
     task.parent = parent
     task.save(update_fields=["parent"])
 
@@ -78,7 +78,7 @@ def test_a_reminder_that_came_due_in_trash_never_fires(
 
 @pytest.mark.django_db
 def test_restoring_a_parent_schedules_its_subtasks_reminders_again(ada: User, task: Task) -> None:
-    parent = services.create_task(services.inbox(ada), "Sort out money")
+    parent = creation.create_task(services.inbox(ada), "Sort out money")
     task.parent = parent
     task.save(update_fields=["parent"])
     trash.trash_task(ada, parent.pk)

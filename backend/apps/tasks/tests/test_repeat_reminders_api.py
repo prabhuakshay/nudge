@@ -10,7 +10,7 @@ from django.test import Client
 
 from apps.accounts.services import set_time_zone
 from apps.notifications.models import Notification
-from apps.tasks import reminders, services
+from apps.tasks import creation, reminders, services
 from apps.tasks.dates import TaskDates
 
 if TYPE_CHECKING:
@@ -38,7 +38,7 @@ def _fired_reminder(
     due: date,
 ) -> Notification:
     """Give the user a daily Task due at 14:00 with a Reminder 30 minutes before, and fire it."""
-    task = services.create_task(services.inbox(user), "Take the pills")
+    task = creation.create_task(services.inbox(user), "Take the pills")
     edit = services.TaskEdit(
         dates=TaskDates(due_date=due, due_time=time(14, 0)),
         reminders=[timedelta(minutes=-30)],

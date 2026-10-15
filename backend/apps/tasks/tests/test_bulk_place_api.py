@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import projects, services
+from apps.tasks import creation, projects, services
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
@@ -43,7 +43,7 @@ def test_a_bulk_move_says_where_each_task_was(client: Client, ada: User) -> None
     inbox = services.inbox(ada)
     work = projects.create_project(ada, "Work")
     for title in ("Last", "Middle", "First"):
-        services.create_task(inbox, title)
+        creation.create_task(inbox, title)
     first, middle = Task.objects.get(title="First"), Task.objects.get(title="Middle")
 
     response = _bulk(client, [middle.pk, first.pk], {"kind": "move", "project_id": work.pk})
@@ -59,10 +59,10 @@ def test_placing_puts_moved_tasks_back_in_their_old_places(client: Client, ada: 
     inbox = services.inbox(ada)
     work = projects.create_project(ada, "Work")
     for title in ("Last", "Middle", "First"):
-        services.create_task(inbox, title)
-    trip = services.create_task(inbox, "Trip")
+        creation.create_task(inbox, title)
+    trip = creation.create_task(inbox, "Trip")
     for title in ("Flights", "Hotel", "Visa"):
-        services.create_subtask(trip, title)
+        creation.create_subtask(trip, title)
     middle, first = Task.objects.get(title="Middle"), Task.objects.get(title="First")
     hotel = Task.objects.get(title="Hotel")
     moved = _bulk(client, [middle.pk, hotel.pk, first.pk], {"kind": "move", "project_id": work.pk})
@@ -81,7 +81,7 @@ def test_placing_into_another_users_project_is_404(
     ada: User,
     grace: User,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Pay rent")
+    task = creation.create_task(services.inbox(ada), "Pay rent")
     theirs = services.inbox(grace)
 
     response = _place(
@@ -96,8 +96,8 @@ def test_placing_into_another_users_project_is_404(
 @pytest.mark.django_db
 def test_placing_under_another_users_task_is_404(client: Client, ada: User, grace: User) -> None:
     inbox = services.inbox(ada)
-    task = services.create_task(inbox, "Pay rent")
-    theirs = services.create_task(services.inbox(grace), "Buy milk")
+    task = creation.create_task(inbox, "Pay rent")
+    theirs = creation.create_task(services.inbox(grace), "Buy milk")
 
     response = _place(
         client,
@@ -111,8 +111,8 @@ def test_placing_under_another_users_task_is_404(client: Client, ada: User, grac
 @pytest.mark.django_db
 def test_places_must_name_the_tasks_given(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
-    task = services.create_task(inbox, "Pay rent")
-    other = services.create_task(inbox, "Buy milk")
+    task = creation.create_task(inbox, "Pay rent")
+    other = creation.create_task(inbox, "Buy milk")
     place = {"id": task.pk, "project_id": inbox.pk, "parent_id": None, "after_id": None}
 
     response = _bulk(client, [other.pk], {"kind": "place", "places": [place]})

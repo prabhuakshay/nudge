@@ -10,7 +10,17 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 
 from apps.accounts.services import set_time_zone
 from apps.notifications.models import Notification
-from apps.tasks import attachments, comments, mentions, people, purge, reminders, services, trash
+from apps.tasks import (
+    attachments,
+    comments,
+    creation,
+    mentions,
+    people,
+    purge,
+    reminders,
+    services,
+    trash,
+)
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import (
     Attachment,
@@ -46,7 +56,7 @@ def _stored_files(media_root: Path) -> list[Path]:
 
 def _trashed(user: User, title: str, freeze_time: Callable[[datetime], None]) -> Task:
     freeze_time(DELETED)
-    task = services.create_task(services.inbox(user), title)
+    task = creation.create_task(services.inbox(user), title)
     trash.trash_task(user, task.pk)
     return task
 
@@ -62,9 +72,9 @@ def test_expired_units_are_deleted_and_unexpired_ones_kept(
 ) -> None:
     old = _trashed(ada, "Old", freeze_time)
     freeze_time(DELETED + timedelta(days=1))
-    recent = services.create_task(services.inbox(ada), "Recent")
+    recent = creation.create_task(services.inbox(ada), "Recent")
     trash.trash_task(ada, recent.pk)
-    live = services.create_task(services.inbox(ada), "Live")
+    live = creation.create_task(services.inbox(ada), "Live")
     freeze_time(DELETED + RETENTION)
 
     purged = purge.purge_expired_trash()
@@ -96,8 +106,8 @@ def test_a_purged_unit_takes_its_subtasks_and_everything_on_them(
 ) -> None:
     freeze_time(DELETED)
     alice = people.create_person(ada, "Alice")
-    task = services.create_task(services.inbox(ada), "Move house")
-    subtask = services.create_subtask(task, "Pack").task
+    task = creation.create_task(services.inbox(ada), "Move house")
+    subtask = creation.create_subtask(task, "Pack").task
     services.update_task(
         ada,
         subtask.pk,
@@ -128,7 +138,7 @@ def test_a_fired_reminders_notification_outlives_the_purge(
 ) -> None:
     set_time_zone(ada, "UTC")
     freeze_time(DELETED)
-    task = services.create_task(services.inbox(ada), "Call the bank")
+    task = creation.create_task(services.inbox(ada), "Call the bank")
     edit = services.TaskEdit(
         dates=TaskDates(due_date=DELETED.date(), due_time=time(9, 30)),
         reminders=[timedelta(0)],
@@ -153,7 +163,7 @@ def test_attachment_files_are_deleted_only_after_the_purge_commits(
     django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     freeze_time(DELETED)
-    task = services.create_task(services.inbox(ada), "File the taxes")
+    task = creation.create_task(services.inbox(ada), "File the taxes")
     attachments.attach_file(task, SimpleUploadedFile("return.pdf", b"%PDF"))
     trash.trash_task(ada, task.pk)
     freeze_time(DELETED + RETENTION)

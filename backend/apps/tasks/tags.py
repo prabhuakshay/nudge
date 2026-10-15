@@ -17,9 +17,8 @@ from fractional_indexing import generate_key_between
 
 from apps.accounts.models import User
 from apps.core.errors import DomainRuleError
-from apps.tasks import repeat, services
 from apps.tasks.archive import active_tasks
-from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Project, Tag, Task, TaskActivity
+from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Tag, Task, TaskActivity
 from apps.tasks.pagination import Page, newest_first
 from apps.tasks.rows import as_rows, unpinned
 
@@ -29,7 +28,6 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from apps.core.palette import PaletteColor
-    from apps.tasks.dates import TaskDates
 
 
 class TagRuleError(DomainRuleError):
@@ -189,86 +187,7 @@ def _event(task: Task, kind: TaskActivity.Kind, data: dict[str, str]) -> TaskAct
     return TaskActivity(task=task, kind=kind, data=data)
 
 
-def _resolve(user: User, tags: Iterable[Tag | str]) -> list[Tag]:
-    """Return the Tags given, with each name turned into the user's Tag of that name."""
-    given = list(tags)
-    names = [tag for tag in given if isinstance(tag, str)]
-    return [*(tag for tag in given if isinstance(tag, Tag)), *tags_named(user, names)]
-
-
-def create_tagged_task(  # noqa: PLR0913 - each field of a new Task past its title is optional
-    project: Project,
-    title: str,
-    dates: TaskDates | None = None,
-    *,
-    priority: Task.Priority = Task.Priority.NONE,
-    tags: Iterable[Tag | str] = (),
-    repeat_with: repeat.Repeat | None = None,
-) -> Task:
-    """Create a Task as `services.create_task` does, with Tags and a Repeat, in one transaction.
-
-    `tags` holds Tags, or names of the owner's Tags, which are created if they're new.
-
-    Raises:
-        MentionError: The title mentions a Person who isn't the owner's.
-        ArchivedProjectError: The Project is archived.
-        RepeatRuleError: The Repeat's rule is unreadable, or the Task has no due date.
-    """
-    with transaction.atomic():
-        task = services.create_task(project, title, dates, priority=priority)
-        task.tags.add(*_resolve(project.owner, tags))
-        if repeat_with is not None:
-            repeat.start(task, repeat_with.rule, Task.RepeatFrom(repeat_with.repeat_from))
-    return task
-
-
-def create_tagged_subtask(
-    parent: Task,
-    title: str,
-    dates: TaskDates | None = None,
-    *,
-    priority: Task.Priority = Task.Priority.NONE,
-    tags: Iterable[Tag | str] = (),
-) -> services.TaskChange:
-    """Create a Subtask as `services.create_subtask` does, with Tags, in one transaction.
-
-    `tags` holds Tags, or names of the owner's Tags, which are created if they're new.
-
-    Raises:
-        TaskRuleError: The parent is already at the deepest level.
-        MentionError: The title mentions a Person who isn't the owner's.
-        ArchivedProjectError: The parent is in an archived Project.
-    """
-    with transaction.atomic():
-        change = services.create_subtask(parent, title, dates, priority=priority)
-        change.task.tags.add(*_resolve(parent.owner, tags))
-    # The row came with its Tags prefetched, before these were added.
-    fresh = as_rows(Task.objects.filter(pk=change.task.pk), parent.owner).get()
-    return services.TaskChange(task=fresh, affected=change.affected)
-
-
-def update_tagged_task(
-    user: User,
-    task_id: int,
-    edit: services.TaskEdit,
-    tags: list[Tag] | None,
-) -> services.TaskChange | None:
-    """Change a Task as `services.update_task` does and give it exactly `tags`, unless None.
-
-    Both happen in one transaction, and each Tag put on or taken off is logged in Activity.
-
-    Raises:
-        TaskRuleError: The edit breaks a Task rule.
-        ArchivedProjectError: The Task is in an archived Project, or would move into one.
-    """
-    with transaction.atomic():
-        change = services.update_task(user, task_id, edit)
-        if change is not None and tags is not None:
-            TaskActivity.objects.bulk_create(_retag(change.task, tags))
-    return change
-
-
-def _retag(task: Task, tags: list[Tag]) -> list[TaskActivity]:
+def retag(task: Task, tags: list[Tag]) -> list[TaskActivity]:
     """Give the Task exactly these Tags; return unsaved Activity events, one per change."""
     current = set(task.tags.all())
     wanted = set(tags)

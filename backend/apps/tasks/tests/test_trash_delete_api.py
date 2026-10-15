@@ -8,7 +8,7 @@ import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client
 
-from apps.tasks import attachments, services, trash
+from apps.tasks import attachments, creation, services, trash
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
@@ -28,7 +28,7 @@ def media_root(settings: Settings, tmp_path: Path) -> Path:
 
 
 def _trashed(user: User, title: str) -> Task:
-    task = services.create_task(services.inbox(user), title)
+    task = creation.create_task(services.inbox(user), title)
     trash.trash_task(user, task.pk)
     return task
 
@@ -86,8 +86,8 @@ def test_delete_forever_takes_the_subtasks_that_went_to_trash_with_it(
     client: Client,
     ada: User,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
-    subtask = services.create_subtask(task, "Pack").task
+    task = creation.create_task(services.inbox(ada), "Move house")
+    subtask = creation.create_subtask(task, "Pack").task
     trash.trash_task(ada, task.pk)
 
     _delete_forever(client, task)
@@ -97,7 +97,7 @@ def test_delete_forever_takes_the_subtasks_that_went_to_trash_with_it(
 
 @pytest.mark.django_db
 def test_delete_forever_of_a_live_task_is_not_found(client: Client, ada: User) -> None:
-    live = services.create_task(services.inbox(ada), "Pay rent")
+    live = creation.create_task(services.inbox(ada), "Pay rent")
 
     response = _delete_forever(client, live)
 
@@ -133,7 +133,7 @@ def test_delete_forever_deletes_attachment_files_after_commit(
     media_root: Path,
     django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "File the taxes")
+    task = creation.create_task(services.inbox(ada), "File the taxes")
     attachments.attach_file(task, SimpleUploadedFile("return.pdf", b"%PDF"))
     trash.trash_task(ada, task.pk)
 
@@ -150,7 +150,7 @@ def test_empty_trash_deletes_every_unit_of_the_user_only(
     grace: User,
 ) -> None:
     mine, theirs = _trashed(ada, "Pay rent"), _trashed(grace, "Buy milk")
-    live = services.create_task(services.inbox(ada), "Call mum")
+    live = creation.create_task(services.inbox(ada), "Call mum")
 
     response = client.delete("/api/v1/trash")
 
@@ -164,9 +164,9 @@ def test_a_subtask_whose_parent_was_deleted_forever_restores_as_the_last_root(
     ada: User,
 ) -> None:
     inbox = services.inbox(ada)
-    parent = services.create_task(inbox, "Move house")
-    subtask = services.create_subtask(parent, "Pack").task
-    services.create_task(inbox, "Buy milk")
+    parent = creation.create_task(inbox, "Move house")
+    subtask = creation.create_subtask(parent, "Pack").task
+    creation.create_task(inbox, "Buy milk")
     trash.trash_task(ada, subtask.pk)
     trash.trash_task(ada, parent.pk)
     assert _delete_forever(client, parent).status_code == 204

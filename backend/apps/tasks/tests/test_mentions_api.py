@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import people, projects, services
+from apps.tasks import creation, people, projects, services
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ def _person_view(client: Client, person: Person, **query: str) -> list[str]:
 
 
 def _blocked(ada: User, title: str) -> Task:
-    task = services.create_task(services.inbox(ada), title)
+    task = creation.create_task(services.inbox(ada), title)
     services.update_task(ada, task.pk, services.TaskEdit(status=Task.Status.BLOCKED))
     return task
 
@@ -83,7 +83,7 @@ def test_removing_the_last_mention_takes_the_task_out_of_the_view(
     ada: User,
 ) -> None:
     priya = people.create_person(ada, "Priya")
-    task = services.create_task(services.inbox(ada), f"Call {_mention(priya)}")
+    task = creation.create_task(services.inbox(ada), f"Call {_mention(priya)}")
     _patch(client, f"/api/v1/tasks/{task.pk}", {"description": f"Thank {_mention(priya)}"})
 
     _patch(client, f"/api/v1/tasks/{task.pk}", {"title": "Call the plumber"})
@@ -139,12 +139,12 @@ def test_the_person_view_lists_open_tasks_from_every_project_but_not_trashed_one
 ) -> None:
     priya = people.create_person(ada, "Priya")
     work = projects.create_project(ada, "Work")
-    services.create_task(services.inbox(ada), f"Inbox {_mention(priya)}")
-    services.create_task(work, f"Work {_mention(priya)}")
-    services.create_task(work, "Unrelated")
-    trashed = services.create_task(work, f"Trashed {_mention(priya)}")
+    creation.create_task(services.inbox(ada), f"Inbox {_mention(priya)}")
+    creation.create_task(work, f"Work {_mention(priya)}")
+    creation.create_task(work, "Unrelated")
+    trashed = creation.create_task(work, f"Trashed {_mention(priya)}")
     Task.objects.filter(pk=trashed.pk).update(deleted_at=trashed.created_at)
-    done = services.create_task(work, f"Done {_mention(priya)}")
+    done = creation.create_task(work, f"Done {_mention(priya)}")
     services.update_task(ada, done.pk, services.TaskEdit(status=Task.Status.COMPLETED))
 
     titles = _person_view(client, priya)
@@ -160,7 +160,7 @@ def test_a_subtasks_mention_lists_the_subtask_alone_with_its_parents_title(
     ada: User,
 ) -> None:
     priya = people.create_person(ada, "Priya")
-    parent = services.create_task(services.inbox(ada), "Plan the trip")
+    parent = creation.create_task(services.inbox(ada), "Plan the trip")
 
     response = _post(
         client,
@@ -182,7 +182,7 @@ def test_a_subtasks_mention_of_another_users_person_is_refused(
     grace: User,
 ) -> None:
     theirs = people.create_person(grace, "Priya")
-    parent = services.create_task(services.inbox(ada), "Plan the trip")
+    parent = creation.create_task(services.inbox(ada), "Plan the trip")
 
     response = _post(
         client,
@@ -197,7 +197,7 @@ def test_a_subtasks_mention_of_another_users_person_is_refused(
 @pytest.mark.django_db
 def test_a_duplicate_mentions_the_same_people(client: Client, ada: User) -> None:
     priya = people.create_person(ada, "Priya")
-    task = services.create_task(services.inbox(ada), f"Call {_mention(priya)}")
+    task = creation.create_task(services.inbox(ada), f"Call {_mention(priya)}")
 
     client.post(f"/api/v1/tasks/{task.pk}/duplicate")
 
@@ -208,7 +208,7 @@ def test_a_duplicate_mentions_the_same_people(client: Client, ada: User) -> None
 def test_the_person_view_leaves_out_archived_projects(client: Client, ada: User) -> None:
     priya = people.create_person(ada, "Priya")
     work = projects.create_project(ada, "Work")
-    services.create_task(work, f"Work {_mention(priya)}")
+    creation.create_task(work, f"Work {_mention(priya)}")
 
     client.post(f"/api/v1/projects/{work.pk}/archive")
 
@@ -251,7 +251,7 @@ def test_deleting_a_person_leaves_their_mentions_as_plain_names(
     ada: User,
 ) -> None:
     priya = people.create_person(ada, "Priya")
-    task = services.create_task(services.inbox(ada), f"Call {_mention(priya)}")
+    task = creation.create_task(services.inbox(ada), f"Call {_mention(priya)}")
 
     client.delete(f"/api/v1/people/{priya.pk}")
 
@@ -267,9 +267,9 @@ def test_merging_moves_every_mention_and_logs_it_on_affected_tasks(
 ) -> None:
     al = people.create_person(ada, "Al")
     alice = people.create_person(ada, "Alice")
-    both = services.create_task(services.inbox(ada), f"{_mention(al)} meets {_mention(alice)}")
-    only_al = services.create_task(services.inbox(ada), f"Call {_mention(al)}")
-    untouched = services.create_task(services.inbox(ada), f"Email {_mention(alice)}")
+    both = creation.create_task(services.inbox(ada), f"{_mention(al)} meets {_mention(alice)}")
+    only_al = creation.create_task(services.inbox(ada), f"Call {_mention(al)}")
+    untouched = creation.create_task(services.inbox(ada), f"Email {_mention(alice)}")
 
     response = _post(client, f"/api/v1/people/{al.pk}/merge", {"into_id": alice.pk})
 

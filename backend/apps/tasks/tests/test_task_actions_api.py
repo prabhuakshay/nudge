@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.test import Client
 
-from apps.tasks import services
+from apps.tasks import creation, services
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
@@ -38,7 +38,7 @@ def test_duplicate_requires_a_session() -> None:
 
 @pytest.mark.django_db
 def test_pinning_a_task_records_when(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Pay rent")
+    task = creation.create_task(services.inbox(ada), "Pay rent")
 
     response = _pin(client, task, pinned=True)
 
@@ -49,7 +49,7 @@ def test_pinning_a_task_records_when(client: Client, ada: User) -> None:
 
 @pytest.mark.django_db
 def test_unpinning_a_task_clears_when_it_was_pinned(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Pay rent")
+    task = creation.create_task(services.inbox(ada), "Pay rent")
     _pin(client, task, pinned=True)
 
     response = _pin(client, task, pinned=False)
@@ -60,7 +60,7 @@ def test_unpinning_a_task_clears_when_it_was_pinned(client: Client, ada: User) -
 
 @pytest.mark.django_db
 def test_pinning_a_pinned_task_keeps_its_place(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Pay rent")
+    task = creation.create_task(services.inbox(ada), "Pay rent")
     first = _pin(client, task, pinned=True).json()["task"]["pinned_at"]
 
     again = _pin(client, task, pinned=True).json()["task"]["pinned_at"]
@@ -72,7 +72,7 @@ def test_pinning_a_pinned_task_keeps_its_place(client: Client, ada: User) -> Non
 def test_pinned_tasks_list_first_oldest_pin_first(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
     for title in ("Plain", "Pinned second", "Pinned first", "Newest"):
-        services.create_task(inbox, title)
+        creation.create_task(inbox, title)
     start = datetime(2026, 10, 1, 9, tzinfo=UTC)
     Task.objects.filter(title="Pinned first").update(pinned_at=start)
     Task.objects.filter(title="Pinned second").update(pinned_at=start + timedelta(hours=1))
@@ -84,7 +84,7 @@ def test_pinned_tasks_list_first_oldest_pin_first(client: Client, ada: User) -> 
 
 @pytest.mark.django_db
 def test_cannot_pin_another_users_task(client: Client, grace: User) -> None:
-    task = services.create_task(services.inbox(grace), "Grace's")
+    task = creation.create_task(services.inbox(grace), "Grace's")
 
     response = _pin(client, task, pinned=True)
 
@@ -95,7 +95,7 @@ def test_cannot_pin_another_users_task(client: Client, grace: User) -> None:
 
 @pytest.mark.django_db
 def test_duplicate_copies_title_description_and_priority(client: Client, ada: User) -> None:
-    original = services.create_task(services.inbox(ada), "Plan the trip")
+    original = creation.create_task(services.inbox(ada), "Plan the trip")
     services.update_task(
         ada,
         original.pk,
@@ -125,9 +125,9 @@ def test_duplicate_copies_title_description_and_priority(client: Client, ada: Us
 @pytest.mark.django_db
 def test_duplicate_goes_right_after_the_original(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
-    services.create_task(inbox, "Last")
-    original = services.create_task(inbox, "Middle")
-    services.create_task(inbox, "First")
+    creation.create_task(inbox, "Last")
+    original = creation.create_task(inbox, "Middle")
+    creation.create_task(inbox, "First")
 
     copy = client.post(f"/api/v1/tasks/{original.pk}/duplicate").json()
 
@@ -139,8 +139,8 @@ def test_duplicate_goes_right_after_the_original(client: Client, ada: User) -> N
 @pytest.mark.django_db
 def test_duplicate_of_the_last_task_goes_last(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
-    original = services.create_task(inbox, "Last")
-    services.create_task(inbox, "First")
+    original = creation.create_task(inbox, "Last")
+    creation.create_task(inbox, "First")
 
     response = client.post(f"/api/v1/tasks/{original.pk}/duplicate")
 
@@ -150,7 +150,7 @@ def test_duplicate_of_the_last_task_goes_last(client: Client, ada: User) -> None
 
 @pytest.mark.django_db
 def test_duplicate_another_users_task_is_not_found(client: Client, grace: User) -> None:
-    task = services.create_task(services.inbox(grace), "Grace's")
+    task = creation.create_task(services.inbox(grace), "Grace's")
 
     response = client.post(f"/api/v1/tasks/{task.pk}/duplicate")
 
@@ -160,8 +160,8 @@ def test_duplicate_another_users_task_is_not_found(client: Client, grace: User) 
 
 @pytest.mark.django_db
 def test_a_subtask_cannot_be_pinned(client: Client, ada: User) -> None:
-    root = services.create_task(services.inbox(ada), "Plan the trip")
-    subtask = services.create_subtask(root, "Book flights").task
+    root = creation.create_task(services.inbox(ada), "Plan the trip")
+    subtask = creation.create_subtask(root, "Book flights").task
 
     response = _pin(client, subtask, pinned=True)
 
@@ -176,9 +176,9 @@ def test_duplicating_a_subtask_puts_the_copy_after_it_under_a_reopened_parent(
     client: Client,
     ada: User,
 ) -> None:
-    root = services.create_task(services.inbox(ada), "Plan the trip")
-    flights = services.create_subtask(root, "Book flights").task
-    services.create_subtask(root, "Book hotel")
+    root = creation.create_task(services.inbox(ada), "Plan the trip")
+    flights = creation.create_subtask(root, "Book flights").task
+    creation.create_subtask(root, "Book hotel")
     services.update_task(ada, root.pk, services.TaskEdit(status=Task.Status.COMPLETED))
 
     response = client.post(f"/api/v1/tasks/{flights.pk}/duplicate")

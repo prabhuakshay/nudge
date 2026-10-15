@@ -11,7 +11,7 @@ import pytest
 from apps.accounts.services import set_time_zone
 from apps.notifications import services as notifications
 from apps.notifications.models import Notification
-from apps.tasks import projects, reminder_actions, reminders, services
+from apps.tasks import creation, projects, reminder_actions, reminders, services
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Reminder, Task
 
@@ -35,7 +35,7 @@ def _dated_task(
     due_date: date = date(2026, 11, 6),
     due_time: time | None = time(14, 0),
 ) -> Task:
-    task = services.create_task(services.inbox(user), "Call the bank")
+    task = creation.create_task(services.inbox(user), "Call the bank")
     dates = TaskDates(due_date=due_date, due_time=due_time)
     services.update_task(user, task.pk, services.TaskEdit(dates=dates))
     return task
@@ -56,7 +56,7 @@ def test_due_reminders_fire_as_notifications(
 ) -> None:
     freeze_time(NOW)
     work = projects.create_project(london, "Work")
-    task = services.create_task(work, "Send the report")
+    task = creation.create_task(work, "Send the report")
     dates = TaskDates(due_date=date(2026, 11, 6), due_time=time(14, 0))
     services.update_task(london, task.pk, services.TaskEdit(dates=dates))
     _remind(london, task, THIRTY_MINUTES_BEFORE)

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.utils import timezone
 
-from apps.tasks import projects, services
+from apps.tasks import creation, projects, services
 from apps.tasks.models import Project, Task
 
 if TYPE_CHECKING:
@@ -36,7 +36,7 @@ def _inbox_titles(client: Client, user: User, *, roots: bool = False) -> list[st
 
 
 def _subtask(parent: Task, title: str) -> Task:
-    return services.create_subtask(parent, title).task
+    return creation.create_subtask(parent, title).task
 
 
 def _trash(client: Client) -> list[dict[str, object]]:
@@ -50,7 +50,7 @@ def _trash(client: Client) -> list[dict[str, object]]:
 def test_restoring_a_task_puts_it_back_where_it_was(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
     for title in ("Last", "Middle", "First"):
-        services.create_task(inbox, title)
+        creation.create_task(inbox, title)
     middle = Task.objects.get(title="Middle")
     _subtask(middle, "Step")
     _delete(client, middle)
@@ -70,7 +70,7 @@ def test_restoring_a_subtask_by_its_id_brings_back_its_whole_unit(
     client: Client,
     ada: User,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
+    task = creation.create_task(services.inbox(ada), "Move house")
     pack = _subtask(task, "Pack")
     _delete(client, task)
 
@@ -82,7 +82,7 @@ def test_restoring_a_subtask_by_its_id_brings_back_its_whole_unit(
 
 @pytest.mark.django_db
 def test_a_restored_subtask_goes_back_under_its_live_parent(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
+    task = creation.create_task(services.inbox(ada), "Move house")
     pack = _subtask(task, "Pack")
     _subtask(task, "Clean")
     _delete(client, pack)
@@ -99,10 +99,10 @@ def test_a_subtask_whose_parent_is_in_trash_comes_back_last_at_the_top_level(
     ada: User,
 ) -> None:
     inbox = services.inbox(ada)
-    task = services.create_task(inbox, "Move house")
+    task = creation.create_task(inbox, "Move house")
     pack = _subtask(task, "Pack")
     _subtask(pack, "Pack books")
-    services.create_task(inbox, "Pay rent")
+    creation.create_task(inbox, "Pay rent")
     _delete(client, pack)
     _delete(client, task)
 
@@ -120,11 +120,11 @@ def test_a_subtask_that_no_longer_fits_under_its_parent_comes_back_at_the_top_le
     ada: User,
 ) -> None:
     inbox = services.inbox(ada)
-    task = services.create_task(inbox, "Move house")
+    task = creation.create_task(inbox, "Move house")
     pack = _subtask(task, "Pack")
     _subtask(pack, "Pack books")
     _delete(client, pack)
-    deep = _subtask(services.create_task(inbox, "Plan"), "Book a van")
+    deep = _subtask(creation.create_task(inbox, "Plan"), "Book a van")
     client.post(
         f"/api/v1/tasks/{task.pk}/move",
         {"parent_id": deep.pk},
@@ -142,7 +142,7 @@ def test_a_task_whose_project_is_in_trash_comes_back_to_the_inbox(
     ada: User,
 ) -> None:
     project = projects.create_project(ada, "Home")
-    task = services.create_task(project, "Move house")
+    task = creation.create_task(project, "Move house")
     step = _subtask(task, "Pack")
     _delete(client, task)
     Project.objects.filter(pk=project.pk).update(deleted_at=timezone.now())
@@ -159,7 +159,7 @@ def test_a_task_whose_project_is_in_trash_comes_back_to_the_inbox(
 @pytest.mark.django_db
 def test_a_task_comes_back_into_its_archived_project(client: Client, ada: User) -> None:
     project = projects.create_project(ada, "Home")
-    task = services.create_task(project, "Move house")
+    task = creation.create_task(project, "Move house")
     _delete(client, task)
     projects.archive_project(ada, project.pk)
 
@@ -171,7 +171,7 @@ def test_a_task_comes_back_into_its_archived_project(client: Client, ada: User) 
 
 @pytest.mark.django_db
 def test_restoring_under_a_closed_parent_reopens_it(client: Client, ada: User) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
+    task = creation.create_task(services.inbox(ada), "Move house")
     pack = _subtask(task, "Pack")
     _delete(client, pack)
     client.patch(
@@ -190,7 +190,7 @@ def test_restoring_a_closed_subtask_leaves_its_closed_parent_closed(
     client: Client,
     ada: User,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Move house")
+    task = creation.create_task(services.inbox(ada), "Move house")
     pack = _subtask(task, "Pack")
     _set_status(client, pack, "completed")
     _delete(client, pack)

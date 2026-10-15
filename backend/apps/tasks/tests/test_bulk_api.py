@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.test import Client
 
-from apps.tasks import projects, services, tags, trash
+from apps.tasks import creation, projects, services, tags, trash
 from apps.tasks.models import Task, TaskActivity
 
 if TYPE_CHECKING:
@@ -47,7 +47,7 @@ def test_setting_status_closes_each_task_and_reports_it_for_undo(
     ada: User,
 ) -> None:
     inbox = services.inbox(ada)
-    rent, milk = services.create_task(inbox, "Pay rent"), services.create_task(inbox, "Buy milk")
+    rent, milk = creation.create_task(inbox, "Pay rent"), creation.create_task(inbox, "Buy milk")
 
     response = _bulk(client, [rent, milk], {"kind": "status", "status": "completed"})
 
@@ -65,8 +65,8 @@ def test_another_users_task_makes_the_whole_request_404(
     ada: User,
     grace: User,
 ) -> None:
-    mine = services.create_task(services.inbox(ada), "Pay rent")
-    theirs = services.create_task(services.inbox(grace), "Buy milk")
+    mine = creation.create_task(services.inbox(ada), "Pay rent")
+    theirs = creation.create_task(services.inbox(grace), "Buy milk")
 
     response = _bulk(client, [mine, theirs], {"kind": "priority", "priority": 1})
 
@@ -78,7 +78,7 @@ def test_another_users_task_makes_the_whole_request_404(
 @pytest.mark.django_db
 def test_a_trashed_task_makes_the_whole_request_404(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
-    rent, milk = services.create_task(inbox, "Pay rent"), services.create_task(inbox, "Buy milk")
+    rent, milk = creation.create_task(inbox, "Pay rent"), creation.create_task(inbox, "Buy milk")
     trash.trash_task(ada, milk.pk)
 
     response = _bulk(client, [rent, milk], {"kind": "delete"})
@@ -90,7 +90,7 @@ def test_a_trashed_task_makes_the_whole_request_404(client: Client, ada: User) -
 @pytest.mark.django_db
 @pytest.mark.parametrize("kind", ["add_tag", "remove_tag"])
 def test_another_users_tag_is_404(client: Client, ada: User, grace: User, kind: str) -> None:
-    task = services.create_task(services.inbox(ada), "Pay rent")
+    task = creation.create_task(services.inbox(ada), "Pay rent")
     theirs = tags.create_tag(grace, "home")
 
     response = _bulk(client, [task], {"kind": kind, "tag_id": theirs.pk})
@@ -104,7 +104,7 @@ def test_another_users_task_is_404_for_a_tag_too(
     ada: User,
     grace: User,
 ) -> None:
-    theirs = services.create_task(services.inbox(grace), "Buy milk")
+    theirs = creation.create_task(services.inbox(grace), "Buy milk")
     home = tags.create_tag(ada, "home")
 
     response = _bulk(client, [theirs], {"kind": "add_tag", "tag_id": home.pk})
@@ -119,7 +119,7 @@ def test_moving_into_another_users_project_is_404(
     ada: User,
     grace: User,
 ) -> None:
-    task = services.create_task(services.inbox(ada), "Pay rent")
+    task = creation.create_task(services.inbox(ada), "Pay rent")
 
     response = _bulk(client, [task], {"kind": "move", "project_id": services.inbox(grace).pk})
 
@@ -140,8 +140,8 @@ def test_closing_a_parent_cascades_and_logs_as_a_single_change_does(
     ada: User,
 ) -> None:
     inbox = services.inbox(ada)
-    parent, other = services.create_task(inbox, "Move house"), services.create_task(inbox, "Rent")
-    step = services.create_subtask(parent, "Pack books").task
+    parent, other = creation.create_task(inbox, "Move house"), creation.create_task(inbox, "Rent")
+    step = creation.create_subtask(parent, "Pack books").task
 
     response = _bulk(client, [parent, other], {"kind": "status", "status": "wont_do"})
 
@@ -155,7 +155,7 @@ def test_closing_a_parent_cascades_and_logs_as_a_single_change_does(
 @pytest.mark.django_db
 def test_setting_priority_logs_each_change_once(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
-    rent, milk = services.create_task(inbox, "Pay rent"), services.create_task(inbox, "Buy milk")
+    rent, milk = creation.create_task(inbox, "Pay rent"), creation.create_task(inbox, "Buy milk")
 
     response = _bulk(client, [rent, milk, rent], {"kind": "priority", "priority": 2})
 
@@ -168,7 +168,7 @@ def test_setting_priority_logs_each_change_once(client: Client, ada: User) -> No
 @pytest.mark.django_db
 def test_setting_dates_dates_each_task(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
-    rent, milk = services.create_task(inbox, "Pay rent"), services.create_task(inbox, "Buy milk")
+    rent, milk = creation.create_task(inbox, "Pay rent"), creation.create_task(inbox, "Buy milk")
 
     response = _bulk(
         client,
@@ -186,9 +186,9 @@ def test_setting_dates_dates_each_task(client: Client, ada: User) -> None:
 def test_moving_takes_a_subtask_along_with_its_selected_parent(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
     work = projects.create_project(ada, "Work")
-    parent = services.create_task(inbox, "Move house")
-    step = services.create_subtask(parent, "Pack books").task
-    loose = services.create_subtask(services.create_task(inbox, "Errands"), "Buy milk").task
+    parent = creation.create_task(inbox, "Move house")
+    step = creation.create_subtask(parent, "Pack books").task
+    loose = creation.create_subtask(creation.create_task(inbox, "Errands"), "Buy milk").task
 
     response = _bulk(client, [step, parent, loose], {"kind": "move", "project_id": work.pk})
 
@@ -204,8 +204,8 @@ def test_moving_takes_a_subtask_along_with_its_selected_parent(client: Client, a
 def test_adding_a_tag_skips_tasks_that_have_it(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
     home = tags.create_tag(ada, "home")
-    rent = tags.create_tagged_task(inbox, "Pay rent", tags=[home])
-    milk = services.create_task(inbox, "Buy milk")
+    rent = creation.create_task(inbox, "Pay rent", creation.NewTask(tags=[home]))
+    milk = creation.create_task(inbox, "Buy milk")
 
     response = _bulk(client, [rent, milk], {"kind": "add_tag", "tag_id": home.pk})
 
@@ -219,8 +219,8 @@ def test_adding_a_tag_skips_tasks_that_have_it(client: Client, ada: User) -> Non
 def test_removing_a_tag_keeps_the_others(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
     home, work = tags.create_tag(ada, "home"), tags.create_tag(ada, "work")
-    rent = tags.create_tagged_task(inbox, "Pay rent", tags=[home, work])
-    milk = services.create_task(inbox, "Buy milk")
+    rent = creation.create_task(inbox, "Pay rent", creation.NewTask(tags=[home, work]))
+    milk = creation.create_task(inbox, "Buy milk")
 
     response = _bulk(client, [rent, milk], {"kind": "remove_tag", "tag_id": home.pk})
 
@@ -233,8 +233,8 @@ def test_removing_a_tag_keeps_the_others(client: Client, ada: User) -> None:
 @pytest.mark.django_db
 def test_deleting_trashes_each_tree_as_its_own_unit(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
-    parent, other = services.create_task(inbox, "Move house"), services.create_task(inbox, "Rent")
-    step = services.create_subtask(parent, "Pack books").task
+    parent, other = creation.create_task(inbox, "Move house"), creation.create_task(inbox, "Rent")
+    step = creation.create_subtask(parent, "Pack books").task
 
     response = _bulk(client, [step, parent, other], {"kind": "delete"})
 
@@ -248,7 +248,7 @@ def test_deleting_trashes_each_tree_as_its_own_unit(client: Client, ada: User) -
 def test_one_refusal_leaves_every_task_as_it_was(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
     shelf = projects.create_project(ada, "Shelf")
-    rent, old = services.create_task(inbox, "Pay rent"), services.create_task(shelf, "Old")
+    rent, old = creation.create_task(inbox, "Pay rent"), creation.create_task(shelf, "Old")
     projects.archive_project(ada, shelf.pk)
 
     response = _bulk(client, [rent, old], {"kind": "status", "status": "completed"})

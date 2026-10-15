@@ -9,7 +9,7 @@ import pytest
 from django.test import Client
 
 from apps.accounts.services import set_time_zone
-from apps.tasks import projects, services
+from apps.tasks import creation, projects, services
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 
@@ -29,7 +29,7 @@ def kolkata(ada: User) -> User:
 
 
 def _task(user: User, title: str, dates: TaskDates | None = None) -> Task:
-    task = services.create_task(services.inbox(user), title)
+    task = creation.create_task(services.inbox(user), title)
     if dates is not None:
         services.update_task(user, task.pk, services.TaskEdit(dates=dates))
     return task
@@ -159,7 +159,7 @@ def test_the_views_list_subtasks_flat_with_their_parents_title(
     freeze_time: Callable[[datetime], None],
 ) -> None:
     parent = _task(kolkata, "Move house")
-    subtask = services.create_subtask(parent, "Book the van").task
+    subtask = creation.create_subtask(parent, "Book the van").task
     services.update_task(kolkata, subtask.pk, services.TaskEdit(dates=_due(15)))
 
     freeze_time(NOON)
@@ -184,7 +184,7 @@ def test_the_views_leave_out_closed_trashed_and_archived_project_tasks(
     trashed = _task(kolkata, "Trashed", _due(15))
     Task.objects.filter(pk=trashed.pk).update(deleted_at=NOON)
     garden = projects.create_project(kolkata, "Garden")
-    archived = services.create_task(garden, "Archived")
+    archived = creation.create_task(garden, "Archived")
     services.update_task(kolkata, archived.pk, services.TaskEdit(dates=_due(15)))
     projects.archive_project(kolkata, garden.pk)
 

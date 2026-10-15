@@ -6,6 +6,7 @@ import type { components } from "@/api/schema";
 export type User = components["schemas"]["UserOut"];
 export type Credentials = components["schemas"]["LoginIn"];
 export type PasswordChange = components["schemas"]["PasswordChangeIn"];
+export type Profile = components["schemas"]["ProfileIn"];
 
 /** Raised when the server rejects a sign-in attempt; `message` is safe to show the user. */
 export class LoginError extends Error {
@@ -88,6 +89,23 @@ export function useChangePassword() {
           "detail" in error ? error.detail : "Something went wrong. Try again.",
         );
       }
+    },
+  });
+}
+
+/** Save the user's profile and put the updated user in the session cache. */
+export function useUpdateProfile() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (profile: Profile): Promise<User> => {
+      const { data } = await api.PATCH("/api/v1/auth/profile", { body: profile });
+      if (!data) {
+        throw new Error("Could not save your profile.");
+      }
+      return data;
+    },
+    onSuccess: (user) => {
+      queryClient.setQueryData(sessionQuery.queryKey, user);
     },
   });
 }

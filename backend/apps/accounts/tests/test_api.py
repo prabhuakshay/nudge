@@ -220,3 +220,56 @@ def test_change_password_is_rate_limited(browser: Client, ada: User) -> None:
 
     assert attempts[:10] == [400] * 10
     assert attempts[10] == 429
+
+
+def update_profile(client: Client, full_name: str) -> Response:
+    return client.patch(
+        "/api/v1/auth/profile",
+        {"full_name": full_name},
+        content_type="application/json",
+        headers=csrf_headers(client),
+    )
+
+
+@pytest.mark.django_db
+def test_update_profile_changes_the_name(browser: Client, ada: User) -> None:
+    browser.force_login(ada)
+    browser.get("/api/v1/auth/session")
+
+    response = update_profile(browser, "Augusta Ada King")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": ada.pk,
+        "email": "ada@example.com",
+        "full_name": "Augusta Ada King",
+    }
+
+
+@pytest.mark.django_db
+def test_update_profile_only_changes_the_signed_in_user(browser: Client, ada: User) -> None:
+    grace = User.objects.create_user("grace@example.com", PASSWORD, full_name="Grace Hopper")
+    browser.force_login(ada)
+    browser.get("/api/v1/auth/session")
+
+    update_profile(browser, "Augusta Ada King")
+
+    grace.refresh_from_db()
+    assert grace.full_name == "Grace Hopper"
+
+
+@pytest.mark.django_db
+def test_update_profile_rejects_overlong_names(browser: Client, ada: User) -> None:
+    browser.force_login(ada)
+    browser.get("/api/v1/auth/session")
+
+    response = update_profile(browser, "x" * 151)
+
+    assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_update_profile_requires_a_session(browser: Client) -> None:
+    response = update_profile(browser, "Nobody")
+
+    assert response.status_code == 401

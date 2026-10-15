@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from ninja import Schema
+from ninja import Field, Schema
 
 
 class UserOut(Schema):
@@ -31,6 +31,12 @@ class PasswordChangeIn(Schema):
 
     current_password: str
     new_password: str
+
+
+class ProfileIn(Schema):
+    """Profile fields the user can change themselves."""
+
+    full_name: str = Field(max_length=150)
 
 
 class ErrorOut(Schema):

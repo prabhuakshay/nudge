@@ -12,6 +12,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { ChangePasswordForm } from "@/features/auth/change-password-form";
+import { EditNameForm } from "@/features/auth/edit-name-form";
 import type { User } from "@/features/auth/session";
 import { SignOutButton } from "@/features/auth/sign-out-button";
 
@@ -88,17 +89,31 @@ function AccountTab({ user }: { user: User }) {
         <Row label="Email">
           <span className="truncate text-muted-foreground">{user.email}</span>
         </Row>
+        <Row label="Name">
+          <span className="mr-4 truncate text-muted-foreground">{user.full_name || "Not set"}</span>
+          <ActionDialog action="Edit" title="Edit name">
+            {(close) => (
+              <EditNameForm fullName={user.full_name} onSuccess={close} onCancel={close} />
+            )}
+          </ActionDialog>
+        </Row>
         <Row label="Password">
           {passwordChanged && (
             <span role="status" className="mr-4 text-muted-foreground">
               Changed
             </span>
           )}
-          <ChangePasswordDialog
-            onChanged={() => {
-              setPasswordChanged(true);
-            }}
-          />
+          <ActionDialog action="Change password" title="Change password">
+            {(close) => (
+              <ChangePasswordForm
+                onCancel={close}
+                onSuccess={() => {
+                  close();
+                  setPasswordChanged(true);
+                }}
+              />
+            )}
+          </ActionDialog>
         </Row>
       </Group>
 
@@ -111,30 +126,34 @@ function AccountTab({ user }: { user: User }) {
   );
 }
 
-/** A small dialog over the settings for changing the password, as TickTick does it. */
-function ChangePasswordDialog({ onChanged }: { onChanged: () => void }) {
+type ActionDialogProps = {
+  /** Text of the link that opens the dialog. */
+  action: string;
+  title: string;
+  /** The dialog's form, given a function that closes the dialog. */
+  children: (close: () => void) => ReactNode;
+};
+
+/** A small dialog stacked over the settings for one change, as TickTick does it. */
+function ActionDialog({ action, title, children }: ActionDialogProps) {
   const [open, setOpen] = useState(false);
-  const close = () => {
-    setOpen(false);
-  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className="font-medium text-primary hover:underline">
-        Change password
+      <DialogTrigger
+        aria-label={action === title ? undefined : title}
+        className="font-medium text-primary hover:underline"
+      >
+        {action}
       </DialogTrigger>
       <DialogContent
         aria-describedby={undefined}
         className="p-4 sm:w-[min(24rem,calc(100vw-2rem))] sm:p-6"
       >
-        <DialogTitle className="mb-4 text-lg font-bold">Change password</DialogTitle>
-        <ChangePasswordForm
-          onCancel={close}
-          onSuccess={() => {
-            close();
-            onChanged();
-          }}
-        />
+        <DialogTitle className="mb-4 text-lg font-bold">{title}</DialogTitle>
+        {children(() => {
+          setOpen(false);
+        })}
       </DialogContent>
     </Dialog>
   );

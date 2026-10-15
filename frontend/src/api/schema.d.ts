@@ -104,6 +104,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/profile": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Update profile
+     * @description Change the signed-in user's name and return the updated user.
+     */
+    patch: operations["apps_accounts_api_profile"];
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -170,6 +190,14 @@ export interface components {
       current_password: string;
       /** New Password */
       new_password: string;
+    };
+    /**
+     * ProfileIn
+     * @description Profile fields the user can change themselves.
+     */
+    ProfileIn: {
+      /** Full Name */
+      full_name: string;
     };
   };
   responses: never;
@@ -307,6 +335,30 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_accounts_api_profile: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProfileIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserOut"];
         };
       };
     };

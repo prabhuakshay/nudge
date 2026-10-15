@@ -1,4 +1,4 @@
-"""Sign-in, sign-out, session and password endpoints.
+"""Sign-in, sign-out, session, profile and password endpoints.
 
 There is deliberately no sign-up endpoint: accounts are created by an administrator with
 `manage.py createsuperuser` or the Django admin.
@@ -18,8 +18,15 @@ from ninja.throttling import AnonRateThrottle, UserRateThrottle
 
 from apps.accounts.managers import UserManager
 from apps.accounts.models import User
-from apps.accounts.schemas import ErrorOut, LoginIn, PasswordChangeIn, SessionOut, UserOut
-from apps.accounts.services import PasswordChangeError, change_password
+from apps.accounts.schemas import (
+    ErrorOut,
+    LoginIn,
+    PasswordChangeIn,
+    ProfileIn,
+    SessionOut,
+    UserOut,
+)
+from apps.accounts.services import PasswordChangeError, change_password, update_profile
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -92,3 +99,11 @@ def password(request: HttpRequest, passwords: PasswordChangeIn) -> Status[None] 
         return Status(_HTTP_BAD_REQUEST, ErrorOut(detail=str(error)))
     auth.update_session_auth_hash(request, user)
     return Status(_HTTP_NO_CONTENT, None)
+
+
+@router.patch("/profile", response=UserOut, auth=django_auth, summary="Update profile")
+def profile(request: HttpRequest, changes: ProfileIn) -> UserOut:
+    """Change the signed-in user's name and return the updated user."""
+    user = request.user
+    assert isinstance(user, User)  # noqa: S101 - django_auth only lets signed-in users through
+    return UserOut.from_orm(update_profile(user, changes.full_name))

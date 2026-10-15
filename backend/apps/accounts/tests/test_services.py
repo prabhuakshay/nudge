@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from apps.accounts.models import User
-from apps.accounts.services import PasswordChangeError, change_password
+from apps.accounts.services import PasswordChangeError, change_password, update_profile
 
 PASSWORD = "an-unusual-passphrase"
 
@@ -36,3 +36,11 @@ def test_change_password_rejects_a_password_like_the_email(ada: User) -> None:
 
     ada.refresh_from_db()
     assert ada.check_password(PASSWORD)
+
+
+@pytest.mark.django_db
+def test_update_profile_saves_a_trimmed_name(ada: User) -> None:
+    update_profile(ada, "  Augusta Ada King  ")
+
+    ada.refresh_from_db()
+    assert ada.full_name == "Augusta Ada King"

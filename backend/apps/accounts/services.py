@@ -30,3 +30,10 @@ def change_password(user: User, current_password: str, new_password: str) -> Non
         raise PasswordChangeError(" ".join(error.messages)) from error
     user.set_password(new_password)
     user.save(update_fields=["password"])
+
+
+def update_profile(user: User, full_name: str) -> User:
+    """Save the user's display name, ignoring surrounding whitespace."""
+    user.full_name = full_name.strip()
+    user.save(update_fields=["full_name"])
+    return user

@@ -6,24 +6,31 @@ that account.
 ## Organising
 
 **Project**:
-A named container of tasks, with a colour and emoji, that can be archived or deleted.
+A named container of tasks, with a colour and an icon, that can be archived or deleted.
 _Avoid_: List
 
 **Inbox**:
-The built-in Project that new tasks land in when no Project is given; it can't be deleted.
+Where Tasks that belong to no Project live. Every user has exactly one; it can't be renamed,
+archived, deleted or put in a Folder.
+
+**Archived**:
+A Project put away out of the sidebar's main list; its Tasks are hidden from every view but
+its own, and it can be brought back unchanged.
+_Avoid_: Hidden, closed
 
 **Folder**:
 A named group of Projects in the sidebar.
 _Avoid_: Group, space
 
 **Tag**:
-A label attached to any number of tasks across Projects; a Tag may have one parent Tag.
+A label attached to any number of tasks across Projects. Tags are flat: a Tag never contains
+another Tag.
 _Avoid_: Label, category
 
 ## Tasks
 
 **Task**:
-One thing to do, owned by one user and living in exactly one Project.
+One thing to do, owned by one user and living in either one Project or the Inbox.
 _Avoid_: Todo, item
 
 **Subtask**:

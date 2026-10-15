@@ -5,7 +5,7 @@ import type { User } from "@/features/auth/session";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
 import { ThemeToggle } from "@/features/theme/theme-toggle";
 
-import { Clock } from "./clock";
+import { CurrentDate } from "./current-date";
 import { NAV_ITEMS } from "./nav-items";
 import { UserAvatar } from "./user-avatar";
 
@@ -18,7 +18,7 @@ export function Sidebar({ user }: { user: User }) {
           <Logo />
           <ThemeToggle />
         </div>
-        <Clock />
+        <CurrentDate />
       </div>
 
       <nav aria-label="Views" className="flex flex-col gap-0.5 px-2">

@@ -1,5 +1,4 @@
 // Vitest stubs CSS imports (css: false), so the stylesheets are read from disk.
-/// <reference types="node" />
 import { readFileSync } from "node:fs";
 
 const read = (path: string) => readFileSync(new URL(path, import.meta.url), "utf8");

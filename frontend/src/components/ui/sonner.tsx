@@ -7,6 +7,8 @@ export function Toaster(props: ComponentProps<typeof Sonner>) {
     <Sonner
       position="bottom-center"
       mobileOffset={{ bottom: 80 }}
+      // An open dialog turns off pointer events on the page behind it; Undo must stay clickable.
+      style={{ pointerEvents: "auto" }}
       toastOptions={{
         unstyled: true,
         classNames: {

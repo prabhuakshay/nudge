@@ -10,8 +10,11 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
 import { ActivityFeed } from "./activity-feed";
+import { PropertyChips } from "./property-chips";
 import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
+import { isClosed } from "./task-properties";
+import { BlockedReasonField } from "./task-status";
 import { taskActivityQuery, taskQuery, useSetTaskStatus, type TaskDetail as Task } from "./tasks";
 
 /** The bottom sheet opens at 60% of the screen and drags up to all of it. */
@@ -48,6 +51,12 @@ export function TaskDetail(props: TaskDetailProps) {
   const onOpenChange = (open: boolean) => {
     if (!open) onClose();
   };
+  // A click on a toast, such as its Undo, is not a click away from the drawer.
+  const keepOpenForToasts = (event: Event) => {
+    if (event.target instanceof Element && event.target.closest("[data-sonner-toaster]")) {
+      event.preventDefault();
+    }
+  };
   const returnFocus = (event: Event) => {
     event.preventDefault();
     document.querySelector<HTMLElement>(`[data-task-id="${String(lastOpened)}"]`)?.focus();
@@ -66,6 +75,7 @@ export function TaskDetail(props: TaskDetailProps) {
             (event.currentTarget as HTMLElement | null)?.focus();
           }}
           onCloseAutoFocus={returnFocus}
+          onInteractOutside={keepOpenForToasts}
           className="gap-0 p-0 sm:max-w-[600px]"
         >
           <SheetTitle className="sr-only">Task details</SheetTitle>
@@ -86,6 +96,7 @@ export function TaskDetail(props: TaskDetailProps) {
       <DrawerContent
         aria-describedby={undefined}
         onCloseAutoFocus={returnFocus}
+        onInteractOutside={keepOpenForToasts}
         className="h-[96dvh] max-h-[96dvh]"
       >
         <DrawerTitle className="sr-only">Task details</DrawerTitle>
@@ -105,7 +116,7 @@ function isEditing(target: EventTarget | null) {
 }
 
 function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps & { task: Task }) {
-  const { mutate: setStatus } = useSetTaskStatus(project.id);
+  const { mutate: setStatus } = useSetTaskStatus();
   const [tab, setTab] = useState("details");
   const { data: activity } = useInfiniteQuery(taskActivityQuery(task.id));
   const activityCount = activity?.pages[0]?.count;
@@ -162,15 +173,19 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
 
       {/* Scrolling the body mustn't drag the bottom sheet. */}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-vaul-no-drag>
-        <div className="flex items-start gap-3 px-5 pt-5 sm:px-6">
-          <TaskCheckbox
-            task={task}
-            onToggle={() => {
-              setStatus({ id: task.id, status: task.status === "open" ? "completed" : "open" });
-            }}
-            className="mt-1 size-[22px] rounded-md"
-          />
-          <TitleField task={task} className="flex-1 sm:text-[22px] sm:leading-snug" />
+        <div className="px-5 pt-5 sm:px-6">
+          <div className="flex items-start gap-3">
+            <TaskCheckbox
+              task={task}
+              onToggle={() => {
+                setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
+              }}
+              className="mt-1 size-[22px] rounded-md"
+            />
+            <TitleField task={task} className="flex-1 sm:text-[22px] sm:leading-snug" />
+          </div>
+          <PropertyChips task={task} />
+          {task.status === "blocked" && <BlockedReasonField task={task} className="mt-4" />}
         </div>
 
         <Tabs value={tab} onValueChange={setTab} className="mt-5">

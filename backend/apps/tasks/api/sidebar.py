@@ -7,9 +7,10 @@ from typing import TYPE_CHECKING
 from ninja import Router
 
 from apps.core.palette import PaletteColor
-from apps.tasks import projects, schedule, tags
+from apps.tasks import people, projects, schedule, tags
 from apps.tasks.api import signed_in_user
 from apps.tasks.models import Folder, Project
+from apps.tasks.schemas.people import PersonOut
 from apps.tasks.schemas.projects import SidebarFolderOut, SidebarOut, SidebarProjectOut
 from apps.tasks.schemas.tags import SidebarTagOut
 
@@ -70,4 +71,5 @@ def sidebar(request: HttpRequest) -> SidebarOut:
         today_count=schedule.open_count(user, schedule.View.TODAY),
         upcoming_count=schedule.open_count(user, schedule.View.UPCOMING),
         tags=[_tag_out(found) for found in tags.sidebar_tags(user)],
+        people=[PersonOut.from_orm(person) for person in people.people(user)],
     )

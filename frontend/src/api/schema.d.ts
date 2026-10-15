@@ -1865,6 +1865,11 @@ export interface components {
        * @description In the user's order.
        */
       tags: components["schemas"]["SidebarTagOut"][];
+      /**
+       * People
+       * @description A to Z.
+       */
+      people: components["schemas"]["PersonOut"][];
     };
     /**
      * SidebarProjectOut

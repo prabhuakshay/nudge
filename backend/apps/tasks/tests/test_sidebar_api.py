@@ -10,7 +10,7 @@ from django.test import Client
 from django.test.utils import CaptureQueriesContext
 
 from apps.core.palette import PaletteColor
-from apps.tasks import projects, services
+from apps.tasks import people, projects, services
 from apps.tasks.models import Project, Task
 
 if TYPE_CHECKING:
@@ -52,10 +52,22 @@ def test_sidebar_shows_the_users_inbox_with_its_open_task_count(
         },
         "items": [],
         "tags": [],
+        "people": [],
         "archived": [],
         "today_count": 0,
         "upcoming_count": 0,
     }
+
+
+@pytest.mark.django_db
+def test_sidebar_lists_the_users_people_a_to_z(client: Client, ada: User, grace: User) -> None:
+    people.create_person(ada, "priya", color=PaletteColor.VIOLET)
+    people.create_person(ada, "Ada", color=PaletteColor.BLUE)
+    people.create_person(grace, "Grace's", color=PaletteColor.RED)
+
+    response = client.get("/api/v1/sidebar")
+
+    assert [person["name"] for person in response.json()["people"]] == ["Ada", "priya"]
 
 
 @pytest.mark.django_db

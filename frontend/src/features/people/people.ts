@@ -9,21 +9,17 @@ import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
-import { OPEN_KEY, TASKS_KEY, type Task } from "@/features/tasks/tasks";
+import { OPEN_KEY, sidebarQuery, TASKS_KEY, type Task } from "@/features/tasks/tasks";
 
 import { fromEditable } from "./mentions";
 
 export type Person = components["schemas"]["PersonOut"];
 export type PersonFields = components["schemas"]["PersonIn"];
 
-/** The user's People, A to Z. */
+/** The user's People, A to Z, read from the sidebar so one query key holds them. */
 export const peopleQuery = queryOptions({
-  queryKey: ["people"],
-  queryFn: async (): Promise<Person[]> => {
-    const { data } = await api.GET("/api/v1/people");
-    if (!data) throw new Error("Could not load your people.");
-    return data;
-  },
+  ...sidebarQuery,
+  select: (sidebar): Person[] => sidebar.people,
 });
 
 /**

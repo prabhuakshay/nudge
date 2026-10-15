@@ -37,9 +37,14 @@ function mockApi(results: SearchResult[] = []) {
     const request = input as Request;
     const { pathname } = new URL(request.url);
     if (pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [WORK], archived: [TOOLS], tags: [TODO_TAG] });
+      return json({
+        inbox: INBOX,
+        items: [WORK],
+        archived: [TOOLS],
+        tags: [TODO_TAG],
+        people: [TOM],
+      });
     }
-    if (pathname.endsWith("/people")) return json([TOM]);
     if (pathname.endsWith("/tasks/search")) return json(results);
     const task = makeTask({ id: 5, title: "Water plants", project_id: WORK.id });
     if (request.method === "PATCH") {

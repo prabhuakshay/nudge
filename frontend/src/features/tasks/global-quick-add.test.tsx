@@ -15,14 +15,14 @@ function mockApi() {
     const request = input as Request;
     const { pathname } = new URL(request.url);
     if (pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [], archived: [], tags: [] });
+      return json({ inbox: INBOX, items: [], archived: [], tags: [], people: [] });
     }
     if (request.method === "POST") {
       const body = (await request.json()) as NewTask;
       added.push(body);
       return json(makeTask({ id: 50, title: body.title, project_id: INBOX.id }), 201);
     }
-    return json(pathname.endsWith("/people") ? [] : { items: [], next_cursor: null });
+    return json({ items: [], next_cursor: null });
   });
   return added;
 }

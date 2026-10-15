@@ -4667,6 +4667,14 @@
             },
             "title": "Tags",
             "type": "array"
+          },
+          "people": {
+            "description": "A to Z.",
+            "items": {
+              "$ref": "#/components/schemas/PersonOut"
+            },
+            "title": "People",
+            "type": "array"
           }
         },
         "required": [
@@ -4675,7 +4683,8 @@
           "archived",
           "today_count",
           "upcoming_count",
-          "tags"
+          "tags",
+          "people"
         ],
         "title": "SidebarOut",
         "type": "object"

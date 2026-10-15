@@ -21,12 +21,10 @@ function mockApi() {
     const body: unknown = request.method === "GET" ? undefined : await request.clone().json();
     log.push([`${request.method} ${pathname}`, body]);
     if (pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [WORK], archived: [], tags: TAGS });
+      return json({ inbox: INBOX, items: [WORK], archived: [], tags: TAGS, people: [PRIYA] });
     }
     if (pathname.endsWith("/people")) {
-      return request.method === "POST"
-        ? json({ id: nextId++, color: "red", ...(body as object) }, 201)
-        : json([PRIYA]);
+      return json({ id: nextId++, color: "red", ...(body as object) }, 201);
     }
     if (request.method === "POST") {
       const { title, project_id: projectId, priority, tag_ids: tagIds = [] } = body as NewTask;

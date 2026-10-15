@@ -34,11 +34,11 @@ function json(body: unknown, status = 200) {
   );
 }
 
-/** A stand-in server: the People for reads, and an echo of every write. */
+/** A stand-in server: the sidebar with the People for reads, and an echo of every write. */
 function mockApi(people: Person[] = [AL, ALICE]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = input as Request;
-    if (request.method === "GET") return json(people);
+    if (request.method === "GET") return json({ people });
     if (request.method === "DELETE") return json(null, 204);
     const body = (await request.clone().json()) as object;
     return json({ ...AL, id: 50, ...body }, request.method === "POST" ? 201 : 200);

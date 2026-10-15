@@ -27,7 +27,7 @@ function mockApi(stored: Comment[]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = input as Request;
     const url = new URL(request.url);
-    if (url.pathname.endsWith("/people")) return json([PRIYA]);
+    if (url.pathname.endsWith("/sidebar")) return json({ people: [PRIYA] });
     if (url.pathname.endsWith("/session")) {
       return json({ user: { email: "ada@example.com", full_name: "Ada Lovelace" } });
     }

@@ -52,6 +52,7 @@ const SIDEBAR: Sidebar = {
   inbox: project(99, "Inbox", { icon: "inbox", is_inbox: true }),
   items: [WORK, PERSONAL],
   tags: [],
+  people: [],
   archived: [],
   today_count: 0,
   upcoming_count: 0,

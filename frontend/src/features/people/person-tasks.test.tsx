@@ -16,12 +16,13 @@ function json(body: unknown) {
   );
 }
 
-/** A stand-in server: the sidebar, the address book, and the Tasks that mention Priya. */
+/** A stand-in server: the sidebar with the address book, and the Tasks that mention Priya. */
 function mockApi(open: Task[], closed: Task[] = []) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
     const url = new URL((input as Request).url);
-    if (url.pathname.endsWith("/sidebar")) return json({ inbox: INBOX, items: [WORK] });
-    if (url.pathname.endsWith("/people")) return json([PRIYA]);
+    if (url.pathname.endsWith("/sidebar")) {
+      return json({ inbox: INBOX, items: [WORK], people: [PRIYA] });
+    }
     if (url.searchParams.get("person") !== "1") throw new Error(`Unexpected ${url.href}`);
     const items = url.searchParams.get("closed") === "true" ? closed : open;
     return json({ items, next_cursor: null });

@@ -32,6 +32,7 @@ const SIDEBAR: Sidebar = {
   items: [],
   archived: [],
   tags: [WORK_TAG, HOME_TAG],
+  people: [],
   today_count: 0,
   upcoming_count: 0,
 };

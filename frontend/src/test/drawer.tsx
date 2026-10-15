@@ -112,7 +112,7 @@ export function mockApi(
 async function sidebarAndTags(request: Request, tags: SidebarTag[]) {
   const { pathname } = new URL(request.url);
   if (pathname.endsWith("/sidebar")) {
-    return json({ inbox: INBOX, items: [WORK], archived: [GARDEN], tags });
+    return json({ inbox: INBOX, items: [WORK], archived: [GARDEN], tags, people: [PRIYA] });
   }
   if (!pathname.endsWith("/tags") || request.method !== "POST") return undefined;
   const { name } = (await request.clone().json()) as { name: string };
@@ -121,14 +121,13 @@ async function sidebarAndTags(request: Request, tags: SidebarTag[]) {
   return json(created, 201);
 }
 
-/** A Task's Activity, Attachments or Comments, or the People, if the path asks for them. */
+/** A Task's Activity, Attachments or Comments, if the path asks for them. */
 function lists(pathname: string, activity: TaskActivity[], comments: Comment[]) {
   if (pathname.endsWith("/activity")) {
     return json({ items: activity, next_cursor: null, count: activity.length });
   }
   if (pathname.endsWith("/attachments")) return json([]);
   if (pathname.endsWith("/comments")) return json(comments);
-  if (pathname.endsWith("/people")) return json([PRIYA]);
   return undefined;
 }
 

@@ -18,9 +18,8 @@ function mockApi(results: SearchResult[]) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
     const url = new URL((input as Request).url);
     if (url.pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [WORK], archived: [GARDEN] });
+      return json({ inbox: INBOX, items: [WORK], archived: [GARDEN], people: [] });
     }
-    if (url.pathname.endsWith("/people")) return json([]);
     if (url.pathname.endsWith("/comments")) return json([]);
     if (url.pathname.endsWith("/attachments")) return json([]);
     if (url.pathname.endsWith("/activity")) return json({ items: [], next_cursor: null, count: 0 });

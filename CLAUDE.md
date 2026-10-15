@@ -80,6 +80,8 @@ Backend commands outside Docker need `NUDGE_DEBUG=true` (or a `NUDGE_SECRET_KEY`
   from `backend/openapi.json` by `make api`. Never hand-write API types.
 - Server data goes through TanStack Query (`queryOptions` + hooks in the feature folder). No
   `useEffect` for fetching.
+- The UI takes heavy inspiration from TickTick and Any.do: match their layouts, interactions
+  and density before inventing new patterns.
 - Styling is Tailwind with the semantic tokens in `src/styles/globals.css` (`bg-surface`,
   `text-muted-foreground`, `bg-primary`). Never use raw hex values or Tailwind palette colors in
   components. Light and dark modes follow the system.

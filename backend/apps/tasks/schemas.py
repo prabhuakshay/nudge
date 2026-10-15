@@ -25,6 +25,12 @@ class TaskOut(Schema):
     updated_at: datetime
 
 
+class TaskDetailOut(TaskOut):
+    """A Task as the detail drawer shows it."""
+
+    description: str = Field(description="Markdown, as the user wrote it.")
+
+
 class TaskListOut(Schema):
     """Tasks for a list, and the cursor for the next page when the list is paginated."""
 
@@ -44,6 +50,8 @@ class TaskIn(Schema):
 class TaskPatchIn(Schema):
     """The fields of a Task to change; fields left out stay as they are."""
 
+    title: Title | None = None
+    description: str | None = Field(default=None, description="Markdown.")
     status: Task.Status | None = None
 
 
@@ -57,7 +65,7 @@ class AffectedTaskOut(Schema):
 class TaskChangeOut(Schema):
     """A changed Task and every Task whose Status the change touched."""
 
-    task: TaskOut
+    task: TaskDetailOut
     affected: list[AffectedTaskOut]
 
 

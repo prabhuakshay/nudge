@@ -68,6 +68,7 @@ class Task(models.Model):
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="tasks")
     position = models.CharField(max_length=255, db_collation="C")
     title = models.CharField(max_length=500)
+    description = models.TextField(blank=True, default="")
     status = models.CharField(max_length=16, choices=Status, default=Status.OPEN)
     completed_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)

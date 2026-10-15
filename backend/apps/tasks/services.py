@@ -125,18 +125,39 @@ def create_task(project: Project, title: str) -> Task:
         )
 
 
-def update_task(user: User, task_id: int, status: Task.Status | None = None) -> TaskChange | None:
-    """Change one of the user's Tasks; return None if it isn't theirs.
+def live_task(user: User, task_id: int) -> Task | None:
+    """Return one of the user's Tasks that isn't in Trash, or None."""
+    return user.tasks.filter(pk=task_id, deleted_at__isnull=True).first()
+
+
+def update_task(
+    user: User,
+    task_id: int,
+    *,
+    title: str | None = None,
+    description: str | None = None,
+    status: Task.Status | None = None,
+) -> TaskChange | None:
+    """Change the given fields of one of the user's Tasks; return None if it isn't theirs.
 
     Completing a Task records when; reopening it clears that.
     """
-    task = user.tasks.filter(pk=task_id, deleted_at__isnull=True).first()
+    task = live_task(user, task_id)
     if task is None:
         return None
-    if status is None or task.status == status:
-        return TaskChange(task=task, affected=[])
-    prior = Task.Status(task.status)
-    task.status = status
-    task.completed_at = timezone.now() if status == Task.Status.COMPLETED else None
-    task.save(update_fields=["status", "completed_at", "updated_at"])
-    return TaskChange(task=task, affected=[(task.pk, prior)])
+    changed: list[str] = []
+    if title is not None and title != task.title:
+        task.title = title
+        changed.append("title")
+    if description is not None and description != task.description:
+        task.description = description
+        changed.append("description")
+    affected: list[tuple[int, Task.Status]] = []
+    if status is not None and status != task.status:
+        affected.append((task.pk, Task.Status(task.status)))
+        task.status = status
+        task.completed_at = timezone.now() if status == Task.Status.COMPLETED else None
+        changed += ["status", "completed_at"]
+    if changed:
+        task.save(update_fields=[*changed, "updated_at"])
+    return TaskChange(task=task, affected=affected)

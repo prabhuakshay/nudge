@@ -1,4 +1,4 @@
-"""Task endpoints: list a Project's Tasks, add one and change one."""
+"""Task endpoints: list a Project's Tasks, add one, read one and change one."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from apps.tasks.api import signed_in_user
 from apps.tasks.schemas import (
     AffectedTaskOut,
     TaskChangeOut,
+    TaskDetailOut,
     TaskIn,
     TaskListOut,
     TaskOut,
@@ -80,6 +81,19 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
     return Status(_HTTP_CREATED, TaskOut.from_orm(created))
 
 
+@router.get(
+    "/{int:task_id}",
+    response={_HTTP_OK: TaskDetailOut, _HTTP_NOT_FOUND: ErrorOut},
+    summary="Get a Task",
+)
+def get_task(request: HttpRequest, task_id: int) -> Status[TaskDetailOut] | Status[ErrorOut]:
+    """Return a Task with everything the detail drawer shows."""
+    task = services.live_task(signed_in_user(request), task_id)
+    if task is None:
+        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    return Status(_HTTP_OK, TaskDetailOut.from_orm(task))
+
+
 @router.patch(
     "/{int:task_id}",
     response={_HTTP_OK: TaskChangeOut, _HTTP_NOT_FOUND: ErrorOut},
@@ -91,8 +105,16 @@ def update_task(
     patch: TaskPatchIn,
 ) -> Status[TaskChangeOut] | Status[ErrorOut]:
     """Change a Task's fields, returning it and every Task whose Status changed."""
-    change = services.update_task(signed_in_user(request), task_id, patch.status)
+    change = services.update_task(
+        signed_in_user(request),
+        task_id,
+        title=patch.title,
+        description=patch.description,
+        status=patch.status,
+    )
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     affected = [AffectedTaskOut(id=pk, prior_status=prior) for pk, prior in change.affected]
-    return Status(_HTTP_OK, TaskChangeOut(task=TaskOut.from_orm(change.task), affected=affected))
+    return Status(
+        _HTTP_OK, TaskChangeOut(task=TaskDetailOut.from_orm(change.task), affected=affected)
+    )

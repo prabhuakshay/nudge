@@ -177,4 +177,28 @@ describe("ActivityFeed", () => {
 
     expect(await screen.findByText("Moved from “Inbox” to “Work”")).toBeInTheDocument();
   });
+
+  it("names the Tags in Tag events", async () => {
+    const events = [
+      { id: 3, kind: "tags_merged", at: NEWER.at, data: { from_tag: "job", into_tag: "work" } },
+      { id: 2, kind: "tag_removed", at: NEWER.at, data: { name: "home" } },
+      { id: 1, kind: "tag_added", at: OLDER.at, data: { name: "job" } },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 3 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <ActivityFeed taskId={1} />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Merged the tag #job into #work")).toBeInTheDocument();
+    expect(screen.getByText("Removed the tag #home")).toBeInTheDocument();
+    expect(screen.getByText("Added the tag #job")).toBeInTheDocument();
+  });
 });

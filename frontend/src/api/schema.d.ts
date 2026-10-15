@@ -421,11 +421,95 @@ export interface paths {
     };
     /**
      * Get the sidebar
-     * @description Return the Inbox, then Folders and ungrouped Projects in order, with open Task counts.
+     * @description Return the Inbox, Folders and ungrouped Projects, then Tags, in order, with Task counts.
      */
     get: operations["apps_tasks_api_sidebar_sidebar"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a Tag
+     * @description Create a Tag last in the user's order.
+     */
+    post: operations["apps_tasks_api_tags_create_tag"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tags/{tag_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Tag
+     * @description Delete a Tag for good, taking it off every Task that has it.
+     */
+    delete: operations["apps_tasks_api_tags_delete_tag"];
+    options?: never;
+    head?: never;
+    /**
+     * Change a Tag
+     * @description Rename or recolour a Tag; the new name shows on every Task that has it.
+     */
+    patch: operations["apps_tasks_api_tags_update_tag"];
+    trace?: never;
+  };
+  "/api/v1/tags/{tag_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Tag in the user's order
+     * @description Put a Tag right after another, or first.
+     */
+    post: operations["apps_tasks_api_tags_move_tag"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tags/{tag_id}/merge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Merge a Tag into another
+     * @description Move every Task of a Tag onto another Tag, then delete the first for good.
+     */
+    post: operations["apps_tasks_api_tags_merge_tag"];
     delete?: never;
     options?: never;
     head?: never;
@@ -440,16 +524,20 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * List a Project's Tasks
-     * @description Return a Project's open Tasks in manual order, or, with `closed`, a page of Closed ones.
+     * List a Project's or Tag's Tasks
+     * @description Return the open Tasks of a Project or a Tag, or, with `closed`, a page of Closed ones.
      *
-     *     Closed Tasks come most recently completed first, in pages; open Tasks come all at once.
+     *     Give exactly one of `project` and `tag`. A Tag's Tasks come from all of the user's Projects,
+     *     in each Project's manual order. Closed Tasks come most recently completed first, in pages;
+     *     open Tasks come all at once.
      */
     get: operations["apps_tasks_api_tasks_list_tasks"];
     put?: never;
     /**
      * Add a Task
      * @description Add a Task first in its Project, or in the Inbox when no Project is given.
+     *
+     *     Tags named in `tags` that the user doesn't have yet are created with the Task.
      */
     post: operations["apps_tasks_api_tasks_create_task"];
     delete?: never;
@@ -924,6 +1012,11 @@ export interface components {
       items: (
         components["schemas"]["SidebarFolderOut"] | components["schemas"]["SidebarProjectOut"]
       )[];
+      /**
+       * Tags
+       * @description In the user's order.
+       */
+      tags: components["schemas"]["SidebarTagOut"][];
     };
     /**
      * SidebarProjectOut
@@ -947,6 +1040,79 @@ export interface components {
       kind: "project";
       /** Open Count */
       open_count: number;
+    };
+    /**
+     * SidebarTagOut
+     * @description A Tag as the sidebar lists it.
+     */
+    SidebarTagOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** @description Null shows the Tag grey. */
+      color: components["schemas"]["PaletteColor"] | null;
+      /**
+       * Open Count
+       * @description Open and Blocked Tasks with the Tag.
+       */
+      open_count: number;
+      /**
+       * Task Count
+       * @description Tasks with the Tag that aren't in Trash, closed too.
+       */
+      task_count: number;
+    };
+    /**
+     * TagOut
+     * @description A Tag's own fields.
+     */
+    TagOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** @description Null shows the Tag grey. */
+      color: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * TagIn
+     * @description A new Tag.
+     */
+    TagIn: {
+      /** Name */
+      name: string;
+      /** @description Grey when left out. */
+      color?: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * TagPatchIn
+     * @description The fields of a Tag to change; fields left out stay as they are.
+     */
+    TagPatchIn: {
+      /** Name */
+      name?: string | null;
+      /** @description Null makes the Tag grey. */
+      color?: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * TagMoveIn
+     * @description Where a Tag goes in the user's order.
+     */
+    TagMoveIn: {
+      /**
+       * After Id
+       * @description The Tag it now follows; first when null, last when it isn't there.
+       */
+      after_id?: number | null;
+    };
+    /**
+     * TagMergeIn
+     * @description The Tag to merge into.
+     */
+    TagMergeIn: {
+      /** Into Id */
+      into_id: number;
     };
     /**
      * Priority
@@ -1017,6 +1183,11 @@ export interface components {
        */
       is_overdue: boolean;
       /**
+       * Tags
+       * @description In the user's Tag order.
+       */
+      tags: components["schemas"]["TagOut"][];
+      /**
        * Created At
        * Format: date-time
        */
@@ -1045,6 +1216,16 @@ export interface components {
        * @description Defaults to the Inbox.
        */
       project_id?: number | null;
+      /**
+       * Tags
+       * @description Tag names, in any case; Tags the user doesn't have yet are created.
+       */
+      tags?: string[];
+      /**
+       * Tag Ids
+       * @description Tags picked by id.
+       */
+      tag_ids?: number[];
     };
     /**
      * TaskDetailOut
@@ -1089,6 +1270,11 @@ export interface components {
        * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
        */
       is_overdue: boolean;
+      /**
+       * Tags
+       * @description In the user's Tag order.
+       */
+      tags: components["schemas"]["TagOut"][];
       /**
        * Created At
        * Format: date-time
@@ -1178,6 +1364,11 @@ export interface components {
        * @description Moves the Task first into it.
        */
       project_id?: number | null;
+      /**
+       * Tag Ids
+       * @description Replaces all of its Tags.
+       */
+      tag_ids?: number[] | null;
     };
     /**
      * AttachmentAddedActivityOut
@@ -1398,6 +1589,81 @@ export interface components {
       blocked_reason: string;
     };
     /**
+     * TagAddedActivityOut
+     * @description A Tag was put on the Task.
+     */
+    TagAddedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tag_added";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagData"];
+    };
+    /**
+     * TagData
+     * @description The Tag an event is about, by the name it had.
+     */
+    TagData: {
+      /** Name */
+      name: string;
+    };
+    /**
+     * TagRemovedActivityOut
+     * @description A Tag was taken off the Task, or deleted.
+     */
+    TagRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tag_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagData"];
+    };
+    /**
+     * TagsMergedActivityOut
+     * @description One of the Task's Tags was merged into another.
+     */
+    TagsMergedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tags_merged";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagsMergedData"];
+    };
+    /**
+     * TagsMergedData
+     * @description The Tags of a merge, by the names they had.
+     */
+    TagsMergedData: {
+      /** From Tag */
+      from_tag: string;
+      /** Into Tag */
+      into_tag: string;
+    };
+    /**
      * TaskActivityListOut
      * @description A page of a Task's history, newest first.
      */
@@ -1413,6 +1679,9 @@ export interface components {
         | components["schemas"]["AttachmentRemovedActivityOut"]
         | components["schemas"]["DatesChangedActivityOut"]
         | components["schemas"]["MovedActivityOut"]
+        | components["schemas"]["TagAddedActivityOut"]
+        | components["schemas"]["TagRemovedActivityOut"]
+        | components["schemas"]["TagsMergedActivityOut"]
       )[];
       /**
        * Next Cursor
@@ -2119,10 +2388,192 @@ export interface operations {
       };
     };
   };
+  apps_tasks_api_tags_create_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TagOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_delete_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_update_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TagOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_move_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_merge_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagMergeIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
   apps_tasks_api_tasks_list_tasks: {
     parameters: {
-      query: {
-        project: number;
+      query?: {
+        project?: number | null;
+        tag?: number | null;
         closed?: boolean;
         cursor?: string | null;
       };

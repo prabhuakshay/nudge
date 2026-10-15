@@ -60,6 +60,7 @@ def test_create_adds_a_trimmed_task_to_the_inbox(client: Client, ada: User) -> N
         "start_date": None,
         "start_time": None,
         "is_overdue": False,
+        "tags": [],
         "created_at": body["created_at"],
         "updated_at": body["updated_at"],
         "attachment_count": 0,

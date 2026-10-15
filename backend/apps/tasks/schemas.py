@@ -9,11 +9,28 @@ from ninja import Field, Schema
 from pydantic import StringConstraints, field_validator, model_validator
 
 from apps.core.palette import PaletteColor  # noqa: TC001 - Pydantic needs the type at runtime
-from apps.tasks.models import Project, Task
+from apps.tasks.models import Project, Tag, Task
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+TagName = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=64, pattern=r"^[^\s#]+$"),
+]
+
+
+class TagOut(Schema):
+    """A Tag's own fields."""
+
+    id: int
+    name: str
+    color: PaletteColor | None = Field(description="Null shows the Tag grey.")
+
+    @staticmethod
+    def resolve_color(tag: Tag) -> str | None:
+        """Return the colour key, or None for a grey Tag, which the model stores as ""."""
+        return tag.color or None
 
 
 class TaskOut(Schema):
@@ -34,6 +51,7 @@ class TaskOut(Schema):
         description="Whether the Task is open and its due date or time has passed in the user's "
         "time zone. A range is overdue only once its end has passed.",
     )
+    tags: list[TagOut] = Field(description="In the user's Tag order.")
     created_at: datetime
     updated_at: datetime
     attachment_count: int = Field(
@@ -62,6 +80,11 @@ class TaskIn(Schema):
 
     title: Title
     project_id: int | None = Field(default=None, description="Defaults to the Inbox.")
+    tags: list[TagName] = Field(
+        default_factory=list,
+        description="Tag names, in any case; Tags the user doesn't have yet are created.",
+    )
+    tag_ids: list[int] = Field(default_factory=list, description="Tags picked by id.")
 
 
 class TaskDatesIn(Schema):
@@ -122,6 +145,7 @@ class TaskPatchIn(Schema):
         description="Replaces all of the Task's dates; null removes them.",
     )
     project_id: int | None = Field(default=None, description="Moves the Task first into it.")
+    tag_ids: list[int] | None = Field(default=None, description="Replaces all of its Tags.")
 
 
 class AffectedTaskOut(Schema):
@@ -251,6 +275,46 @@ class PriorityChangedActivityOut(Schema):
     data: PriorityChangedData
 
 
+class TagData(Schema):
+    """The Tag an event is about, by the name it had."""
+
+    name: str
+
+
+class TagAddedActivityOut(Schema):
+    """A Tag was put on the Task."""
+
+    id: int
+    kind: Literal["tag_added"]
+    at: datetime
+    data: TagData
+
+
+class TagRemovedActivityOut(Schema):
+    """A Tag was taken off the Task, or deleted."""
+
+    id: int
+    kind: Literal["tag_removed"]
+    at: datetime
+    data: TagData
+
+
+class TagsMergedData(Schema):
+    """The Tags of a merge, by the names they had."""
+
+    from_tag: str
+    into_tag: str
+
+
+class TagsMergedActivityOut(Schema):
+    """One of the Task's Tags was merged into another."""
+
+    id: int
+    kind: Literal["tags_merged"]
+    at: datetime
+    data: TagsMergedData
+
+
 class AttachmentData(Schema):
     """The Attachment an event is about, by the name it had."""
 
@@ -284,7 +348,10 @@ TaskActivityOut = Annotated[
     | AttachmentAddedActivityOut
     | AttachmentRemovedActivityOut
     | DatesChangedActivityOut
-    | MovedActivityOut,
+    | MovedActivityOut
+    | TagAddedActivityOut
+    | TagRemovedActivityOut
+    | TagsMergedActivityOut,
     Field(discriminator="kind"),
 ]
 
@@ -394,6 +461,42 @@ class SidebarFolderOut(FolderOut):
     projects: list[SidebarProjectOut]
 
 
+class TagIn(Schema):
+    """A new Tag."""
+
+    name: TagName
+    color: PaletteColor | None = Field(default=None, description="Grey when left out.")
+
+
+class TagPatchIn(Schema):
+    """The fields of a Tag to change; fields left out stay as they are."""
+
+    name: TagName | None = None
+    color: PaletteColor | None = Field(default=None, description="Null makes the Tag grey.")
+
+
+class TagMoveIn(Schema):
+    """Where a Tag goes in the user's order."""
+
+    after_id: int | None = Field(
+        default=None,
+        description="The Tag it now follows; first when null, last when it isn't there.",
+    )
+
+
+class TagMergeIn(Schema):
+    """The Tag to merge into."""
+
+    into_id: int
+
+
+class SidebarTagOut(TagOut):
+    """A Tag as the sidebar lists it."""
+
+    open_count: int = Field(description="Open and Blocked Tasks with the Tag.")
+    task_count: int = Field(description="Tasks with the Tag that aren't in Trash, closed too.")
+
+
 class SidebarOut(Schema):
     """Everything the sidebar shows."""
 
@@ -401,3 +504,4 @@ class SidebarOut(Schema):
     items: list[Annotated[SidebarFolderOut | SidebarProjectOut, Field(discriminator="kind")]] = (
         Field(description="Folders and ungrouped Projects in the user's order.")
     )
+    tags: list[SidebarTagOut] = Field(description="In the user's order.")

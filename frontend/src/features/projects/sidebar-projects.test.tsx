@@ -48,6 +48,7 @@ const PERSONAL: SidebarFolder = {
 const SIDEBAR: Sidebar = {
   inbox: project(99, "Inbox", { icon: "inbox", is_inbox: true }),
   items: [WORK, PERSONAL],
+  tags: [],
 };
 
 function json(body: unknown, status = 200) {

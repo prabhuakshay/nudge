@@ -21,12 +21,14 @@ from fractional_indexing import generate_key_between
 
 from apps.accounts.services import local_zone
 from apps.core.palette import PaletteColor
+from apps.tasks import tags as tag_rules
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
     OPEN_STATUSES,
     Attachment,
     Project,
+    Tag,
     Task,
     TaskActivity,
 )
@@ -75,7 +77,8 @@ class TaskDates:
 class TaskEdit:
     """The fields of a Task to change; a field left as None stays as it is.
 
-    `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them.
+    `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them, and
+    `tags` replaces all of its Tags.
     """
 
     title: str | None = None
@@ -85,6 +88,7 @@ class TaskEdit:
     priority: Task.Priority | None = None
     dates: TaskDates | None = None
     project: Project | None = None
+    tags: list[Tag] | None = None
 
 
 @dataclass(frozen=True)
@@ -134,7 +138,9 @@ def _with_counts(tasks: QuerySet[Task]) -> QuerySet[Task]:
         .annotate(count=Count("pk"))
         .values("count")
     )
-    return tasks.annotate(attachment_count=Coalesce(Subquery(attachments), 0))
+    return tasks.annotate(attachment_count=Coalesce(Subquery(attachments), 0)).prefetch_related(
+        "tags",
+    )
 
 
 def _with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
@@ -150,22 +156,29 @@ def _with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
     return tasks.annotate(is_overdue=Case(When(overdue, then=True), default=False))
 
 
-def _live_tasks(project: Project) -> QuerySet[Task]:
-    return _with_overdue(_with_counts(project.tasks.filter(deleted_at__isnull=True)), project.owner)
+def _live_tasks(source: Project | Tag) -> QuerySet[Task]:
+    """Return the Tasks of a Project or Tag that aren't in Trash.
+
+    A Tag's Tasks span Projects, so it leaves out those whose Project is in Trash.
+    """
+    tasks = source.tasks.filter(deleted_at__isnull=True)
+    if isinstance(source, Tag):
+        tasks = tasks.filter(project__deleted_at__isnull=True)
+    return _with_overdue(_with_counts(tasks), source.owner)
 
 
-def open_tasks(project: Project) -> QuerySet[Task]:
-    """Return the Project's open and Blocked Tasks in the user's manual order."""
-    return _live_tasks(project).filter(status__in=OPEN_STATUSES)
+def open_tasks(source: Project | Tag) -> QuerySet[Task]:
+    """Return a Project's or Tag's open and Blocked Tasks in the user's manual order."""
+    return _live_tasks(source).filter(status__in=OPEN_STATUSES)
 
 
-def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
-    """Return a page of the Project's Closed Tasks, most recently completed first.
+def closed_tasks(source: Project | Tag, cursor: str | None = None) -> Page[Task]:
+    """Return a page of a Project's or Tag's Closed Tasks, most recently completed first.
 
     Raises:
         InvalidCursorError: The cursor wasn't one this function returned.
     """
-    closed = _live_tasks(project).filter(status__in=CLOSED_STATUSES)
+    closed = _live_tasks(source).filter(status__in=CLOSED_STATUSES)
     return newest_first(closed, "completed_at", cursor)
 
 
@@ -177,8 +190,17 @@ def _first_position(project: Project) -> str:
     return str(generate_key_between(None, first))
 
 
-def create_task(project: Project, title: str) -> Task:
-    """Create a Task in the Project, first among its Tasks, owned by the Project's owner."""
+def create_task(
+    project: Project,
+    title: str,
+    *,
+    tags: list[Tag] | None = None,
+    tag_names: list[str] | None = None,
+) -> Task:
+    """Create a Task in the Project, first among its Tasks, owned by the Project's owner.
+
+    It gets `tags`, and the owner's Tags called `tag_names`, which are created if they're new.
+    """
     with transaction.atomic():
         task = Task.objects.create(
             owner_id=project.owner_id,
@@ -186,8 +208,9 @@ def create_task(project: Project, title: str) -> Task:
             title=title,
             position=_first_position(project),
         )
+        task.tags.add(*(tags or []), *tag_rules.tags_named(project.owner, tag_names or []))
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
-    return _with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)
+    return _with_overdue(_with_counts(project.tasks.all()), project.owner).get(pk=task.pk)
 
 
 def live_task(user: User, task_id: int) -> Task | None:
@@ -237,6 +260,8 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
             task.position = _first_position(edit.project)
             task.project = edit.project
             changed += ["project", "position"]
+        if edit.tags is not None:
+            events += tag_rules.retag(task, edit.tags)
         if changed:
             task.save(update_fields=[*changed, "updated_at"])
         TaskActivity.objects.bulk_create(events)

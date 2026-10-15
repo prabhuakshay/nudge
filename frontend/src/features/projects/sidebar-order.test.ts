@@ -26,6 +26,7 @@ const PERSONAL = folder(10, "Personal", [HEALTH, GARDEN]);
 const SIDEBAR: Sidebar = {
   inbox: { ...project(99, "Inbox"), icon: "inbox", is_inbox: true },
   items: [WORK, PERSONAL, READING],
+  tags: [],
 };
 
 /** The sidebar as `name` lines, Projects in a Folder indented. */

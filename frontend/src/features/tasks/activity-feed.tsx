@@ -23,6 +23,9 @@ const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string }
   attachment_removed: (data) => `Deleted the attachment “${data.name}”`,
   dates_changed: (data) => describeDatesChange(data),
   moved: (data) => `Moved from “${data.from_project}” to “${data.to_project}”`,
+  tag_added: (data) => `Added the tag #${data.name}`,
+  tag_removed: (data) => `Removed the tag #${data.name}`,
+  tags_merged: (data) => `Merged the tag #${data.from_tag} into #${data.into_tag}`,
 };
 
 function describe<K extends keyof ActivityData>(event: { kind: K; data: ActivityData[K] }) {

@@ -14,6 +14,11 @@ from apps.tasks.schemas.repeat import (
     RepeatChangedActivityOut,
     RepeatRemovedActivityOut,
 )
+from apps.tasks.schemas.tags import (
+    TagAddedActivityOut,
+    TagRemovedActivityOut,
+    TagsMergedActivityOut,
+)
 
 
 class NoActivityData(Schema):
@@ -211,7 +216,10 @@ TaskActivityOut = Annotated[
     | PersonMergedActivityOut
     | RepeatChangedActivityOut
     | RepeatRemovedActivityOut
-    | RepeatAdvancedActivityOut,
+    | RepeatAdvancedActivityOut
+    | TagAddedActivityOut
+    | TagRemovedActivityOut
+    | TagsMergedActivityOut,
     Field(discriminator="kind"),
 ]
 

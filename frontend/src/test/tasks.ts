@@ -23,6 +23,7 @@ export function makeTask(overrides: Partial<TaskDetail> = {}): TaskDetail {
     repeat_rule: "",
     repeat_from: "calendar",
     is_overdue: false,
+    tags: [],
     created_at: "2026-10-15T09:00:00Z",
     updated_at: "2026-10-15T09:00:00Z",
     attachment_count: 0,

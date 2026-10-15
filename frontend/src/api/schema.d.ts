@@ -288,6 +288,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/notifications/{notification_id}/complete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Complete a Task from its Reminder
+     * @description Complete the Task a Reminder notification is about, as ticking it off would.
+     */
+    post: operations["apps_tasks_api_reminder_actions_complete"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/{notification_id}/snooze": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Snooze a Reminder
+     * @description Fire a Reminder notification once more later, leaving its Task as it is.
+     */
+    post: operations["apps_tasks_api_reminder_actions_snooze"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/folders": {
     parameters: {
       query?: never;
@@ -529,11 +569,95 @@ export interface paths {
     };
     /**
      * Get the sidebar
-     * @description Return everything the sidebar lists, with open counts for Projects, Today and Upcoming.
+     * @description Return everything the sidebar lists, with open counts for Projects, Tags and views.
      */
     get: operations["apps_tasks_api_sidebar_sidebar"];
     put?: never;
     post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a Tag
+     * @description Create a Tag last in the user's order.
+     */
+    post: operations["apps_tasks_api_tags_create_tag"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tags/{tag_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Tag
+     * @description Delete a Tag for good, taking it off every Task that has it.
+     */
+    delete: operations["apps_tasks_api_tags_delete_tag"];
+    options?: never;
+    head?: never;
+    /**
+     * Change a Tag
+     * @description Rename or recolour a Tag; the new name shows on every Task that has it.
+     */
+    patch: operations["apps_tasks_api_tags_update_tag"];
+    trace?: never;
+  };
+  "/api/v1/tags/{tag_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Tag in the user's order
+     * @description Put a Tag right after another, or first.
+     */
+    post: operations["apps_tasks_api_tags_move_tag"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tags/{tag_id}/merge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Merge a Tag into another
+     * @description Move every Task of a Tag onto another Tag, then delete the first for good.
+     */
+    post: operations["apps_tasks_api_tags_merge_tag"];
     delete?: never;
     options?: never;
     head?: never;
@@ -548,13 +672,14 @@ export interface paths {
       cookie?: never;
     };
     /**
-     * List a Project's, a Person's or a view's Tasks
-     * @description Return the open Tasks of a Project, Person or view, or, with `closed`, a page of Closed ones.
+     * List a Project's, a Person's, a Tag's or a view's Tasks
+     * @description Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.
      *
-     *     A Project's Tasks come in manual order. A Person's are the Tasks that mention them, flat, in
-     *     each Project's manual order. Today and Upcoming list flat rows by date, with Overdue first in
-     *     Today; Today's Closed Tasks are those closed today, and Upcoming has none. Closed Tasks come
-     *     most recently completed first, in pages; open Tasks come all at once.
+     *     A Project's Tasks come in manual order. A Person's are the Tasks that mention them and a
+     *     Tag's the Tasks it's on, flat, in each Project's manual order. Today and Upcoming list flat
+     *     rows by date, with Overdue first in Today; Today's Closed Tasks are those closed today, and
+     *     Upcoming has none. Closed Tasks come most recently completed first, in pages; open Tasks come
+     *     all at once.
      */
     get: operations["apps_tasks_api_tasks_list_tasks"];
     put?: never;
@@ -563,7 +688,8 @@ export interface paths {
      * @description Add a Task first in its Project, or in the Inbox when no Project is given.
      *
      *     With `parent_id` it is added last under that Task instead, which reopens the parent and its
-     *     ancestors if they are Closed.
+     *     ancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are
+     *     created with the Task.
      */
     post: operations["apps_tasks_api_tasks_create_task"];
     delete?: never;
@@ -654,6 +780,28 @@ export interface paths {
      * @description Return a page of a Task's history, newest first, with the number of events in all.
      */
     get: operations["apps_tasks_api_tasks_list_activity"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search Tasks
+     * @description Find Tasks whose title, Description or one Comment holds every word, best matches first.
+     *
+     *     Archived Projects are searched too. At most 50 Tasks come back, with no further pages.
+     */
+    get: operations["apps_tasks_api_search_search"];
     put?: never;
     post?: never;
     delete?: never;
@@ -940,6 +1088,11 @@ export interface components {
        */
       url: string;
       /**
+       * Is Reminder
+       * @description Whether a Reminder sent it, so its Task can be completed or snoozed from it.
+       */
+      is_reminder: boolean;
+      /**
        * Created At
        * Format: date-time
        */
@@ -984,6 +1137,328 @@ export interface components {
     PushUnsubscribeIn: {
       /** Endpoint */
       endpoint: string;
+    };
+    /**
+     * AffectedTaskOut
+     * @description A Task whose Status a change touched, with its Status before, so the client can undo.
+     */
+    AffectedTaskOut: {
+      /** Id */
+      id: number;
+      prior_status: components["schemas"]["Status"];
+      /** Prior Blocked Reason */
+      prior_blocked_reason: string;
+    };
+    /**
+     * PaletteColor
+     * @description A colour a user can give a Project, Tag or Person.
+     * @enum {string}
+     */
+    PaletteColor: "red" | "orange" | "amber" | "green" | "teal" | "blue" | "violet" | "pink";
+    /**
+     * Priority
+     * @description How urgent a Task is; P1 is the most urgent.
+     * @enum {integer}
+     */
+    Priority: 0 | 1 | 2 | 3 | 4;
+    /**
+     * ReminderOut
+     * @description One of a Task's Reminders.
+     */
+    ReminderOut: {
+      /**
+       * Offset
+       * @description Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.
+       */
+      offset: number;
+      /**
+       * Fire At
+       * @description When it fires next; null when it won't: the Task is Closed or archived, or the time has passed.
+       */
+      fire_at: string | null;
+    };
+    /**
+     * RepeatFrom
+     * @description What a repeating Task's next Occurrence counts from.
+     * @enum {string}
+     */
+    RepeatFrom: "due" | "completion" | "calendar";
+    /**
+     * Status
+     * @description Where a Task stands.
+     * @enum {string}
+     */
+    Status: "open" | "completed" | "wont_do" | "blocked";
+    /**
+     * TagOut
+     * @description A Tag's own fields.
+     */
+    TagOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** @description Null shows the Tag grey. */
+      color: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * TaskAncestorOut
+     * @description A Task above another in the tree, as a breadcrumb links to it.
+     */
+    TaskAncestorOut: {
+      /** Id */
+      id: number;
+      /** Title */
+      title: string;
+    };
+    /**
+     * TaskChangeOut
+     * @description A changed Task and every Task whose Status the change touched.
+     */
+    TaskChangeOut: {
+      task: components["schemas"]["TaskDetailOut"];
+      /** Affected */
+      affected: components["schemas"]["AffectedTaskOut"][];
+    };
+    /**
+     * TaskDetailOut
+     * @description A Task as the detail drawer shows it, with where it sits in the tree and what's under it.
+     */
+    TaskDetailOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
+      completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
+      /**
+       * Tags
+       * @description In the user's Tag order.
+       */
+      tags: components["schemas"]["TagOut"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
+      /**
+       * Description
+       * @description Markdown, as the user wrote it.
+       */
+      description: string;
+      /**
+       * Ancestors
+       * @description From the root down to the parent.
+       */
+      ancestors: components["schemas"]["TaskAncestorOut"][];
+      /**
+       * Subtasks
+       * @description Every Subtask below, whatever its Status, as flat rows in manual order.
+       */
+      subtasks: components["schemas"]["TaskOut"][];
+      /**
+       * Reminders
+       * @description Earliest offset first.
+       */
+      reminders: components["schemas"]["ReminderOut"][];
+    };
+    /**
+     * TaskOut
+     * @description A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`.
+     */
+    TaskOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
+      completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
+      /**
+       * Tags
+       * @description In the user's Tag order.
+       */
+      tags: components["schemas"]["TagOut"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
+    };
+    /**
+     * Snooze
+     * @description How long to snooze a Reminder for.
+     * @enum {string}
+     */
+    Snooze: "in_15_minutes" | "in_1_hour" | "in_3_hours" | "tomorrow_morning";
+    /**
+     * SnoozeIn
+     * @description When a snoozed Reminder should fire again.
+     */
+    SnoozeIn: {
+      /** @description Tomorrow morning is 09:00 in the user's time zone. */
+      until: components["schemas"]["Snooze"];
     };
     /**
      * FolderOut
@@ -1083,12 +1558,6 @@ export interface components {
       | "globe"
       | "mail"
       | "phone";
-    /**
-     * PaletteColor
-     * @description A colour a user can give a Project, Tag or Person.
-     * @enum {string}
-     */
-    PaletteColor: "red" | "orange" | "amber" | "green" | "teal" | "blue" | "violet" | "pink";
     /**
      * ProjectOut
      * @description A Project's own fields.
@@ -1241,6 +1710,11 @@ export interface components {
        * @description Open Tasks in Upcoming.
        */
       upcoming_count: number;
+      /**
+       * Tags
+       * @description In the user's order.
+       */
+      tags: components["schemas"]["SidebarTagOut"][];
     };
     /**
      * SidebarProjectOut
@@ -1271,14 +1745,77 @@ export interface components {
       open_count: number;
     };
     /**
+     * SidebarTagOut
+     * @description A Tag as the sidebar lists it.
+     */
+    SidebarTagOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** @description Null shows the Tag grey. */
+      color: components["schemas"]["PaletteColor"] | null;
+      /**
+       * Open Count
+       * @description Open and Blocked Tasks with the Tag.
+       */
+      open_count: number;
+      /**
+       * Task Count
+       * @description Tasks with the Tag that aren't in Trash, closed too.
+       */
+      task_count: number;
+    };
+    /**
+     * TagIn
+     * @description A new Tag.
+     */
+    TagIn: {
+      /** Name */
+      name: string;
+      /** @description Grey when left out. */
+      color?: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * TagPatchIn
+     * @description The fields of a Tag to change; fields left out stay as they are.
+     */
+    TagPatchIn: {
+      /** Name */
+      name?: string | null;
+      /** @description Null makes the Tag grey. */
+      color?: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * TagMoveIn
+     * @description Where a Tag goes in the user's order.
+     */
+    TagMoveIn: {
+      /**
+       * After Id
+       * @description The Tag it now follows; first when null, last when it isn't there.
+       */
+      after_id?: number | null;
+    };
+    /**
+     * TagMergeIn
+     * @description The Tag to merge into.
+     */
+    TagMergeIn: {
+      /** Into Id */
+      into_id: number;
+    };
+    /**
      * TaskListQuery
-     * @description Which Tasks to list: one Project's, one Person's or one view's, open or Closed.
+     * @description Which Tasks to list: one Project's, Person's, Tag's or view's, open or Closed.
      */
     TaskListQuery: {
       /** Project */
       project?: number | null;
       /** Person */
       person?: number | null;
+      /** Tag */
+      tag?: number | null;
       /** @description Today or Upcoming, picked by date. */
       view?: components["schemas"]["View"] | null;
       /**
@@ -1300,24 +1837,6 @@ export interface components {
      */
     View: "today" | "upcoming";
     /**
-     * Priority
-     * @description How urgent a Task is; P1 is the most urgent.
-     * @enum {integer}
-     */
-    Priority: 0 | 1 | 2 | 3 | 4;
-    /**
-     * RepeatFrom
-     * @description What a repeating Task's next Occurrence counts from.
-     * @enum {string}
-     */
-    RepeatFrom: "due" | "completion" | "calendar";
-    /**
-     * Status
-     * @description Where a Task stands.
-     * @enum {string}
-     */
-    Status: "open" | "completed" | "wont_do" | "blocked";
-    /**
      * TaskListOut
      * @description Tasks for a list, and the cursor for the next page when the list is paginated.
      */
@@ -1329,104 +1848,6 @@ export interface components {
        * @description Pass as `cursor` to get the next page; null on the last page.
        */
       next_cursor: string | null;
-    };
-    /**
-     * TaskOut
-     * @description A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`.
-     */
-    TaskOut: {
-      /** Id */
-      id: number;
-      /** Project Id */
-      project_id: number;
-      /**
-       * Parent Id
-       * @description Null for a root Task.
-       */
-      parent_id: number | null;
-      /**
-       * Position
-       * @description Sorts the Task among its siblings, byte by byte.
-       */
-      position: string;
-      /**
-       * Depth
-       * @description 0 for a root Task, up to 3 for the deepest Subtask.
-       */
-      depth: number;
-      /**
-       * Parent Title
-       * @description The parent's title, for a breadcrumb.
-       */
-      parent_title: string | null;
-      /** Title */
-      title: string;
-      status: components["schemas"]["Status"];
-      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
-      priority: components["schemas"]["Priority"];
-      /**
-       * Blocked Reason
-       * @description Why a Blocked Task waits; empty otherwise.
-       */
-      blocked_reason: string;
-      /**
-       * Completed At
-       * @description When it was Completed or marked Won't do.
-       */
-      completed_at: string | null;
-      /**
-       * Pinned At
-       * @description When it was pinned; null when it isn't.
-       */
-      pinned_at: string | null;
-      /** Due Date */
-      due_date: string | null;
-      /**
-       * Due Time
-       * @description Null for an all-day Task.
-       */
-      due_time: string | null;
-      /**
-       * Start Date
-       * @description Set for a range, which ends on the due date.
-       */
-      start_date: string | null;
-      /** Start Time */
-      start_time: string | null;
-      /**
-       * Repeat Rule
-       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
-       */
-      repeat_rule: string;
-      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
-      repeat_from: components["schemas"]["RepeatFrom"];
-      /**
-       * Is Overdue
-       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
-       */
-      is_overdue: boolean;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /**
-       * Updated At
-       * Format: date-time
-       */
-      updated_at: string;
-      /**
-       * Attachment Count
-       * @description How many Attachments the Task has. A Task just added has none.
-       * @default 0
-       */
-      attachment_count: number;
-      /**
-       * Comment Count
-       * @description How many Comments the Task has. A Task just added has none.
-       * @default 0
-       */
-      comment_count: number;
     };
     /**
      * TaskDatesIn
@@ -1467,170 +1888,16 @@ export interface components {
       parent_id?: number | null;
       /** @description Dates the Task from the start, such as today in Today. Not for a Subtask. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
-    };
-    /**
-     * ReminderOut
-     * @description One of a Task's Reminders.
-     */
-    ReminderOut: {
       /**
-       * Offset
-       * @description Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.
+       * Tags
+       * @description Tag names, in any case; Tags the user doesn't have yet are created.
        */
-      offset: number;
+      tags?: string[];
       /**
-       * Fire At
-       * @description When it fires next; null when it won't: the Task is Closed or archived, or the time has passed.
+       * Tag Ids
+       * @description Tags picked by id.
        */
-      fire_at: string | null;
-    };
-    /**
-     * TaskAncestorOut
-     * @description A Task above another in the tree, as a breadcrumb links to it.
-     */
-    TaskAncestorOut: {
-      /** Id */
-      id: number;
-      /** Title */
-      title: string;
-    };
-    /**
-     * TaskDetailOut
-     * @description A Task as the detail drawer shows it, with where it sits in the tree and what's under it.
-     */
-    TaskDetailOut: {
-      /** Id */
-      id: number;
-      /** Project Id */
-      project_id: number;
-      /**
-       * Parent Id
-       * @description Null for a root Task.
-       */
-      parent_id: number | null;
-      /**
-       * Position
-       * @description Sorts the Task among its siblings, byte by byte.
-       */
-      position: string;
-      /**
-       * Depth
-       * @description 0 for a root Task, up to 3 for the deepest Subtask.
-       */
-      depth: number;
-      /**
-       * Parent Title
-       * @description The parent's title, for a breadcrumb.
-       */
-      parent_title: string | null;
-      /** Title */
-      title: string;
-      status: components["schemas"]["Status"];
-      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
-      priority: components["schemas"]["Priority"];
-      /**
-       * Blocked Reason
-       * @description Why a Blocked Task waits; empty otherwise.
-       */
-      blocked_reason: string;
-      /**
-       * Completed At
-       * @description When it was Completed or marked Won't do.
-       */
-      completed_at: string | null;
-      /**
-       * Pinned At
-       * @description When it was pinned; null when it isn't.
-       */
-      pinned_at: string | null;
-      /** Due Date */
-      due_date: string | null;
-      /**
-       * Due Time
-       * @description Null for an all-day Task.
-       */
-      due_time: string | null;
-      /**
-       * Start Date
-       * @description Set for a range, which ends on the due date.
-       */
-      start_date: string | null;
-      /** Start Time */
-      start_time: string | null;
-      /**
-       * Repeat Rule
-       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
-       */
-      repeat_rule: string;
-      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
-      repeat_from: components["schemas"]["RepeatFrom"];
-      /**
-       * Is Overdue
-       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
-       */
-      is_overdue: boolean;
-      /**
-       * Created At
-       * Format: date-time
-       */
-      created_at: string;
-      /**
-       * Updated At
-       * Format: date-time
-       */
-      updated_at: string;
-      /**
-       * Attachment Count
-       * @description How many Attachments the Task has. A Task just added has none.
-       * @default 0
-       */
-      attachment_count: number;
-      /**
-       * Comment Count
-       * @description How many Comments the Task has. A Task just added has none.
-       * @default 0
-       */
-      comment_count: number;
-      /**
-       * Description
-       * @description Markdown, as the user wrote it.
-       */
-      description: string;
-      /**
-       * Ancestors
-       * @description From the root down to the parent.
-       */
-      ancestors: components["schemas"]["TaskAncestorOut"][];
-      /**
-       * Subtasks
-       * @description Every Subtask below, whatever its Status, as flat rows in manual order.
-       */
-      subtasks: components["schemas"]["TaskOut"][];
-      /**
-       * Reminders
-       * @description Earliest offset first.
-       */
-      reminders: components["schemas"]["ReminderOut"][];
-    };
-    /**
-     * AffectedTaskOut
-     * @description A Task whose Status a change touched, with its Status before, so the client can undo.
-     */
-    AffectedTaskOut: {
-      /** Id */
-      id: number;
-      prior_status: components["schemas"]["Status"];
-      /** Prior Blocked Reason */
-      prior_blocked_reason: string;
-    };
-    /**
-     * TaskChangeOut
-     * @description A changed Task and every Task whose Status the change touched.
-     */
-    TaskChangeOut: {
-      task: components["schemas"]["TaskDetailOut"];
-      /** Affected */
-      affected: components["schemas"]["AffectedTaskOut"][];
+      tag_ids?: number[];
     };
     /**
      * TaskPatchIn
@@ -1675,6 +1942,11 @@ export interface components {
        */
       repeat_rule?: string | null;
       repeat_from?: components["schemas"]["RepeatFrom"] | null;
+      /**
+       * Tag Ids
+       * @description Replaces all of its Tags.
+       */
+      tag_ids?: number[] | null;
     };
     /**
      * TaskMoveIn
@@ -2126,6 +2398,81 @@ export interface components {
       closed_subtasks: number;
     };
     /**
+     * TagAddedActivityOut
+     * @description A Tag was put on the Task.
+     */
+    TagAddedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tag_added";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagData"];
+    };
+    /**
+     * TagData
+     * @description The Tag an event is about, by the name it had.
+     */
+    TagData: {
+      /** Name */
+      name: string;
+    };
+    /**
+     * TagRemovedActivityOut
+     * @description A Tag was taken off the Task, or deleted.
+     */
+    TagRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tag_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagData"];
+    };
+    /**
+     * TagsMergedActivityOut
+     * @description One of the Task's Tags was merged into another.
+     */
+    TagsMergedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tags_merged";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagsMergedData"];
+    };
+    /**
+     * TagsMergedData
+     * @description The Tags of a merge, by the names they had.
+     */
+    TagsMergedData: {
+      /** From Tag */
+      from_tag: string;
+      /** Into Tag */
+      into_tag: string;
+    };
+    /**
      * TaskActivityListOut
      * @description A page of a Task's history, newest first.
      */
@@ -2148,6 +2495,9 @@ export interface components {
         | components["schemas"]["RepeatChangedActivityOut"]
         | components["schemas"]["RepeatRemovedActivityOut"]
         | components["schemas"]["RepeatAdvancedActivityOut"]
+        | components["schemas"]["TagAddedActivityOut"]
+        | components["schemas"]["TagRemovedActivityOut"]
+        | components["schemas"]["TagsMergedActivityOut"]
       )[];
       /**
        * Next Cursor
@@ -2207,6 +2557,133 @@ export interface components {
        */
       at: string;
       data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * TaskSearchQuery
+     * @description What to search for.
+     */
+    TaskSearchQuery: {
+      /**
+       * Q
+       * @description Words that must all appear, ignoring case.
+       */
+      q: string;
+    };
+    /**
+     * MatchIn
+     * @description Where a Task matched, best first: a title match outranks a Description or Comment one.
+     * @enum {string}
+     */
+    MatchIn: "title" | "description" | "comment";
+    /**
+     * TaskSearchOut
+     * @description A Task that matched a search, with where it matched and the text around the match.
+     */
+    TaskSearchOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
+      completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
+      /**
+       * Tags
+       * @description In the user's Tag order.
+       */
+      tags: components["schemas"]["TagOut"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
+      /** @description Where it matched: the title, else the Description, else a Comment. */
+      match_in: components["schemas"]["MatchIn"];
+      /**
+       * Snippet
+       * @description The matching text as one plain line, cut to the part around the first match.
+       */
+      snippet: string;
     };
     /**
      * AttachmentOut
@@ -2645,6 +3122,79 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  apps_tasks_api_reminder_actions_complete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskChangeOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_reminder_actions_snooze: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SnoozeIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
       };
     };
   };
@@ -3158,11 +3708,193 @@ export interface operations {
       };
     };
   };
+  apps_tasks_api_tags_create_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TagOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_delete_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_update_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TagOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_move_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_merge_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagMergeIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
   apps_tasks_api_tasks_list_tasks: {
     parameters: {
       query?: {
         project?: number | null;
         person?: number | null;
+        tag?: number | null;
         /** @description Today or Upcoming, picked by date. */
         view?: components["schemas"]["View"] | null;
         /** @description List Closed Tasks, a page at a time. */
@@ -3444,6 +4176,29 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_search_search: {
+    parameters: {
+      query: {
+        /** @description Words that must all appear, ignoring case. */
+        q: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskSearchOut"][];
         };
       };
     };

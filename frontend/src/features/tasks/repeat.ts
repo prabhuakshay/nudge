@@ -120,14 +120,13 @@ export function advances(task: Pick<Task, "repeat_rule" | "status">, status: Tas
 }
 
 /**
- * What a Status change did, as its toast says. A repeating Task that moved on says where to:
- * "Completed “Water”; next due Friday".
+ * What a Status change did, as its toast says, given the Task as the server returned it. A
+ * repeating Task that stayed open moved on, so it says where to: "Completed “Water”; next due
+ * Friday".
  */
-export function statusToast(task: Task, saved: Task, status: TaskStatus, relatives: number) {
-  const title = plainMentions(task.title);
-  if (!advances(task, status) || isClosed(saved.status)) {
-    return statusMessage(title, status, relatives);
-  }
+export function statusToast(saved: Task, status: TaskStatus, relatives: number) {
+  const title = plainMentions(saved.title);
+  if (!advances(saved, status)) return statusMessage(title, status, relatives);
   const verb = status === "wont_do" ? "Skipped" : STATUS_VERB[status];
   return `${verb} “${title}”; next due ${dueLabel(saved, new Date())}`;
 }

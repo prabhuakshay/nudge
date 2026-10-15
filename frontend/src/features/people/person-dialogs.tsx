@@ -3,7 +3,8 @@ import { useId, useState, type SubmitEvent } from "react";
 
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ColorField, DialogFooter, SidebarDialog } from "@/features/projects/project-dialog";
+import { ColorField } from "@/features/projects/color-field";
+import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog";
 import type { PaletteColor } from "@/features/projects/projects";
 
 import { PersonAvatar } from "./person-avatar";

@@ -1,4 +1,4 @@
-"""How Tasks are read for a list: each row carries its counts, depth and overdue flag."""
+"""How Tasks are read for a list: each row carries its Tags, counts, depth and overdue flag."""
 
 from __future__ import annotations
 
@@ -63,5 +63,5 @@ def with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
 def as_rows(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
     """Return the Tasks with everything a list row shows, judged by the user's clock."""
     # Three hops reach a root from the deepest Subtask, so a row's depth costs no queries.
-    tasks = tasks.select_related("parent__parent__parent")
+    tasks = tasks.select_related("parent__parent__parent").prefetch_related("tags")
     return with_overdue(with_counts(tasks), user)

@@ -14,6 +14,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { validateTaskSearch } from "@/features/tasks/open-task";
 import { TaskList } from "@/features/tasks/task-list";
 import type { Person } from "@/features/people/people";
+import type { SidebarTag } from "@/features/tags/tags";
 import type { Comment } from "@/features/tasks/comments";
 import type { SidebarProject, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
 import { makeTask } from "@/test/tasks";
@@ -50,6 +51,11 @@ export const GARDEN: SidebarProject = {
   is_archived: true,
 };
 
+export const TAGS: SidebarTag[] = [
+  { id: 21, name: "work", color: "teal", open_count: 1, task_count: 1 },
+  { id: 22, name: "home", color: null, open_count: 0, task_count: 0 },
+];
+
 export const task = makeTask;
 
 export const PRIYA: Person = { id: 1, name: "Priya", color: "violet" };
@@ -78,12 +84,12 @@ export function mockApi(
   comments: Comment[] = [],
 ) {
   const activity = [...history];
+  const tags = [...TAGS];
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = input as Request;
     const url = new URL(request.url);
-    if (url.pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [WORK], archived: [GARDEN] });
-    }
+    const sidebarOrTag = await sidebarAndTags(request, tags);
+    if (sidebarOrTag) return sidebarOrTag;
     if (url.pathname.endsWith("/activity")) {
       return json({ items: activity, next_cursor: null, count: activity.length });
     }
@@ -93,8 +99,8 @@ export function mockApi(
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);
     if (request.method === "PATCH" && found) {
-      const change = (await request.clone().json()) as Partial<TaskDetail>;
-      return json(applyPatch(found, change, activity));
+      const patch = (await request.clone().json()) as TaskPatch;
+      return json(applyPatch(found, withTags(patch, tags), activity));
     }
     if (found) return json(found);
     if (url.searchParams.get("closed") === "true") {
@@ -102,6 +108,26 @@ export function mockApi(
     }
     return json({ items: tasks, next_cursor: null });
   });
+}
+
+/** The sidebar, with the Tags so far, and Tag creation, which adds to them. */
+async function sidebarAndTags(request: Request, tags: SidebarTag[]) {
+  const { pathname } = new URL(request.url);
+  if (pathname.endsWith("/sidebar")) {
+    return json({ inbox: INBOX, items: [WORK], archived: [GARDEN], tags });
+  }
+  if (!pathname.endsWith("/tags") || request.method !== "POST") return undefined;
+  const { name } = (await request.clone().json()) as { name: string };
+  const created = { id: 100 + tags.length, name, color: null, open_count: 0, task_count: 0 };
+  tags.push(created);
+  return json(created, 201);
+}
+
+type TaskPatch = Partial<TaskDetail> & { tag_ids?: number[] };
+
+/** The patch with its Tag ids turned into the Tags the server would return. */
+function withTags({ tag_ids: tagIds, ...change }: TaskPatch, tags: SidebarTag[]) {
+  return tagIds ? { ...change, tags: tags.filter((tag) => tagIds.includes(tag.id)) } : change;
 }
 
 function applyPatch(found: TaskDetail, change: Partial<TaskDetail>, activity: TaskActivity[]) {

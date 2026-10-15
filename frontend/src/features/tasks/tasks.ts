@@ -11,8 +11,9 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 
 import { remindersAfter } from "./reminders";
-import { advances, statusToast } from "./repeat";
+import { advances } from "./repeat";
 import type { ScheduleView } from "./schedule";
+import { offerStatusUndo } from "./status-undo";
 import { openTrees } from "./task-tree";
 
 export type Task = components["schemas"]["TaskOut"];
@@ -62,8 +63,8 @@ export function openTasksQuery(projectId: number) {
   });
 }
 
-/** Where a list's Tasks come from: a Project, or a view that picks them by date. */
-type ListSource = { project: number } | { view: ScheduleView };
+/** Where a list's Tasks come from: a Project, a Tag, or a view that picks them by date. */
+type ListSource = { project: number } | { tag: number } | { view: ScheduleView };
 
 /**
  * A view's open Tasks as flat rows, in the order the view lists them: Today has Overdue first,
@@ -90,9 +91,10 @@ export function closedTasksQuery(projectId: number) {
 /** The Tasks in Today that were closed today, most recently closed first, a page at a time. */
 export const closedTodayQuery = closedPagesQuery({ view: "today" });
 
-function closedPagesQuery(source: ListSource) {
+/** A list's Closed Tasks, most recently completed first, a page at a time. */
+export function closedPagesQuery(source: ListSource) {
   return infiniteQueryOptions({
-    queryKey: [...TASKS_KEY, "closed", "project" in source ? source.project : source.view],
+    queryKey: [...TASKS_KEY, "closed", source],
     queryFn: async ({ pageParam }) => {
       const { data } = await api.GET("/api/v1/tasks", {
         params: { query: { ...source, closed: true, ...(pageParam && { cursor: pageParam }) } },
@@ -216,19 +218,19 @@ export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
 /**
  * A change to a Task: the fields to set, which are all left as they are when absent. `dates`
  * replaces all four date fields at once, and removing them removes the Reminders. `reminders`
- * replaces the Reminders, as offsets in minutes.
+ * replaces the Reminders, as offsets in minutes, and `tags` all of its Tags.
  */
 type Editable = "title" | "description" | "status" | "priority" | "blocked_reason";
 export type TaskChange = { id: number; pinned?: boolean } & Partial<
-  Pick<TaskDetail, Editable | "repeat_rule" | "repeat_from">
+  Pick<TaskDetail, Editable | "tags" | "repeat_rule" | "repeat_from">
 > & { dates?: DatesIn; reminders?: number[] };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
-async function patchTask({ id, ...change }: TaskChange) {
+async function patchTask({ id, tags, ...change }: TaskChange) {
   const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
     params: { path: { task_id: id } },
-    body: change,
+    body: { ...change, ...(tags && { tag_ids: tags.map((tag) => tag.id) }) },
   });
   if (!data) {
     throw new Error("Could not save the task.");
@@ -304,10 +306,7 @@ export function useUpdateTask() {
   });
 }
 
-/**
- * Set a Task's Status, then offer Undo in a toast. Undo gives every Task the change touched back
- * the Status and Blocked reason it had, as the server reported them.
- */
+/** Set a Task's Status, then offer Undo in a toast. */
 export function useSetTaskStatus() {
   const queryClient = useQueryClient();
   const { mutate: update } = useUpdateTask();
@@ -317,23 +316,8 @@ export function useSetTaskStatus() {
     // A repeating Task moves on rather than closing, so it stays where it is until the server says.
     onMutate: ({ task, status }) =>
       advances(task, status) ? undefined : showChange(queryClient, { id: task.id, status }),
-    onSuccess: ({ task: saved, affected }, { task, status }) => {
-      toast(statusToast(task, saved, status, affected.length - 1), {
-        action: {
-          label: "Undo",
-          onClick: () => {
-            for (const prior of affected) {
-              update({
-                id: prior.id,
-                status: prior.prior_status,
-                ...(prior.prior_status === "blocked" && {
-                  blocked_reason: prior.prior_blocked_reason,
-                }),
-              });
-            }
-          },
-        },
-      });
+    onSuccess: ({ task, affected }, { status }) => {
+      offerStatusUndo(update, task, status, affected);
     },
     onError: (error) => toast.error(error.message),
     onSettled: () => refreshTasks(queryClient),
@@ -341,15 +325,16 @@ export function useSetTaskStatus() {
 }
 
 /**
- * Add a Task from Quick add, with the dates the view gives it, if any. It appears first in its
- * Project, as the server places it, and wherever its dates put it.
+ * Add a Task from Quick add, with the dates and Tag the view gives it, if any. It appears first
+ * in its Project and its Tag's list, as the server places it, and wherever its dates put it.
  */
-export function useCreateTask(projectId: number, dates?: DatesIn) {
+export function useCreateTask(projectId: number, dates?: DatesIn, tagId?: number) {
   const queryClient = useQueryClient();
+  const tagged = tagId === undefined ? {} : { tag_ids: [tagId] };
   return useMutation({
     mutationFn: async (title: string) => {
       const { data } = await api.POST("/api/v1/tasks", {
-        body: { title, project_id: projectId, ...(dates && { dates }) },
+        body: { title, project_id: projectId, ...(dates && { dates }), ...tagged },
       });
       if (!data) {
         throw new Error("Could not add the task.");
@@ -366,6 +351,7 @@ export function useCreateTask(projectId: number, dates?: DatesIn) {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "today"] }),
         queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "upcoming"] }),
+        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "tag"] }),
         queryClient.invalidateQueries(sidebarQuery),
       ]),
   });

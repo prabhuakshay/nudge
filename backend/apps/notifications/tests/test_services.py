@@ -166,7 +166,13 @@ def test_push_to_devices_sends_the_notification_to_every_browser(
 
     services.push_to_devices(notification.pk)
 
-    payload = {"id": notification.pk, "title": "Pay rent", "body": "Due today", "url": "/inbox"}
+    payload = {
+        "id": notification.pk,
+        "title": "Pay rent",
+        "body": "Due today",
+        "url": "/inbox",
+        "is_reminder": False,
+    }
     assert sorted(sent) == [
         ("https://push.example.com/laptop", payload),
         ("https://push.example.com/phone", payload),

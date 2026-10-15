@@ -7,7 +7,12 @@ import { cleanupOutdatedCaches, matchPrecache, precacheAndRoute } from "workbox-
 import type { PrecacheEntry } from "workbox-precaching";
 import { NavigationRoute, registerRoute } from "workbox-routing";
 
-import { parsePushPayload } from "./features/notifications/push-payload";
+import {
+  parsePushPayload,
+  pushActionRequest,
+  pushActions,
+  type PushActionRequest,
+} from "./features/notifications/push-payload";
 
 declare const self: ServiceWorkerGlobalScope & { __WB_MANIFEST: (PrecacheEntry | string)[] };
 
@@ -36,21 +41,50 @@ self.addEventListener("push", (event) => {
   } catch {
     message = undefined;
   }
-  const { title, body, url } = parsePushPayload(message);
-  event.waitUntil(
-    self.registration.showNotification(title, {
-      body,
-      icon: "/android-chrome-192.png",
-      data: { url },
-    }),
-  );
+  const payload = parsePushPayload(message);
+  // `actions` is missing from TypeScript's NotificationOptions, though browsers support it.
+  const options: NotificationOptions & { actions: ReturnType<typeof pushActions> } = {
+    body: payload.body,
+    icon: "/android-chrome-192.png",
+    data: message,
+    actions: pushActions(payload),
+  };
+  event.waitUntil(self.registration.showNotification(payload.title, options));
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const { url } = parsePushPayload(event.notification.data);
-  event.waitUntil(openApp(new URL(url, self.location.origin).href));
+  const payload = parsePushPayload(event.notification.data);
+  const url = new URL(payload.url, self.location.origin).href;
+  const request = pushActionRequest(event.action, payload);
+  event.waitUntil(request ? actOrOpen(request, url) : openApp(url));
 });
+
+/** Makes a Reminder action's API call; if it fails, say when signed out, opens the Task instead. */
+async function actOrOpen(request: PushActionRequest, url: string): Promise<void> {
+  try {
+    const response = await fetch(request.path, {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-CSRFToken": await csrfToken() },
+      ...(request.body && { body: JSON.stringify(request.body) }),
+    });
+    if (response.ok) return;
+  } catch {
+    // Offline: fall through and open the Task, which shows the cached shell.
+  }
+  await openApp(url);
+}
+
+// The cookie `api/csrf.ts` reads; that module needs `document`, which a worker doesn't have.
+const CSRF_COOKIE_NAME = "csrftoken";
+
+/** Django's CSRF token. A worker can't read `document.cookie`, only the Cookie Store API. */
+async function csrfToken(): Promise<string> {
+  if (!("cookieStore" in self)) return "";
+  const cookie = await self.cookieStore.get(CSRF_COOKIE_NAME);
+  return cookie?.value ?? "";
+}
 
 /** Brings an open Nudge window to the front at `url`, or opens one. */
 async function openApp(url: string): Promise<void> {

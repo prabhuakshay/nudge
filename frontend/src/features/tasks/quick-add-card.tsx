@@ -18,13 +18,21 @@ function isTyping(target: EventTarget | null) {
 /**
  * The card above a list for adding a Task in one line: type a title and press Enter. The input
  * stays focused so several Tasks can be added in a row, and `C` focuses it from anywhere on the
- * page. A view can date the new Task, as Today does with today.
+ * page. A view can date the new Task, as Today does with today, or tag it, as a Tag's list does.
  */
-export function QuickAddCard({ projectId, dates }: { projectId: number; dates?: DatesIn }) {
+export function QuickAddCard({
+  projectId,
+  dates,
+  tagId,
+}: {
+  projectId: number;
+  dates?: DatesIn;
+  tagId?: number;
+}) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [focused, setFocused] = useState(false);
-  const createTask = useCreateTask(projectId, dates);
+  const createTask = useCreateTask(projectId, dates, tagId);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

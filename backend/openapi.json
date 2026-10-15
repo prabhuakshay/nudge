@@ -649,6 +649,52 @@
       }
     },
     "/api/v1/tasks/{task_id}": {
+      "get": {
+        "operationId": "apps_tasks_api_tasks_get_task",
+        "summary": "Get a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDetailOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return a Task with everything the detail drawer shows.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
       "patch": {
         "operationId": "apps_tasks_api_tasks_update_task",
         "summary": "Change a Task",
@@ -1172,6 +1218,65 @@
         "title": "TaskIn",
         "type": "object"
       },
+      "TaskDetailOut": {
+        "description": "A Task as the detail drawer shows it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Completed At"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "description": {
+            "description": "Markdown, as the user wrote it.",
+            "title": "Description",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "title",
+          "status",
+          "completed_at",
+          "created_at",
+          "updated_at",
+          "description"
+        ],
+        "title": "TaskDetailOut",
+        "type": "object"
+      },
       "AffectedTaskOut": {
         "description": "A Task whose Status a change touched, with its Status before, so the client can undo.",
         "properties": {
@@ -1194,7 +1299,7 @@
         "description": "A changed Task and every Task whose Status the change touched.",
         "properties": {
           "task": {
-            "$ref": "#/components/schemas/TaskOut"
+            "$ref": "#/components/schemas/TaskDetailOut"
           },
           "affected": {
             "items": {
@@ -1214,6 +1319,31 @@
       "TaskPatchIn": {
         "description": "The fields of a Task to change; fields left out stay as they are.",
         "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Markdown.",
+            "title": "Description"
+          },
           "status": {
             "anyOf": [
               {

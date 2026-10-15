@@ -341,7 +341,11 @@ export interface paths {
       path?: never;
       cookie?: never;
     };
-    get?: never;
+    /**
+     * Get a Task
+     * @description Return a Task with everything the detail drawer shows.
+     */
+    get: operations["apps_tasks_api_tasks_get_task"];
     put?: never;
     post?: never;
     delete?: never;
@@ -594,6 +598,36 @@ export interface components {
       project_id?: number | null;
     };
     /**
+     * TaskDetailOut
+     * @description A Task as the detail drawer shows it.
+     */
+    TaskDetailOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** Completed At */
+      completed_at: string | null;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Description
+       * @description Markdown, as the user wrote it.
+       */
+      description: string;
+    };
+    /**
      * AffectedTaskOut
      * @description A Task whose Status a change touched, with its Status before, so the client can undo.
      */
@@ -607,7 +641,7 @@ export interface components {
      * @description A changed Task and every Task whose Status the change touched.
      */
     TaskChangeOut: {
-      task: components["schemas"]["TaskOut"];
+      task: components["schemas"]["TaskDetailOut"];
       /** Affected */
       affected: components["schemas"]["AffectedTaskOut"][];
     };
@@ -616,6 +650,13 @@ export interface components {
      * @description The fields of a Task to change; fields left out stay as they are.
      */
     TaskPatchIn: {
+      /** Title */
+      title?: string | null;
+      /**
+       * Description
+       * @description Markdown.
+       */
+      description?: string | null;
       status?: components["schemas"]["Status"] | null;
     };
   };
@@ -1068,6 +1109,37 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["TaskOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_get_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskDetailOut"];
         };
       };
       /** @description Not Found */

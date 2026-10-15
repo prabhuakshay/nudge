@@ -7,6 +7,17 @@ Element.prototype.setPointerCapture = () => undefined;
 Element.prototype.releasePointerCapture = () => undefined;
 Element.prototype.hasPointerCapture = () => false;
 
+// jsdom has no media queries either; without a stub nothing matches, like a narrow phone screen.
+Object.defineProperty(window, "matchMedia", {
+  writable: true,
+  value: (query: string) => ({
+    media: query,
+    matches: false,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }),
+});
+
 afterEach(() => {
   cleanup();
 });

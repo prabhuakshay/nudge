@@ -1,6 +1,6 @@
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, type UseInfiniteQueryResult } from "@tanstack/react-query";
 import { ChevronDown, ChevronRight, CircleCheck, Inbox, ListTodo } from "lucide-react";
-import { memo, useCallback, useState, type ReactNode } from "react";
+import { memo, useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { QuickAddCard } from "./quick-add-card";
 import { StatusBadge } from "./status-badge";
 import { TaskCheckbox } from "./task-checkbox";
+import { TaskDetail } from "./task-detail";
 import {
   closedTasksQuery,
   openTasksQuery,
@@ -22,13 +23,26 @@ import {
 const GRID = "lg:grid lg:grid-cols-[minmax(0,1fr)_7.5rem]";
 
 type ToggleStatus = (task: Task) => void;
+type OpenTask = (taskId: number) => void;
 
 /**
  * A Project's Tasks as a table: the page header, Quick add, then the open Tasks and a collapsed
- * Closed group. On phones the table collapses into stacked rows.
+ * Closed group. On phones the table collapses into stacked rows. Clicking a row opens the Task in
+ * the drawer.
  */
 export function TaskList({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));
+  const [showClosed, setShowClosed] = useState(false);
+  const closed = useInfiniteQuery({ ...closedTasksQuery(project.id), enabled: showClosed });
+  const closedTasks = useMemo(
+    () => (showClosed ? (closed.data?.pages.flatMap((page) => page.items) ?? []) : []),
+    [showClosed, closed.data],
+  );
+  const order = useMemo(
+    () => [...open, ...closedTasks].map((task) => task.id),
+    [open, closedTasks],
+  );
+  const [openId, setOpenId] = useState<number | null>(null);
   const { mutate: setStatus } = useSetTaskStatus(project.id);
   // Stable, so memoized rows don't re-render when the list does.
   const toggle = useCallback<ToggleStatus>(
@@ -84,12 +98,38 @@ export function TaskList({ project }: { project: SidebarProject }) {
               Nothing left here. Add a task above.
             </p>
           ) : (
-            open.map((task) => <TaskRow key={task.id} task={task} onToggle={toggle} />)
+            open.map((task) => (
+              <TaskRow
+                key={task.id}
+                task={task}
+                selected={task.id === openId}
+                onToggle={toggle}
+                onOpen={setOpenId}
+              />
+            ))
           )}
         </Group>
 
-        <ClosedGroup projectId={project.id} onToggle={toggle} />
+        <ClosedGroup
+          query={closed}
+          tasks={closedTasks}
+          expanded={showClosed}
+          onExpandedChange={setShowClosed}
+          openId={openId}
+          onToggle={toggle}
+          onOpen={setOpenId}
+        />
       </div>
+
+      <TaskDetail
+        taskId={openId}
+        project={project}
+        order={order}
+        onOpen={setOpenId}
+        onClose={() => {
+          setOpenId(null);
+        }}
+      />
     </div>
   );
 }
@@ -120,18 +160,30 @@ function Group({
 }
 
 /** Closed Tasks stay out of the way, and aren't fetched, until the group is opened. */
-function ClosedGroup({ projectId, onToggle }: { projectId: number; onToggle: ToggleStatus }) {
-  const [expanded, setExpanded] = useState(false);
-  const closed = useInfiniteQuery({ ...closedTasksQuery(projectId), enabled: expanded });
-  const tasks = closed.data?.pages.flatMap((page) => page.items) ?? [];
-
+function ClosedGroup({
+  query: closed,
+  tasks,
+  expanded,
+  onExpandedChange,
+  openId,
+  onToggle,
+  onOpen,
+}: {
+  query: UseInfiniteQueryResult;
+  tasks: Task[];
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+  openId: number | null;
+  onToggle: ToggleStatus;
+  onOpen: OpenTask;
+}) {
   return (
     <section aria-label="Closed">
       <button
         type="button"
         aria-expanded={expanded}
         onClick={() => {
-          setExpanded((value) => !value);
+          onExpandedChange(!expanded);
         }}
         className={cn(
           "flex h-10 w-full items-center gap-2 px-3 text-xs font-semibold text-muted-foreground transition-colors hover:bg-surface-muted/60 hover:text-foreground",
@@ -149,7 +201,13 @@ function ClosedGroup({ projectId, onToggle }: { projectId: number; onToggle: Tog
       {expanded && (
         <div className="border-t border-border/60 pb-1">
           {tasks.map((task) => (
-            <TaskRow key={task.id} task={task} onToggle={onToggle} />
+            <TaskRow
+              key={task.id}
+              task={task}
+              selected={task.id === openId}
+              onToggle={onToggle}
+              onOpen={onOpen}
+            />
           ))}
           {closed.isSuccess && tasks.length === 0 && (
             <p className="px-4 py-4 text-center text-sm text-muted-foreground">
@@ -173,16 +231,45 @@ function ClosedGroup({ projectId, onToggle }: { projectId: number; onToggle: Tog
   );
 }
 
-/** One Task in the table. Memoized so a change to one row leaves the others alone. */
-const TaskRow = memo(function TaskRow({ task, onToggle }: { task: Task; onToggle: ToggleStatus }) {
+/**
+ * One Task in the table. A click anywhere on it, or Enter, opens the Task; the checkbox keeps its
+ * own action. Memoized so a change to one row leaves the others alone.
+ */
+const TaskRow = memo(function TaskRow({
+  task,
+  selected,
+  onToggle,
+  onOpen,
+}: {
+  task: Task;
+  selected: boolean;
+  onToggle: ToggleStatus;
+  onOpen: OpenTask;
+}) {
   const completed = task.status === "completed";
   return (
     <div
       role="row"
+      tabIndex={0}
+      data-task-id={task.id}
       aria-level={1}
+      aria-selected={selected}
+      onClick={() => {
+        onOpen(task.id);
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" && event.target === event.currentTarget) {
+          event.preventDefault();
+          onOpen(task.id);
+        }
+      }}
       className={cn(
         GRID,
-        "flex min-h-11 items-center border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors last:border-b-0 hover:bg-surface-muted/60 lg:min-h-10 lg:py-0",
+        "flex min-h-11 cursor-pointer items-center border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors outline-none last:border-b-0 lg:min-h-10 lg:py-0",
+        "focus-visible:bg-primary-soft/50 focus-visible:shadow-[inset_2px_0_0_var(--primary)]",
+        selected
+          ? "bg-primary-soft/50 shadow-[inset_2px_0_0_var(--primary)]"
+          : "hover:bg-surface-muted/60",
       )}
     >
       <div role="gridcell" className="flex min-w-0 items-center gap-2.5">

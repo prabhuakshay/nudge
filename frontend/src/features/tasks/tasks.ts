@@ -10,6 +10,7 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 
 export type Task = components["schemas"]["TaskOut"];
+export type TaskDetail = components["schemas"]["TaskDetailOut"];
 export type TaskStatus = components["schemas"]["Status"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
@@ -62,6 +63,49 @@ export function closedTasksQuery(projectId: number) {
     },
     initialPageParam: null as string | null,
     getNextPageParam: (page) => page.next_cursor,
+  });
+}
+
+/** One Task with everything the drawer shows. Keyed under the Task lists so list changes refresh it. */
+export function taskQuery(taskId: number) {
+  return queryOptions({
+    queryKey: [...TASKS_KEY, "detail", taskId],
+    queryFn: async (): Promise<TaskDetail> => {
+      const { data } = await api.GET("/api/v1/tasks/{task_id}", {
+        params: { path: { task_id: taskId } },
+      });
+      if (!data) {
+        throw new Error("Could not load the task.");
+      }
+      return data;
+    },
+  });
+}
+
+/** The text fields the drawer edits in place. */
+export type TaskTextChange = { id: number } & Partial<Pick<TaskDetail, "title" | "description">>;
+
+/** Save a Task's title or Description. The drawer shows the change before the server answers. */
+export function useUpdateTask() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...change }: TaskTextChange) => {
+      const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
+        params: { path: { task_id: id } },
+        body: change,
+      });
+      if (!data) {
+        throw new Error("Could not save the task.");
+      }
+      return data;
+    },
+    onMutate: async ({ id, ...change }) => {
+      const detailKey = taskQuery(id).queryKey;
+      await queryClient.cancelQueries({ queryKey: detailKey });
+      queryClient.setQueryData(detailKey, (task) => task && { ...task, ...change });
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
   });
 }
 

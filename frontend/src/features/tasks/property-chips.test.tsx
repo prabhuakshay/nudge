@@ -85,3 +85,22 @@ describe("PropertyChips", () => {
     ).toBeInTheDocument();
   });
 });
+
+describe("PropertyChips on phones", () => {
+  it("moves the Task to a Project picked from a bottom sheet", async () => {
+    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
+    const user = renderList({ wide: false });
+    const drawer = await openTask(user, "Buy milk");
+
+    await user.click(
+      within(drawer).getByRole("button", { name: "Project: Inbox. Move to another project" }),
+    );
+    const sheet = await screen.findByRole("dialog", { name: "Move to project" });
+    await user.click(within(sheet).getByRole("option", { name: "Work" }));
+
+    expect(sheet).toHaveAttribute("data-vaul-drawer");
+    await waitFor(async () => {
+      expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { project_id: 8 }]]);
+    });
+  });
+});

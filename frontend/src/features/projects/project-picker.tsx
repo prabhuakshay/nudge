@@ -10,7 +10,7 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ResponsivePopover } from "@/components/ui/responsive-popover";
 import { sidebarQuery } from "@/features/tasks/tasks";
 
 import { ProjectIcon } from "./project-icon";
@@ -51,25 +51,28 @@ export function ProjectPicker({ currentId, onSelect, children }: ProjectPickerPr
   );
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent align="start" className="w-64 p-0">
-        <Command>
-          <CommandInput placeholder="Move to…" aria-label="Find a project" />
-          <CommandList>
-            <CommandEmpty>No projects match.</CommandEmpty>
-            <CommandGroup>
-              {option(sidebar.inbox)}
-              {ungrouped.map(option)}
+    <ResponsivePopover
+      label="Move to project"
+      trigger={children}
+      open={open}
+      onOpenChange={setOpen}
+      className="w-64"
+    >
+      <Command>
+        <CommandInput placeholder="Move to…" aria-label="Find a project" />
+        <CommandList>
+          <CommandEmpty>No projects match.</CommandEmpty>
+          <CommandGroup>
+            {option(sidebar.inbox)}
+            {ungrouped.map(option)}
+          </CommandGroup>
+          {folders.map((folder) => (
+            <CommandGroup key={folder.id} heading={folder.name}>
+              {folder.projects.map(option)}
             </CommandGroup>
-            {folders.map((folder) => (
-              <CommandGroup key={folder.id} heading={folder.name}>
-                {folder.projects.map(option)}
-              </CommandGroup>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+          ))}
+        </CommandList>
+      </Command>
+    </ResponsivePopover>
   );
 }

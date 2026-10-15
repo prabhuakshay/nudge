@@ -135,3 +135,32 @@ describe("Due dates", () => {
     expect(await patchedDates(fetchSpy)).toEqual([{ dates: null }]);
   });
 });
+
+describe("fitting the picker on screen", () => {
+  it("scrolls the picker's fields while its Close button stays in view", async () => {
+    mockApi(task({ due_date: "2026-10-20" }));
+    const user = renderList();
+
+    await user.click(await screen.findByRole("button", { name: /^Due: / }));
+    const picker = await screen.findByRole("dialog", { name: "Date" });
+    const body = within(picker)
+      .getByRole("combobox", { name: "Due time" })
+      .closest(".overflow-y-auto");
+
+    expect(body).not.toBeNull();
+    expect(body).not.toContainElement(within(picker).getByRole("button", { name: "Close" }));
+  });
+
+  it("opens as a bottom sheet on phones", async () => {
+    mockApi(task({ due_date: "2026-10-20" }));
+    const user = renderList({ wide: false });
+    await user.click(await screen.findByText("Buy milk"));
+    const drawer = await screen.findByRole("dialog", { name: "Task details" });
+
+    await user.click(within(drawer).getByRole("button", { name: "Date: Tuesday" }));
+    const picker = await screen.findByRole("dialog", { name: "Date" });
+
+    expect(picker).toHaveAttribute("data-vaul-drawer");
+    expect(within(picker).getByRole("combobox", { name: "Due time" })).toBeInTheDocument();
+  });
+});

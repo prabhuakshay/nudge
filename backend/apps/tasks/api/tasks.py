@@ -110,9 +110,12 @@ def update_task(
     change = services.update_task(
         signed_in_user(request),
         task_id,
-        title=patch.title,
-        description=patch.description,
-        status=patch.status,
+        services.TaskPatch(
+            title=patch.title,
+            description=patch.description,
+            status=patch.status,
+            dates=_dates(patch),
+        ),
     )
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
@@ -120,6 +123,16 @@ def update_task(
     return Status(
         _HTTP_OK, TaskChangeOut(task=TaskDetailOut.from_orm(change.task), affected=affected)
     )
+
+
+def _dates(patch: TaskPatchIn) -> services.TaskDates | None:
+    """Return the dates the patch sets, an empty set when it clears them, or None if neither."""
+    if "dates" not in patch.model_fields_set:
+        return None
+    if patch.dates is None:
+        return services.TaskDates()
+    dates = patch.dates
+    return services.TaskDates(dates.due_date, dates.due_time, dates.start_date, dates.start_time)
 
 
 @router.get(

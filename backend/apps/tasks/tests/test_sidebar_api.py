@@ -29,7 +29,7 @@ def test_sidebar_shows_the_users_inbox_with_its_open_task_count(
 ) -> None:
     services.create_task(services.inbox(ada), "Buy milk")
     done = services.create_task(services.inbox(ada), "Call mum")
-    services.update_task(ada, done.pk, status=Task.Status.COMPLETED)
+    services.update_task(ada, done.pk, services.TaskPatch(status=Task.Status.COMPLETED))
     services.create_task(services.inbox(grace), "Grace's")
 
     response = client.get("/api/v1/sidebar")

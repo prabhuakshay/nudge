@@ -6,7 +6,7 @@ from typing import ClassVar, override
 
 from django.conf import settings
 from django.db import models
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 INBOX_NAME = "Inbox"
@@ -52,6 +52,10 @@ class Task(models.Model):
 
     `position` is a fractional-indexing key: a new Task gets a key between its neighbours, so
     reordering writes one row. Keys compare byte by byte, hence the C collation.
+
+    Dates are floating: a time means that clock time in the owner's `time_zone`, wherever it is,
+    so 09:00 stays 09:00 when the user travels. A due date without a time is all-day; a start
+    date turns the Task into a range that ends on the due date.
     """
 
     class Status(models.TextChoices):
@@ -71,6 +75,10 @@ class Task(models.Model):
     description = models.TextField(blank=True, default="")
     status = models.CharField(max_length=16, choices=Status, default=Status.OPEN)
     completed_at = models.DateTimeField(null=True, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+    due_time = models.TimeField(null=True, blank=True, help_text="Empty for an all-day Task.")
+    start_date = models.DateField(null=True, blank=True, help_text="Set for a range.")
+    start_time = models.TimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
@@ -88,6 +96,28 @@ class Task(models.Model):
                 condition=Q(status="open", completed_at__isnull=True)
                 | Q(status="completed", completed_at__isnull=False),
                 name="tasks_task_completed_at_matches_status",
+            ),
+            models.CheckConstraint(
+                condition=Q(start_date__isnull=True) | Q(due_date__isnull=False),
+                name="tasks_task_start_needs_due",
+            ),
+            models.CheckConstraint(
+                condition=(Q(due_time__isnull=True) | Q(due_date__isnull=False))
+                & (Q(start_time__isnull=True) | Q(start_date__isnull=False)),
+                name="tasks_task_time_needs_its_date",
+            ),
+            models.CheckConstraint(
+                condition=Q(start_date__isnull=True)
+                | Q(start_time__isnull=True, due_time__isnull=True)
+                | Q(start_time__isnull=False, due_time__isnull=False),
+                name="tasks_task_range_all_day_or_timed",
+            ),
+            models.CheckConstraint(
+                condition=Q(start_date__isnull=True)
+                | Q(start_date__lt=F("due_date"))
+                | Q(start_date=F("due_date"), start_time__isnull=True)
+                | Q(start_date=F("due_date"), start_time__lte=F("due_time")),
+                name="tasks_task_range_starts_by_due",
             ),
         ]
 
@@ -109,6 +139,7 @@ class TaskActivity(models.Model):
         CREATED = "created", "Created"
         TITLE_CHANGED = "title_changed", "Title changed"
         DESCRIPTION_EDITED = "description_edited", "Description edited"
+        DATES_CHANGED = "dates_changed", "Dates changed"
 
     task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="activity")
     kind = models.CharField(max_length=32, choices=Kind)

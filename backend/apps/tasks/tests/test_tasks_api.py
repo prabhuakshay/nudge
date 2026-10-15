@@ -53,6 +53,11 @@ def test_create_adds_a_trimmed_task_to_the_inbox(client: Client, ada: User) -> N
         "title": "Buy milk",
         "status": "open",
         "completed_at": None,
+        "due_date": None,
+        "due_time": None,
+        "start_date": None,
+        "start_time": None,
+        "is_overdue": False,
         "created_at": body["created_at"],
         "updated_at": body["updated_at"],
     }
@@ -99,7 +104,7 @@ def test_a_new_task_goes_first_in_its_project(client: Client, ada: User) -> None
 def test_list_shows_only_open_tasks_by_default(client: Client, ada: User) -> None:
     services.create_task(services.inbox(ada), "Open one")
     done = services.create_task(services.inbox(ada), "Done one")
-    services.update_task(ada, done.pk, status=Task.Status.COMPLETED)
+    services.update_task(ada, done.pk, services.TaskPatch(status=Task.Status.COMPLETED))
 
     response = client.get(f"/api/v1/tasks?project={services.inbox(ada).pk}")
 
@@ -120,7 +125,7 @@ def test_closed_tasks_are_newest_completed_first(client: Client, ada: User) -> N
     start = datetime(2026, 10, 1, 9, tzinfo=UTC)
     for title, day in (("Oldest", 0), ("Newest", 2), ("Middle", 1)):
         task = services.create_task(services.inbox(ada), title)
-        services.update_task(ada, task.pk, status=Task.Status.COMPLETED)
+        services.update_task(ada, task.pk, services.TaskPatch(status=Task.Status.COMPLETED))
         Task.objects.filter(pk=task.pk).update(completed_at=start + timedelta(days=day))
     services.create_task(services.inbox(ada), "Still open")
 
@@ -133,7 +138,7 @@ def test_closed_tasks_are_newest_completed_first(client: Client, ada: User) -> N
 def test_closed_tasks_come_in_pages_of_fifty(client: Client, ada: User) -> None:
     for number in range(55):
         task = services.create_task(services.inbox(ada), f"Task {number}")
-        services.update_task(ada, task.pk, status=Task.Status.COMPLETED)
+        services.update_task(ada, task.pk, services.TaskPatch(status=Task.Status.COMPLETED))
     project = services.inbox(ada).pk
 
     first = client.get(f"/api/v1/tasks?project={project}&closed=true")
@@ -175,7 +180,7 @@ def test_completing_a_task_closes_it(client: Client, ada: User) -> None:
 @pytest.mark.django_db
 def test_reopening_a_task_clears_its_completion_time(client: Client, ada: User) -> None:
     task = services.create_task(services.inbox(ada), "Buy milk")
-    services.update_task(ada, task.pk, status=Task.Status.COMPLETED)
+    services.update_task(ada, task.pk, services.TaskPatch(status=Task.Status.COMPLETED))
 
     response = client.patch(
         f"/api/v1/tasks/{task.pk}",

@@ -94,7 +94,7 @@ def test_saving_unchanged_text_records_nothing(client: Client, ada: User) -> Non
 def test_events_come_newest_first_in_pages_of_fifty(client: Client, ada: User) -> None:
     task = services.create_task(services.inbox(ada), "Title 0")
     for number in range(1, 55):
-        services.update_task(ada, task.pk, title=f"Title {number}")
+        services.update_task(ada, task.pk, services.TaskPatch(title=f"Title {number}"))
     start = datetime(2026, 10, 1, 9, tzinfo=UTC)
     for minute, event in enumerate(task.activity.order_by("id")):
         TaskActivity.objects.filter(pk=event.pk).update(at=start + timedelta(minutes=minute))

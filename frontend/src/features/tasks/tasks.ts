@@ -13,6 +13,7 @@ export type Task = components["schemas"]["TaskOut"];
 export type TaskDetail = components["schemas"]["TaskDetailOut"];
 export type TaskStatus = components["schemas"]["Status"];
 export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"][number];
+export type DatesChange = components["schemas"]["DatesChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
 

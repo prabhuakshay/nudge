@@ -27,6 +27,7 @@ def _project_out(project: Project, sidebar: projects.Sidebar) -> SidebarProjectO
         icon=Project.Icon(project.icon),
         folder_id=project.folder_id,
         is_inbox=project.is_inbox,
+        is_archived=project.is_archived,
         open_count=sidebar.open_counts.get(project.pk, 0),
     )
 
@@ -48,9 +49,10 @@ def _item_out(
 
 @router.get("", response=SidebarOut, summary="Get the sidebar")
 def sidebar(request: HttpRequest) -> SidebarOut:
-    """Return the Inbox, then Folders and ungrouped Projects in order, with open Task counts."""
+    """Return the Inbox, Folders and ungrouped Projects in order, then archived Projects."""
     found = projects.sidebar(signed_in_user(request))
     return SidebarOut(
         inbox=_project_out(found.inbox, found),
         items=[_item_out(item, found) for item in found.items],
+        archived=[_project_out(project, found) for project in found.archived],
     )

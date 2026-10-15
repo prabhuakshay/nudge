@@ -37,7 +37,7 @@ function mockApi({
       return json({ task: { ...changed, description: "" }, affected });
     }
     if (url.pathname === "/api/v1/sidebar") {
-      return json({ inbox: { ...INBOX, open_count: open.length }, items: [] });
+      return json({ inbox: { ...INBOX, open_count: open.length }, items: [], archived: [] });
     }
     if (url.searchParams.get("closed") === "true") {
       const page = Number(url.searchParams.get("cursor") ?? 0);

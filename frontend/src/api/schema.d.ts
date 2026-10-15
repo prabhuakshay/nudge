@@ -412,6 +412,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/projects/{project_id}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Archive a Project
+     * @description Make a Project read-only and move it to the sidebar's Archived section.
+     */
+    post: operations["apps_tasks_api_projects_archive_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/projects/{project_id}/unarchive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Unarchive a Project
+     * @description Bring an archived Project back to its place in the sidebar, unchanged.
+     */
+    post: operations["apps_tasks_api_projects_unarchive_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/sidebar": {
     parameters: {
       query?: never;
@@ -421,7 +461,7 @@ export interface paths {
     };
     /**
      * Get the sidebar
-     * @description Return the Inbox, then Folders and ungrouped Projects in order, with open Task counts.
+     * @description Return the Inbox, Folders and ungrouped Projects in order, then archived Projects.
      */
     get: operations["apps_tasks_api_sidebar_sidebar"];
     put?: never;
@@ -874,6 +914,11 @@ export interface components {
       folder_id: number | null;
       /** Is Inbox */
       is_inbox: boolean;
+      /**
+       * Is Archived
+       * @description Archived Projects are read-only.
+       */
+      is_archived: boolean;
     };
     /**
      * ProjectIn
@@ -947,6 +992,11 @@ export interface components {
       items: (
         components["schemas"]["SidebarFolderOut"] | components["schemas"]["SidebarProjectOut"]
       )[];
+      /**
+       * Archived
+       * @description Archived Projects, by name.
+       */
+      archived: components["schemas"]["SidebarProjectOut"][];
     };
     /**
      * SidebarProjectOut
@@ -963,6 +1013,11 @@ export interface components {
       folder_id: number | null;
       /** Is Inbox */
       is_inbox: boolean;
+      /**
+       * Is Archived
+       * @description Archived Projects are read-only.
+       */
+      is_archived: boolean;
       /**
        * @description discriminator enum property added by openapi-typescript
        * @enum {string}
@@ -2261,6 +2316,77 @@ export interface operations {
       };
     };
   };
+  apps_tasks_api_projects_archive_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_unarchive_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
   apps_tasks_api_sidebar_sidebar: {
     parameters: {
       query?: never;
@@ -2469,6 +2595,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorOut"];
         };
       };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
     };
   };
   apps_tasks_api_tasks_list_activity: {
@@ -2592,6 +2727,15 @@ export interface operations {
           "application/json": components["schemas"]["ErrorOut"];
         };
       };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
     };
   };
   apps_tasks_api_attachments_download_attachment: {
@@ -2645,6 +2789,15 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
         headers: {
           [name: string]: unknown;
         };

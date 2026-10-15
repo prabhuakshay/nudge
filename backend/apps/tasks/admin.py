@@ -20,7 +20,15 @@ class FolderAdmin(admin.ModelAdmin[Folder]):
 class ProjectAdmin(admin.ModelAdmin[Project]):
     """Projects, for checking what a user has set up."""
 
-    list_display = ("name", "owner", "folder", "is_inbox", "created_at", "deleted_at")
+    list_display = (
+        "name",
+        "owner",
+        "folder",
+        "is_inbox",
+        "archived_at",
+        "created_at",
+        "deleted_at",
+    )
     search_fields = ("name", "owner__email")
     raw_id_fields = ("owner", "folder")
 

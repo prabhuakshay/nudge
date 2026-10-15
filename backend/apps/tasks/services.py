@@ -17,6 +17,7 @@ from django.utils import timezone
 from fractional_indexing import generate_key_between
 
 from apps.core.palette import PaletteColor
+from apps.tasks.archive import ensure_writable
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
@@ -163,7 +164,12 @@ def _first_position(project: Project) -> str:
 
 
 def create_task(project: Project, title: str) -> Task:
-    """Create a Task in the Project, first among its roots, owned by the Project's owner."""
+    """Create a Task in the Project, first among its roots, owned by the Project's owner.
+
+    Raises:
+        ArchivedProjectError: The Project is archived.
+    """
+    ensure_writable(project)
     with transaction.atomic():
         task = Task.objects.create(
             owner_id=project.owner_id,
@@ -182,7 +188,9 @@ def create_subtask(parent: Task, title: str) -> TaskChange:
 
     Raises:
         TaskRuleError: The parent is already at the deepest level.
+        ArchivedProjectError: The parent is in an archived Project.
     """
+    ensure_writable(parent.project)
     if parent.depth >= MAX_DEPTH:
         message = "Tasks can only nest four levels deep."
         raise TaskRuleError(message)
@@ -208,10 +216,14 @@ def duplicate_task(user: User, task_id: int) -> Task | None:
 
     The copy is a fresh open Task with the original's title, Description and Priority, under the
     same parent. Being open, it reopens any Closed ancestors.
+
+    Raises:
+        ArchivedProjectError: The Task is in an archived Project.
     """
     original = live_task(user, task_id)
     if original is None:
         return None
+    ensure_writable(original.project)
     with transaction.atomic():
         # Locking the Project serialises inserts into it, so two Tasks never get the same key.
         Project.objects.select_for_update().get(pk=original.project_id)
@@ -267,10 +279,14 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     Raises:
         TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked, or pins a
             Subtask.
+        ArchivedProjectError: The Task is in an archived Project, or would move into one.
     """
     task = live_task(user, task_id)
     if task is None:
         return None
+    ensure_writable(task.project)
+    if edit.project is not None:
+        ensure_writable(edit.project)
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
     before["project_name"] = task.project.name
     dates_before = TaskDates.of(task)

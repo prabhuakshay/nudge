@@ -8,8 +8,8 @@ import { HUE } from "./project-style";
 import type { SidebarProject } from "./projects";
 
 /**
- * A Project's page title: its icon on a tile of its colour, its name and its open count, then
- * any page actions passed as children.
+ * A Project's page title: its icon on a tile of its colour, its name, its open count or that it
+ * is archived, then any page actions passed as children.
  */
 export function ProjectHeader({
   project,
@@ -32,7 +32,7 @@ export function ProjectHeader({
         {project.name}
       </h1>
       <Badge variant="secondary" className="shrink-0 tabular-nums">
-        {project.open_count} open
+        {project.is_archived ? "Archived" : `${String(project.open_count)} open`}
       </Badge>
       {children}
     </header>

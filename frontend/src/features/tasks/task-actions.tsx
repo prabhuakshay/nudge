@@ -34,8 +34,11 @@ async function copyLink(link: string) {
   }
 }
 
-/** The less common actions on a Task, in the order its menus list them. */
-function useTaskActions(task: Task): TaskAction[] {
+/**
+ * The less common actions on a Task, in the order its menus list them. A read-only Task, in an
+ * archived Project, only offers its link.
+ */
+function useTaskActions(task: Task, readOnly = false): TaskAction[] {
   const { mutate: update } = useUpdateTask();
   const { mutate: setStatus } = useSetTaskStatus();
   const { mutate: duplicate } = useDuplicateTask();
@@ -49,6 +52,12 @@ function useTaskActions(task: Task): TaskAction[] {
       update({ id: task.id, pinned: !pinned });
     },
   };
+  const copy: TaskAction = {
+    label: "Copy link",
+    icon: Link2,
+    run: () => void copyLink(taskLink(task.id)),
+  };
+  if (readOnly) return [copy];
   return [
     // Only a root can be pinned: a Subtask shows under its parent.
     ...(task.parent_id === null ? [pin] : []),
@@ -66,17 +75,21 @@ function useTaskActions(task: Task): TaskAction[] {
         duplicate(task.id);
       },
     },
-    {
-      label: "Copy link",
-      icon: Link2,
-      run: () => void copyLink(taskLink(task.id)),
-    },
+    copy,
   ];
 }
 
 /** The ⋯ menu of a Task, in the drawer's header and at the end of its row. */
-export function TaskActionsMenu({ task, className }: { task: Task; className?: string }) {
-  const actions = useTaskActions(task);
+export function TaskActionsMenu({
+  task,
+  readOnly,
+  className,
+}: {
+  task: Task;
+  readOnly?: boolean;
+  className?: string;
+}) {
+  const actions = useTaskActions(task, readOnly);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -109,7 +122,7 @@ export function TaskActionsMenu({ task, className }: { task: Task; className?: s
 
 /**
  * A row's right-click menu: open and complete the Task, then the actions of its ⋯ menu. Off on
- * touch screens, where a long press starts a drag instead.
+ * touch screens, where a long press starts a drag instead, and in archived Projects.
  */
 export function TaskContextMenu({
   task,

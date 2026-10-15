@@ -1,4 +1,4 @@
-"""Project endpoints: create one, change it and move it in the sidebar."""
+"""Project endpoints: create one, change it, move it in the sidebar, archive and unarchive it."""
 
 from __future__ import annotations
 
@@ -105,3 +105,35 @@ def move_project(
     if not moved:
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
     return Status(_HTTP_NO_CONTENT, None)
+
+
+@router.post(
+    "/{int:project_id}/archive",
+    response={_HTTP_OK: ProjectOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    summary="Archive a Project",
+)
+def archive_project(request: HttpRequest, project_id: int) -> Status[ProjectOut] | Status[ErrorOut]:
+    """Make a Project read-only and move it to the sidebar's Archived section."""
+    try:
+        project = projects.archive_project(signed_in_user(request), project_id)
+    except ProjectRuleError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    if project is None:
+        return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+    return Status(_HTTP_OK, ProjectOut.from_orm(project))
+
+
+@router.post(
+    "/{int:project_id}/unarchive",
+    response={_HTTP_OK: ProjectOut, _HTTP_NOT_FOUND: ErrorOut},
+    summary="Unarchive a Project",
+)
+def unarchive_project(
+    request: HttpRequest,
+    project_id: int,
+) -> Status[ProjectOut] | Status[ErrorOut]:
+    """Bring an archived Project back to its place in the sidebar, unchanged."""
+    project = projects.unarchive_project(signed_in_user(request), project_id)
+    if project is None:
+        return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+    return Status(_HTTP_OK, ProjectOut.from_orm(project))

@@ -26,7 +26,12 @@ export const PALETTE: readonly PaletteColor[] = [
   "pink",
 ];
 
-/** Every live Project in sidebar order, Folders flattened away, the Inbox first. */
+/** One of the user's Projects, archived or not, or undefined if it isn't in the sidebar. */
+export function findProject(sidebar: Sidebar, id: number): SidebarProject | undefined {
+  return [...allProjects(sidebar), ...sidebar.archived].find((project) => project.id === id);
+}
+
+/** Every live, unarchived Project in sidebar order, Folders flattened away, the Inbox first. */
 export function allProjects(sidebar: Sidebar): SidebarProject[] {
   return [
     sidebar.inbox,
@@ -149,4 +154,36 @@ export function useDeleteFolder() {
     });
     if (!response.ok) throw new Error("Could not delete the folder.");
   });
+}
+
+/**
+ * Archive a Project or bring it back. Either way it moves between the Projects and Archived
+ * sections, and the toast offers to undo it.
+ */
+export function useSetArchived() {
+  const setArchived = useSidebarMutation(
+    async ({ project, archived }: { project: SidebarProject; archived: boolean }) => {
+      const params = { path: { project_id: project.id } };
+      const { error } = archived
+        ? await api.POST("/api/v1/projects/{project_id}/archive", { params })
+        : await api.POST("/api/v1/projects/{project_id}/unarchive", { params });
+      if (error) throw new Error(error.detail);
+    },
+  );
+  return (project: SidebarProject, archived: boolean) => {
+    setArchived.mutate(
+      { project, archived },
+      {
+        onSuccess: () =>
+          toast(archived ? `Archived “${project.name}”` : `Unarchived “${project.name}”`, {
+            action: {
+              label: "Undo",
+              onClick: () => {
+                setArchived.mutate({ project, archived: !archived });
+              },
+            },
+          }),
+      },
+    );
+  };
 }

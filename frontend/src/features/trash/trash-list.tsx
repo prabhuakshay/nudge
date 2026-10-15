@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { RotateCcw, Trash2, X } from "lucide-react";
 import { useState, type SubmitEvent } from "react";
+
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 
 import { EmptyState } from "@/components/layout/empty-state";
@@ -10,23 +12,23 @@ import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog"
 import { ProjectIcon } from "@/features/projects/project-icon";
 
 import {
+  plural,
+  rowKey,
   trashQuery,
   useDeleteForever,
   useEmptyTrash,
   useRestoreProject,
+  useRestoreRows,
   useRestoreTask,
   type TrashedRow,
 } from "./trash";
+import { TrashSelectionBar } from "./trash-selection-bar";
 
 const DAY = 24 * 60 * 60 * 1000;
 
 /** How many days a unit has before it is deleted for good, counting a part day as a whole one. */
 function daysLeft(expiresAt: string, now = Date.now()) {
   return Math.max(0, Math.ceil((new Date(expiresAt).getTime() - now) / DAY));
-}
-
-function plural(count: number, noun: string) {
-  return `${String(count)} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 /** A row's name: a Task's title as plain text, or a Project's name. */
@@ -51,18 +53,35 @@ function details(row: TrashedRow) {
   ].join(" · ");
 }
 
-/** What the confirm dialog is asking about: one unit, or the whole Trash. */
-type Confirm = { kind: "row"; row: TrashedRow } | { kind: "empty"; count: number };
+/** What the confirm dialog is asking about: one unit, the selected ones, or the whole Trash. */
+type Confirm =
+  | { kind: "row"; row: TrashedRow }
+  | { kind: "rows"; rows: TrashedRow[] }
+  | { kind: "empty"; count: number };
 
 /**
  * The Trash: one row per deleted Task or Project, newest first, each with Restore and Delete
- * forever, and Empty Trash in the header. Deleting for good asks first.
+ * forever, and Empty Trash in the header. Ticking rows selects them, for restoring or deleting
+ * them together from the bar. Deleting for good asks first.
  */
 export function TrashList() {
   const { data: rows } = useQuery(trashQuery);
   const { mutate: restoreTask } = useRestoreTask();
   const { mutate: restoreProject } = useRestoreProject();
+  const { mutate: restoreRows } = useRestoreRows();
   const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  // A selected row can leave the Trash from elsewhere, so the selection is what's still listed.
+  const chosen = rows?.filter((row) => selected.has(rowKey(row))) ?? [];
+  const clearSelection = () => {
+    setSelected(new Set());
+  };
+  const toggle = (row: TrashedRow, checked: boolean) => {
+    const next = new Set(selected);
+    if (checked) next.add(rowKey(row));
+    else next.delete(rowKey(row));
+    setSelected(next);
+  };
   return (
     <div className="mx-auto w-full max-w-3xl">
       <header className="mb-4 flex items-center gap-2.5 sm:gap-3">
@@ -96,9 +115,17 @@ export function TrashList() {
             const title = titleOf(row);
             return (
               <li
-                key={`${row.kind}-${String(row.id)}`}
+                key={rowKey(row)}
                 className="flex min-h-14 items-center gap-1 border-b border-border/60 py-2 pr-2 pl-4 last:border-b-0"
               >
+                <Checkbox
+                  aria-label={`Select “${title}”`}
+                  checked={selected.has(rowKey(row))}
+                  onCheckedChange={(checked) => {
+                    toggle(row, checked === true);
+                  }}
+                  className="mr-3"
+                />
                 {row.kind === "project" && <ProjectIcon project={row} className="mr-2" />}
                 <div className="mr-2 flex min-w-0 flex-1 flex-col">
                   <span data-title className="truncate text-sm font-semibold">
@@ -133,8 +160,20 @@ export function TrashList() {
           })}
         </ul>
       )}
+      <TrashSelectionBar
+        count={chosen.length}
+        onRestore={() => {
+          restoreRows(chosen);
+          clearSelection();
+        }}
+        onDeleteForever={() => {
+          setConfirm({ kind: "rows", rows: chosen });
+        }}
+        onClear={clearSelection}
+      />
       <ConfirmDialog
         confirm={confirm}
+        onDeleted={clearSelection}
         onClose={() => {
           setConfirm(null);
         }}
@@ -152,6 +191,10 @@ function confirmCopy(confirm: Confirm) {
       action: "Empty Trash",
     };
   }
+  if (confirm.kind === "rows") {
+    const count = plural(confirm.rows.length, "item");
+    return { title: `Delete ${count} forever?`, what: `The ${count}`, action: "Delete forever" };
+  }
   const { count, noun } = contents(confirm.row);
   return {
     title: `Delete “${titleOf(confirm.row)}” forever?`,
@@ -161,7 +204,16 @@ function confirmCopy(confirm: Confirm) {
 }
 
 /** Asks before deleting for good, which can't be undone, saying what goes with it. */
-function ConfirmDialog({ confirm, onClose }: { confirm: Confirm | null; onClose: () => void }) {
+function ConfirmDialog({
+  confirm,
+  onDeleted,
+  onClose,
+}: {
+  confirm: Confirm | null;
+  /** Called once rows are deleted, so they leave the selection. */
+  onDeleted: () => void;
+  onClose: () => void;
+}) {
   const deleteForever = useDeleteForever();
   const emptyTrash = useEmptyTrash();
   if (!confirm) return null;
@@ -174,6 +226,10 @@ function ConfirmDialog({ confirm, onClose }: { confirm: Confirm | null; onClose:
       deleteForever.mutate([confirm.row], {
         onSuccess: () => toast(`Deleted “${title}” forever`),
       });
+    } else if (confirm?.kind === "rows") {
+      const count = plural(confirm.rows.length, "item");
+      deleteForever.mutate(confirm.rows, { onSuccess: () => toast(`Deleted ${count} forever`) });
+      onDeleted();
     } else {
       emptyTrash.mutate(undefined, { onSuccess: () => toast("Emptied the Trash") });
     }

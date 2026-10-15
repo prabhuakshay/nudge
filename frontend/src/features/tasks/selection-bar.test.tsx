@@ -19,14 +19,17 @@ const RENT = () => task({ id: 2, title: "Pay rent", position: "a1" });
 const BOOKS = () => task({ id: 3, title: "Return books", position: "a2" });
 
 type Affected = { id: number; prior_status: string; prior_blocked_reason: string }[];
+type Place = { id: number; project_id: number; parent_id: number | null; after_id: number | null };
 
-/** The stand-in server, answering `POST /tasks/bulk` with `affected`. */
-function mockBulk(affected: Affected = []) {
+/** The stand-in server, answering `POST /tasks/bulk` with `affected` and `movedFrom`. */
+function mockBulk(affected: Affected = [], movedFrom: Place[] = []) {
   const fetchSpy = mockApi([MILK(), RENT(), BOOKS()]);
   const tasksApi = fetchSpy.getMockImplementation();
   fetchSpy.mockImplementation((input, init) => {
     const request = input as Request;
-    if (new URL(request.url).pathname.endsWith("/tasks/bulk")) return json({ affected });
+    if (new URL(request.url).pathname.endsWith("/tasks/bulk")) {
+      return json({ affected, moved_from: movedFrom });
+    }
     if (!tasksApi) throw new Error("mockApi has no implementation");
     return tasksApi(input, init);
   });
@@ -189,8 +192,13 @@ describe("the N selected bar", () => {
     });
   });
 
-  it("moves every Task to another Project, and Undo moves them back", async () => {
-    const fetchSpy = mockBulk();
+  it("moves every Task to another Project, and Undo puts each back in its place", async () => {
+    const places = [
+      { id: 1, project_id: 7, parent_id: null, after_id: null },
+      { id: 2, project_id: 7, parent_id: null, after_id: 1 },
+      { id: 3, project_id: 7, parent_id: null, after_id: 2 },
+    ];
+    const fetchSpy = mockBulk([], places);
     const user = renderList();
     await selectAll(user);
 
@@ -201,7 +209,7 @@ describe("the N selected bar", () => {
     await vi.waitFor(async () => {
       expect(await bulkRequests(fetchSpy)).toEqual([
         { ids: [1, 2, 3], action: { kind: "move", project_id: 8 } },
-        { ids: [1, 2, 3], action: { kind: "move", project_id: 7 } },
+        { ids: [1, 2, 3], action: { kind: "place", places } },
       ]);
     });
   });

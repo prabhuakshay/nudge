@@ -95,7 +95,7 @@ function useRestoreTasks() {
  * What the "N selected" bar does to the chosen Tasks, each in one request with one Undo toast.
  * `tasks` are all the list's rows, so a delete can tell which chosen Tasks go with a parent.
  * Undo puts back what each Task had before: its Status (with cascades), Priority, dates,
- * Project or Tags, or brings it back from Trash.
+ * place in its Project or Tags, or brings it back from Trash.
  */
 export function useBulkActions(chosen: Task[], tasks: Task[]) {
   const { mutate: change } = useBulkChange();
@@ -174,13 +174,16 @@ export function useBulkActions(chosen: Task[], tasks: Task[]) {
       });
     },
     moveTo: (project: SidebarProject) => {
-      run({ kind: "move", project_id: project.id }, `Moved ${count} to “${project.name}”`, () => {
-        changeBack(
-          chosen,
-          (task) => task.project_id,
-          (prior) => ({ kind: "move", project_id: prior }),
-        );
-      });
+      change(
+        { ids, action: { kind: "move", project_id: project.id } },
+        {
+          onSuccess: ({ moved_from: places }) => {
+            toastWithUndo(`Moved ${count} to “${project.name}”`, () => {
+              change({ ids: places.map((place) => place.id), action: { kind: "place", places } });
+            });
+          },
+        },
+      );
     },
     addTag: (tag: SidebarTag) => {
       run({ kind: "add_tag", tag_id: tag.id }, `Added “${tag.name}” to ${count}`, () => {

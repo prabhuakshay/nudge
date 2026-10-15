@@ -704,7 +704,8 @@ export interface paths {
      *     Each Task changes as it would on its own, cascades and Activity included. If any id isn't one
      *     of the user's Tasks, or the Project or Tag isn't theirs, nothing changes and the answer is
      *     404; if any Task refuses the change, nothing changes and the answer is 422. Every Task whose
-     *     Status changed comes back with its Status from before, so the client can offer Undo.
+     *     Status changed comes back with its Status from before, and a move says where each Task was,
+     *     so the client can offer Undo.
      */
     post: operations["apps_tasks_api_bulk_bulk_change"];
     delete?: never;
@@ -1962,11 +1963,39 @@ export interface components {
     };
     /**
      * TaskBulkOut
-     * @description Every Task whose Status the action changed, with its Status before, for Undo.
+     * @description What the action changed, for Undo.
      */
     TaskBulkOut: {
-      /** Affected */
+      /**
+       * Affected
+       * @description Every Task whose Status changed, with its Status before.
+       */
       affected: components["schemas"]["AffectedTaskOut"][];
+      /**
+       * Moved From
+       * @description For a move: where each moved Task was, in the order to put them back.
+       */
+      moved_from: components["schemas"]["TaskPlace"][];
+    };
+    /**
+     * TaskPlace
+     * @description Where a Task sits: its Project, its parent and the sibling before it.
+     */
+    TaskPlace: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description None at the top level.
+       */
+      parent_id: number | null;
+      /**
+       * After Id
+       * @description None when it's first among its siblings.
+       */
+      after_id: number | null;
     };
     /**
      * BulkDatesIn
@@ -2003,6 +2032,19 @@ export interface components {
       kind: "move";
       /** Project Id */
       project_id: number;
+    };
+    /**
+     * BulkPlaceIn
+     * @description Put each Task in its own place, in the order listed, as Undo of a move does.
+     */
+    BulkPlaceIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "place";
+      /** Places */
+      places: components["schemas"]["TaskPlace"][];
     };
     /**
      * BulkPriorityIn
@@ -2066,6 +2108,7 @@ export interface components {
         | components["schemas"]["BulkMoveIn"]
         | components["schemas"]["BulkStatusIn"]
         | components["schemas"]["BulkStatusesIn"]
+        | components["schemas"]["BulkPlaceIn"]
         | components["schemas"]["BulkPriorityIn"]
         | components["schemas"]["BulkDatesIn"]
         | components["schemas"]["BulkTagIn"]

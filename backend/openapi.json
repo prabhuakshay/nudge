@@ -1750,7 +1750,7 @@
             }
           }
         },
-        "description": "Apply one action to every Task given, in one transaction.\n\nEach Task changes as it would on its own, cascades and Activity included. If any id isn't one\nof the user's Tasks, or the Project or Tag isn't theirs, nothing changes and the answer is\n404; if any Task refuses the change, nothing changes and the answer is 422. Every Task whose\nStatus changed comes back with its Status from before, so the client can offer Undo.",
+        "description": "Apply one action to every Task given, in one transaction.\n\nEach Task changes as it would on its own, cascades and Activity included. If any id isn't one\nof the user's Tasks, or the Project or Tag isn't theirs, nothing changes and the answer is\n404; if any Task refuses the change, nothing changes and the answer is 422. Every Task whose\nStatus changed comes back with its Status from before, and a move says where each Task was,\nso the client can offer Undo.",
         "tags": [
           "tasks"
         ],
@@ -4887,20 +4887,75 @@
         "type": "object"
       },
       "TaskBulkOut": {
-        "description": "Every Task whose Status the action changed, with its Status before, for Undo.",
+        "description": "What the action changed, for Undo.",
         "properties": {
           "affected": {
+            "description": "Every Task whose Status changed, with its Status before.",
             "items": {
               "$ref": "#/components/schemas/AffectedTaskOut"
             },
             "title": "Affected",
             "type": "array"
+          },
+          "moved_from": {
+            "description": "For a move: where each moved Task was, in the order to put them back.",
+            "items": {
+              "$ref": "#/components/schemas/TaskPlace"
+            },
+            "title": "Moved From",
+            "type": "array"
           }
         },
         "required": [
-          "affected"
+          "affected",
+          "moved_from"
         ],
         "title": "TaskBulkOut",
+        "type": "object"
+      },
+      "TaskPlace": {
+        "description": "Where a Task sits: its Project, its parent and the sibling before it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None at the top level.",
+            "title": "Parent Id"
+          },
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None when it's first among its siblings.",
+            "title": "After Id"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "parent_id",
+          "after_id"
+        ],
+        "title": "TaskPlace",
         "type": "object"
       },
       "BulkDatesIn": {
@@ -4955,6 +5010,29 @@
           "project_id"
         ],
         "title": "BulkMoveIn",
+        "type": "object"
+      },
+      "BulkPlaceIn": {
+        "description": "Put each Task in its own place, in the order listed, as Undo of a move does.",
+        "properties": {
+          "kind": {
+            "const": "place",
+            "title": "Kind",
+            "type": "string"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/TaskPlace"
+            },
+            "title": "Places",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "places"
+        ],
+        "title": "BulkPlaceIn",
         "type": "object"
       },
       "BulkPriorityIn": {
@@ -5060,6 +5138,7 @@
                 "dates": "#/components/schemas/BulkDatesIn",
                 "delete": "#/components/schemas/BulkDeleteIn",
                 "move": "#/components/schemas/BulkMoveIn",
+                "place": "#/components/schemas/BulkPlaceIn",
                 "priority": "#/components/schemas/BulkPriorityIn",
                 "remove_tag": "#/components/schemas/BulkTagIn",
                 "status": "#/components/schemas/BulkStatusIn",
@@ -5076,6 +5155,9 @@
               },
               {
                 "$ref": "#/components/schemas/BulkStatusesIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkPlaceIn"
               },
               {
                 "$ref": "#/components/schemas/BulkPriorityIn"

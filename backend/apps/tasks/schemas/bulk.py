@@ -45,6 +45,22 @@ class BulkStatusesIn(Schema):
     statuses: list[TaskStatusIn]
 
 
+class TaskPlace(Schema):
+    """Where a Task sits: its Project, its parent and the sibling before it."""
+
+    id: int
+    project_id: int
+    parent_id: int | None = Field(description="None at the top level.")
+    after_id: int | None = Field(description="None when it's first among its siblings.")
+
+
+class BulkPlaceIn(Schema):
+    """Put each Task in its own place, in the order listed, as Undo of a move does."""
+
+    kind: Literal["place"]
+    places: list[TaskPlace]
+
+
 class BulkPriorityIn(Schema):
     """Set the Tasks' Priority."""
 
@@ -76,6 +92,7 @@ BulkAction = Annotated[
     BulkMoveIn
     | BulkStatusIn
     | BulkStatusesIn
+    | BulkPlaceIn
     | BulkPriorityIn
     | BulkDatesIn
     | BulkTagIn
@@ -91,17 +108,23 @@ class TaskBulkIn(Schema):
     action: BulkAction
 
     @model_validator(mode="after")
-    def _statuses_name_the_tasks(self) -> TaskBulkIn:
-        """Refuse per-Task Statuses that aren't for exactly the Tasks given, in their order."""
-        if isinstance(self.action, BulkStatusesIn) and self.ids != [
-            entry.id for entry in self.action.statuses
-        ]:
-            message = "The statuses must be for the tasks given, in the same order."
-            raise ValueError(message)
+    def _entries_name_the_tasks(self) -> TaskBulkIn:
+        """Refuse per-Task Statuses or places that aren't for exactly the Tasks given, in order."""
+        action = self.action
+        if isinstance(action, BulkStatusesIn | BulkPlaceIn):
+            entries = action.statuses if isinstance(action, BulkStatusesIn) else action.places
+            if self.ids != [entry.id for entry in entries]:
+                message = "Each entry must be for a task given, in the same order."
+                raise ValueError(message)
         return self
 
 
 class TaskBulkOut(Schema):
-    """Every Task whose Status the action changed, with its Status before, for Undo."""
+    """What the action changed, for Undo."""
 
-    affected: list[AffectedTaskOut]
+    affected: list[AffectedTaskOut] = Field(
+        description="Every Task whose Status changed, with its Status before.",
+    )
+    moved_from: list[TaskPlace] = Field(
+        description="For a move: where each moved Task was, in the order to put them back.",
+    )

@@ -10,7 +10,7 @@ vi.mock("@/features/auth/sign-out-button", () => ({
 
 const ada = { id: 1, email: "ada@example.com", full_name: "Ada Lovelace" };
 
-function renderDialog() {
+async function openDialog() {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <SettingsDialog user={ada}>
@@ -18,24 +18,53 @@ function renderDialog() {
       </SettingsDialog>
     </QueryClientProvider>,
   );
-  return userEvent.setup();
+  const user = userEvent.setup();
+  await user.click(screen.getByRole("button", { name: "Open settings" }));
+  return user;
 }
 
-describe("SettingsDialog", () => {
-  it("opens on the account tab", async () => {
-    const user = renderDialog();
+afterEach(() => {
+  localStorage.clear();
+  document.documentElement.removeAttribute("data-theme");
+});
 
-    await user.click(screen.getByRole("button", { name: "Open settings" }));
+describe("SettingsDialog", () => {
+  it("opens on the profile", async () => {
+    await openDialog();
 
     expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
-    expect(screen.getByRole("tab", { name: "Account" })).toHaveAttribute("aria-selected", "true");
-    expect(screen.getByText("ada@example.com")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Profile" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Ada Lovelace/ })).toHaveAttribute(
+      "aria-current",
+      "page",
+    );
   });
 
-  it("changes the password in a dialog of its own", async () => {
+  it("opens a page from the list and goes back", async () => {
+    const user = await openDialog();
+
+    await user.click(screen.getByRole("button", { name: /Notifications/ }));
+    expect(screen.getByRole("region", { name: "Notifications" })).toBeInTheDocument();
+    expect(screen.getByText("Push notifications")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Settings" }));
+    expect(screen.getByRole("region", { name: "Profile" })).toBeInTheDocument();
+  });
+
+  it("edits the name in place", async () => {
+    const user = await openDialog();
+
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByLabelText("Full name")).toHaveValue("Ada Lovelace");
+
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByLabelText("Full name")).not.toBeInTheDocument();
+  });
+
+  it("changes the password in place", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(null, { status: 204 }));
-    const user = renderDialog();
-    await user.click(screen.getByRole("button", { name: "Open settings" }));
+    const user = await openDialog();
+    await user.click(screen.getByRole("button", { name: /Password/ }));
 
     await user.click(screen.getByRole("button", { name: "Change password" }));
     await user.type(screen.getByLabelText("Current password"), "old-passphrase");
@@ -44,23 +73,22 @@ describe("SettingsDialog", () => {
     await user.click(screen.getByRole("button", { name: "Save" }));
 
     expect(await screen.findByRole("status")).toHaveTextContent("Changed");
-    expect(screen.queryByRole("dialog", { name: "Change password" })).not.toBeInTheDocument();
-    expect(screen.getByRole("dialog", { name: "Settings" })).toBeInTheDocument();
+    expect(screen.queryByLabelText("Current password")).not.toBeInTheDocument();
   });
 
-  it("has a notifications tab", async () => {
-    const user = renderDialog();
-    await user.click(screen.getByRole("button", { name: "Open settings" }));
+  it("shows the theme beside Appearance and changes it there", async () => {
+    const user = await openDialog();
+    const appearance = screen.getByRole("button", { name: /Appearance/ });
+    expect(appearance).toHaveTextContent("System");
 
-    await user.click(screen.getByRole("tab", { name: "Notifications" }));
+    await user.click(appearance);
+    await user.click(screen.getByRole("radio", { name: "Dark" }));
 
-    expect(screen.getByText("Push notifications on this device")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Send" })).toBeInTheDocument();
+    expect(appearance).toHaveTextContent("Dark");
   });
 
   it("closes with Escape", async () => {
-    const user = renderDialog();
-    await user.click(screen.getByRole("button", { name: "Open settings" }));
+    const user = await openDialog();
 
     await user.keyboard("{Escape}");
 

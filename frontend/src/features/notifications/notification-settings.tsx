@@ -1,20 +1,17 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { SettingsGroup, SettingsRow } from "@/features/settings/settings-layout";
-import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { SettingsCard, SettingsStack } from "@/features/settings/settings-layout";
 
 import { useSendTestNotification } from "./notifications";
-import { disablePush, enablePush, PushError, pushStatusQuery, type PushStatus } from "./push";
-
-const ACTION = "font-medium text-primary hover:underline disabled:opacity-60";
-
-const STATUS_LABELS: Record<PushStatus, string> = {
-  unsupported: "Unavailable",
-  unavailable: "Unavailable",
-  blocked: "Blocked",
-  off: "Off",
-  on: "On",
-};
+import {
+  disablePush,
+  enablePush,
+  PUSH_STATUS_LABELS,
+  PushError,
+  pushStatusQuery,
+  type PushStatus,
+} from "./push";
 
 const EXPLANATIONS: Partial<Record<PushStatus, string>> = {
   unsupported:
@@ -24,13 +21,13 @@ const EXPLANATIONS: Partial<Record<PushStatus, string>> = {
   blocked: "Notifications are blocked for this site. Allow them in your browser's site settings.",
 };
 
-/** The settings tab for push on this device and a test notification. */
+/** The settings page for push on this device and a test notification. */
 export function NotificationSettings() {
   return (
-    <>
+    <SettingsStack>
       <PushSetting />
       <TestNotificationSetting />
-    </>
+    </SettingsStack>
   );
 }
 
@@ -41,73 +38,73 @@ function PushSetting() {
     mutationFn: (on: boolean) => (on ? enablePush() : disablePush()),
     onSettled: () => queryClient.invalidateQueries(pushStatusQuery),
   });
-  const label = status ? STATUS_LABELS[status] : isError ? "Couldn't check" : "Checking…";
+  const label = status ? PUSH_STATUS_LABELS[status] : isError ? "Couldn't check" : "Checking…";
 
   return (
-    <SettingsGroup>
-      <SettingsRow label="Push notifications on this device">
-        <span className="text-muted-foreground">{label}</span>
+    <SettingsCard className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <p className="font-medium">Push notifications</p>
+          <p className="text-sm text-muted-foreground">On this device: {label}</p>
+        </div>
         {(status === "on" || status === "off") && (
-          <button
-            type="button"
+          <Button
+            variant={status === "on" ? "outline" : "primary"}
             disabled={toggle.isPending}
             onClick={() => {
               toggle.mutate(status === "off");
             }}
-            className={cn(ACTION, "ml-4")}
           >
             {status === "on" ? "Turn off" : "Turn on"}
-          </button>
+          </Button>
         )}
-      </SettingsRow>
-      {toggle.error ? (
-        <p role="alert" className="px-4 pb-3 text-xs text-danger">
-          {toggle.error instanceof PushError
-            ? toggle.error.message
-            : "Something went wrong. Try again."}
-        </p>
-      ) : (
-        status &&
-        EXPLANATIONS[status] && (
-          <p className="px-4 pb-3 text-xs text-muted-foreground">{EXPLANATIONS[status]}</p>
-        )
-      )}
-    </SettingsGroup>
+      </div>
+      <PushNote status={status} error={toggle.error} />
+    </SettingsCard>
   );
+}
+
+/** Why turning push on or off failed, or else why push can't be turned on here. */
+function PushNote({ status, error }: { status: PushStatus | undefined; error: Error | null }) {
+  if (error) {
+    return (
+      <p role="alert" className="text-xs text-danger">
+        {error instanceof PushError ? error.message : "Something went wrong. Try again."}
+      </p>
+    );
+  }
+  const explanation = status && EXPLANATIONS[status];
+  return explanation && <p className="text-xs text-muted-foreground">{explanation}</p>;
 }
 
 function TestNotificationSetting() {
   const sendTest = useSendTestNotification();
 
   return (
-    <>
-      <SettingsGroup>
-        <SettingsRow label="Test notification">
-          {sendTest.isSuccess && (
-            <span role="status" className="mr-4 text-muted-foreground">
-              Sent
+    <SettingsCard className="flex items-center justify-between gap-4">
+      <div>
+        <p className="font-medium">Test notification</p>
+        <p className="text-sm text-muted-foreground">
+          {sendTest.isSuccess ? (
+            <span role="status">Sent.</span>
+          ) : sendTest.isError ? (
+            <span role="alert" className="text-danger">
+              Couldn&apos;t send.
             </span>
+          ) : (
+            "Appears in the notification center and on every device with push on."
           )}
-          {sendTest.isError && (
-            <span role="alert" className="mr-4 text-danger">
-              Couldn&apos;t send
-            </span>
-          )}
-          <button
-            type="button"
-            disabled={sendTest.isPending}
-            onClick={() => {
-              sendTest.mutate(undefined);
-            }}
-            className={ACTION}
-          >
-            {sendTest.isPending ? "Sending…" : "Send"}
-          </button>
-        </SettingsRow>
-      </SettingsGroup>
-      <p className="px-1 text-xs text-muted-foreground">
-        The test appears in the notification center and on every device with push turned on.
-      </p>
-    </>
+        </p>
+      </div>
+      <Button
+        variant="outline"
+        disabled={sendTest.isPending}
+        onClick={() => {
+          sendTest.mutate(undefined);
+        }}
+      >
+        {sendTest.isPending ? "Sending…" : "Send"}
+      </Button>
+    </SettingsCard>
   );
 }

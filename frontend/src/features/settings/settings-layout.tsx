@@ -1,16 +1,13 @@
 import type { ReactNode } from "react";
 
-/** A rounded block of settings rows, like a grouped table on iOS. */
-export function SettingsGroup({ children }: { children: ReactNode }) {
-  return <div className="rounded-lg bg-surface-muted">{children}</div>;
+import { cn } from "@/lib/utils";
+
+/** A tinted block that holds one setting or form on a settings page. */
+export function SettingsCard({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={cn("rounded-xl bg-surface-muted p-4 sm:p-5", className)}>{children}</div>;
 }
 
-/** One labelled setting, with its value or actions on the right. */
-export function SettingsRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-2 text-sm">
-      <span className="font-medium">{label}</span>
-      <div className="flex min-w-0 items-center">{children}</div>
-    </div>
-  );
+/** The stack of cards that makes up one settings page. */
+export function SettingsStack({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col gap-4 sm:max-w-xl sm:gap-6">{children}</div>;
 }

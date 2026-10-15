@@ -1,7 +1,17 @@
 /** The colour theme preference, kept per device in localStorage and applied to `<html>`. */
+import { useSyncExternalStore } from "react";
+
 export const THEMES = ["system", "light", "dark"] as const;
 
 export type Theme = (typeof THEMES)[number];
+
+export const THEME_LABELS: Record<Theme, string> = {
+  system: "System",
+  light: "Light",
+  dark: "Dark",
+};
+
+const listeners = new Set<() => void>();
 
 /** Must match the key read by the inline script in index.html. */
 const STORAGE_KEY = "nudge-theme";
@@ -36,4 +46,17 @@ export function saveTheme(theme: Theme): void {
   } catch {
     // Storage can be blocked (private mode); the theme still applies for this visit.
   }
+  listeners.forEach((listener) => {
+    listener();
+  });
+}
+
+function subscribe(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+/** The saved preference, kept in sync with every `saveTheme` so all theme controls agree. */
+export function useTheme(): Theme {
+  return useSyncExternalStore(subscribe, readTheme);
 }

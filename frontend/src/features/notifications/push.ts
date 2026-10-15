@@ -14,6 +14,15 @@ import { api } from "@/api/client";
  */
 export type PushStatus = "unsupported" | "unavailable" | "blocked" | "off" | "on";
 
+/** How each status reads in the UI. */
+export const PUSH_STATUS_LABELS: Record<PushStatus, string> = {
+  unsupported: "Unavailable",
+  unavailable: "Unavailable",
+  blocked: "Blocked",
+  off: "Off",
+  on: "On",
+};
+
 /** Raised when push can't be turned on; `message` is safe to show the user. */
 export class PushError extends Error {
   override name = "PushError";

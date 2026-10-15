@@ -1,9 +1,7 @@
 import { Moon, Sun } from "lucide-react";
-import { useState } from "react";
-
 import { Button } from "@/components/ui/button";
 
-import { readTheme, saveTheme, type Theme } from "./theme";
+import { saveTheme, type Theme, useTheme } from "./theme";
 
 type Scheme = Exclude<Theme, "system">;
 
@@ -13,10 +11,8 @@ function systemScheme(): Scheme {
 
 /** One-tap switch between light and dark, starting from whatever is showing now. */
 export function ThemeToggle() {
-  const [scheme, setScheme] = useState<Scheme>(() => {
-    const theme = readTheme();
-    return theme === "system" ? systemScheme() : theme;
-  });
+  const theme = useTheme();
+  const scheme = theme === "system" ? systemScheme() : theme;
   const dark = scheme === "dark";
 
   return (
@@ -32,7 +28,6 @@ export function ThemeToggle() {
         const next = dark ? "light" : "dark";
         // Matching the system again hands control back to it, so the app follows later OS changes.
         saveTheme(next === systemScheme() ? "system" : next);
-        setScheme(next);
       }}
     >
       {dark ? <Sun aria-hidden /> : <Moon aria-hidden />}

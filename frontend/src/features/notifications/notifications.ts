@@ -95,7 +95,7 @@ export function useCompleteFromReminder() {
       return data;
     },
     onSuccess: ({ task, affected }) => {
-      offerStatusUndo(update, task.title, "completed", affected);
+      offerStatusUndo(update, task, "completed", affected);
     },
     onError: (error) => toast.error(error.message),
     onSettled: () =>

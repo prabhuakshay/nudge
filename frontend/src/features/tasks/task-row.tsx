@@ -32,8 +32,11 @@ export type RowContext = {
   openId: number | null;
   collapsed: ReadonlySet<number>;
   indent: number;
-  /** On touch screens a long press is for scrolling, so rows have no context menu. */
-  touch: boolean;
+  /**
+   * Whether rows have a right-click menu: not on touch screens, where a long press is for
+   * scrolling, nor in an archived Project, where its actions would change the Task.
+   */
+  contextMenu: boolean;
   onToggle: ToggleStatus;
   onOpen: OpenTask;
   onToggleCollapsed: ToggleCollapsed;
@@ -50,7 +53,7 @@ export function TreeRows({ rows, context }: { rows: TreeRow[]; context: RowConte
       selected={task.id === context.openId}
       collapsed={context.collapsed.has(task.id)}
       indent={context.indent}
-      touch={context.touch}
+      contextMenu={context.contextMenu}
       onToggle={context.onToggle}
       onOpen={context.onOpen}
       onToggleCollapsed={context.onToggleCollapsed}
@@ -71,7 +74,7 @@ const TaskRow = memo(function TaskRow({
   selected,
   collapsed,
   indent,
-  touch,
+  contextMenu,
   onToggle,
   onOpen,
   onToggleCollapsed,
@@ -82,7 +85,7 @@ const TaskRow = memo(function TaskRow({
   selected: boolean;
   collapsed: boolean;
   indent: number;
-  touch: boolean;
+  contextMenu: boolean;
   onToggle: ToggleStatus;
   onOpen: OpenTask;
   onToggleCollapsed: ToggleCollapsed;
@@ -92,7 +95,7 @@ const TaskRow = memo(function TaskRow({
   return (
     <TaskContextMenu
       task={task}
-      disabled={touch}
+      disabled={!contextMenu}
       onOpen={() => {
         onOpen(task.id);
       }}

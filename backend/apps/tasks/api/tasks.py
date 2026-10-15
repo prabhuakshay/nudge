@@ -10,6 +10,7 @@ from ninja import Router, Status
 from apps.accounts.schemas import ErrorOut
 from apps.tasks import people, services, tree
 from apps.tasks.api import signed_in_user
+from apps.tasks.archive import ArchivedProjectError
 from apps.tasks.mentions import MentionError
 from apps.tasks.pagination import InvalidCursorError
 from apps.tasks.schemas import (
@@ -127,7 +128,7 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
     try:
         created = services.create_task(project, task.title)
-    except MentionError as error:
+    except (MentionError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, TaskOut.from_orm(created))
 
@@ -138,7 +139,7 @@ def _create_subtask(user: User, parent_id: int, title: str) -> Status[TaskOut] |
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     try:
         change = services.create_subtask(parent, title)
-    except (services.TaskRuleError, MentionError) as error:
+    except (services.TaskRuleError, MentionError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, TaskOut.from_orm(change.task))
 
@@ -201,7 +202,7 @@ def update_task(
     )
     try:
         change = services.update_task(user, task_id, edit)
-    except (services.TaskRuleError, MentionError) as error:
+    except (services.TaskRuleError, MentionError, ArchivedProjectError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
@@ -211,12 +212,15 @@ def update_task(
 
 @router.post(
     "/{int:task_id}/duplicate",
-    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut},
+    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
     summary="Duplicate a Task",
 )
 def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Status[ErrorOut]:
     """Add an open copy of a Task right after it, with its title, Description and Priority."""
-    copy = services.duplicate_task(signed_in_user(request), task_id)
+    try:
+        copy = services.duplicate_task(signed_in_user(request), task_id)
+    except ArchivedProjectError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if copy is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     return Status(_HTTP_CREATED, TaskOut.from_orm(copy))

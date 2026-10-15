@@ -141,12 +141,13 @@ def _mentioning(found: Person) -> QuerySet[Task]:
     """Return the live Tasks that mention the Person, as list rows.
 
     Only the Task whose own text holds the Mention counts: a Subtask's Mention never pulls in its
-    parent. Tasks in a deleted Project stay out with their Project.
+    parent. Tasks in a deleted or archived Project stay out with their Project.
     """
     tasks = Task.objects.filter(
         mentions__person=found,
         deleted_at__isnull=True,
         project__deleted_at__isnull=True,
+        project__archived_at__isnull=True,
     )
     return as_rows(tasks, found.owner)
 

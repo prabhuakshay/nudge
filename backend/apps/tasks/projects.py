@@ -17,10 +17,12 @@ from typing import TYPE_CHECKING, Literal
 
 from django.db import IntegrityError, transaction
 from django.db.models import Count
+from django.utils import timezone
 from fractional_indexing import generate_key_between, generate_n_keys_between
 
 from apps.accounts.models import User
 from apps.core.palette import PaletteColor
+from apps.tasks.archive import active_tasks
 from apps.tasks.models import OPEN_STATUSES, Folder, Project
 
 if TYPE_CHECKING:
@@ -32,6 +34,7 @@ class ProjectRuleError(Exception):
 
 
 INBOX_IS_FIXED = "The Inbox can't be renamed, recoloured or moved."
+INBOX_CANT_BE_ARCHIVED = "The Inbox can't be archived."
 
 
 @dataclass(frozen=True)
@@ -44,11 +47,16 @@ class SiblingRef:
 
 @dataclass(frozen=True)
 class Sidebar:
-    """Everything the sidebar shows, read in a fixed number of queries."""
+    """Everything the sidebar shows, read in a fixed number of queries.
+
+    Archived Projects are left out of `items` and `folder_projects` and listed by name in
+    `archived`; their Tasks don't count towards `open_counts`.
+    """
 
     inbox: Project
     items: list[Folder | Project]
     folder_projects: dict[int, list[Project]]
+    archived: list[Project]
     open_counts: dict[int, int]
 
 
@@ -111,8 +119,12 @@ def sidebar(user: User) -> Sidebar:
     inbox = next(project for project in projects if project.is_inbox)
     folder_projects: dict[int, list[Project]] = {}
     ungrouped: list[Project] = []
+    archived: list[Project] = []
     for project in projects:
         if project.is_inbox:
+            continue
+        if project.is_archived:
+            archived.append(project)
             continue
         if project.folder_id is None:
             ungrouped.append(project)
@@ -120,8 +132,10 @@ def sidebar(user: User) -> Sidebar:
             folder_projects.setdefault(project.folder_id, []).append(project)
     items: list[Folder | Project] = [*user.folders.all(), *ungrouped]
     items.sort(key=lambda item: (item.position, item.pk))
+    archived.sort(key=lambda project: (project.name.lower(), project.pk))
     open_counts = dict(
-        user.tasks.filter(deleted_at__isnull=True, status__in=OPEN_STATUSES)
+        active_tasks(user)
+        .filter(status__in=OPEN_STATUSES)
         .values("project")
         .annotate(count=Count("pk"))
         .values_list("project", "count"),
@@ -130,6 +144,7 @@ def sidebar(user: User) -> Sidebar:
         inbox=inbox,
         items=items,
         folder_projects=folder_projects,
+        archived=archived,
         open_counts=open_counts,
     )
 
@@ -250,6 +265,34 @@ def move_project(
         project.folder = folder
         project.save(update_fields=["position", "folder", "updated_at"])
     return True
+
+
+def _set_archived(user: User, project_id: int, *, archived: bool) -> Project | None:
+    project = user.projects.filter(pk=project_id, deleted_at__isnull=True).first()
+    if project is None:
+        return None
+    if archived and project.is_inbox:
+        raise ProjectRuleError(INBOX_CANT_BE_ARCHIVED)
+    if archived != project.is_archived:
+        project.archived_at = timezone.now() if archived else None
+        project.save(update_fields=["archived_at", "updated_at"])
+    return project
+
+
+def archive_project(user: User, project_id: int) -> Project | None:
+    """Archive one of the user's Projects; None if it isn't theirs. Archiving twice is harmless.
+
+    It keeps its Folder and place, so unarchiving puts it back as it was.
+
+    Raises:
+        ProjectRuleError: The Project is the Inbox.
+    """
+    return _set_archived(user, project_id, archived=True)
+
+
+def unarchive_project(user: User, project_id: int) -> Project | None:
+    """Bring one of the user's archived Projects back where it was; None if it isn't theirs."""
+    return _set_archived(user, project_id, archived=False)
 
 
 def create_folder(user: User, name: str) -> Folder:

@@ -205,6 +205,17 @@ def test_a_duplicate_mentions_the_same_people(client: Client, ada: User) -> None
 
 
 @pytest.mark.django_db
+def test_the_person_view_leaves_out_archived_projects(client: Client, ada: User) -> None:
+    priya = people.create_person(ada, "Priya")
+    work = projects.create_project(ada, "Work")
+    services.create_task(work, f"Work {_mention(priya)}")
+
+    client.post(f"/api/v1/projects/{work.pk}/archive")
+
+    assert _person_view(client, priya) == []
+
+
+@pytest.mark.django_db
 def test_the_person_view_cannot_show_another_users_person(client: Client, grace: User) -> None:
     theirs = people.create_person(grace, "Priya")
 

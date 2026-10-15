@@ -25,9 +25,12 @@ const ada = {
 describe("Sidebar", () => {
   it("lists the Inbox first, with its open Task count", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ inbox: { id: 7, name: "Inbox", open_count: 3 }, items: [] }), {
-        headers: { "Content-Type": "application/json" },
-      }),
+      new Response(
+        JSON.stringify({ inbox: { id: 7, name: "Inbox", open_count: 3 }, items: [], archived: [] }),
+        {
+          headers: { "Content-Type": "application/json" },
+        },
+      ),
     );
 
     render(

@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, CircleCheck, ListTodo, Pin } from "lucide-re
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { ArchivedNotice } from "@/features/projects/archived-notice";
 import { ProjectHeader } from "@/features/projects/project-header";
 import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
@@ -30,7 +31,8 @@ const PHONE_INDENT = 20;
  * A Project's Tasks as a table: the page header, Quick add, then the pinned Task trees, the other
  * open trees and a collapsed Closed group. Subtasks nest under their parent and fold away from
  * its chevron. On phones the table collapses into stacked rows. Clicking a row opens the Task in
- * the drawer, and the URL's `?task=` follows the open Task.
+ * the drawer, and the URL's `?task=` follows the open Task. An archived Project's list is
+ * read-only: a notice replaces Quick add and every control that changes a Task is disabled.
  */
 export function TaskList({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));
@@ -76,12 +78,12 @@ export function TaskList({ project }: { project: SidebarProject }) {
       openId,
       collapsed,
       indent,
-      touch,
+      contextMenu: !touch && !project.is_archived,
       onToggle: toggle,
       onOpen: setOpenId,
       onToggleCollapsed: toggleCollapsed,
     }),
-    [openId, collapsed, indent, touch, toggle, toggleCollapsed, setOpenId],
+    [openId, collapsed, indent, touch, project.is_archived, toggle, toggleCollapsed, setOpenId],
   );
 
   return (
@@ -100,47 +102,54 @@ export function TaskList({ project }: { project: SidebarProject }) {
         )}
       </ProjectHeader>
 
-      <QuickAddCard projectId={project.id} />
+      {project.is_archived ? (
+        <ArchivedNotice project={project} />
+      ) : (
+        <QuickAddCard projectId={project.id} />
+      )}
 
-      <div
-        role="treegrid"
-        aria-label={`${project.name} tasks`}
-        className="rounded-xl border border-border bg-surface shadow-sm"
-      >
-        <TaskTableHeader />
-
-        {pinnedRows.length > 0 && (
-          <Group
-            icon={<Pin className="size-3.5 text-primary" aria-hidden />}
-            label="Pinned"
-            count={pinnedRows.filter((row) => row.level === 0).length}
-          >
-            <TreeRows rows={pinnedRows} context={context} />
-          </Group>
-        )}
-
-        <Group
-          icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
-          label="Tasks"
-          count={openRows.filter((row) => row.level === 0).length}
+      {/* A disabled fieldset disables every control inside, while rows still open the drawer. */}
+      <fieldset disabled={project.is_archived} className="min-w-0">
+        <div
+          role="treegrid"
+          aria-label={`${project.name} tasks`}
+          className="rounded-xl border border-border bg-surface shadow-sm"
         >
-          {unpinned.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-              Nothing left here. Add a task above.
-            </p>
-          ) : (
-            <TreeRows rows={openRows} context={context} />
-          )}
-        </Group>
+          <TaskTableHeader />
 
-        <ClosedGroup
-          query={closed}
-          rows={closedRows}
-          expanded={showClosed}
-          onExpandedChange={setShowClosed}
-          context={context}
-        />
-      </div>
+          {pinnedRows.length > 0 && (
+            <Group
+              icon={<Pin className="size-3.5 text-primary" aria-hidden />}
+              label="Pinned"
+              count={pinnedRows.filter((row) => row.level === 0).length}
+            >
+              <TreeRows rows={pinnedRows} context={context} />
+            </Group>
+          )}
+
+          <Group
+            icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
+            label="Tasks"
+            count={openRows.filter((row) => row.level === 0).length}
+          >
+            {unpinned.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+                Nothing left here. Add a task above.
+              </p>
+            ) : (
+              <TreeRows rows={openRows} context={context} />
+            )}
+          </Group>
+
+          <ClosedGroup
+            query={closed}
+            rows={closedRows}
+            expanded={showClosed}
+            onExpandedChange={setShowClosed}
+            context={context}
+          />
+        </div>
+      </fieldset>
 
       <TaskDetail
         taskId={openId}

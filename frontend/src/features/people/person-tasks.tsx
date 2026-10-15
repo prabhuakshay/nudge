@@ -79,7 +79,7 @@ export function PersonTasks({ person }: { person: Person }) {
       openId,
       collapsed: NOTHING_COLLAPSED,
       indent: 0,
-      touch,
+      contextMenu: !touch,
       onToggle: toggle,
       onOpen: setOpenId,
       onToggleCollapsed: () => undefined,

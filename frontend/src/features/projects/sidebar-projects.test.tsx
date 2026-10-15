@@ -31,6 +31,7 @@ function project(id: number, name: string, overrides: Partial<SidebarProject> = 
     icon: "list",
     folder_id: null,
     is_inbox: false,
+    is_archived: false,
     open_count: 0,
     ...overrides,
   } satisfies SidebarProject;
@@ -48,6 +49,7 @@ const PERSONAL: SidebarFolder = {
 const SIDEBAR: Sidebar = {
   inbox: project(99, "Inbox", { icon: "inbox", is_inbox: true }),
   items: [WORK, PERSONAL],
+  archived: [],
 };
 
 function json(body: unknown, status = 200) {
@@ -71,6 +73,7 @@ function mockApi() {
       return json({ ...PERSONAL, ...change });
     }
     if (request.method === "DELETE" || request.url.endsWith("/move")) return json(null, 204);
+    if (request.url.endsWith("/archive")) return json({ ...WORK, is_archived: true });
     const body = (await request.clone().json()) as object;
     return json({ ...WORK, id: 50, ...body }, request.method === "POST" ? 201 : 200);
   });
@@ -82,7 +85,8 @@ async function writes(fetchSpy: ReturnType<typeof mockApi>) {
     .filter((request) => request.method !== "GET");
   return Promise.all(
     requests.map(async (request) => {
-      const body = request.method === "DELETE" ? null : ((await request.json()) as unknown);
+      const text = await request.text();
+      const body = text ? (JSON.parse(text) as unknown) : null;
       return [`${request.method} ${new URL(request.url).pathname}`, body];
     }),
   );
@@ -181,6 +185,18 @@ describe("SidebarProjects", () => {
       expect(await writes(fetchSpy)).toEqual([
         ["POST /api/v1/projects/1/move", { folder_id: 10, after: { kind: "project", id: 2 } }],
       ]);
+    });
+  });
+
+  it("archives a Project from its menu", async () => {
+    const fetchSpy = mockApi();
+    const user = renderSidebar();
+
+    await user.click(await screen.findByRole("button", { name: "Work options" }));
+    await user.click(screen.getByRole("menuitem", { name: "Archive" }));
+
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([["POST /api/v1/projects/1/archive", null]]);
     });
   });
 

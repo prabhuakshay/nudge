@@ -4,7 +4,7 @@ import path from "node:path";
 import tailwindcss from "@tailwindcss/vite";
 import { tanstackRouter } from "@tanstack/router-plugin/vite";
 import react from "@vitejs/plugin-react";
-import { defineConfig, loadEnv } from "vite";
+import { defineConfig, loadEnv, type Plugin } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
 
 // The repository root holds the single .env file shared with the backend.
@@ -28,6 +28,37 @@ function behindProxy(publicUrl: string | undefined) {
   };
 }
 
+/** Clears every cache, unregisters itself and reloads open tabs onto the live dev server. */
+const SELF_DESTROYING_SERVICE_WORKER = `
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil((async () => {
+    for (const key of await caches.keys()) await caches.delete(key);
+    await self.registration.unregister();
+    for (const client of await self.clients.matchAll({ type: "window" })) client.navigate(client.url);
+  })());
+});
+`;
+
+/**
+ * Serves a self-destroying service worker in dev. A browser that once loaded a production build
+ * on the same origin keeps serving that build's precached app, and the dev server would
+ * otherwise answer the worker's update check with index.html, so the old worker never retires.
+ */
+function retireServiceWorkerInDev(): Plugin {
+  return {
+    name: "nudge:retire-service-worker",
+    apply: "serve",
+    configureServer(server) {
+      server.middlewares.use("/sw.js", (_request, response) => {
+        response.setHeader("Content-Type", "text/javascript");
+        response.setHeader("Cache-Control", "no-cache");
+        response.end(SELF_DESTROYING_SERVICE_WORKER);
+      });
+    },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, envDir, "NUDGE_");
   const backendUrl =
@@ -41,6 +72,7 @@ export default defineConfig(({ mode }) => {
       tanstackRouter({ target: "react", autoCodeSplitting: true }),
       react(),
       tailwindcss(),
+      retireServiceWorkerInDev(),
       VitePWA({
         strategies: "injectManifest",
         srcDir: "src",

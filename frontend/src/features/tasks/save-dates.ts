@@ -1,5 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+
+import { toastWithUndo } from "@/lib/undo-toast";
 
 import { changeDates, type Dates } from "./due";
 import { taskQuery, useUpdateTask, type Task } from "./tasks";
@@ -46,13 +47,8 @@ export function useSaveDates(task: DatedTask) {
       { id: task.id, dates: null },
       {
         onSuccess: () => {
-          toast(removedMessage(reminders.length > 0, repeat !== undefined), {
-            action: {
-              label: "Undo",
-              onClick: () => {
-                update({ id: task.id, dates: before, reminders, ...repeat });
-              },
-            },
+          toastWithUndo(removedMessage(reminders.length > 0, repeat !== undefined), () => {
+            update({ id: task.id, dates: before, reminders, ...repeat });
           });
         },
       },

@@ -11,7 +11,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import type { ReactNode, SyntheticEvent } from "react";
+import { useState, type ReactNode, type SyntheticEvent } from "react";
 import { toast } from "sonner";
 
 import {
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
+import { DeleteProjectDialog } from "./delete-project-dialog";
 import { ProjectIcon } from "./project-icon";
 import {
   useDeleteFolder,
@@ -68,6 +69,18 @@ export function RowMenu({ label, children }: { label: string; children: ReactNod
   );
 }
 
+/** A Project menu's Delete item; the row shows the confirm, which outlives the closed menu. */
+function DeleteProjectItem({ onSelect }: { onSelect: () => void }) {
+  return (
+    <>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem variant="danger" onSelect={onSelect}>
+        <Trash2 aria-hidden /> Delete
+      </DropdownMenuItem>
+    </>
+  );
+}
+
 /** A Project in the sidebar: a link to its list, its open count and its menu. */
 export function ProjectRow({
   project,
@@ -85,6 +98,7 @@ export function ProjectRow({
   onMove: (placement: Placement) => void;
 }) {
   const setArchived = useSetArchived();
+  const [deleting, setDeleting] = useState(false);
   const last = (siblings: SidebarItem[]) => {
     const item = siblings.filter((sibling) => sibling.id !== project.id).at(-1);
     return item ? { kind: item.kind, id: item.id } : null;
@@ -148,7 +162,13 @@ export function ProjectRow({
         >
           <Archive aria-hidden /> Archive
         </DropdownMenuItem>
+        <DeleteProjectItem
+          onSelect={() => {
+            setDeleting(true);
+          }}
+        />
       </RowMenu>
+      <DeleteProjectDialog project={project} open={deleting} onOpenChange={setDeleting} />
     </div>
   );
 }
@@ -162,6 +182,7 @@ export function ArchivedProjectRow({
   onNavigate?: () => void;
 }) {
   const setArchived = useSetArchived();
+  const [deleting, setDeleting] = useState(false);
   return (
     <div className={cn(ROW, "font-medium has-[a[data-status=active]]:bg-primary-soft")}>
       <Link
@@ -181,7 +202,13 @@ export function ArchivedProjectRow({
         >
           <ArchiveRestore aria-hidden /> Unarchive
         </DropdownMenuItem>
+        <DeleteProjectItem
+          onSelect={() => {
+            setDeleting(true);
+          }}
+        />
       </RowMenu>
+      <DeleteProjectDialog project={project} open={deleting} onOpenChange={setDeleting} />
     </div>
   );
 }

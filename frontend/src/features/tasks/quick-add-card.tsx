@@ -3,12 +3,14 @@ import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { Kbd } from "@/components/ui/kbd";
+import { shortcutText } from "@/features/shortcuts/registry";
+import { useShortcuts, useSingleKeyShortcuts } from "@/features/shortcuts/use-shortcuts";
 import { cn } from "@/lib/utils";
 
 import type { QuickAdd } from "./quick-add";
 import { QuickAddChips, QuickAddHint } from "./quick-add-chips";
 import { QuickAddField } from "./quick-add-field";
-import { useAnnounceTask, useFocusOnC } from "./quick-add-page";
+import { useAnnounceTask } from "./announce-task";
 import { useQuickAddTitle } from "./quick-add-people";
 import {
   keptDefault,
@@ -20,6 +22,17 @@ import {
 } from "./quick-add-view";
 import { sidebarQuery, useCreateTask, type Task } from "./tasks";
 import { useQuickAdd } from "./use-quick-add";
+
+/** Focus the input on the Quick add shortcut, `C`, pressed anywhere outside a field or dialog. */
+function useFocusOnShortcut(input: { current: HTMLInputElement | null }) {
+  useShortcuts({
+    quickAdd: (event) => {
+      // The drawer or another dialog is open over the list.
+      if (event.target instanceof Element && event.target.closest("[role=dialog]")) return;
+      input.current?.focus();
+    },
+  });
+}
 
 /**
  * Point to a new Task that landed outside the view, such as one sent to another Project with `~`.
@@ -49,10 +62,13 @@ function AddMark({ focused }: { focused: boolean }) {
 
 /** The keys at the end of the input on wide screens: `C` while idle, Enter and ⌫ while typing. */
 function KeyHints({ focused, typed }: { focused: boolean; typed: boolean }) {
+  const singleKey = useSingleKeyShortcuts();
   if (!focused && !typed) {
+    if (!singleKey) return null;
+    const key = shortcutText("quickAdd");
     return (
-      <Kbd className="hidden shrink-0 lg:inline-flex" aria-label="Press C to add a task">
-        C
+      <Kbd className="hidden shrink-0 lg:inline-flex" aria-label={`Press ${key} to add a task`}>
+        {key}
       </Kbd>
     );
   }
@@ -87,7 +103,7 @@ export function QuickAddCard({
   const titleOf = useQuickAddTitle();
   const announce = useAnnounceElsewhere(view);
   const inputRef = useRef<HTMLInputElement>(null);
-  useFocusOnC(inputRef);
+  useFocusOnShortcut(inputRef);
 
   const add = async (text: string, parsed: QuickAdd) => {
     if (!sidebar) return;

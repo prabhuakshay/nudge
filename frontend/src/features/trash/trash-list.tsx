@@ -7,13 +7,15 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 import { plainMentions } from "@/features/people/mentions";
 import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog";
+import { ProjectIcon } from "@/features/projects/project-icon";
 
 import {
   trashQuery,
   useDeleteForever,
   useEmptyTrash,
+  useRestoreProject,
   useRestoreTask,
-  type TrashedTask,
+  type TrashedRow,
 } from "./trash";
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -27,25 +29,39 @@ function plural(count: number, noun: string) {
   return `${String(count)} ${noun}${count === 1 ? "" : "s"}`;
 }
 
+/** A row's name: a Task's title as plain text, or a Project's name. */
+function titleOf(row: TrashedRow) {
+  return row.kind === "project" ? row.name : plainMentions(row.title);
+}
+
+/** What went to Trash with a row: a Task's Subtasks or a Project's Tasks. */
+function contents(row: TrashedRow) {
+  return row.kind === "project"
+    ? { count: row.task_count, noun: "task" }
+    : { count: row.subtask_count, noun: "Subtask" };
+}
+
 /** Where a unit came from, what went with it and how long it has left, on one line. */
-function details(row: TrashedTask) {
+function details(row: TrashedRow) {
+  const { count, noun } = contents(row);
   return [
-    row.project_name,
-    ...(row.subtask_count > 0 ? [plural(row.subtask_count, "Subtask")] : []),
+    row.kind === "project" ? "Project" : row.project_name,
+    ...(row.kind === "project" || count > 0 ? [plural(count, noun)] : []),
     `${plural(daysLeft(row.expires_at), "day")} left`,
   ].join(" · ");
 }
 
 /** What the confirm dialog is asking about: one unit, or the whole Trash. */
-type Confirm = { kind: "row"; row: TrashedTask } | { kind: "empty"; count: number };
+type Confirm = { kind: "row"; row: TrashedRow } | { kind: "empty"; count: number };
 
 /**
- * The Trash: one row per deleted unit, newest first, each with Restore and Delete forever, and
- * Empty Trash in the header. Deleting for good asks first.
+ * The Trash: one row per deleted Task or Project, newest first, each with Restore and Delete
+ * forever, and Empty Trash in the header. Deleting for good asks first.
  */
 export function TrashList() {
   const { data: rows } = useQuery(trashQuery);
-  const { mutate: restore } = useRestoreTask();
+  const { mutate: restoreTask } = useRestoreTask();
+  const { mutate: restoreProject } = useRestoreProject();
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   return (
     <div className="mx-auto w-full max-w-3xl">
@@ -71,18 +87,19 @@ export function TrashList() {
         <EmptyState
           icon={Trash2}
           title="Trash is empty"
-          description="Deleted tasks wait here for a while, so you can bring them back."
+          description="Deleted tasks and projects wait here for a while, so you can bring them back."
         />
       )}
       {rows && rows.length > 0 && (
         <ul className="overflow-hidden rounded-xl border border-border bg-surface">
           {rows.map((row) => {
-            const title = plainMentions(row.title);
+            const title = titleOf(row);
             return (
               <li
-                key={row.id}
+                key={`${row.kind}-${String(row.id)}`}
                 className="flex min-h-14 items-center gap-1 border-b border-border/60 py-2 pr-2 pl-4 last:border-b-0"
               >
+                {row.kind === "project" && <ProjectIcon project={row} className="mr-2" />}
                 <div className="mr-2 flex min-w-0 flex-1 flex-col">
                   <span data-title className="truncate text-sm font-semibold">
                     {title}
@@ -93,7 +110,8 @@ export function TrashList() {
                   variant="ghost"
                   aria-label={`Restore “${title}”`}
                   onClick={() => {
-                    restore(row.id);
+                    if (row.kind === "project") restoreProject(row.id);
+                    else restoreTask(row.id);
                   }}
                 >
                   <RotateCcw className="size-4" aria-hidden />
@@ -134,10 +152,10 @@ function confirmCopy(confirm: Confirm) {
       action: "Empty Trash",
     };
   }
-  const { subtask_count: subtasks } = confirm.row;
+  const { count, noun } = contents(confirm.row);
   return {
-    title: `Delete “${plainMentions(confirm.row.title)}” forever?`,
-    what: subtasks > 0 ? `It and its ${plural(subtasks, "Subtask")}` : "It",
+    title: `Delete “${titleOf(confirm.row)}” forever?`,
+    what: count > 0 ? `It and its ${plural(count, noun)}` : "It",
     action: "Delete forever",
   };
 }
@@ -152,8 +170,8 @@ function ConfirmDialog({ confirm, onClose }: { confirm: Confirm | null; onClose:
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
     if (confirm?.kind === "row") {
-      const title = plainMentions(confirm.row.title);
-      deleteForever.mutate([confirm.row.id], {
+      const title = titleOf(confirm.row);
+      deleteForever.mutate([confirm.row], {
         onSuccess: () => toast(`Deleted “${title}” forever`),
       });
     } else {

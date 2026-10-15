@@ -1,39 +1,40 @@
 import { useQuery } from "@tanstack/react-query";
 import { X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogClose, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { useShortcuts } from "@/features/shortcuts/use-shortcuts";
 
 import { QuickAddCard } from "./quick-add-card";
-import { isAddKey, useAnnounceTask } from "./quick-add-page";
+import { useAnnounceTask } from "./announce-task";
 import { sidebarQuery, type Task } from "./tasks";
 
-/** Open the dialog on `C` when the page has no Quick add card of its own to focus. */
-function useOpenOnC(setOpen: (open: boolean) => void) {
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!isAddKey(event) || document.querySelector("[data-quick-add-card]")) return;
-      event.preventDefault();
-      setOpen(true);
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [setOpen]);
+/**
+ * On the Quick add shortcut, focus the page's own Quick add card, or open the dialog where there
+ * is none. Nothing happens while the drawer or another dialog is open.
+ */
+function useQuickAddShortcut(setOpen: (open: boolean) => void) {
+  useShortcuts({
+    quickAdd: (event) => {
+      if (event.target instanceof Element && event.target.closest("[role=dialog]")) return;
+      const card = document.querySelector<HTMLInputElement>("[data-quick-add-card] input");
+      if (card) card.focus();
+      else setOpen(true);
+    },
+  });
 }
 
 /**
- * Quick add for pages without a card of their own, such as Search and Trash: `C` opens it in a
- * dialog. New Tasks go to the Inbox unless they name a Project; the dialog then closes and a
- * toast points to the Task.
+ * Quick add for pages without a card of their own, such as Search and Trash: its shortcut, `C`,
+ * opens it in a dialog. New Tasks go to the Inbox unless they name a Project; the dialog then
+ * closes and a toast points to the Task.
  */
 export function GlobalQuickAdd() {
   const [open, setOpen] = useState(false);
   const { data: sidebar } = useQuery(sidebarQuery);
   const announce = useAnnounceTask();
-  useOpenOnC(setOpen);
+  useQuickAddShortcut(setOpen);
   if (!sidebar) return null;
 
   const added = (task: Task) => {

@@ -1,6 +1,7 @@
 """Trash: deleting Tasks, listing what was deleted and restoring it.
 
-A delete sends a Task and its live Subtasks to Trash as one unit: every row it touched gets the
+A delete sends a Task and its live Subtasks to Trash as one unit (a deleted Project is a unit of
+its own, see `apps.tasks.project_trash`): every row it touched gets the
 same `trash_unit`, so the unit lists as one row and comes back whole. Trashed rows are inert:
 they leave every list and count, and their Reminders stop. Restoring puts the unit back where it
 was if it still can, else at the bottom of its Project, or of the Inbox if the Project is gone.
@@ -35,6 +36,7 @@ from apps.tasks.tree import below, reopen_ancestors
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
+    from django.db.models.expressions import CombinedExpression
 
     from apps.accounts.models import User
 
@@ -85,30 +87,41 @@ def trashed_tasks(user: User) -> QuerySet[Task]:
         .annotate(count=Count("pk"))
         .values("count")
     )
-    expires_at = ExpressionWrapper(
-        F("deleted_at") + Value(timedelta(days=settings.TRASH_RETENTION_DAYS)),
-        output_field=DateTimeField(),
-    )
     return (
         user.tasks.filter(trash_unit__isnull=False)
         .exclude(parent__trash_unit=F("trash_unit"))
+        .exclude(project__trash_unit=F("trash_unit"))
         .annotate(
             project_name=F("project__name"),
             subtask_count=Subquery(members) - 1,
-            expires_at=expires_at,
+            expires_at=expires_at(),
         )
         .order_by("-deleted_at", "-id")
+    )
+
+
+def expires_at() -> ExpressionWrapper[CombinedExpression]:
+    """Return when a row in Trash will be deleted for good, as a query expression."""
+    return ExpressionWrapper(
+        F("deleted_at") + Value(timedelta(days=settings.TRASH_RETENTION_DAYS)),
+        output_field=DateTimeField(),
     )
 
 
 def restore_task(user: User, task_id: int) -> Restored | None:
     """Bring back the Trash unit one of the user's trashed Tasks belongs to; None if there's none.
 
+    A Task deleted along with its Project comes back only with the Project.
+
     The unit goes back under its parent if the parent is live and the unit still fits below it,
     else it becomes the last root of its Project; a unit whose Project is in Trash goes to the
     Inbox. An archived Project takes it back as it is.
     """
-    task = user.tasks.filter(pk=task_id, trash_unit__isnull=False).first()
+    task = (
+        user.tasks.filter(pk=task_id, trash_unit__isnull=False)
+        .exclude(project__trash_unit=F("trash_unit"))
+        .first()
+    )
     if task is None:
         return None
     head = _head(task)

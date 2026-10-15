@@ -11,6 +11,7 @@ const ada = {
   email: "ada@example.com",
   full_name: "Ada Lovelace",
   time_zone: "Asia/Kolkata",
+  single_key_shortcuts: true,
 };
 
 function useBrowserTimeZone(timeZone: string) {

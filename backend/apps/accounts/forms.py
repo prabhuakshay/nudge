@@ -24,4 +24,4 @@ class UserEditForm(UserChangeForm[User]):
         """Form options."""
 
         model = User
-        fields = ("email", "full_name", "time_zone")
+        fields = ("email", "full_name", "time_zone", "single_key_shortcuts")

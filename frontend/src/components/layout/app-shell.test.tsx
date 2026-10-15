@@ -11,6 +11,7 @@ vi.mock("@/features/notifications/notification-center", () => ({
   NotificationCenter: () => null,
 }));
 vi.mock("@/features/settings/settings-dialog", () => ({ SettingsDialog: () => null }));
+vi.mock("@/features/shortcuts/global-shortcuts", () => ({ GlobalShortcuts: () => null }));
 vi.mock("@/features/theme/theme-toggle", () => ({ ThemeToggle: () => null }));
 vi.mock("@/features/time-zone/time-zone-banner", () => ({ TimeZoneBanner: () => null }));
 vi.mock("@/features/tasks/global-quick-add", () => ({ GlobalQuickAdd: () => null }));
@@ -20,6 +21,7 @@ const ada = {
   email: "ada@example.com",
   full_name: "Ada Lovelace",
   time_zone: "Europe/London",
+  single_key_shortcuts: true,
 };
 
 function DeleteButton({ onUndo }: { onUndo: () => void }) {

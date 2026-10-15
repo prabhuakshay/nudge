@@ -1,9 +1,9 @@
 import { useCallback, useMemo } from "react";
 
-import { useDeleteTask } from "@/features/trash/trash";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 import { useOpenTask } from "./open-task";
+import { useRowKeyDown } from "./row-keys";
 import { isClosed } from "./task-properties";
 import type { RowContext, ToggleCollapsed, ToggleStatus } from "./task-row";
 import { useSetTaskStatus } from "./tasks";
@@ -29,13 +29,13 @@ export function useRowContext({
   const indent = useMediaQuery("(min-width: 1024px)") ? INDENT : PHONE_INDENT;
   const touch = useMediaQuery("(pointer: coarse)");
   const { mutate: setStatus } = useSetTaskStatus();
-  const { mutate: deleteTask } = useDeleteTask();
   const toggle = useCallback<ToggleStatus>(
     (task) => {
       setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
     },
     [setStatus],
   );
+  const onKeyDown = useRowKeyDown({ readOnly, onOpen: setOpenTask, onToggle: toggle });
   return useMemo<RowContext>(
     () => ({
       openId,
@@ -45,18 +45,8 @@ export function useRowContext({
       onToggle: toggle,
       onOpen: setOpenTask,
       onToggleCollapsed,
-      onDelete: readOnly ? undefined : deleteTask,
+      onKeyDown,
     }),
-    [
-      openId,
-      collapsed,
-      indent,
-      touch,
-      readOnly,
-      toggle,
-      setOpenTask,
-      onToggleCollapsed,
-      deleteTask,
-    ],
+    [openId, collapsed, indent, touch, readOnly, toggle, setOpenTask, onToggleCollapsed, onKeyDown],
   );
 }

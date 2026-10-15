@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.core.files.uploadedfile import SimpleUploadedFile
 
+from apps.accounts.services import set_time_zone
 from apps.notifications.models import Notification
 from apps.tasks import attachments, comments, mentions, people, purge, reminders, services, trash
 from apps.tasks.dates import TaskDates
@@ -125,6 +126,7 @@ def test_a_fired_reminders_notification_outlives_the_purge(
     ada: User,
     freeze_time: Callable[[datetime], None],
 ) -> None:
+    set_time_zone(ada, "UTC")
     freeze_time(DELETED)
     task = services.create_task(services.inbox(ada), "Call the bank")
     edit = services.TaskEdit(

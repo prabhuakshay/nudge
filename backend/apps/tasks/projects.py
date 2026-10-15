@@ -60,7 +60,8 @@ class Sidebar:
     open_counts: dict[int, int]
 
 
-def _lock_sidebar(user: User) -> None:
+def lock_sidebar(user: User) -> None:
+    """Lock the user's row, so writes to their sibling sets never race to the same key."""
     User.objects.select_for_update().get(pk=user.pk)
 
 
@@ -68,7 +69,7 @@ def _sidebar_projects(user: User) -> QuerySet[Project]:
     return user.projects.filter(deleted_at__isnull=True, is_inbox=False).order_by("position", "id")
 
 
-def _siblings(user: User, folder: Folder | None) -> list[tuple[SiblingRef, str]]:
+def sibling_keys(user: User, folder: Folder | None) -> list[tuple[SiblingRef, str]]:
     """Return a sibling set in order: a Folder's Projects, or the top level for no Folder."""
     projects = [
         (SiblingRef("project", pk), position)
@@ -85,7 +86,7 @@ def _siblings(user: User, folder: Folder | None) -> list[tuple[SiblingRef, str]]
     return sorted([*folders, *projects], key=lambda sibling: (sibling[1], sibling[0].id))
 
 
-def _key_after(siblings: list[tuple[SiblingRef, str]], after: SiblingRef | None) -> str:
+def key_after(siblings: list[tuple[SiblingRef, str]], after: SiblingRef | None) -> str:
     """Return a key right after `after`, first for None, or last when `after` isn't a sibling."""
     refs = [ref for ref, _ in siblings]
     keys = [key for _, key in siblings]
@@ -104,12 +105,12 @@ def _key_after_moving(
     moving: SiblingRef,
     after: SiblingRef | None,
 ) -> str:
-    siblings = [sibling for sibling in _siblings(user, folder) if sibling[0] != moving]
-    return _key_after(siblings, after)
+    siblings = [sibling for sibling in sibling_keys(user, folder) if sibling[0] != moving]
+    return key_after(siblings, after)
 
 
 def _last_key(user: User, folder: Folder | None) -> str:
-    siblings = _siblings(user, folder)
+    siblings = sibling_keys(user, folder)
     return str(generate_key_between(siblings[-1][1] if siblings else None, None))
 
 
@@ -198,7 +199,7 @@ def create_project(
     """
     _check_icon(icon)
     with transaction.atomic():
-        _lock_sidebar(user)
+        lock_sidebar(user)
         project = Project(
             owner=user,
             name=name,
@@ -260,7 +261,7 @@ def move_project(
     if after == moving:
         return True
     with transaction.atomic():
-        _lock_sidebar(user)
+        lock_sidebar(user)
         project.position = _key_after_moving(user, folder, moving, after)
         project.folder = folder
         project.save(update_fields=["position", "folder", "updated_at"])
@@ -298,7 +299,7 @@ def unarchive_project(user: User, project_id: int) -> Project | None:
 def create_folder(user: User, name: str) -> Folder:
     """Create an expanded Folder last in the sidebar."""
     with transaction.atomic():
-        _lock_sidebar(user)
+        lock_sidebar(user)
         return Folder.objects.create(owner=user, name=name, position=_last_key(user, None))
 
 
@@ -332,7 +333,7 @@ def move_folder(user: User, folder_id: int, after: SiblingRef | None) -> bool:
     if after == moving:
         return True
     with transaction.atomic():
-        _lock_sidebar(user)
+        lock_sidebar(user)
         found.position = _key_after_moving(user, None, moving, after)
         found.save(update_fields=["position", "updated_at"])
     return True
@@ -348,8 +349,8 @@ def delete_folder(user: User, folder_id: int) -> bool:
     if found is None:
         return False
     with transaction.atomic():
-        _lock_sidebar(user)
-        top_level = _siblings(user, None)
+        lock_sidebar(user)
+        top_level = sibling_keys(user, None)
         index = [ref for ref, _ in top_level].index(SiblingRef("folder", found.pk))
         following = top_level[index + 1][1] if index + 1 < len(top_level) else None
         # Trashed Projects are ungrouped too, so a restore never points at a missing Folder.

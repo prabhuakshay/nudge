@@ -13,6 +13,7 @@ from django.utils import timezone
 from apps.core.palette import PaletteColor
 
 INBOX_NAME = "Inbox"
+PROJECT_NAME_MAX_LENGTH = 64
 
 
 class Folder(models.Model):
@@ -53,6 +54,9 @@ class Project(models.Model):
 
     `position` is a fractional-indexing key among the Project's siblings: the Projects of its
     Folder, or, for an ungrouped Project, the sidebar's top level of Folders and Projects.
+
+    A Project in Trash records when in `deleted_at`, and shares its `trash_unit` with the Tasks
+    deleted along with it.
     """
 
     class Icon(models.TextChoices):
@@ -105,7 +109,7 @@ class Project(models.Model):
         on_delete=models.CASCADE,
         related_name="projects",
     )
-    name = models.CharField(max_length=64)
+    name = models.CharField(max_length=PROJECT_NAME_MAX_LENGTH)
     color = models.CharField(max_length=16, choices=PaletteColor)
     icon = models.CharField(max_length=32, choices=Icon)
     folder = models.ForeignKey(
@@ -121,6 +125,7 @@ class Project(models.Model):
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
+    trash_unit = models.UUIDField(null=True, blank=True, db_index=True)
 
     class Meta:
         """Model options."""

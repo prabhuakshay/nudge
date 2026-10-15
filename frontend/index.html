@@ -12,6 +12,13 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="theme-color" content="#EEF1F8" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#0E1224" media="(prefers-color-scheme: dark)" />
+    <script>
+      // Applied before first paint so a saved theme doesn't flash; see src/features/theme.
+      try {
+        const theme = localStorage.getItem("nudge-theme");
+        if (theme === "light" || theme === "dark") document.documentElement.dataset.theme = theme;
+      } catch {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

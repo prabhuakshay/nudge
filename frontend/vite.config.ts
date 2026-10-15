@@ -57,6 +57,8 @@ export default defineConfig(({ mode }) => {
       setupFiles: ["./src/test/setup.ts"],
       css: false,
       restoreMocks: true,
+      // Node 25's built-in localStorage shadows jsdom's and is unusable without a backing file.
+      execArgv: ["--no-experimental-webstorage"],
     },
   };
 });

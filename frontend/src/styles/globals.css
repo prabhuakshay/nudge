@@ -2,46 +2,46 @@
 
 /*
  * Design tokens. Brand values come from branding/colors; components use only the semantic
- * names below (bg-surface, text-muted-foreground, ...), never raw hex values.
+ * names below (bg-surface, text-muted-foreground, ...), never raw hex values. Each token is
+ * light-dark(light, dark), resolved by the root color-scheme.
  */
 :root {
-  --background: #eef1f8;
-  --surface: #ffffff;
-  --surface-muted: #f6f7fb;
-  --foreground: #141a33;
-  --muted-foreground: #5b6380;
-  --border: #dce1ee;
-  --primary: #1d4ed8;
-  --primary-hover: #1a44bd;
-  --primary-foreground: #ffffff;
-  --primary-soft: #e3eafc;
-  --accent: #f43f5e;
-  --danger: #b4233d;
-  --danger-soft: #fde8ec;
-  --ring: #1d4ed8;
-  --brand-surface: #1d4ed8;
-  --on-brand: #ffffff;
+  color-scheme: light dark;
+  --background: light-dark(#eef1f8, #0e1224);
+  --surface: light-dark(#ffffff, #171c33);
+  --surface-muted: light-dark(#f6f7fb, #1d2340);
+  --foreground: light-dark(#141a33, #f2f4fa);
+  --muted-foreground: light-dark(#5b6380, #a3abc6);
+  --border: light-dark(#dce1ee, #2a3152);
+  --primary: light-dark(#1d4ed8, #3b82f6);
+  --primary-hover: light-dark(#1a44bd, #5b96f8);
+  --primary-foreground: light-dark(#ffffff, #0e1224);
+  --primary-soft: light-dark(#e3eafc, #1c2a52);
+  --accent: light-dark(#f43f5e, #fb7185);
+  --danger: light-dark(#b4233d, #fb7185);
+  --danger-soft: light-dark(#fde8ec, #3a1a26);
+  --ring: light-dark(#1d4ed8, #5b96f8);
+  --brand-surface: light-dark(#1d4ed8, #1c2a52);
+  --on-brand: light-dark(#ffffff, #f2f4fa);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0e1224;
-    --surface: #171c33;
-    --surface-muted: #1d2340;
-    --foreground: #f2f4fa;
-    --muted-foreground: #a3abc6;
-    --border: #2a3152;
-    --primary: #3b82f6;
-    --primary-hover: #5b96f8;
-    --primary-foreground: #0e1224;
-    --primary-soft: #1c2a52;
-    --accent: #fb7185;
-    --danger: #fb7185;
-    --danger-soft: #3a1a26;
-    --ring: #5b96f8;
-    --brand-surface: #1c2a52;
-    --on-brand: #f2f4fa;
-    color-scheme: dark;
+/* An explicit choice from the theme picker (see features/theme) overrides the system. */
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@custom-variant dark {
+  &:where([data-theme="dark"], [data-theme="dark"] *) {
+    @slot;
+  }
+  @media (prefers-color-scheme: dark) {
+    &:where(:root:not([data-theme="light"]), :root:not([data-theme="light"]) *) {
+      @slot;
+    }
   }
 }
 

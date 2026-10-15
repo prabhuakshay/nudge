@@ -4,6 +4,7 @@ import { type ReactNode, useId } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserAvatar } from "@/components/layout/user-avatar";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { ThemePicker } from "@/features/theme/theme-picker";
 
 export const Route = createFileRoute("/_app/account")({
   component: AccountPage,
@@ -24,6 +25,12 @@ function AccountPage() {
                 <p className="truncate text-sm text-muted-foreground">{user.email}</p>
               )}
             </div>
+          </div>
+        </Section>
+
+        <Section title="Appearance">
+          <div className="p-4">
+            <ThemePicker />
           </div>
         </Section>
 

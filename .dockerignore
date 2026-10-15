@@ -21,4 +21,6 @@ frontend/dev-dist
 frontend/.vite
 frontend/**/*.test.ts
 frontend/**/*.test.tsx
+# tsc -b fails when a referenced project has no inputs, and tsconfig.node-tests.json checks only this file.
+!frontend/src/styles/tokens.test.ts
 frontend/src/test

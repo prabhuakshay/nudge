@@ -7,8 +7,18 @@ export const MAX_DEPTH = 3;
 /** How many of a Task's direct Subtasks there are, and how many of those are Closed. */
 export type SubtaskProgress = { done: number; total: number };
 
-/** A Task placed in its tree: how far below the top it sits and what's directly under it. */
-export type TreeRow = { task: Task; level: number; subtasks: SubtaskProgress };
+/**
+ * A Task placed in its tree: how far below the top it sits and what's directly under it. A drag
+ * carries the whole subtree, so `height` (levels of Subtasks below it) and `carried` (how many
+ * Subtasks in all) count folded ones too.
+ */
+export type TreeRow = {
+  task: Task;
+  level: number;
+  subtasks: SubtaskProgress;
+  height: number;
+  carried: number;
+};
 
 /**
  * The server sends flat rows in manual order within each sibling set, so grouping them by parent
@@ -36,11 +46,18 @@ function rootsOf(rows: Task[]) {
  */
 export function treeRows(rows: Task[], collapsed: ReadonlySet<number> = new Set()): TreeRow[] {
   const children = childrenByParent(rows);
+  const measure = (task: Task): { height: number; carried: number } => {
+    const sizes = (children.get(task.id) ?? []).map(measure);
+    return {
+      height: sizes.length > 0 ? Math.max(...sizes.map((size) => size.height)) + 1 : 0,
+      carried: sizes.reduce((sum, size) => sum + size.carried + 1, 0),
+    };
+  };
   const outline: TreeRow[] = [];
   const walk = (task: Task, level: number) => {
     const kids = children.get(task.id) ?? [];
     const done = kids.filter((kid) => isClosed(kid.status)).length;
-    outline.push({ task, level, subtasks: { done, total: kids.length } });
+    outline.push({ task, level, subtasks: { done, total: kids.length }, ...measure(task) });
     if (collapsed.has(task.id)) return;
     for (const kid of kids) walk(kid, level + 1);
   };

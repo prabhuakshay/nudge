@@ -1,23 +1,26 @@
-import { ChevronRight, Plus } from "lucide-react";
-import { useState } from "react";
+import { ChevronRight, GripVertical, Plus } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
 
 import { Kbd } from "@/components/ui/kbd";
+import { useMediaQuery } from "@/lib/use-media-query";
 import { cn } from "@/lib/utils";
 
+import { SortableTree, type DragHandle, type SortableRowProps } from "./sortable-tree";
 import { SubtaskCount } from "./subtask-count";
 import { TaskCheckbox } from "./task-checkbox";
+import type { Placement } from "./task-drag";
 import { isClosed } from "./task-properties";
-import { MAX_DEPTH, treeRows, type TreeRow } from "./task-tree";
-import { useCreateSubtask } from "./task-placement";
-import { useSetTaskStatus, type TaskDetail } from "./tasks";
+import { MAX_DEPTH, treeRows, type SubtaskProgress } from "./task-tree";
+import { useCreateSubtask, useMoveTask } from "./task-placement";
+import { useSetTaskStatus, type Task, type TaskDetail } from "./tasks";
 
 /** How far each level of Subtasks steps in inside the drawer, in pixels. */
 const INDENT = 22;
 
 /**
  * The drawer's Subtasks: every Subtask below the Task as an indented outline with its own
- * progress, then a field to add one more. The fourth level can't hold Subtasks, so it says so
- * instead.
+ * progress, then a field to add one more. Dragging a Subtask reorders and nests it under the same
+ * rules as the list. The fourth level can't hold Subtasks, so it says so instead.
  */
 export function SubtaskSection({
   task,
@@ -26,9 +29,36 @@ export function SubtaskSection({
   task: TaskDetail;
   onOpen: (taskId: number) => void;
 }) {
-  const rows = treeRows(task.subtasks);
+  const rows = useMemo(() => treeRows(task.subtasks), [task.subtasks]);
   const direct = rows.filter((row) => row.level === 0);
   const done = direct.filter((row) => isClosed(row.task.status)).length;
+  const base = useMemo(
+    () => ({ parentId: task.id, maxLevel: MAX_DEPTH - task.depth - 1 }),
+    [task.id, task.depth],
+  );
+  const touch = useMediaQuery("(pointer: coarse)");
+  const { mutate: move } = useMoveTask();
+  const onMove = useCallback(
+    (taskId: number, placement: Placement) => {
+      move({ taskId, ...placement });
+    },
+    [move],
+  );
+  // Stable between drag steps, so Subtasks that don't move skip rendering.
+  const renderRow = useCallback(
+    ({ row, level, handle, dragging }: SortableRowProps) => (
+      <SubtaskItem
+        task={row.task}
+        level={level}
+        subtasks={row.subtasks}
+        handle={handle}
+        dragging={dragging}
+        touch={touch}
+        onOpen={onOpen}
+      />
+    ),
+    [touch, onOpen],
+  );
 
   return (
     <section aria-labelledby="task-subtasks" className="mt-6">
@@ -43,11 +73,15 @@ export function SubtaskSection({
       </div>
       <div className="overflow-hidden rounded-xl border border-border bg-surface">
         {rows.length > 0 && (
-          <ul className="divide-y divide-border/70">
-            {rows.map((row) => (
-              <SubtaskItem key={row.task.id} row={row} onOpen={onOpen} />
-            ))}
-          </ul>
+          <div role="list" className="divide-y divide-border/70">
+            <SortableTree
+              rows={rows}
+              base={base}
+              indent={INDENT}
+              renderRow={renderRow}
+              onMove={onMove}
+            />
+          </div>
         )}
         {task.depth < MAX_DEPTH ? (
           <AddSubtask parentId={task.id} bordered={rows.length > 0} />
@@ -61,14 +95,54 @@ export function SubtaskSection({
   );
 }
 
-function SubtaskItem({ row, onOpen }: { row: TreeRow; onOpen: (taskId: number) => void }) {
-  const { task, level, subtasks } = row;
+/**
+ * One Subtask in the drawer. It drags like a list row: the whole item with a mouse or a press and
+ * hold, or its grip with the keyboard; phones get no grip.
+ */
+function SubtaskItem({
+  task,
+  level,
+  subtasks,
+  handle: { setNode, attributes, listeners, onPointerDown, onTouchStart },
+  dragging,
+  touch,
+  onOpen,
+}: {
+  task: Task;
+  level: number;
+  subtasks: SubtaskProgress;
+  handle: DragHandle;
+  dragging: boolean;
+  touch: boolean;
+  onOpen: (taskId: number) => void;
+}) {
   const { mutate: setStatus } = useSetTaskStatus();
   return (
-    <li
-      className="flex min-h-11 items-center gap-2.5 pr-2 sm:min-h-10"
+    <div
+      role="listitem"
+      ref={touch ? setNode : undefined}
+      onTouchStart={touch ? onTouchStart : undefined}
+      onPointerDown={touch ? undefined : onPointerDown}
+      className={cn(
+        // No text selection or iOS callout, so a long press starts a drag instead.
+        "group/subtask relative flex min-h-11 items-center gap-2.5 bg-surface pr-2 select-none [-webkit-touch-callout:none] sm:min-h-10",
+        dragging && "opacity-40",
+      )}
       style={{ paddingLeft: 12 + level * INDENT }}
     >
+      {!touch && (
+        <button
+          type="button"
+          ref={setNode}
+          {...attributes}
+          {...listeners}
+          aria-label={`Drag “${task.title}”`}
+          style={{ left: level * INDENT }}
+          className="absolute top-1/2 flex h-6 w-3 -translate-y-1/2 cursor-grab touch-none items-center justify-center text-muted-foreground/60 opacity-0 group-focus-within/subtask:opacity-100 group-hover/subtask:opacity-100 hover:text-foreground focus-visible:opacity-100 focus-visible:outline-2 focus-visible:outline-ring active:cursor-grabbing"
+        >
+          <GripVertical className="size-3.5 shrink-0" aria-hidden />
+        </button>
+      )}
       <TaskCheckbox
         task={task}
         onToggle={() => {
@@ -95,7 +169,7 @@ function SubtaskItem({ row, onOpen }: { row: TreeRow; onOpen: (taskId: number) =
       )}
       <SubtaskCount {...subtasks} />
       <ChevronRight className="size-3.5 shrink-0 text-muted-foreground/60" aria-hidden />
-    </li>
+    </div>
   );
 }
 

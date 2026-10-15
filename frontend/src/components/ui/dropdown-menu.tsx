@@ -12,7 +12,7 @@ export const DropdownMenuSub = DropdownMenuPrimitive.Sub;
 export const DropdownMenuRadioGroup = DropdownMenuPrimitive.RadioGroup;
 
 const contentClass =
-  "z-50 min-w-40 overflow-hidden rounded-lg border border-border bg-surface p-1 text-sm text-foreground shadow-xl focus-visible:outline-none";
+  "z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-40 overflow-y-auto rounded-lg border border-border bg-surface p-1 text-sm text-foreground shadow-xl focus-visible:outline-none";
 const itemClass =
   "relative flex cursor-default items-center gap-2 rounded-md px-2 py-1.5 outline-none select-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 data-[highlighted]:bg-surface-muted [&_svg]:size-4 [&_svg]:shrink-0";
 

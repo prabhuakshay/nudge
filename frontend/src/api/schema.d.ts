@@ -358,6 +358,26 @@ export interface paths {
     patch: operations["apps_tasks_api_tasks_update_task"];
     trace?: never;
   };
+  "/api/v1/tasks/{task_id}/activity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Task's Activity
+     * @description Return a page of a Task's history, newest first, with the number of events in all.
+     */
+    get: operations["apps_tasks_api_tasks_list_activity"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -658,6 +678,100 @@ export interface components {
        */
       description?: string | null;
       status?: components["schemas"]["Status"] | null;
+    };
+    /**
+     * CreatedActivityOut
+     * @description The Task was created.
+     */
+    CreatedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "created";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * DescriptionEditedActivityOut
+     * @description The Task's Description was edited. The edit itself isn't kept.
+     */
+    DescriptionEditedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "description_edited";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * NoActivityData
+     * @description The details of an event whose kind says it all.
+     */
+    NoActivityData: Record<string, never>;
+    /**
+     * TaskActivityListOut
+     * @description A page of a Task's history, newest first.
+     */
+    TaskActivityListOut: {
+      /** Items */
+      items: (
+        | components["schemas"]["CreatedActivityOut"]
+        | components["schemas"]["TitleChangedActivityOut"]
+        | components["schemas"]["DescriptionEditedActivityOut"]
+      )[];
+      /**
+       * Next Cursor
+       * @description Pass as `cursor` to get the next page; null on the last page.
+       */
+      next_cursor: string | null;
+      /**
+       * Count
+       * @description How many events the whole history holds.
+       */
+      count: number;
+    };
+    /**
+     * TitleChangedActivityOut
+     * @description The Task was renamed.
+     */
+    TitleChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "title_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TitleChangedData"];
+    };
+    /**
+     * TitleChangedData
+     * @description The title before and after a rename.
+     */
+    TitleChangedData: {
+      /** Old */
+      old: string;
+      /** New */
+      new: string;
     };
   };
   responses: never;
@@ -1179,6 +1293,48 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_list_activity: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+      };
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskActivityListOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
         headers: {
           [name: string]: unknown;
         };

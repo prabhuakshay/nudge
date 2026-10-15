@@ -1,15 +1,18 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ChevronDown, ChevronUp, Inbox, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 
 import { Drawer, DrawerContent, DrawerTitle } from "@/components/ui/drawer";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMediaQuery } from "@/lib/use-media-query";
+import { cn } from "@/lib/utils";
 
+import { ActivityFeed } from "./activity-feed";
 import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
-import { taskQuery, useSetTaskStatus, type TaskDetail as Task } from "./tasks";
+import { taskActivityQuery, taskQuery, useSetTaskStatus, type TaskDetail as Task } from "./tasks";
 
 /** The bottom sheet opens at 60% of the screen and drags up to all of it. */
 const PEEK = 0.6;
@@ -103,6 +106,9 @@ function isEditing(target: EventTarget | null) {
 
 function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps & { task: Task }) {
   const { mutate: setStatus } = useSetTaskStatus(project.id);
+  const [tab, setTab] = useState("details");
+  const { data: activity } = useInfiniteQuery(taskActivityQuery(task.id));
+  const activityCount = activity?.pages[0]?.count;
   const index = order.indexOf(task.id);
   const previous = index > 0 ? order[index - 1] : undefined;
   const next = index >= 0 ? order[index + 1] : undefined;
@@ -167,19 +173,53 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
           <TitleField task={task} className="flex-1 sm:text-[22px] sm:leading-snug" />
         </div>
 
-        <section aria-labelledby="task-description" className="px-5 py-5 sm:px-6">
-          <h3
-            id="task-description"
-            className="mb-2 text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
-          >
-            Description
-          </h3>
-          <div className="rounded-xl border border-border bg-surface-muted/40 px-3.5 py-3">
-            <DescriptionField task={task} />
+        <Tabs value={tab} onValueChange={setTab} className="mt-5">
+          <div className="sticky top-0 z-10 bg-surface px-5 sm:px-6">
+            <TabsList variant="underline" className="w-full justify-start gap-6">
+              <TabsTrigger value="details">Details</TabsTrigger>
+              <TabsTrigger value="activity">
+                Activity{" "}
+                {activityCount !== undefined && (
+                  <CountPill active={tab === "activity"}>{activityCount}</CountPill>
+                )}
+              </TabsTrigger>
+            </TabsList>
           </div>
-        </section>
+
+          <TabsContent value="details" className="px-5 py-5 sm:px-6">
+            <section aria-labelledby="task-description">
+              <h3
+                id="task-description"
+                className="mb-2 text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+              >
+                Description
+              </h3>
+              <div className="rounded-xl border border-border bg-surface-muted/40 px-3.5 py-3">
+                <DescriptionField task={task} />
+              </div>
+            </section>
+          </TabsContent>
+
+          <TabsContent value="activity" className="px-5 py-5 sm:px-6">
+            <ActivityFeed taskId={task.id} />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
+  );
+}
+
+/** A tab's count, highlighted while its tab is open. */
+function CountPill({ active, children }: { active: boolean; children: ReactNode }) {
+  return (
+    <span
+      className={cn(
+        "rounded-full px-1.5 py-px text-[10px] font-bold tabular-nums",
+        active ? "bg-primary-soft text-primary" : "bg-surface-muted text-muted-foreground",
+      )}
+    >
+      {children}
+    </span>
   );
 }
 

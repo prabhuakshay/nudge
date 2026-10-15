@@ -5,7 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { TaskList } from "./task-list";
-import type { TaskDetail } from "./tasks";
+import type { TaskActivity, TaskDetail } from "./tasks";
 
 const INBOX = { id: 7, name: "Inbox", open_count: 3 };
 
@@ -32,15 +32,35 @@ function json(body: unknown, status = 200) {
   );
 }
 
-/** A stand-in for the server holding a few Tasks, which saves PATCHes to them. */
-function mockApi(tasks: TaskDetail[]) {
+function minutesAgo(minutes: number) {
+  return new Date(Date.now() - minutes * 60_000).toISOString();
+}
+
+/**
+ * A stand-in for the server holding a few Tasks, which saves PATCHes to them. Each Task starts
+ * with the given history, and a rename adds to it as the real server does.
+ */
+function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
+  const activity = [...history];
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = input as Request;
     const url = new URL(request.url);
+    if (url.pathname.endsWith("/activity")) {
+      return json({ items: activity, next_cursor: null, count: activity.length });
+    }
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);
     if (request.method === "PATCH" && found) {
-      Object.assign(found, await request.clone().json());
+      const change = (await request.clone().json()) as Partial<TaskDetail>;
+      if (change.title !== undefined) {
+        activity.unshift({
+          id: activity.length + 1,
+          kind: "title_changed",
+          at: minutesAgo(0),
+          data: { old: found.title, new: change.title },
+        });
+      }
+      Object.assign(found, change);
       return json({ task: found, affected: [] });
     }
     if (found) {
@@ -227,5 +247,48 @@ describe("TaskDetail", () => {
     const sheet = await openTask(user, "Buy milk");
 
     expect(within(sheet).getByRole("textbox", { name: "Title" })).toHaveValue("Buy milk");
+  });
+
+  it("shows the Task's history, newest first, in the Activity tab", async () => {
+    mockApi(
+      [task({ id: 1, title: "Buy oat milk" })],
+      [
+        { id: 3, kind: "description_edited", at: minutesAgo(2), data: {} },
+        {
+          id: 2,
+          kind: "title_changed",
+          at: minutesAgo(5),
+          data: { old: "Buy milk", new: "Buy oat milk" },
+        },
+        { id: 1, kind: "created", at: minutesAgo(10), data: {} },
+      ],
+    );
+    const user = renderList();
+    const drawer = await openTask(user, "Buy oat milk");
+
+    await user.click(await within(drawer).findByRole("tab", { name: "Activity 3" }));
+
+    const events = within(within(drawer).getByRole("tabpanel")).getAllByRole("listitem");
+    expect(events.map((event) => event.textContent)).toEqual([
+      "Edited the description2 minutes ago",
+      "Renamed from “Buy milk” to “Buy oat milk”5 minutes ago",
+      "Created this task10 minutes ago",
+    ]);
+  });
+
+  it("counts a rename in the Activity tab straight away", async () => {
+    mockApi(
+      [task({ id: 1, title: "Buy milk" })],
+      [{ id: 1, kind: "created", at: minutesAgo(10), data: {} }],
+    );
+    const user = renderList();
+    const drawer = await openTask(user, "Buy milk");
+    expect(await within(drawer).findByRole("tab", { name: "Activity 1" })).toBeInTheDocument();
+    const title = within(drawer).getByRole("textbox", { name: "Title" });
+
+    await user.clear(title);
+    await user.type(title, "Buy oat milk{Enter}");
+
+    expect(await within(drawer).findByRole("tab", { name: "Activity 2" })).toBeInTheDocument();
   });
 });

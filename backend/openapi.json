@@ -751,6 +751,80 @@
           }
         ]
       }
+    },
+    "/api/v1/tasks/{task_id}/activity": {
+      "get": {
+        "operationId": "apps_tasks_api_tasks_list_activity",
+        "summary": "List a Task's Activity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskActivityListOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return a page of a Task's history, newest first, with the number of events in all.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -1356,6 +1430,175 @@
           }
         },
         "title": "TaskPatchIn",
+        "type": "object"
+      },
+      "CreatedActivityOut": {
+        "description": "The Task was created.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "created",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "CreatedActivityOut",
+        "type": "object"
+      },
+      "DescriptionEditedActivityOut": {
+        "description": "The Task's Description was edited. The edit itself isn't kept.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "description_edited",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "DescriptionEditedActivityOut",
+        "type": "object"
+      },
+      "NoActivityData": {
+        "description": "The details of an event whose kind says it all.",
+        "properties": {},
+        "title": "NoActivityData",
+        "type": "object"
+      },
+      "TaskActivityListOut": {
+        "description": "A page of a Task's history, newest first.",
+        "properties": {
+          "items": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "created": "#/components/schemas/CreatedActivityOut",
+                  "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
+                  "title_changed": "#/components/schemas/TitleChangedActivityOut"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/CreatedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TitleChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/DescriptionEditedActivityOut"
+                }
+              ]
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page.",
+            "title": "Next Cursor"
+          },
+          "count": {
+            "description": "How many events the whole history holds.",
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "count"
+        ],
+        "title": "TaskActivityListOut",
+        "type": "object"
+      },
+      "TitleChangedActivityOut": {
+        "description": "The Task was renamed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "title_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TitleChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TitleChangedActivityOut",
+        "type": "object"
+      },
+      "TitleChangedData": {
+        "description": "The title before and after a rename.",
+        "properties": {
+          "old": {
+            "title": "Old",
+            "type": "string"
+          },
+          "new": {
+            "title": "New",
+            "type": "string"
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "TitleChangedData",
         "type": "object"
       }
     },

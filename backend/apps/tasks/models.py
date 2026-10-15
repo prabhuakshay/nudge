@@ -95,3 +95,35 @@ class Task(models.Model):
     def __str__(self) -> str:
         """Return the title, which is what the user sees in every list."""
         return self.title
+
+
+class TaskActivity(models.Model):
+    """One event in a Task's history, written by a service in the same transaction as the change.
+
+    `data` holds the event's details, shaped per `kind`; `apps.tasks.schemas` types each shape.
+    """
+
+    class Kind(models.TextChoices):
+        """What happened to the Task."""
+
+        CREATED = "created", "Created"
+        TITLE_CHANGED = "title_changed", "Title changed"
+        DESCRIPTION_EDITED = "description_edited", "Description edited"
+
+    task = models.ForeignKey(Task, on_delete=models.CASCADE, related_name="activity")
+    kind = models.CharField(max_length=32, choices=Kind)
+    at = models.DateTimeField(default=timezone.now)
+    data = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        """Model options."""
+
+        verbose_name_plural = "task activity"
+        indexes: ClassVar = [
+            models.Index(fields=["task", "-at", "-id"], name="task_activity_newest_idx"),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        """Return what happened, which is how the admin lists events."""
+        return self.get_kind_display()

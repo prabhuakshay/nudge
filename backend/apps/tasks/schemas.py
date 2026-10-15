@@ -1,9 +1,9 @@
-"""Request and response shapes for the Task and sidebar endpoints."""
+"""Request and response shapes for the Task, Activity and sidebar endpoints."""
 
 from __future__ import annotations
 
 from datetime import datetime  # noqa: TC003 - Pydantic needs the type at runtime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from ninja import Field, Schema
 from pydantic import StringConstraints
@@ -67,6 +67,60 @@ class TaskChangeOut(Schema):
 
     task: TaskDetailOut
     affected: list[AffectedTaskOut]
+
+
+class NoActivityData(Schema):
+    """The details of an event whose kind says it all."""
+
+
+class TitleChangedData(Schema):
+    """The title before and after a rename."""
+
+    old: str
+    new: str
+
+
+class CreatedActivityOut(Schema):
+    """The Task was created."""
+
+    id: int
+    kind: Literal["created"]
+    at: datetime
+    data: NoActivityData
+
+
+class TitleChangedActivityOut(Schema):
+    """The Task was renamed."""
+
+    id: int
+    kind: Literal["title_changed"]
+    at: datetime
+    data: TitleChangedData
+
+
+class DescriptionEditedActivityOut(Schema):
+    """The Task's Description was edited. The edit itself isn't kept."""
+
+    id: int
+    kind: Literal["description_edited"]
+    at: datetime
+    data: NoActivityData
+
+
+TaskActivityOut = Annotated[
+    CreatedActivityOut | TitleChangedActivityOut | DescriptionEditedActivityOut,
+    Field(discriminator="kind"),
+]
+
+
+class TaskActivityListOut(Schema):
+    """A page of a Task's history, newest first."""
+
+    items: list[TaskActivityOut]
+    next_cursor: str | None = Field(
+        description="Pass as `cursor` to get the next page; null on the last page.",
+    )
+    count: int = Field(description="How many events the whole history holds.")
 
 
 class SidebarProjectOut(Schema):

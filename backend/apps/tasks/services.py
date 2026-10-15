@@ -1,4 +1,4 @@
-"""Business rules for Projects and Tasks: Inbox, order, Status, Attachments and Activity.
+"""Business rules for Projects and Tasks: Inbox, order, Status, dates, Attachments and Activity.
 
 Every function takes the user first and reaches Projects and Tasks through that user's related
 managers, so another user's ids behave as if they don't exist. A change and the Activity event
@@ -13,12 +13,13 @@ from typing import TYPE_CHECKING
 
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Count, OuterRef, Subquery
+from django.db.models import Case, Count, OuterRef, Q, Subquery, When
 from django.db.models.functions import Coalesce
 from django.template.defaultfilters import filesizeformat
 from django.utils import timezone
 from fractional_indexing import generate_key_between
 
+from apps.accounts.services import local_zone
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
@@ -31,6 +32,8 @@ from apps.tasks.models import (
 from apps.tasks.pagination import Page, newest_first
 
 if TYPE_CHECKING:
+    from datetime import date, time
+
     from django.core.files.uploadedfile import UploadedFile
     from django.db.models import QuerySet
 
@@ -42,14 +45,44 @@ class TaskRuleError(Exception):
 
 
 @dataclass(frozen=True)
+class TaskDates:
+    """A Task's due date, time and range, as clock times in the owner's zone; all None = undated."""
+
+    due_date: date | None = None
+    due_time: time | None = None
+    start_date: date | None = None
+    start_time: time | None = None
+
+    @classmethod
+    def of(cls, task: Task) -> TaskDates:
+        """Return the Task's current dates."""
+        return cls(task.due_date, task.due_time, task.start_date, task.start_time)
+
+    def as_activity(self) -> dict[str, str | None] | None:
+        """Return the dates as Activity stores them: ISO strings, or None when undated."""
+        if self.due_date is None:
+            return None
+        return {
+            "due_date": self.due_date.isoformat(),
+            "due_time": None if self.due_time is None else self.due_time.isoformat("minutes"),
+            "start_date": None if self.start_date is None else self.start_date.isoformat(),
+            "start_time": None if self.start_time is None else self.start_time.isoformat("minutes"),
+        }
+
+
+@dataclass(frozen=True)
 class TaskEdit:
-    """The fields of a Task to change; a field left as None stays as it is."""
+    """The fields of a Task to change; a field left as None stays as it is.
+
+    `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them.
+    """
 
     title: str | None = None
     description: str | None = None
     status: Task.Status | None = None
     blocked_reason: str | None = None
     priority: Task.Priority | None = None
+    dates: TaskDates | None = None
 
 
 @dataclass(frozen=True)
@@ -96,8 +129,21 @@ def _with_counts(tasks: QuerySet[Task]) -> QuerySet[Task]:
     return tasks.annotate(attachment_count=Coalesce(Subquery(attachments), 0))
 
 
+def _with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
+    """Annotate each Task with `is_overdue`, judged by the user's clock right now.
+
+    Times are floating, so the comparison is on the user's local date and time: an all-day Task
+    is overdue once its day ends, a timed one once its time passes, a range once its end passes.
+    """
+    now = timezone.now().astimezone(local_zone(user))
+    overdue = Q(completed_at__isnull=True) & (
+        Q(due_date__lt=now.date()) | Q(due_date=now.date(), due_time__lt=now.time())
+    )
+    return tasks.annotate(is_overdue=Case(When(overdue, then=True), default=False))
+
+
 def _live_tasks(project: Project) -> QuerySet[Task]:
-    return _with_counts(project.tasks.filter(deleted_at__isnull=True))
+    return _with_overdue(_with_counts(project.tasks.filter(deleted_at__isnull=True)), project.owner)
 
 
 def open_tasks(project: Project) -> QuerySet[Task]:
@@ -134,15 +180,27 @@ def create_task(project: Project, title: str) -> Task:
             position=position,
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
-        return task
+    return _with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)
 
 
 def live_task(user: User, task_id: int) -> Task | None:
     """Return one of the user's Tasks that isn't in Trash, or None."""
-    return _with_counts(user.tasks.filter(pk=task_id, deleted_at__isnull=True)).first()
+    tasks = _with_counts(user.tasks.filter(pk=task_id, deleted_at__isnull=True))
+    return _with_overdue(tasks, user).first()
 
 
-_EDITABLE_FIELDS = ("title", "description", "status", "blocked_reason", "priority", "completed_at")
+_EDITABLE_FIELDS = (
+    "title",
+    "description",
+    "status",
+    "blocked_reason",
+    "priority",
+    "completed_at",
+    "due_date",
+    "due_time",
+    "start_date",
+    "start_time",
+)
 
 
 def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
@@ -155,6 +213,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     if task is None:
         return None
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
+    dates_before = TaskDates.of(task)
     _apply(task, edit)
     changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
     affected = []
@@ -165,8 +224,10 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     with transaction.atomic():
         if changed:
             task.save(update_fields=[*changed, "updated_at"])
-        TaskActivity.objects.bulk_create(_activity(task, before))
-    return TaskChange(task=task, affected=affected)
+        TaskActivity.objects.bulk_create(_activity(task, before, dates_before))
+    # Re-read, because a change of dates or Status can change whether the Task is overdue.
+    fresh = _with_overdue(_with_counts(user.tasks.all()), user).get(pk=task.pk)
+    return TaskChange(task=fresh, affected=affected)
 
 
 def _apply(task: Task, edit: TaskEdit) -> None:
@@ -186,9 +247,16 @@ def _apply(task: Task, edit: TaskEdit) -> None:
             message = "Only a Blocked task can have a Blocked reason."
             raise TaskRuleError(message)
         task.blocked_reason = edit.blocked_reason
+    if edit.dates is not None:
+        task.due_date, task.due_time = edit.dates.due_date, edit.dates.due_time
+        task.start_date, task.start_time = edit.dates.start_date, edit.dates.start_time
 
 
-def _activity(task: Task, before: dict[str, object]) -> list[TaskActivity]:
+def _activity(
+    task: Task,
+    before: dict[str, object],
+    dates_before: TaskDates,
+) -> list[TaskActivity]:
     """Return the history events for the difference between `before` and the Task as it is now."""
     events = []
     if task.title != before["title"]:
@@ -202,6 +270,10 @@ def _activity(task: Task, before: dict[str, object]) -> list[TaskActivity]:
     if task.priority != before["priority"]:
         data = {"old": before["priority"], "new": task.priority}
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.PRIORITY_CHANGED, data=data))
+    dates = TaskDates.of(task)
+    if dates != dates_before:
+        data = {"old": dates_before.as_activity(), "new": dates.as_activity()}
+        events.append(TaskActivity(task=task, kind=TaskActivity.Kind.DATES_CHANGED, data=data))
     return events
 
 

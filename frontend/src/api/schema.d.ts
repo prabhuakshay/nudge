@@ -676,6 +676,25 @@ export interface components {
        * @description When it was Completed or marked Won't do.
        */
       completed_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
       /**
        * Created At
        * Format: date-time
@@ -730,6 +749,25 @@ export interface components {
        * @description When it was Completed or marked Won't do.
        */
       completed_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
       /**
        * Created At
        * Format: date-time
@@ -773,6 +811,26 @@ export interface components {
       affected: components["schemas"]["AffectedTaskOut"][];
     };
     /**
+     * TaskDatesIn
+     * @description A Task's due date, time and range, all clock times in the user's time zone.
+     *
+     *     Without a time the Task is all-day. A start turns it into a range ending at the due date;
+     *     start and due are then both all-day or both timed. Times have minute precision.
+     */
+    TaskDatesIn: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Due Time */
+      due_time?: string | null;
+      /** Start Date */
+      start_date?: string | null;
+      /** Start Time */
+      start_time?: string | null;
+    };
+    /**
      * TaskPatchIn
      * @description The fields of a Task to change; fields left out stay as they are.
      */
@@ -792,6 +850,8 @@ export interface components {
        */
       blocked_reason?: string | null;
       priority?: components["schemas"]["Priority"] | null;
+      /** @description Replaces all of the Task's dates; null removes them. */
+      dates?: components["schemas"]["TaskDatesIn"] | null;
     };
     /**
      * AttachmentAddedActivityOut
@@ -857,6 +917,50 @@ export interface components {
        */
       at: string;
       data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * DatesChangedActivityOut
+     * @description The Task's due date, time or range was set, changed or removed.
+     */
+    DatesChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "dates_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["DatesChangedData"];
+    };
+    /**
+     * DatesChangedData
+     * @description The dates before and after a change; null when the Task had or has none.
+     */
+    DatesChangedData: {
+      old: components["schemas"]["DatesData"] | null;
+      new: components["schemas"]["DatesData"] | null;
+    };
+    /**
+     * DatesData
+     * @description A Task's dates at one moment, as a change recorded them.
+     */
+    DatesData: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Due Time */
+      due_time: string | null;
+      /** Start Date */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
     };
     /**
      * DescriptionEditedActivityOut
@@ -952,6 +1056,7 @@ export interface components {
         | components["schemas"]["PriorityChangedActivityOut"]
         | components["schemas"]["AttachmentAddedActivityOut"]
         | components["schemas"]["AttachmentRemovedActivityOut"]
+        | components["schemas"]["DatesChangedActivityOut"]
       )[];
       /**
        * Next Cursor

@@ -1,4 +1,4 @@
-"""How Tasks are read for a list: each row carries its Attachment count, depth and overdue flag."""
+"""How Tasks are read for a list: each row carries its counts, depth and overdue flag."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.accounts.services import local_zone
-from apps.tasks.models import Attachment
+from apps.tasks.models import Attachment, Comment
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -18,17 +18,22 @@ if TYPE_CHECKING:
     from apps.tasks.models import Task
 
 
-def with_counts(tasks: QuerySet[Task]) -> QuerySet[Task]:
-    """Annotate each Task with `attachment_count`."""
+def _count(model: type[Attachment | Comment]) -> Coalesce:
+    """Return how many rows of the model belong to each Task, as an annotation."""
     # A subquery rather than a join: grouping would drop the model's default ordering.
-    attachments = (
-        Attachment.objects.filter(task=OuterRef("pk"))
+    rows = (
+        model.objects.filter(task=OuterRef("pk"))
         .order_by()
         .values("task")
         .annotate(count=Count("pk"))
         .values("count")
     )
-    return tasks.annotate(attachment_count=Coalesce(Subquery(attachments), 0))
+    return Coalesce(Subquery(rows), 0)
+
+
+def with_counts(tasks: QuerySet[Task]) -> QuerySet[Task]:
+    """Annotate each Task with `attachment_count` and `comment_count`."""
+    return tasks.annotate(attachment_count=_count(Attachment), comment_count=_count(Comment))
 
 
 def with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:

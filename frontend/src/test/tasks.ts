@@ -24,6 +24,7 @@ export function makeTask(overrides: Partial<TaskDetail> = {}): TaskDetail {
     created_at: "2026-10-15T09:00:00Z",
     updated_at: "2026-10-15T09:00:00Z",
     attachment_count: 0,
+    comment_count: 0,
     ancestors: [],
     subtasks: [],
     ...overrides,

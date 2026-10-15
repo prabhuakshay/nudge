@@ -14,6 +14,10 @@ from apps.tasks.models import Project, Task
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
 BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
 Name = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=64)]
+CommentBody = Annotated[
+    str,
+    StringConstraints(strip_whitespace=True, min_length=1, max_length=10_000),
+]
 # These characters would break a Mention token, `[@Name](person:<id>)`, written around the name.
 PersonName = Annotated[
     str,
@@ -54,6 +58,10 @@ class TaskOut(Schema):
     attachment_count: int = Field(
         default=0,
         description="How many Attachments the Task has. A Task just added has none.",
+    )
+    comment_count: int = Field(
+        default=0,
+        description="How many Comments the Task has. A Task just added has none.",
     )
 
 
@@ -388,6 +396,22 @@ class AttachmentOut(Schema):
     size: int = Field(description="In bytes.")
     content_type: str = Field(description="Chosen by the server from the file's name.")
     created_at: datetime
+
+
+class CommentIn(Schema):
+    """A Comment's markdown body, which may hold Mention tokens of the user's People."""
+
+    body: CommentBody
+
+
+class CommentOut(Schema):
+    """A Comment on a Task. It was edited when `updated_at` differs from `created_at`."""
+
+    id: int
+    task_id: int
+    body: str = Field(description="Markdown, as the user wrote it.")
+    created_at: datetime
+    updated_at: datetime
 
 
 class ProjectOut(Schema):

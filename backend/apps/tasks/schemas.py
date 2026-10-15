@@ -11,6 +11,7 @@ from pydantic import StringConstraints
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
+BlockedReason = Annotated[str, StringConstraints(strip_whitespace=True, max_length=500)]
 
 
 class TaskOut(Schema):
@@ -20,7 +21,9 @@ class TaskOut(Schema):
     project_id: int
     title: str
     status: Task.Status
-    completed_at: datetime | None
+    priority: Task.Priority = Field(description="0 is no Priority; 1 (P1) is the most urgent.")
+    blocked_reason: str = Field(description="Why a Blocked Task waits; empty otherwise.")
+    completed_at: datetime | None = Field(description="When it was Completed or marked Won't do.")
     created_at: datetime
     updated_at: datetime
     attachment_count: int = Field(
@@ -56,7 +59,15 @@ class TaskPatchIn(Schema):
 
     title: Title | None = None
     description: str | None = Field(default=None, description="Markdown.")
-    status: Task.Status | None = None
+    status: Task.Status | None = Field(
+        default=None,
+        description="Changing it clears the Blocked reason unless one is given with it.",
+    )
+    blocked_reason: BlockedReason | None = Field(
+        default=None,
+        description="Only a Blocked Task can have one; send an empty string to clear it.",
+    )
+    priority: Task.Priority | None = None
 
 
 class AffectedTaskOut(Schema):
@@ -64,6 +75,7 @@ class AffectedTaskOut(Schema):
 
     id: int
     prior_status: Task.Status
+    prior_blocked_reason: str
 
 
 class TaskChangeOut(Schema):
@@ -82,6 +94,21 @@ class TitleChangedData(Schema):
 
     old: str
     new: str
+
+
+class StatusChangedData(Schema):
+    """The Status before and after a change, and the Blocked reason it was given, if any."""
+
+    old: Task.Status
+    new: Task.Status
+    blocked_reason: str
+
+
+class PriorityChangedData(Schema):
+    """The Priority before and after a change."""
+
+    old: Task.Priority
+    new: Task.Priority
 
 
 class CreatedActivityOut(Schema):
@@ -109,6 +136,24 @@ class DescriptionEditedActivityOut(Schema):
     kind: Literal["description_edited"]
     at: datetime
     data: NoActivityData
+
+
+class StatusChangedActivityOut(Schema):
+    """The Task's Status changed."""
+
+    id: int
+    kind: Literal["status_changed"]
+    at: datetime
+    data: StatusChangedData
+
+
+class PriorityChangedActivityOut(Schema):
+    """The Task's Priority changed."""
+
+    id: int
+    kind: Literal["priority_changed"]
+    at: datetime
+    data: PriorityChangedData
 
 
 class AttachmentData(Schema):
@@ -139,6 +184,8 @@ TaskActivityOut = Annotated[
     CreatedActivityOut
     | TitleChangedActivityOut
     | DescriptionEditedActivityOut
+    | StatusChangedActivityOut
+    | PriorityChangedActivityOut
     | AttachmentAddedActivityOut
     | AttachmentRemovedActivityOut,
     Field(discriminator="kind"),

@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 
 import { TaskList } from "./task-list";
@@ -16,6 +17,8 @@ function task(overrides: Partial<TaskDetail>): TaskDetail {
     title: "Buy milk",
     description: "",
     status: "open",
+    priority: 0,
+    blocked_reason: "",
     completed_at: null,
     created_at: "2026-10-15T09:00:00Z",
     updated_at: "2026-10-15T09:00:00Z",
@@ -49,32 +52,32 @@ function mockApi(tasks: TaskDetail[], history: TaskActivity[] = []) {
     if (url.pathname.endsWith("/activity")) {
       return json({ items: activity, next_cursor: null, count: activity.length });
     }
-    if (url.pathname.endsWith("/attachments")) {
-      return json([]);
-    }
+    if (url.pathname.endsWith("/attachments")) return json([]);
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);
     if (request.method === "PATCH" && found) {
       const change = (await request.clone().json()) as Partial<TaskDetail>;
-      if (change.title !== undefined) {
-        activity.unshift({
-          id: activity.length + 1,
-          kind: "title_changed",
-          at: minutesAgo(0),
-          data: { old: found.title, new: change.title },
-        });
-      }
-      Object.assign(found, change);
-      return json({ task: found, affected: [] });
+      return json(applyPatch(found, change, activity));
     }
-    if (found) {
-      return json(found);
-    }
+    if (found) return json(found);
     if (url.searchParams.get("closed") === "true") {
       return json({ items: [], next_cursor: null });
     }
     return json({ items: tasks, next_cursor: null });
   });
+}
+
+function applyPatch(found: TaskDetail, change: Partial<TaskDetail>, activity: TaskActivity[]) {
+  if (change.title !== undefined) {
+    const data = { old: found.title, new: change.title };
+    activity.unshift({ id: activity.length + 1, kind: "title_changed", at: minutesAgo(0), data });
+  }
+  const statusChanged = change.status !== undefined && change.status !== found.status;
+  const affected = statusChanged
+    ? [{ id: found.id, prior_status: found.status, prior_blocked_reason: found.blocked_reason }]
+    : [];
+  Object.assign(found, statusChanged ? { blocked_reason: "" } : {}, change);
+  return { task: found, affected };
 }
 
 async function patches(fetchSpy: ReturnType<typeof mockApi>) {
@@ -100,6 +103,7 @@ function renderList({ wide = true } = {}) {
     <QueryClientProvider client={new QueryClient()}>
       <TooltipProvider>
         <TaskList project={INBOX} />
+        <Toaster />
       </TooltipProvider>
     </QueryClientProvider>,
   );
@@ -294,5 +298,63 @@ describe("TaskDetail", () => {
     await user.type(title, "Buy oat milk{Enter}");
 
     expect(await within(drawer).findByRole("tab", { name: "Activity 2" })).toBeInTheDocument();
+  });
+
+  it("sets the Status from its chip, with an Undo toast that puts it back", async () => {
+    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
+    const user = renderList();
+    const drawer = await openTask(user, "Buy milk");
+
+    await user.click(within(drawer).getByRole("button", { name: "Status: Open" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Won't do" }));
+
+    expect(await within(drawer).findByRole("button", { name: "Status: Won't do" })).toBeVisible();
+    expect(await screen.findByText("Marked Won't do “Buy milk”")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+
+    expect(await within(drawer).findByRole("button", { name: "Status: Open" })).toBeVisible();
+    expect(await patches(fetchSpy)).toEqual([
+      ["/api/v1/tasks/1", { status: "wont_do" }],
+      ["/api/v1/tasks/1", { status: "open" }],
+    ]);
+  });
+
+  it("keeps a Blocked reason in its card and restores it with Undo", async () => {
+    const fetchSpy = mockApi([task({ id: 1, title: "Ship it" })]);
+    const user = renderList();
+    const drawer = await openTask(user, "Ship it");
+
+    await user.click(within(drawer).getByRole("button", { name: "Status: Open" }));
+    await user.click(screen.getByRole("menuitemradio", { name: "Blocked" }));
+    const reason = await within(drawer).findByRole("textbox", { name: "Blocked reason" });
+    await user.type(reason, "Waiting on Ada");
+    await user.tab();
+    await user.click(within(drawer).getByRole("checkbox", { name: "Complete “Ship it”" }));
+    const toast = (await screen.findByText("Completed “Ship it”")).closest<HTMLElement>("li");
+    if (!toast) throw new Error("No toast for the change.");
+    await user.click(within(toast).getByRole("button", { name: "Undo" }));
+
+    expect(await within(drawer).findByRole("textbox", { name: "Blocked reason" })).toHaveValue(
+      "Waiting on Ada",
+    );
+    expect(await patches(fetchSpy)).toEqual([
+      ["/api/v1/tasks/1", { status: "blocked" }],
+      ["/api/v1/tasks/1", { blocked_reason: "Waiting on Ada" }],
+      ["/api/v1/tasks/1", { status: "completed" }],
+      ["/api/v1/tasks/1", { status: "blocked", blocked_reason: "Waiting on Ada" }],
+    ]);
+  });
+
+  it("sets the Priority from its chip", async () => {
+    const fetchSpy = mockApi([task({ id: 1, title: "Buy milk" })]);
+    const user = renderList();
+    const drawer = await openTask(user, "Buy milk");
+
+    await user.click(within(drawer).getByRole("button", { name: "Priority: No priority" }));
+    await user.click(screen.getByRole("menuitemradio", { name: /Priority 1/ }));
+
+    const chip = await within(drawer).findByRole("button", { name: "Priority: Priority 1" });
+    expect(chip).toBeVisible();
+    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { priority: 1 }]]);
   });
 });

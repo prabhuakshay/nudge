@@ -98,7 +98,7 @@ def get_task(request: HttpRequest, task_id: int) -> Status[TaskDetailOut] | Stat
 
 @router.patch(
     "/{int:task_id}",
-    response={_HTTP_OK: TaskChangeOut, _HTTP_NOT_FOUND: ErrorOut},
+    response={_HTTP_OK: TaskChangeOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
     summary="Change a Task",
 )
 def update_task(
@@ -106,17 +106,25 @@ def update_task(
     task_id: int,
     patch: TaskPatchIn,
 ) -> Status[TaskChangeOut] | Status[ErrorOut]:
-    """Change a Task's fields, returning it and every Task whose Status changed."""
-    change = services.update_task(
-        signed_in_user(request),
-        task_id,
+    """Change a Task's fields, returning it and every Task whose Status changed.
+
+    Each changed Task comes with its Status and Blocked reason from before, so the client can
+    offer Undo without the server keeping anything.
+    """
+    edit = services.TaskEdit(
         title=patch.title,
         description=patch.description,
         status=patch.status,
+        blocked_reason=patch.blocked_reason,
+        priority=patch.priority,
     )
+    try:
+        change = services.update_task(signed_in_user(request), task_id, edit)
+    except services.TaskRuleError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    affected = [AffectedTaskOut(id=pk, prior_status=prior) for pk, prior in change.affected]
+    affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
     return Status(
         _HTTP_OK, TaskChangeOut(task=TaskDetailOut.from_orm(change.task), affected=affected)
     )

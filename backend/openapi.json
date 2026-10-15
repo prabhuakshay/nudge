@@ -729,9 +729,19 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
           }
         },
-        "description": "Change a Task's fields, returning it and every Task whose Status changed.",
+        "description": "Change a Task's fields, returning it and every Task whose Status changed.\n\nEach changed Task comes with its Status and Blocked reason from before, so the client can\noffer Undo without the server keeping anything.",
         "tags": [
           "tasks"
         ],
@@ -1386,11 +1396,25 @@
         "title": "SidebarProjectOut",
         "type": "object"
       },
+      "Priority": {
+        "description": "How urgent a Task is; P1 is the most urgent.",
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "title": "Priority",
+        "type": "integer"
+      },
       "Status": {
         "description": "Where a Task stands.",
         "enum": [
           "open",
-          "completed"
+          "completed",
+          "wont_do",
+          "blocked"
         ],
         "title": "Status",
         "type": "string"
@@ -1443,6 +1467,15 @@
           "status": {
             "$ref": "#/components/schemas/Status"
           },
+          "priority": {
+            "$ref": "#/components/schemas/Priority",
+            "description": "0 is no Priority; 1 (P1) is the most urgent."
+          },
+          "blocked_reason": {
+            "description": "Why a Blocked Task waits; empty otherwise.",
+            "title": "Blocked Reason",
+            "type": "string"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -1453,6 +1486,7 @@
                 "type": "null"
               }
             ],
+            "description": "When it was Completed or marked Won't do.",
             "title": "Completed At"
           },
           "created_at": {
@@ -1477,6 +1511,8 @@
           "project_id",
           "title",
           "status",
+          "priority",
+          "blocked_reason",
           "completed_at",
           "created_at",
           "updated_at"
@@ -1530,6 +1566,15 @@
           "status": {
             "$ref": "#/components/schemas/Status"
           },
+          "priority": {
+            "$ref": "#/components/schemas/Priority",
+            "description": "0 is no Priority; 1 (P1) is the most urgent."
+          },
+          "blocked_reason": {
+            "description": "Why a Blocked Task waits; empty otherwise.",
+            "title": "Blocked Reason",
+            "type": "string"
+          },
           "completed_at": {
             "anyOf": [
               {
@@ -1540,6 +1585,7 @@
                 "type": "null"
               }
             ],
+            "description": "When it was Completed or marked Won't do.",
             "title": "Completed At"
           },
           "created_at": {
@@ -1569,6 +1615,8 @@
           "project_id",
           "title",
           "status",
+          "priority",
+          "blocked_reason",
           "completed_at",
           "created_at",
           "updated_at",
@@ -1586,11 +1634,16 @@
           },
           "prior_status": {
             "$ref": "#/components/schemas/Status"
+          },
+          "prior_blocked_reason": {
+            "title": "Prior Blocked Reason",
+            "type": "string"
           }
         },
         "required": [
           "id",
-          "prior_status"
+          "prior_status",
+          "prior_blocked_reason"
         ],
         "title": "AffectedTaskOut",
         "type": "object"
@@ -1648,6 +1701,30 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/Status"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Changing it clears the Blocked reason unless one is given with it."
+          },
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only a Blocked Task can have one; send an empty string to clear it.",
+            "title": "Blocked Reason"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Priority"
               },
               {
                 "type": "null"
@@ -1798,6 +1875,105 @@
         "title": "NoActivityData",
         "type": "object"
       },
+      "PriorityChangedActivityOut": {
+        "description": "The Task's Priority changed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "priority_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PriorityChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "PriorityChangedActivityOut",
+        "type": "object"
+      },
+      "PriorityChangedData": {
+        "description": "The Priority before and after a change.",
+        "properties": {
+          "old": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "new": {
+            "$ref": "#/components/schemas/Priority"
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "PriorityChangedData",
+        "type": "object"
+      },
+      "StatusChangedActivityOut": {
+        "description": "The Task's Status changed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "status_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/StatusChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "StatusChangedActivityOut",
+        "type": "object"
+      },
+      "StatusChangedData": {
+        "description": "The Status before and after a change, and the Blocked reason it was given, if any.",
+        "properties": {
+          "old": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "new": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "blocked_reason": {
+            "title": "Blocked Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "old",
+          "new",
+          "blocked_reason"
+        ],
+        "title": "StatusChangedData",
+        "type": "object"
+      },
       "TaskActivityListOut": {
         "description": "A page of a Task's history, newest first.",
         "properties": {
@@ -1809,6 +1985,8 @@
                   "attachment_removed": "#/components/schemas/AttachmentRemovedActivityOut",
                   "created": "#/components/schemas/CreatedActivityOut",
                   "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
+                  "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
+                  "status_changed": "#/components/schemas/StatusChangedActivityOut",
                   "title_changed": "#/components/schemas/TitleChangedActivityOut"
                 },
                 "propertyName": "kind"
@@ -1822,6 +2000,12 @@
                 },
                 {
                   "$ref": "#/components/schemas/DescriptionEditedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/StatusChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/PriorityChangedActivityOut"
                 },
                 {
                   "$ref": "#/components/schemas/AttachmentAddedActivityOut"

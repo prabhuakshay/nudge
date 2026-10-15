@@ -19,7 +19,15 @@ from django.template.defaultfilters import filesizeformat
 from django.utils import timezone
 from fractional_indexing import generate_key_between
 
-from apps.tasks.models import INBOX_NAME, Attachment, Project, Task, TaskActivity
+from apps.tasks.models import (
+    CLOSED_STATUSES,
+    INBOX_NAME,
+    OPEN_STATUSES,
+    Attachment,
+    Project,
+    Task,
+    TaskActivity,
+)
 from apps.tasks.pagination import Page, newest_first
 
 if TYPE_CHECKING:
@@ -29,12 +37,36 @@ if TYPE_CHECKING:
     from apps.accounts.models import User
 
 
+class TaskRuleError(Exception):
+    """A change that would break a Task rule. The message says which, in the user's words."""
+
+
+@dataclass(frozen=True)
+class TaskEdit:
+    """The fields of a Task to change; a field left as None stays as it is."""
+
+    title: str | None = None
+    description: str | None = None
+    status: Task.Status | None = None
+    blocked_reason: str | None = None
+    priority: Task.Priority | None = None
+
+
+@dataclass(frozen=True)
+class AffectedTask:
+    """A Task whose Status a change touched, with what it had before, so Undo can restore it."""
+
+    id: int
+    prior_status: Task.Status
+    prior_blocked_reason: str
+
+
 @dataclass(frozen=True)
 class TaskChange:
-    """A Task after a change, and the Tasks whose Status it changed, with their prior Status."""
+    """A Task after a change, and the Tasks whose Status it changed."""
 
     task: Task
-    affected: list[tuple[int, Task.Status]]
+    affected: list[AffectedTask]
 
 
 def create_inbox(user: User) -> Project:
@@ -69,12 +101,12 @@ def _live_tasks(project: Project) -> QuerySet[Task]:
 
 
 def open_tasks(project: Project) -> QuerySet[Task]:
-    """Return the Project's open Tasks in the user's manual order."""
-    return _live_tasks(project).filter(status=Task.Status.OPEN)
+    """Return the Project's open and Blocked Tasks in the user's manual order."""
+    return _live_tasks(project).filter(status__in=OPEN_STATUSES)
 
 
 def open_task_count(project: Project) -> int:
-    """Return how many open Tasks the Project holds."""
+    """Return how many open and Blocked Tasks the Project holds."""
     return open_tasks(project).count()
 
 
@@ -84,7 +116,7 @@ def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
     Raises:
         InvalidCursorError: The cursor wasn't one this function returned.
     """
-    closed = _live_tasks(project).exclude(status=Task.Status.OPEN)
+    closed = _live_tasks(project).filter(status__in=CLOSED_STATUSES)
     return newest_first(closed, "completed_at", cursor)
 
 
@@ -110,48 +142,67 @@ def live_task(user: User, task_id: int) -> Task | None:
     return _with_counts(user.tasks.filter(pk=task_id, deleted_at__isnull=True)).first()
 
 
-def update_task(
-    user: User,
-    task_id: int,
-    *,
-    title: str | None = None,
-    description: str | None = None,
-    status: Task.Status | None = None,
-) -> TaskChange | None:
+_EDITABLE_FIELDS = ("title", "description", "status", "blocked_reason", "priority", "completed_at")
+
+
+def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     """Change the given fields of one of the user's Tasks; return None if it isn't theirs.
 
-    Completing a Task records when; reopening it clears that.
+    Raises:
+        TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked.
     """
     task = live_task(user, task_id)
     if task is None:
         return None
-    changed: list[str] = []
-    events: list[TaskActivity] = []
-    if title is not None and title != task.title:
-        events.append(
-            TaskActivity(
-                task=task,
-                kind=TaskActivity.Kind.TITLE_CHANGED,
-                data={"old": task.title, "new": title},
-            ),
+    before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
+    _apply(task, edit)
+    changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
+    affected = []
+    if "status" in changed:
+        affected.append(
+            AffectedTask(task.pk, Task.Status(before["status"]), before["blocked_reason"]),
         )
-        task.title = title
-        changed.append("title")
-    if description is not None and description != task.description:
-        events.append(TaskActivity(task=task, kind=TaskActivity.Kind.DESCRIPTION_EDITED))
-        task.description = description
-        changed.append("description")
-    affected: list[tuple[int, Task.Status]] = []
-    if status is not None and status != task.status:
-        affected.append((task.pk, Task.Status(task.status)))
-        task.status = status
-        task.completed_at = timezone.now() if status == Task.Status.COMPLETED else None
-        changed += ["status", "completed_at"]
     with transaction.atomic():
         if changed:
             task.save(update_fields=[*changed, "updated_at"])
-        TaskActivity.objects.bulk_create(events)
+        TaskActivity.objects.bulk_create(_activity(task, before))
     return TaskChange(task=task, affected=affected)
+
+
+def _apply(task: Task, edit: TaskEdit) -> None:
+    if edit.title is not None:
+        task.title = edit.title
+    if edit.description is not None:
+        task.description = edit.description
+    if edit.priority is not None:
+        task.priority = edit.priority
+    if edit.status is not None and edit.status != task.status:
+        task.status = edit.status
+        task.completed_at = timezone.now() if edit.status in CLOSED_STATUSES else None
+        # A reason belongs to one spell of being Blocked, so any Status change drops it.
+        task.blocked_reason = ""
+    if edit.blocked_reason is not None:
+        if edit.blocked_reason and task.status != Task.Status.BLOCKED:
+            message = "Only a Blocked task can have a Blocked reason."
+            raise TaskRuleError(message)
+        task.blocked_reason = edit.blocked_reason
+
+
+def _activity(task: Task, before: dict[str, object]) -> list[TaskActivity]:
+    """Return the history events for the difference between `before` and the Task as it is now."""
+    events = []
+    if task.title != before["title"]:
+        data = {"old": before["title"], "new": task.title}
+        events.append(TaskActivity(task=task, kind=TaskActivity.Kind.TITLE_CHANGED, data=data))
+    if task.description != before["description"]:
+        events.append(TaskActivity(task=task, kind=TaskActivity.Kind.DESCRIPTION_EDITED))
+    if task.status != before["status"]:
+        data = {"old": before["status"], "new": task.status, "blocked_reason": task.blocked_reason}
+        events.append(TaskActivity(task=task, kind=TaskActivity.Kind.STATUS_CHANGED, data=data))
+    if task.priority != before["priority"]:
+        data = {"old": before["priority"], "new": task.priority}
+        events.append(TaskActivity(task=task, kind=TaskActivity.Kind.PRIORITY_CHANGED, data=data))
+    return events
 
 
 def task_activity(task: Task, cursor: str | None = None) -> Page[TaskActivity]:

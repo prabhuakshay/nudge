@@ -31,16 +31,26 @@ class _FeedThrottle(AnonRateThrottle):
     scope = "calendar_feed"
 
 
-@router.get("/feed", response=CalendarFeedOut, summary="Get the Calendar feed address")
-def get_feed(request: HttpRequest) -> CalendarFeedOut:
+@router.get(
+    "/feed",
+    response={HTTPStatus.OK: CalendarFeedOut},
+    summary="Get the Calendar feed address",
+)
+def get_feed(request: HttpRequest) -> Status[CalendarFeedOut]:
     """Return the signed-in user's feed address, or null while the feed is off."""
-    return CalendarFeedOut(url=calendar_feed.feed_url(signed_in_user(request)))
+    url = calendar_feed.feed_url(signed_in_user(request))
+    return Status(HTTPStatus.OK, CalendarFeedOut(url=url))
 
 
-@router.post("/feed", response=CalendarFeedOut, summary="Turn on or reset the Calendar feed")
-def turn_on_feed(request: HttpRequest) -> CalendarFeedOut:
+@router.post(
+    "/feed",
+    response={HTTPStatus.OK: CalendarFeedOut},
+    summary="Turn on or reset the Calendar feed",
+)
+def turn_on_feed(request: HttpRequest) -> Status[CalendarFeedOut]:
     """Give the user a new feed address; any old address stops working."""
-    return CalendarFeedOut(url=calendar_feed.turn_on(signed_in_user(request)))
+    url = calendar_feed.turn_on(signed_in_user(request))
+    return Status(HTTPStatus.OK, CalendarFeedOut(url=url))
 
 
 @router.delete(

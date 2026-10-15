@@ -33,15 +33,15 @@ _PROJECT_NOT_FOUND = ErrorOut(detail="Project not found in Trash.")
 _NOT_IN_TRASH = ErrorOut(detail="Not everything given is in Trash.")
 
 
-@router.get("/trash", response=list[TrashedOut], summary="List the Trash")
-def list_trash(request: HttpRequest) -> list[TrashedTaskOut | TrashedProjectOut]:
+@router.get("/trash", response={HTTPStatus.OK: list[TrashedOut]}, summary="List the Trash")
+def list_trash(request: HttpRequest) -> Status[list[TrashedTaskOut | TrashedProjectOut]]:
     """Return one row per deleted Task or Project unit, most recently deleted first."""
     user = signed_in_user(request)
     rows: list[TrashedTaskOut | TrashedProjectOut] = [
         *(TrashedTaskOut.from_orm(task) for task in trash.trashed_tasks(user)),
         *(TrashedProjectOut.from_orm(project) for project in project_trash.trashed_projects(user)),
     ]
-    return sorted(rows, key=lambda row: row.deleted_at, reverse=True)
+    return Status(HTTPStatus.OK, sorted(rows, key=lambda row: row.deleted_at, reverse=True))
 
 
 @router.post(

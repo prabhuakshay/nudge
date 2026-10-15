@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
-from ninja import Router
+from ninja import Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.palette import PaletteColor
@@ -59,12 +60,12 @@ def _tag_out(found: tags.SidebarTag) -> SidebarTagOut:
     )
 
 
-@router.get("", response=SidebarOut, summary="Get the sidebar")
-def sidebar(request: HttpRequest) -> SidebarOut:
+@router.get("", response={HTTPStatus.OK: SidebarOut}, summary="Get the sidebar")
+def sidebar(request: HttpRequest) -> Status[SidebarOut]:
     """Return everything the sidebar lists, with open counts for Projects, Tags and views."""
     user = signed_in_user(request)
     found = projects.sidebar(user)
-    return SidebarOut(
+    listed = SidebarOut(
         inbox=_project_out(found.inbox, found),
         items=[_item_out(item, found) for item in found.items],
         archived=[_project_out(project, found) for project in found.archived],
@@ -73,3 +74,4 @@ def sidebar(request: HttpRequest) -> SidebarOut:
         tags=[_tag_out(found) for found in tags.sidebar_tags(user)],
         people=[PersonOut.from_orm(person) for person in people.people(user)],
     )
+    return Status(HTTPStatus.OK, listed)

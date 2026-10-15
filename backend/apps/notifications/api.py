@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from django.conf import settings
 from ninja import Router, Status
 
-from apps.accounts.models import User
+from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.notifications import services
 from apps.notifications.schemas import (
@@ -27,20 +27,15 @@ router = Router()
 _NOT_FOUND = ErrorOut(detail="Notification not found.")
 
 
-def _user(request: HttpRequest) -> User:
-    user = request.user
-    assert isinstance(user, User)  # noqa: S101 - the API's global auth only lets signed-in users in
-    return user
-
-
-@router.get("", response=NotificationListOut, summary="List notifications")
-def notifications(request: HttpRequest) -> NotificationListOut:
+@router.get("", response={HTTPStatus.OK: NotificationListOut}, summary="List notifications")
+def notifications(request: HttpRequest) -> Status[NotificationListOut]:
     """Return the user's latest notifications and their unread count."""
-    user = _user(request)
-    return NotificationListOut(
+    user = signed_in_user(request)
+    listed = NotificationListOut(
         items=[NotificationOut.from_orm(n) for n in services.recent_notifications(user)],
         unread_count=services.unread_count(user),
     )
+    return Status(HTTPStatus.OK, listed)
 
 
 @router.post(
@@ -50,7 +45,7 @@ def notifications(request: HttpRequest) -> NotificationListOut:
 )
 def mark_read(request: HttpRequest, notification_id: int) -> Status[None] | Status[ErrorOut]:
     """Mark one notification as read."""
-    if not services.mark_read(_user(request), notification_id):
+    if not services.mark_read(signed_in_user(request), notification_id):
         return Status(HTTPStatus.NOT_FOUND, _NOT_FOUND)
     return Status(HTTPStatus.NO_CONTENT, None)
 
@@ -58,7 +53,7 @@ def mark_read(request: HttpRequest, notification_id: int) -> Status[None] | Stat
 @router.post("/read-all", response={HTTPStatus.NO_CONTENT: None}, summary="Mark all as read")
 def mark_all_read(request: HttpRequest) -> Status[None]:
     """Mark every notification as read."""
-    services.mark_all_read(_user(request))
+    services.mark_all_read(signed_in_user(request))
     return Status(HTTPStatus.NO_CONTENT, None)
 
 
@@ -69,7 +64,7 @@ def mark_all_read(request: HttpRequest) -> Status[None]:
 )
 def dismiss(request: HttpRequest, notification_id: int) -> Status[None] | Status[ErrorOut]:
     """Remove one notification from the notification center."""
-    if not services.dismiss(_user(request), notification_id):
+    if not services.dismiss(signed_in_user(request), notification_id):
         return Status(HTTPStatus.NOT_FOUND, _NOT_FOUND)
     return Status(HTTPStatus.NO_CONTENT, None)
 
@@ -79,16 +74,15 @@ def dismiss(request: HttpRequest, notification_id: int) -> Status[None] | Status
 )
 def send_test(request: HttpRequest) -> Status[NotificationOut]:
     """Notify the user, to check that notifications reach their devices."""
-    notification = services.send_test_notification(_user(request))
+    notification = services.send_test_notification(signed_in_user(request))
     return Status(HTTPStatus.CREATED, NotificationOut.from_orm(notification))
 
 
-@router.get("/push", response=PushConfigOut, summary="Get push settings")
-def push_config(request: HttpRequest) -> PushConfigOut:
+@router.get("/push", response={HTTPStatus.OK: PushConfigOut}, summary="Get push settings")
+def push_config(request: HttpRequest) -> Status[PushConfigOut]:
     """Return the key browsers need to subscribe, if the server has push set up."""
-    return PushConfigOut(
-        public_key=settings.VAPID_PUBLIC_KEY if services.push_is_configured() else None,
-    )
+    key = settings.VAPID_PUBLIC_KEY if services.push_is_configured() else None
+    return Status(HTTPStatus.OK, PushConfigOut(public_key=key))
 
 
 @router.post(
@@ -99,7 +93,7 @@ def push_config(request: HttpRequest) -> PushConfigOut:
 def subscribe(request: HttpRequest, subscription: PushSubscriptionIn) -> Status[None]:
     """Push the user's notifications to this browser."""
     services.save_push_subscription(
-        _user(request),
+        signed_in_user(request),
         endpoint=subscription.endpoint,
         p256dh=subscription.keys.p256dh,
         auth=subscription.keys.auth,
@@ -114,5 +108,5 @@ def subscribe(request: HttpRequest, subscription: PushSubscriptionIn) -> Status[
 )
 def unsubscribe(request: HttpRequest, subscription: PushUnsubscribeIn) -> Status[None]:
     """Stop pushing the user's notifications to this browser."""
-    services.delete_push_subscription(_user(request), subscription.endpoint)
+    services.delete_push_subscription(signed_in_user(request), subscription.endpoint)
     return Status(HTTPStatus.NO_CONTENT, None)

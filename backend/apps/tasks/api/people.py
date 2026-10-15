@@ -19,10 +19,11 @@ if TYPE_CHECKING:
 router = Router()
 
 
-@router.get("", response=list[PersonOut], summary="List People")
-def list_people(request: HttpRequest) -> list[PersonOut]:
+@router.get("", response={HTTPStatus.OK: list[PersonOut]}, summary="List People")
+def list_people(request: HttpRequest) -> Status[list[PersonOut]]:
     """Return the user's People, A to Z."""
-    return [PersonOut.from_orm(found) for found in people.people(signed_in_user(request))]
+    found = people.people(signed_in_user(request))
+    return Status(HTTPStatus.OK, [PersonOut.from_orm(person) for person in found])
 
 
 @router.post(

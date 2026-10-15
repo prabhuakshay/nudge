@@ -16,7 +16,7 @@ import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ResponsivePopover } from "@/components/ui/responsive-popover";
 import { cn } from "@/lib/utils";
 
 import { shortTime, type Dates } from "./due";
@@ -57,31 +57,15 @@ export function DatePicker({
   const due = task.due_date === null ? undefined : parseISO(task.due_date);
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent
-        align={align}
-        aria-label="Date"
-        className="w-[19rem] p-0"
-        // The picker sits inside a clickable row in the list; its clicks mustn't open the Task.
-        onClick={(event) => {
-          event.stopPropagation();
-        }}
-      >
-        <QuickDays dates={task} today={today} onChange={save} />
-        <Calendar
-          mode="single"
-          selected={due}
-          defaultMonth={due ?? today}
-          onSelect={(day: Date | undefined) => {
-            if (day) save({ due_date: isoDate(day) });
-          }}
-          className="mx-auto"
-        />
-        <TimeFields dates={task} onChange={save} />
-        <RepeatRows task={task} today={today} />
-        <RemindRow task={task} />
-        <div className="flex justify-end border-t border-border p-2">
+    <ResponsivePopover
+      label="Date"
+      trigger={children}
+      open={open}
+      onOpenChange={setOpen}
+      align={align}
+      className="w-[19rem]"
+      footer={
+        <div className="flex shrink-0 justify-end border-t border-border p-2">
           <Button
             variant="ghost"
             onClick={() => {
@@ -91,8 +75,22 @@ export function DatePicker({
             Close
           </Button>
         </div>
-      </PopoverContent>
-    </Popover>
+      }
+    >
+      <QuickDays dates={task} today={today} onChange={save} />
+      <Calendar
+        mode="single"
+        selected={due}
+        defaultMonth={due ?? today}
+        onSelect={(day: Date | undefined) => {
+          if (day) save({ due_date: isoDate(day) });
+        }}
+        className="mx-auto"
+      />
+      <TimeFields dates={task} onChange={save} />
+      <RepeatRows task={task} today={today} />
+      <RemindRow task={task} />
+    </ResponsivePopover>
   );
 }
 

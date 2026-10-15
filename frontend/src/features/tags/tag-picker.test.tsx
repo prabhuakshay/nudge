@@ -76,3 +76,18 @@ describe("Tags in the drawer", () => {
     expect(screen.queryByRole("option", { name: /Create/ })).toBeNull();
   });
 });
+
+describe("Tags on phones", () => {
+  it("picks a Tag from a bottom sheet", async () => {
+    const fetchSpy = mockApi([task({ id: 1, title: "Report" })]);
+    const user = renderList({ wide: false });
+    const drawer = await openTask(user, "Report");
+
+    await user.click(within(drawer).getByRole("button", { name: "Add tag" }));
+    const sheet = await screen.findByRole("dialog", { name: "Tags" });
+    await user.click(within(sheet).getByRole("option", { name: "home" }));
+
+    expect(sheet).toHaveAttribute("data-vaul-drawer");
+    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { tag_ids: [HOME_TAG.id] }]]);
+  });
+});

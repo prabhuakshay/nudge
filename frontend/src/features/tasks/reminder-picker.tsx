@@ -2,7 +2,7 @@ import { Check, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ResponsivePopover } from "@/components/ui/responsive-popover";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
 
@@ -46,22 +46,26 @@ export function ReminderPicker({ dates, disabled, reminders, onChange }: PickerP
   };
 
   return (
-    <Popover
+    <ResponsivePopover
+      label="Reminders"
+      align="end"
+      className="w-60"
       onOpenChange={() => {
         setCustom(false);
       }}
-    >
-      <PopoverTrigger asChild disabled={disabled || dates.due_date === null}>
+      trigger={
         <button
           type="button"
           aria-label={`Reminders: ${label}`}
+          disabled={disabled || dates.due_date === null}
           className="flex h-9 w-40 items-center justify-between gap-1 rounded-md border border-border bg-surface px-2.5 text-sm disabled:opacity-50 sm:h-8"
         >
           <span className="truncate">{label}</span>
           <Plus className="size-3.5 shrink-0 text-muted-foreground" aria-hidden />
         </button>
-      </PopoverTrigger>
-      <PopoverContent align="end" aria-label="Reminders" className="w-60 p-1">
+      }
+    >
+      <div className="p-1">
         {custom ? (
           <CustomReminder
             dates={dates}
@@ -84,8 +88,8 @@ export function ReminderPicker({ dates, disabled, reminders, onChange }: PickerP
             }}
           />
         )}
-      </PopoverContent>
-    </Popover>
+      </div>
+    </ResponsivePopover>
   );
 }
 

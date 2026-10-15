@@ -171,3 +171,25 @@ describe("Reminders", () => {
     ]);
   });
 });
+
+describe("Reminders on phones", () => {
+  it("adds a Reminder from a bottom sheet over the date sheet", async () => {
+    const fetchSpy = mockApi(makeTask(AT_TWO));
+    const user = renderList({ wide: false });
+    await user.click(await screen.findByText("Buy milk"));
+    const drawer = await screen.findByRole("dialog", { name: "Task details" });
+    await user.click(within(drawer).getByRole("button", { name: /^Date: / }));
+    const picker = await screen.findByRole("dialog", { name: "Date" });
+    const trigger = within(picker).getByRole("button", { name: /^Reminders:/ });
+    await vi.waitFor(() => {
+      expect(trigger).toBeEnabled();
+    });
+
+    await user.click(trigger);
+    const sheet = await screen.findByRole("dialog", { name: "Reminders" });
+    await user.click(within(sheet).getByRole("button", { name: "30 minutes before" }));
+
+    expect(sheet).toHaveAttribute("data-vaul-drawer");
+    expect(await patchBodies(fetchSpy)).toEqual([{ reminders: [-30] }]);
+  });
+});

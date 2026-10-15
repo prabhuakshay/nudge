@@ -19,6 +19,20 @@ Object.defineProperty(window, "matchMedia", {
   }),
 });
 
+// cmdk measures its list and scrolls the active option into view, which jsdom can't do.
+globalThis.ResizeObserver = class {
+  observe() {
+    return undefined;
+  }
+  unobserve() {
+    return undefined;
+  }
+  disconnect() {
+    return undefined;
+  }
+};
+Element.prototype.scrollIntoView = () => undefined;
+
 afterEach(() => {
   cleanup();
   // Toasts live in sonner's module state, which a new Toaster replays; start each test without any.

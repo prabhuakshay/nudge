@@ -5,10 +5,11 @@ import userEvent from "@testing-library/user-event";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { makeTask } from "@/test/tasks";
 
+import { INBOX as DRAWER_INBOX } from "./drawer-test-utils";
 import { TaskList } from "./task-list";
 import type { TaskDetail } from "./tasks";
 
-const INBOX = { id: 7, name: "Inbox", open_count: 1 };
+const INBOX = { ...DRAWER_INBOX, open_count: 1 };
 
 const task = makeTask;
 
@@ -28,6 +29,7 @@ function mockApi(saved: TaskDetail) {
       Object.assign(saved, dates ?? {});
       return json({ task: saved, affected: [] });
     }
+    if (url.pathname.endsWith("/sidebar")) return json({ inbox: INBOX, items: [] });
     if (url.pathname.endsWith("/activity")) {
       return json({ items: [], next_cursor: null, count: 0 });
     }

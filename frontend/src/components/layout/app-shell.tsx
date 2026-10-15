@@ -11,12 +11,13 @@ import { TimeZoneBanner } from "@/features/time-zone/time-zone-banner";
 
 import { BottomNav } from "./bottom-nav";
 import { Clock } from "./clock";
+import { MobileMenu } from "./mobile-menu";
 import { Sidebar } from "./sidebar";
 import { UserAvatar } from "./user-avatar";
 
 /**
  * The signed-in layout. A top bar holds notifications and the theme switch everywhere. Mobile
- * adds the logo and account there plus bottom navigation; from the `lg` breakpoint those move
+ * adds the menu, logo and account there plus bottom navigation; from the `lg` breakpoint those move
  * into a permanent sidebar. It also hosts the toasts and tooltips every page can use.
  */
 export function AppShell({ user, children }: { user: User; children: ReactNode }) {
@@ -27,9 +28,10 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)] lg:px-8">
-            <span className="lg:hidden">
+            <div className="flex items-center gap-1 lg:hidden">
+              <MobileMenu />
               <LogoMark className="size-8" />
-            </span>
+            </div>
             {/* On phones the clock is fixed to the viewport, so the top bar must not use backdrop-blur:
               a backdrop filter would trap fixed children inside the bar. */}
             <Clock />

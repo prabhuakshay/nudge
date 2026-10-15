@@ -154,4 +154,27 @@ describe("ActivityFeed", () => {
     expect(await screen.findByText("Deleted the attachment “old.pdf”")).toBeInTheDocument();
     expect(screen.getByText("Attached “receipt.png”")).toBeInTheDocument();
   });
+
+  it("says which Projects a Task moved between", async () => {
+    const moved = {
+      id: 3,
+      kind: "moved",
+      at: NEWER.at,
+      data: { from_project: "Inbox", to_project: "Work" },
+    };
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: [moved], next_cursor: null, count: 1 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <TooltipProvider>
+          <ActivityFeed taskId={1} />
+        </TooltipProvider>
+      </QueryClientProvider>,
+    );
+
+    expect(await screen.findByText("Moved from “Inbox” to “Work”")).toBeInTheDocument();
+  });
 });

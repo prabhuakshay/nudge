@@ -6,6 +6,7 @@ import { AppShell } from "./app-shell";
 
 vi.mock("./sidebar", () => ({ Sidebar: () => null }));
 vi.mock("./bottom-nav", () => ({ BottomNav: () => null }));
+vi.mock("./mobile-menu", () => ({ MobileMenu: () => null }));
 vi.mock("@/features/notifications/notification-center", () => ({
   NotificationCenter: () => null,
 }));

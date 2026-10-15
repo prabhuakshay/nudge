@@ -1,0 +1,107 @@
+"""Project endpoints: create one, change it and move it in the sidebar."""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+from ninja import Router, Status
+
+from apps.accounts.schemas import ErrorOut
+from apps.tasks import projects
+from apps.tasks.api import signed_in_user
+from apps.tasks.projects import ProjectRuleError, SiblingRef
+from apps.tasks.schemas import ProjectIn, ProjectMoveIn, ProjectOut, ProjectPatchIn
+
+if TYPE_CHECKING:
+    from django.http import HttpRequest
+
+router = Router()
+
+_HTTP_OK = 200
+_HTTP_CREATED = 201
+_HTTP_NO_CONTENT = 204
+_HTTP_NOT_FOUND = 404
+_HTTP_UNPROCESSABLE = 422
+_PROJECT_NOT_FOUND = ErrorOut(detail="Project not found.")
+_FOLDER_NOT_FOUND = ErrorOut(detail="Folder not found.")
+
+
+@router.post(
+    "",
+    response={_HTTP_CREATED: ProjectOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    summary="Create a Project",
+)
+def create_project(
+    request: HttpRequest, project: ProjectIn
+) -> Status[ProjectOut] | Status[ErrorOut]:
+    """Create a Project last in its Folder, or last in the sidebar."""
+    user = signed_in_user(request)
+    folder = None
+    if project.folder_id is not None:
+        folder = projects.folder(user, project.folder_id)
+        if folder is None:
+            return Status(_HTTP_NOT_FOUND, _FOLDER_NOT_FOUND)
+    try:
+        created = projects.create_project(
+            user,
+            project.name,
+            color=project.color,
+            icon=project.icon,
+            folder=folder,
+        )
+    except ProjectRuleError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    return Status(_HTTP_CREATED, ProjectOut.from_orm(created))
+
+
+@router.patch(
+    "/{int:project_id}",
+    response={_HTTP_OK: ProjectOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    summary="Change a Project",
+)
+def update_project(
+    request: HttpRequest,
+    project_id: int,
+    patch: ProjectPatchIn,
+) -> Status[ProjectOut] | Status[ErrorOut]:
+    """Rename, recolour or change the icon of a Project. The Inbox can't be changed."""
+    try:
+        project = projects.update_project(
+            signed_in_user(request),
+            project_id,
+            name=patch.name,
+            color=patch.color,
+            icon=patch.icon,
+        )
+    except ProjectRuleError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    if project is None:
+        return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+    return Status(_HTTP_OK, ProjectOut.from_orm(project))
+
+
+@router.post(
+    "/{int:project_id}/move",
+    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    summary="Move a Project in the sidebar",
+)
+def move_project(
+    request: HttpRequest,
+    project_id: int,
+    move: ProjectMoveIn,
+) -> Status[None] | Status[ErrorOut]:
+    """Put a Project in a Folder or on the top level, right after a sibling or first."""
+    user = signed_in_user(request)
+    folder = None
+    if move.folder_id is not None:
+        folder = projects.folder(user, move.folder_id)
+        if folder is None:
+            return Status(_HTTP_NOT_FOUND, _FOLDER_NOT_FOUND)
+    after = None if move.after is None else SiblingRef(move.after.kind, move.after.id)
+    try:
+        moved = projects.move_project(user, project_id, folder, after)
+    except ProjectRuleError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    if not moved:
+        return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+    return Status(_HTTP_NO_CONTENT, None)

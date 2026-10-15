@@ -8,28 +8,25 @@ import { describeDates } from "./due";
 import { PRIORITY, STATUS_VERB } from "./task-properties";
 import { taskActivityQuery, type DatesChange, type TaskActivity } from "./tasks";
 
-/** What an event says happened, in the user's words rather than the API's. */
-function describe(event: TaskActivity): string {
-  switch (event.kind) {
-    case "created":
-      return "Created this task";
-    case "title_changed":
-      return `Renamed from “${event.data.old}” to “${event.data.new}”`;
-    case "description_edited":
-      return "Edited the description";
-    case "status_changed": {
-      const { new: status, blocked_reason: reason } = event.data;
-      return reason ? `${STATUS_VERB[status]}: “${reason}”` : STATUS_VERB[status];
-    }
-    case "priority_changed":
-      return `Changed priority from ${PRIORITY[event.data.old].short} to ${PRIORITY[event.data.new].short}`;
-    case "attachment_added":
-      return `Attached “${event.data.name}”`;
-    case "attachment_removed":
-      return `Deleted the attachment “${event.data.name}”`;
-    case "dates_changed":
-      return describeDatesChange(event.data);
-  }
+type ActivityData = { [E in TaskActivity as E["kind"]]: E["data"] };
+
+/** What each kind of event says happened, in the user's words rather than the API's. */
+const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string } = {
+  created: () => "Created this task",
+  title_changed: (data) => `Renamed from “${data.old}” to “${data.new}”`,
+  description_edited: () => "Edited the description",
+  status_changed: ({ new: status, blocked_reason: reason }) =>
+    reason ? `${STATUS_VERB[status]}: “${reason}”` : STATUS_VERB[status],
+  priority_changed: (data) =>
+    `Changed priority from ${PRIORITY[data.old].short} to ${PRIORITY[data.new].short}`,
+  attachment_added: (data) => `Attached “${data.name}”`,
+  attachment_removed: (data) => `Deleted the attachment “${data.name}”`,
+  dates_changed: (data) => describeDatesChange(data),
+  moved: (data) => `Moved from “${data.from_project}” to “${data.to_project}”`,
+};
+
+function describe<K extends keyof ActivityData>(event: { kind: K; data: ActivityData[K] }) {
+  return DESCRIBE[event.kind](event.data);
 }
 
 function describeDatesChange({ old, new: next }: DatesChange): string {

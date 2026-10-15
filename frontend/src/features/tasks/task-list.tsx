@@ -1,9 +1,9 @@
 import { useInfiniteQuery, useQuery, type UseInfiniteQueryResult } from "@tanstack/react-query";
-import { ChevronDown, ChevronRight, CircleCheck, Inbox, ListTodo } from "lucide-react";
+import { ChevronDown, ChevronRight, CircleCheck, ListTodo } from "lucide-react";
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ProjectHeader } from "@/features/projects/project-header";
 import { cn } from "@/lib/utils";
 
 import { QuickAddCard } from "./quick-add-card";
@@ -48,15 +48,7 @@ export function TaskList({ project }: { project: SidebarProject }) {
   return (
     // `data-wide` lets the app shell drop its reading width for this table.
     <div data-wide className="mx-auto w-full max-w-6xl">
-      <header className="mb-4 flex items-center gap-2.5 sm:gap-3">
-        <span className="flex size-9 items-center justify-center rounded-lg bg-hue-blue-soft text-hue-blue">
-          <Inbox className="size-5" aria-hidden />
-        </span>
-        <h1 className="text-2xl font-extrabold tracking-tight sm:text-3xl">{project.name}</h1>
-        <Badge variant="secondary" className="tabular-nums">
-          {project.open_count} open
-        </Badge>
-      </header>
+      <ProjectHeader project={project} />
 
       <QuickAddCard projectId={project.id} />
 

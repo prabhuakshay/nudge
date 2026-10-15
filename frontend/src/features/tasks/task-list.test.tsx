@@ -7,9 +7,18 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { makeTask } from "@/test/tasks";
 
 import { TaskList } from "./task-list";
-import type { Task } from "./tasks";
+import type { SidebarProject, Task } from "./tasks";
 
-const INBOX = { id: 7, name: "Inbox", open_count: 2 };
+const INBOX: SidebarProject = {
+  kind: "project",
+  id: 7,
+  name: "Inbox",
+  color: "blue",
+  icon: "inbox",
+  folder_id: null,
+  is_inbox: true,
+  open_count: 2,
+};
 
 const task = makeTask;
 
@@ -52,7 +61,7 @@ function mockApi({
       return json({ task: { ...changed, description: "" }, affected });
     }
     if (url.pathname === "/api/v1/sidebar") {
-      return json({ inbox: { ...INBOX, open_count: open.length } });
+      return json({ inbox: { ...INBOX, open_count: open.length }, items: [] });
     }
     if (url.searchParams.get("closed") === "true") {
       const page = Number(url.searchParams.get("cursor") ?? 0);

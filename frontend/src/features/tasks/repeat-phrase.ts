@@ -19,6 +19,7 @@ const MONTH =
 const NTH = "(?:first|second|third|fourth|last|1st|2nd|3rd|4th)";
 const UNIT = "(?:day|week|month|year)";
 const ORDINAL = "(?:st|nd|rd|th)?";
+const MONTH_DAY = `(?:(?<day>\\d{1,2})${ORDINAL}|(?<last>last\\s+day))`;
 
 const WEEK = ["MO", "TU", "WE", "TH", "FR", "SA", "SU"];
 const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
@@ -61,6 +62,12 @@ function yearly({ month = "", day = "", month2 = "", day2 = "" }: Groups): strin
   return `FREQ=YEARLY;BYMONTH=${String(monthOfYear)};BYMONTHDAY=${String(dayOfMonth)}`;
 }
 
+function monthDay({ day, last }: Groups): string | null {
+  const dayOfMonth = last ? -1 : Number(day);
+  if (dayOfMonth === 0 || dayOfMonth > 31) return null;
+  return `FREQ=MONTHLY;BYMONTHDAY=${String(dayOfMonth)}`;
+}
+
 /** Each phrase of the grammar and the rule it makes; null when the phrase means nothing. */
 const GRAMMAR: [string, (groups: Groups) => string | null][] = [
   [`every\\s+(?<n>\\d+)\\s+(?<unit>${UNIT})s?`, ({ unit, n }) => every(unit, Number(n))],
@@ -72,14 +79,12 @@ const GRAMMAR: [string, (groups: Groups) => string | null][] = [
     `every\\s+(?<other>other\\s+)?(?<days>${DAY}(?:(?:\\s*,\\s*(?:and\\s+)?|\\s+and\\s+)${DAY})*)`,
     weekdays,
   ],
+  [`(?:every\\s+month|monthly)\\s+on\\s+(?:the\\s+)?${MONTH_DAY}`, monthDay],
+  [`(?:(?:on\\s+)?the\\s+)?${MONTH_DAY}\\s+of\\s+(?:every|each)\\s+month`, monthDay],
+  // The ordinal is required here, so that "every 15" isn't read as a day of the month.
   [
-    `(?:every\\s+month|monthly)\\s+on\\s+the\\s+(?:(?<day>\\d{1,2})${ORDINAL}|(?<last>last\\s+day))`,
-    ({ day, last }) => {
-      const dayOfMonth = last ? -1 : Number(day);
-      return dayOfMonth === 0 || dayOfMonth > 31
-        ? null
-        : `FREQ=MONTHLY;BYMONTHDAY=${String(dayOfMonth)}`;
-    },
+    `every\\s+(?:(?<day>\\d{1,2})(?:st|nd|rd|th)|(?<last>last\\s+day))(?:\\s+of\\s+the\\s+month)?`,
+    monthDay,
   ],
   [
     `every\\s+(?<nth>${NTH})\\s+(?<day>${DAY})(?:\\s+of\\s+(?:the|each|every)\\s+month)?`,

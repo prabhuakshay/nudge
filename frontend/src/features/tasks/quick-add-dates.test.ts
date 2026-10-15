@@ -113,6 +113,20 @@ describe("parseQuickAdd Repeat", () => {
     ["Rent every month on the 1st", "Rent", "FREQ=MONTHLY;BYMONTHDAY=1", due("2026-11-01")],
     ["Rent monthly on the 15th", "Rent", "FREQ=MONTHLY;BYMONTHDAY=15", due("2026-10-15")],
     ["Rent every month on the last day", "Rent", "FREQ=MONTHLY;BYMONTHDAY=-1", due("2026-10-31")],
+    // A day of the month, in the many ways people say it.
+    ["Rent 15th of every month", "Rent", "FREQ=MONTHLY;BYMONTHDAY=15", due("2026-10-15")],
+    ["Rent the 15th of every month", "Rent", "FREQ=MONTHLY;BYMONTHDAY=15", due("2026-10-15")],
+    ["Rent on the 15th of every month", "Rent", "FREQ=MONTHLY;BYMONTHDAY=15", due("2026-10-15")],
+    ["Rent 15th of each month", "Rent", "FREQ=MONTHLY;BYMONTHDAY=15", due("2026-10-15")],
+    ["Rent the 15th of each month", "Rent", "FREQ=MONTHLY;BYMONTHDAY=15", due("2026-10-15")],
+    ["Rent every month on 15th", "Rent", "FREQ=MONTHLY;BYMONTHDAY=15", due("2026-10-15")],
+    ["Rent monthly on 15th", "Rent", "FREQ=MONTHLY;BYMONTHDAY=15", due("2026-10-15")],
+    ["Rent every 15th", "Rent", "FREQ=MONTHLY;BYMONTHDAY=15", due("2026-10-15")],
+    ["Rent every 15th of the month", "Rent", "FREQ=MONTHLY;BYMONTHDAY=15", due("2026-10-15")],
+    ["Rent 1st of every month", "Rent", "FREQ=MONTHLY;BYMONTHDAY=1", due("2026-11-01")],
+    ["Rent last day of every month", "Rent", "FREQ=MONTHLY;BYMONTHDAY=-1", due("2026-10-31")],
+    ["Rent the last day of each month", "Rent", "FREQ=MONTHLY;BYMONTHDAY=-1", due("2026-10-31")],
+    ["Rent every last day of the month", "Rent", "FREQ=MONTHLY;BYMONTHDAY=-1", due("2026-10-31")],
     ["Review every last friday", "Review", "FREQ=MONTHLY;BYDAY=-1FR", due("2026-10-30")],
     [
       "Review every first monday of the month",
@@ -157,18 +171,29 @@ describe("parseQuickAdd Repeat", () => {
     expect(parse(text)).toEqual({ title, dates, repeatRule });
   });
 
-  it.each(["Read every now and then", "Every one of them", "Pay every 0 days"])(
-    "leaves %j alone",
-    (text) => {
-      expect(parse(text).repeatRule).toBeNull();
-    },
-  );
+  it.each([
+    "Read every now and then",
+    "Every one of them",
+    "Pay every 0 days",
+    "Pay every 0th",
+    "Pay every 32nd",
+  ])("leaves %j alone", (text) => {
+    expect(parse(text).repeatRule).toBeNull();
+  });
 
   it("labels the Repeat chip in the user's words", () => {
     const { matches } = parseQuickAdd("Gym every monday", CONTEXT);
 
     expect(matches).toEqual([
       expect.objectContaining({ kind: "repeat", start: 4, end: 16, label: "Weekly on Monday" }),
+    ]);
+  });
+
+  it("highlights a day of the month as one Repeat chip", () => {
+    const { matches } = parseQuickAdd("Rent 15th of every month", CONTEXT);
+
+    expect(matches).toEqual([
+      expect.objectContaining({ kind: "repeat", start: 5, end: 24, label: "Monthly on the 15th" }),
     ]);
   });
 

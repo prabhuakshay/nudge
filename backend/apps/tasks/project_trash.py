@@ -16,7 +16,7 @@ from django.db.models import Count, F, Q
 from django.utils import timezone
 
 from apps.tasks import reminders
-from apps.tasks.models import Project, Task, TaskActivity
+from apps.tasks.models import Project, TaskActivity
 from apps.tasks.models.projects import PROJECT_NAME_MAX_LENGTH
 from apps.tasks.projects import ProjectRuleError, key_after, lock_sidebar, sibling_keys
 from apps.tasks.trash import expires_at
@@ -45,7 +45,7 @@ def trash_project(user: User, project_id: int) -> bool:
         project.deleted_at, project.trash_unit = now, uuid.uuid4()
         project.save(update_fields=["deleted_at", "trash_unit", "updated_at"])
         ids = list(project.tasks.filter(deleted_at__isnull=True).values_list("pk", flat=True))
-        tasks = Task.objects.filter(pk__in=ids)
+        tasks = project.tasks.filter(pk__in=ids)
         reminders.update_tasks(tasks, deleted_at=now, trash_unit=project.trash_unit, updated_at=now)
         TaskActivity.objects.bulk_create(
             TaskActivity(task_id=pk, kind=TaskActivity.Kind.TRASHED, at=now) for pk in ids
@@ -80,12 +80,12 @@ def restore_project(user: User, project_id: int) -> Project | None:
     now = timezone.now()
     with transaction.atomic():
         lock_sidebar(user)
-        ids = list(Task.objects.filter(trash_unit=project.trash_unit).values_list("pk", flat=True))
+        ids = list(user.tasks.filter(trash_unit=project.trash_unit).values_list("pk", flat=True))
         project.name = _free_name(user, project.name)
         project.position = _free_position(user, project)
         project.deleted_at = project.trash_unit = None
         project.save(update_fields=["name", "position", "deleted_at", "trash_unit", "updated_at"])
-        tasks = Task.objects.filter(pk__in=ids)
+        tasks = project.tasks.filter(pk__in=ids)
         reminders.update_tasks(tasks, deleted_at=None, trash_unit=None, updated_at=now)
         TaskActivity.objects.bulk_create(
             TaskActivity(task_id=pk, kind=TaskActivity.Kind.RESTORED, at=now) for pk in ids

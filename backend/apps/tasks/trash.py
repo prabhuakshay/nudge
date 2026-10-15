@@ -65,7 +65,7 @@ def trash_task(user: User, task_id: int) -> bool:
     now = timezone.now()
     with transaction.atomic():
         ids = [task.pk, *below([task]).values_list("pk", flat=True)]
-        unit = Task.objects.filter(pk__in=ids)
+        unit = user.tasks.filter(pk__in=ids)
         reminders.update_tasks(unit, deleted_at=now, trash_unit=uuid.uuid4(), updated_at=now)
         TaskActivity.objects.bulk_create(
             TaskActivity(task_id=pk, kind=TaskActivity.Kind.TRASHED, at=now) for pk in ids
@@ -124,13 +124,13 @@ def restore_task(user: User, task_id: int) -> Restored | None:
     if task is None:
         return None
     head = _head(task)
-    unit = list(Task.objects.filter(trash_unit=head.trash_unit))
+    unit = list(user.tasks.filter(trash_unit=head.trash_unit))
     with transaction.atomic():
         _place(user, head, height=max(member.depth for member in unit) - head.depth)
         head.deleted_at = head.trash_unit = None
         fields = ["deleted_at", "trash_unit", "project", "parent", "position", "updated_at"]
         head.save(update_fields=fields)
-        others = Task.objects.filter(pk__in=[member.pk for member in unit if member != head])
+        others = user.tasks.filter(pk__in=[member.pk for member in unit if member != head])
         reminders.update_tasks(
             others,
             deleted_at=None,
@@ -142,7 +142,7 @@ def restore_task(user: User, task_id: int) -> Restored | None:
             TaskActivity(task=member, kind=TaskActivity.Kind.RESTORED) for member in unit
         )
         reopen_ancestors(head)
-    return Restored(task=as_rows(Task.objects.filter(pk=head.pk), user).get(), project=head.project)
+    return Restored(task=as_rows(user.tasks.filter(pk=head.pk), user).get(), project=head.project)
 
 
 def _head(task: Task) -> Task:

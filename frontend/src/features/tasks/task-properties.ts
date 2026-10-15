@@ -7,6 +7,12 @@ export function isClosed(status: TaskStatus): boolean {
   return status === "completed" || status === "wont_do";
 }
 
+/** The Statuses in the order pickers list them: the open ones, then the Closed ones. */
+export const STATUSES: readonly TaskStatus[] = ["open", "blocked", "completed", "wont_do"];
+
+/** The Priorities in the order pickers list them, most urgent first, as TickTick does. */
+export const PRIORITIES: readonly TaskPriority[] = [1, 2, 3, 4, 0];
+
 /** How each Status looks: its name, icon, and text and background colours. */
 export const STATUS: Record<
   TaskStatus,

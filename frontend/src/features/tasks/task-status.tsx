@@ -14,11 +14,8 @@ import { plainMentions } from "@/features/people/mentions";
 import { useWithMentions } from "@/features/people/people";
 import { cn } from "@/lib/utils";
 
-import { STATUS } from "./task-properties";
+import { STATUS, STATUSES } from "./task-properties";
 import { useSetTaskStatus, useUpdateTask, type Task, type TaskStatus } from "./tasks";
-
-/** The Statuses in the order the picker lists them: the open ones, then the Closed ones. */
-const STATUSES: TaskStatus[] = ["open", "blocked", "completed", "wont_do"];
 
 /** A Task's Status as a small coloured label. */
 export function StatusBadge({ status }: { status: TaskStatus }) {

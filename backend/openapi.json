@@ -1713,6 +1713,64 @@
         ]
       }
     },
+    "/api/v1/tasks/bulk": {
+      "post": {
+        "operationId": "apps_tasks_api_bulk_bulk_change",
+        "summary": "Change several Tasks at once",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskBulkOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Apply one action to every Task given, in one transaction.\n\nEach Task changes as it would on its own, cascades and Activity included. If any id isn't one\nof the user's Tasks, or the Project or Tag isn't theirs, nothing changes and the answer is\n404; if any Task refuses the change, nothing changes and the answer is 422. Every Task whose\nStatus changed comes back with its Status from before, so the client can offer Undo.",
+        "tags": [
+          "tasks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskBulkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/tasks": {
       "get": {
         "operationId": "apps_tasks_api_tasks_list_tasks",
@@ -4819,6 +4877,244 @@
         "title": "TagMergeIn",
         "type": "object"
       },
+      "TaskBulkOut": {
+        "description": "Every Task whose Status the action changed, with its Status before, for Undo.",
+        "properties": {
+          "affected": {
+            "items": {
+              "$ref": "#/components/schemas/AffectedTaskOut"
+            },
+            "title": "Affected",
+            "type": "array"
+          }
+        },
+        "required": [
+          "affected"
+        ],
+        "title": "TaskBulkOut",
+        "type": "object"
+      },
+      "BulkDatesIn": {
+        "description": "Replace the Tasks' dates; their Reminders keep their offsets.",
+        "properties": {
+          "kind": {
+            "const": "dates",
+            "title": "Kind",
+            "type": "string"
+          },
+          "dates": {
+            "$ref": "#/components/schemas/TaskDatesIn"
+          }
+        },
+        "required": [
+          "kind",
+          "dates"
+        ],
+        "title": "BulkDatesIn",
+        "type": "object"
+      },
+      "BulkDeleteIn": {
+        "description": "Send the Tasks to Trash, each as its own unit with its Subtasks.",
+        "properties": {
+          "kind": {
+            "const": "delete",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "BulkDeleteIn",
+        "type": "object"
+      },
+      "BulkMoveIn": {
+        "description": "Move the Tasks first into a Project; a Subtask moved alone becomes a root there.",
+        "properties": {
+          "kind": {
+            "const": "move",
+            "title": "Kind",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "project_id"
+        ],
+        "title": "BulkMoveIn",
+        "type": "object"
+      },
+      "BulkPriorityIn": {
+        "description": "Set the Tasks' Priority.",
+        "properties": {
+          "kind": {
+            "const": "priority",
+            "title": "Kind",
+            "type": "string"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority"
+          }
+        },
+        "required": [
+          "kind",
+          "priority"
+        ],
+        "title": "BulkPriorityIn",
+        "type": "object"
+      },
+      "BulkStatusIn": {
+        "description": "Set the Tasks' Status, cascading through their trees as a single change does.",
+        "properties": {
+          "kind": {
+            "const": "status",
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          }
+        },
+        "required": [
+          "kind",
+          "status"
+        ],
+        "title": "BulkStatusIn",
+        "type": "object"
+      },
+      "BulkTagIn": {
+        "description": "Put a Tag on the Tasks, or take it off.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "add_tag",
+              "remove_tag"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "tag_id": {
+            "title": "Tag Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "tag_id"
+        ],
+        "title": "BulkTagIn",
+        "type": "object"
+      },
+      "TaskBulkIn": {
+        "description": "One action for several Tasks.",
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          },
+          "action": {
+            "discriminator": {
+              "mapping": {
+                "add_tag": "#/components/schemas/BulkTagIn",
+                "dates": "#/components/schemas/BulkDatesIn",
+                "delete": "#/components/schemas/BulkDeleteIn",
+                "move": "#/components/schemas/BulkMoveIn",
+                "priority": "#/components/schemas/BulkPriorityIn",
+                "remove_tag": "#/components/schemas/BulkTagIn",
+                "status": "#/components/schemas/BulkStatusIn"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BulkMoveIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkStatusIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkPriorityIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkDatesIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkTagIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkDeleteIn"
+              }
+            ],
+            "title": "Action"
+          }
+        },
+        "required": [
+          "ids",
+          "action"
+        ],
+        "title": "TaskBulkIn",
+        "type": "object"
+      },
+      "TaskDatesIn": {
+        "description": "A Task's due date, time and range, all clock times in the user's time zone.\n\nWithout a time the Task is all-day. A start turns it into a range ending at the due date;\nstart and due are then both all-day or both timed. Times have minute precision.",
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          }
+        },
+        "required": [
+          "due_date"
+        ],
+        "title": "TaskDatesIn",
+        "type": "object"
+      },
       "TaskListQuery": {
         "description": "Which Tasks to list: one Project's, Person's, Tag's or view's, open or Closed.",
         "properties": {
@@ -4925,57 +5221,6 @@
           "next_cursor"
         ],
         "title": "TaskListOut",
-        "type": "object"
-      },
-      "TaskDatesIn": {
-        "description": "A Task's due date, time and range, all clock times in the user's time zone.\n\nWithout a time the Task is all-day. A start turns it into a range ending at the due date;\nstart and due are then both all-day or both timed. Times have minute precision.",
-        "properties": {
-          "due_date": {
-            "format": "date",
-            "title": "Due Date",
-            "type": "string"
-          },
-          "due_time": {
-            "anyOf": [
-              {
-                "format": "time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due Time"
-          },
-          "start_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start Date"
-          },
-          "start_time": {
-            "anyOf": [
-              {
-                "format": "time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start Time"
-          }
-        },
-        "required": [
-          "due_date"
-        ],
-        "title": "TaskDatesIn",
         "type": "object"
       },
       "TaskIn": {

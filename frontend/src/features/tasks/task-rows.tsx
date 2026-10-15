@@ -76,13 +76,14 @@ export function SortableTaskRows({
         task={row.task}
         level={level}
         subtasks={row.subtasks}
-        selected={row.task.id === context.openId}
+        selected={row.task.id === context.openId || context.selectedIds.has(row.task.id)}
         collapsed={context.collapsed.has(row.task.id)}
         indent={context.indent}
         contextMenu={context.contextMenu}
         touch={context.touch}
         onToggle={context.onToggle}
         onOpen={context.onOpen}
+        onSelect={context.onSelect}
         onToggleCollapsed={context.onToggleCollapsed}
         onMoveByKey={moveByKey}
         onKeyDown={context.onKeyDown}

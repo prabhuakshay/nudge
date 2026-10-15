@@ -32,10 +32,17 @@ const TITLE_INSET = 54;
 export type ToggleStatus = (task: Task) => void;
 export type OpenTask = (taskId: number) => void;
 export type ToggleCollapsed = (taskId: number) => void;
+/** Mod-click toggles a row in the selection; Shift-click selects a range up to it. */
+export type SelectTask = (taskId: number, how: "toggle" | "range") => void;
 
 /** What every row needs from the list, bundled so rows stay memoizable. */
 export type RowContext = {
   openId: number | null;
+  /** The rows selected for the "N selected" bar. */
+  selectedIds: ReadonlySet<number>;
+  /** Left out where rows can't be selected: on phones and in an archived Project. */
+  onSelect?: SelectTask;
+  clearSelection: () => void;
   collapsed: ReadonlySet<number>;
   indent: number;
   /**
@@ -57,12 +64,13 @@ export function TreeRows({ rows, context }: { rows: TreeRow[]; context: RowConte
       task={task}
       level={level}
       subtasks={subtasks}
-      selected={task.id === context.openId}
+      selected={task.id === context.openId || context.selectedIds.has(task.id)}
       collapsed={context.collapsed.has(task.id)}
       indent={context.indent}
       contextMenu={context.contextMenu}
       onToggle={context.onToggle}
       onOpen={context.onOpen}
+      onSelect={context.onSelect}
       onToggleCollapsed={context.onToggleCollapsed}
       onKeyDown={context.onKeyDown}
     />
@@ -71,7 +79,8 @@ export function TreeRows({ rows, context }: { rows: TreeRow[]; context: RowConte
 
 /**
  * One Task in the table, stepped in by its level. A click anywhere on it, or Enter, opens the
- * Task; the chevron, checkbox and cell pickers keep their own action. Right-click or the ⋯ button
+ * Task, or with Shift or Mod held selects it where rows can be selected; the chevron, checkbox
+ * and cell pickers keep their own action. Right-click or the ⋯ button
  * opens its actions. On phones the cells fold into a meta line under the title. Given a drag
  * handle, the whole row drags: after a 5 px move with a mouse, after a press and hold on touch,
  * or from its grip with the keyboard. Memoized so a change to one row leaves the others alone.
@@ -86,6 +95,7 @@ export const TaskRow = memo(function TaskRow({
   contextMenu,
   onToggle,
   onOpen,
+  onSelect,
   onToggleCollapsed,
   onMoveByKey,
   onKeyDown,
@@ -101,6 +111,7 @@ export const TaskRow = memo(function TaskRow({
   contextMenu: boolean;
   onToggle: ToggleStatus;
   onOpen: OpenTask;
+  onSelect?: SelectTask;
   onToggleCollapsed: ToggleCollapsed;
   /** Tab, Shift+Tab and Alt+↑/↓ move the row; left out where rows don't move. */
   onMoveByKey?: MoveByKey;
@@ -130,7 +141,12 @@ export const TaskRow = memo(function TaskRow({
         aria-selected={selected}
         onClick={(event) => {
           // Clicks in a picker's menu reach the row through React's tree, not the page's.
-          if (event.target instanceof Node && event.currentTarget.contains(event.target)) {
+          if (!(event.target instanceof Node) || !event.currentTarget.contains(event.target)) {
+            return;
+          }
+          if (onSelect && (event.shiftKey || event.metaKey || event.ctrlKey)) {
+            onSelect(task.id, event.shiftKey ? "range" : "toggle");
+          } else {
             onOpen(task.id);
           }
         }}

@@ -7,6 +7,7 @@ import { allProjects } from "@/features/projects/projects";
 import { useOpenTask } from "@/features/tasks/open-task";
 import { QuickAddCard } from "@/features/tasks/quick-add-card";
 import { useRowContext } from "@/features/tasks/row-context";
+import { SelectionBar } from "@/features/tasks/selection-bar";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { ClosedGroup, Group, TaskTableHeader } from "@/features/tasks/task-list";
 import { TreeRows } from "@/features/tasks/task-row";
@@ -90,6 +91,8 @@ export function TagTaskList({ tag }: { tag: SidebarTag }) {
           <TreeRows rows={flatRows(closedTasks)} context={context} />
         </ClosedGroup>
       </div>
+
+      <SelectionBar tasks={[...open, ...closedTasks]} context={context} />
 
       {sidebar && (
         <TaskDetail

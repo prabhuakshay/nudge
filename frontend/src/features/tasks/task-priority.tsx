@@ -12,11 +12,8 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-import { PRIORITY } from "./task-properties";
+import { PRIORITIES, PRIORITY } from "./task-properties";
 import { useUpdateTask, type Task, type TaskPriority } from "./tasks";
-
-/** The Priorities in the order the picker lists them, most urgent first, as TickTick does. */
-const PRIORITIES: TaskPriority[] = [1, 2, 3, 4, 0];
 
 /** A filled flag in the Priority's colour; nothing for no Priority. */
 export function PriorityFlag({ priority }: { priority: TaskPriority }) {

@@ -51,8 +51,7 @@ def notify(
     A notification from a Reminder offers to complete or snooze its Task. Pushing happens in the
     background worker, so a slow push service never delays the caller.
     """
-    # Imported here because the task module calls back into this one.
-    from apps.notifications.tasks import push_notification  # noqa: PLC0415
+    from apps.notifications.tasks import push_notification  # noqa: PLC0415 - it imports this module
 
     notification = Notification.objects.create(
         user=user,

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from ninja import Router, Status
@@ -9,19 +10,13 @@ from ninja import Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import people
+from apps.tasks.api.errors import PERSON_NOT_FOUND
 from apps.tasks.schemas.people import PersonIn, PersonMergeIn, PersonOut, PersonPatchIn
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
 
 router = Router()
-
-_HTTP_OK = 200
-_HTTP_CREATED = 201
-_HTTP_NO_CONTENT = 204
-_HTTP_NOT_FOUND = 404
-_HTTP_UNPROCESSABLE = 422
-_PERSON_NOT_FOUND = ErrorOut(detail="Person not found.")
 
 
 @router.get("", response=list[PersonOut], summary="List People")
@@ -32,18 +27,22 @@ def list_people(request: HttpRequest) -> list[PersonOut]:
 
 @router.post(
     "",
-    response={_HTTP_CREATED: PersonOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={HTTPStatus.CREATED: PersonOut, HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut},
     summary="Add a Person",
 )
 def create_person(request: HttpRequest, person: PersonIn) -> Status[PersonOut] | Status[ErrorOut]:
     """Add a Person to the address book."""
     created = people.create_person(signed_in_user(request), person.name, color=person.color)
-    return Status(_HTTP_CREATED, PersonOut.from_orm(created))
+    return Status(HTTPStatus.CREATED, PersonOut.from_orm(created))
 
 
 @router.patch(
     "/{int:person_id}",
-    response={_HTTP_OK: PersonOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.OK: PersonOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Change a Person",
 )
 def update_person(
@@ -59,25 +58,29 @@ def update_person(
         color=patch.color,
     )
     if found is None:
-        return Status(_HTTP_NOT_FOUND, _PERSON_NOT_FOUND)
-    return Status(_HTTP_OK, PersonOut.from_orm(found))
+        return Status(HTTPStatus.NOT_FOUND, PERSON_NOT_FOUND)
+    return Status(HTTPStatus.OK, PersonOut.from_orm(found))
 
 
 @router.delete(
     "/{int:person_id}",
-    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut},
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Delete a Person",
 )
 def delete_person(request: HttpRequest, person_id: int) -> Status[None] | Status[ErrorOut]:
     """Delete a Person for good; their Mentions become plain `@Name` text."""
     if not people.delete_person(signed_in_user(request), person_id):
-        return Status(_HTTP_NOT_FOUND, _PERSON_NOT_FOUND)
-    return Status(_HTTP_NO_CONTENT, None)
+        return Status(HTTPStatus.NOT_FOUND, PERSON_NOT_FOUND)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
 @router.post(
     "/{int:person_id}/merge",
-    response={_HTTP_OK: PersonOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.OK: PersonOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Merge a Person into another",
 )
 def merge_person(
@@ -88,5 +91,5 @@ def merge_person(
     """Fold a Person into another: their Mentions move over and they are deleted."""
     merged = people.merge_person(signed_in_user(request), person_id, merge.into_id)
     if merged is None:
-        return Status(_HTTP_NOT_FOUND, _PERSON_NOT_FOUND)
-    return Status(_HTTP_OK, PersonOut.from_orm(merged))
+        return Status(HTTPStatus.NOT_FOUND, PERSON_NOT_FOUND)
+    return Status(HTTPStatus.OK, PersonOut.from_orm(merged))

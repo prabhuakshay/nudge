@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 from functools import partial
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from ninja import Query, Router, Status
@@ -11,6 +12,7 @@ from ninja import Query, Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import moves, people, schedule, services, tags, trash, tree
+from apps.tasks.api.errors import PERSON_NOT_FOUND, PROJECT_NOT_FOUND, TAG_NOT_FOUND, TASK_NOT_FOUND
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 from apps.tasks.pagination import Page
@@ -40,21 +42,16 @@ if TYPE_CHECKING:
 
 router = Router()
 
-_HTTP_OK = 200
-_HTTP_CREATED = 201
-_HTTP_NO_CONTENT = 204
-_HTTP_NOT_FOUND = 404
-_HTTP_UNPROCESSABLE = 422
-_PROJECT_NOT_FOUND = ErrorOut(detail="Project not found.")
-_TASK_NOT_FOUND = ErrorOut(detail="Task not found.")
-_PERSON_NOT_FOUND = ErrorOut(detail="Person not found.")
-_TAG_NOT_FOUND = ErrorOut(detail="Tag not found.")
 _ONE_SOURCE = ErrorOut(detail="Give one of project, person, tag or view.")
 
 
 @router.get(
     "",
-    response={_HTTP_OK: TaskListOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.OK: TaskListOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="List a Project's, a Person's, a Tag's or a view's Tasks",
 )
 def list_tasks(
@@ -75,10 +72,10 @@ def list_tasks(
     open_tasks, closed_page = source
     if not query.closed:
         items = [TaskOut.from_orm(task) for task in open_tasks()]
-        return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=None))
+        return Status(HTTPStatus.OK, TaskListOut(items=items, next_cursor=None))
     page = closed_page(query.cursor)
     items = [TaskOut.from_orm(task) for task in page.items]
-    return Status(_HTTP_OK, TaskListOut(items=items, next_cursor=page.next_cursor))
+    return Status(HTTPStatus.OK, TaskListOut(items=items, next_cursor=page.next_cursor))
 
 
 type _ListSource = tuple[Callable[[], Iterable[Task]], Callable[[str | None], Page[Task]]]
@@ -96,13 +93,13 @@ def _list_source(user: User, query: TaskListQuery) -> _ListSource | Status[Error
     for source_id, source in by_id:
         if source_id is not None:
             return source(user, source_id)
-    return Status(_HTTP_UNPROCESSABLE, _ONE_SOURCE)
+    return Status(HTTPStatus.UNPROCESSABLE_ENTITY, _ONE_SOURCE)
 
 
 def _person_source(user: User, person: int) -> _ListSource | Status[ErrorOut]:
     found = people.person(user, person)
     if found is None:
-        return Status(_HTTP_NOT_FOUND, _PERSON_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, PERSON_NOT_FOUND)
     return partial(people.open_tasks, found), partial(people.closed_tasks, found)
 
 
@@ -120,20 +117,24 @@ def _nothing_closed(_cursor: str | None) -> Page[Task]:
 def _tag_source(user: User, tag: int) -> _ListSource | Status[ErrorOut]:
     found = tags.tag(user, tag)
     if found is None:
-        return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, TAG_NOT_FOUND)
     return partial(tags.open_tasks, found), partial(tags.closed_tasks, found)
 
 
 def _project_source(user: User, project: int) -> _ListSource | Status[ErrorOut]:
     found = services.live_project(user, project)
     if found is None:
-        return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
     return partial(services.open_tasks, found), partial(services.closed_tasks, found)
 
 
 @router.post(
     "",
-    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.CREATED: TaskOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Add a Task",
 )
 def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[ErrorOut]:
@@ -146,7 +147,7 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
     user = signed_in_user(request)
     picked = tags.owned_tags(user, task.tag_ids)
     if picked is None:
-        return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, TAG_NOT_FOUND)
     if task.parent_id is not None:
         return _create_subtask(user, task.parent_id, task, [*picked, *task.tags])
     return _create_root(user, task, [*picked, *task.tags])
@@ -163,7 +164,7 @@ def _create_root(
         else services.live_project(user, task.project_id)
     )
     if project is None:
-        return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
     created = tags.create_tagged_task(
         project,
         task.title,
@@ -172,7 +173,7 @@ def _create_root(
         tags=with_tags,
         repeat_with=_repeat(task),
     )
-    return Status(_HTTP_CREATED, TaskOut.from_orm(created))
+    return Status(HTTPStatus.CREATED, TaskOut.from_orm(created))
 
 
 def _create_subtask(
@@ -183,9 +184,9 @@ def _create_subtask(
 ) -> Status[TaskOut] | Status[ErrorOut]:
     parent = services.live_task(user, parent_id)
     if parent is None:
-        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
     if task.repeat_rule:
-        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=SUBTASK_REPEAT))
+        return Status(HTTPStatus.UNPROCESSABLE_ENTITY, ErrorOut(detail=SUBTASK_REPEAT))
     change = tags.create_tagged_subtask(
         parent,
         task.title,
@@ -193,7 +194,7 @@ def _create_subtask(
         priority=task.priority or Task.Priority.NONE,
         tags=with_tags,
     )
-    return Status(_HTTP_CREATED, TaskOut.from_orm(change.task))
+    return Status(HTTPStatus.CREATED, TaskOut.from_orm(change.task))
 
 
 def _detail(task: Task) -> TaskDetailOut:
@@ -217,20 +218,24 @@ def task_change_out(change: services.TaskChange) -> TaskChangeOut:
 
 @router.get(
     "/{int:task_id}",
-    response={_HTTP_OK: TaskDetailOut, _HTTP_NOT_FOUND: ErrorOut},
+    response={HTTPStatus.OK: TaskDetailOut, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Get a Task",
 )
 def get_task(request: HttpRequest, task_id: int) -> Status[TaskDetailOut] | Status[ErrorOut]:
     """Return a Task with everything the detail drawer shows."""
     task = services.live_task(signed_in_user(request), task_id)
     if task is None:
-        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    return Status(_HTTP_OK, _detail(task))
+        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
+    return Status(HTTPStatus.OK, _detail(task))
 
 
 @router.patch(
     "/{int:task_id}",
-    response={_HTTP_OK: TaskChangeOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.OK: TaskChangeOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Change a Task",
 )
 def update_task(
@@ -249,26 +254,34 @@ def update_task(
         return edit
     change = tags.update_tagged_task(user, task_id, *edit)
     if change is None:
-        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    return Status(_HTTP_OK, task_change_out(change))
+        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
+    return Status(HTTPStatus.OK, task_change_out(change))
 
 
 @router.delete(
     "/{int:task_id}",
-    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.NO_CONTENT: None,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Move a Task to Trash",
 )
 def delete_task(request: HttpRequest, task_id: int) -> Status[None] | Status[ErrorOut]:
     """Send a Task and its Subtasks to Trash as one unit, which `restore` brings back."""
     trashed = trash.trash_task(signed_in_user(request), task_id)
     if not trashed:
-        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    return Status(_HTTP_NO_CONTENT, None)
+        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
 @router.post(
     "/{int:task_id}/move",
-    response={_HTTP_OK: TaskChangeOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.OK: TaskChangeOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Move a Task",
 )
 def move_task(
@@ -285,11 +298,11 @@ def move_task(
     task = services.live_task(user, task_id)
     destination = _destination(user, move)
     if task is None:
-        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
     if isinstance(destination, ErrorOut):
-        return Status(_HTTP_NOT_FOUND, destination)
+        return Status(HTTPStatus.NOT_FOUND, destination)
     change = moves.move_task(task, destination)
-    return Status(_HTTP_OK, task_change_out(change))
+    return Status(HTTPStatus.OK, task_change_out(change))
 
 
 def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:
@@ -298,25 +311,29 @@ def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:
     if move.project_id is not None:
         project = services.live_project(user, move.project_id)
         if project is None:
-            return _PROJECT_NOT_FOUND
+            return PROJECT_NOT_FOUND
     if move.parent_id is not None:
         parent = services.live_task(user, move.parent_id)
         if parent is None:
-            return _TASK_NOT_FOUND
+            return TASK_NOT_FOUND
     return moves.Destination(project, parent, move.after_id)
 
 
 @router.post(
     "/{int:task_id}/duplicate",
-    response={_HTTP_CREATED: TaskOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.CREATED: TaskOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Duplicate a Task",
 )
 def duplicate_task(request: HttpRequest, task_id: int) -> Status[TaskOut] | Status[ErrorOut]:
     """Add an open copy of a Task right after it, with its title, Description and Priority."""
     copy = services.duplicate_task(signed_in_user(request), task_id)
     if copy is None:
-        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
-    return Status(_HTTP_CREATED, TaskOut.from_orm(copy))
+        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
+    return Status(HTTPStatus.CREATED, TaskOut.from_orm(copy))
 
 
 def _edit(
@@ -328,10 +345,10 @@ def _edit(
     if patch.project_id is not None:
         project = services.live_project(user, patch.project_id)
         if project is None:
-            return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+            return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
     picked = None if patch.tag_ids is None else tags.owned_tags(user, patch.tag_ids)
     if patch.tag_ids is not None and picked is None:
-        return Status(_HTTP_NOT_FOUND, _TAG_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, TAG_NOT_FOUND)
     edit = services.TaskEdit(
         title=patch.title,
         description=patch.description,
@@ -370,9 +387,9 @@ def _dates(body: TaskIn | TaskPatchIn) -> TaskDates | None:
 @router.get(
     "/{int:task_id}/activity",
     response={
-        _HTTP_OK: TaskActivityListOut,
-        _HTTP_NOT_FOUND: ErrorOut,
-        _HTTP_UNPROCESSABLE: ErrorOut,
+        HTTPStatus.OK: TaskActivityListOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
     },
     summary="List a Task's Activity",
 )
@@ -384,7 +401,7 @@ def list_activity(
     """Return a page of a Task's history, newest first, with the number of events in all."""
     task = services.live_task(signed_in_user(request), task_id)
     if task is None:
-        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
     page = services.task_activity(task, cursor)
     activity = TaskActivityListOut.model_validate(
         {
@@ -393,4 +410,4 @@ def list_activity(
             "count": services.activity_count(task),
         },
     )
-    return Status(_HTTP_OK, activity)
+    return Status(HTTPStatus.OK, activity)

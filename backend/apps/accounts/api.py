@@ -6,6 +6,7 @@ There is deliberately no sign-up endpoint: accounts are created by an administra
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from django.conf import settings
@@ -42,10 +43,6 @@ if TYPE_CHECKING:
 
 router = Router()
 
-_HTTP_NO_CONTENT = 204
-_HTTP_BAD_REQUEST = 400
-_HTTP_UNAUTHORIZED = 401
-
 
 @router.get("/session", response=SessionOut, auth=None, summary="Get the current session")
 @decorate_view(ensure_csrf_cookie)
@@ -57,7 +54,7 @@ def session(request: HttpRequest) -> SessionOut:
 
 @router.post(
     "/login",
-    response={200: UserOut, _HTTP_UNAUTHORIZED: ErrorOut},
+    response={HTTPStatus.OK: UserOut, HTTPStatus.UNAUTHORIZED: ErrorOut},
     auth=None,
     throttle=[AnonRateThrottle(settings.LOGIN_RATE_LIMIT)],
     summary="Sign in",
@@ -72,28 +69,28 @@ def login(request: HttpRequest, credentials: LoginIn) -> Status[UserOut] | Statu
     )
     if not isinstance(user, User):
         return Status(
-            _HTTP_UNAUTHORIZED,
+            HTTPStatus.UNAUTHORIZED,
             ErrorOut(detail="That email and password don't match an account."),
         )
     auth.login(request, user)
-    return Status(200, UserOut.from_orm(user))
+    return Status(HTTPStatus.OK, UserOut.from_orm(user))
 
 
 @router.post(
     "/logout",
-    response={_HTTP_NO_CONTENT: None},
+    response={HTTPStatus.NO_CONTENT: None},
     auth=django_auth,
     summary="Sign out",
 )
 def logout(request: HttpRequest) -> Status[None]:
     """End the current session."""
     auth.logout(request)
-    return Status(_HTTP_NO_CONTENT, None)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
 @router.post(
     "/password",
-    response={_HTTP_NO_CONTENT: None, _HTTP_BAD_REQUEST: ErrorOut},
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.BAD_REQUEST: ErrorOut},
     auth=django_auth,
     throttle=[UserRateThrottle(settings.LOGIN_RATE_LIMIT)],
     summary="Change password",
@@ -104,9 +101,9 @@ def password(request: HttpRequest, passwords: PasswordChangeIn) -> Status[None] 
     try:
         change_password(user, passwords.current_password, passwords.new_password)
     except PasswordChangeError as error:
-        return Status(_HTTP_BAD_REQUEST, ErrorOut(detail=str(error)))
+        return Status(HTTPStatus.BAD_REQUEST, ErrorOut(detail=str(error)))
     auth.update_session_auth_hash(request, user)
-    return Status(_HTTP_NO_CONTENT, None)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
 @router.patch("/profile", response=UserOut, auth=django_auth, summary="Update profile")

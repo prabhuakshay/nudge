@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from ninja import Router, Status
@@ -18,16 +19,16 @@ if TYPE_CHECKING:
 
 router = Router()
 
-_HTTP_OK = 200
-_HTTP_NO_CONTENT = 204
-_HTTP_NOT_FOUND = 404
-_HTTP_UNPROCESSABLE = 422
 _NOT_FOUND = ErrorOut(detail="Reminder notification not found.")
 
 
 @router.post(
     "/{int:notification_id}/complete",
-    response={_HTTP_OK: TaskChangeOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.OK: TaskChangeOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Complete a Task from its Reminder",
 )
 def complete(
@@ -37,13 +38,13 @@ def complete(
     """Complete the Task a Reminder notification is about, as ticking it off would."""
     change = reminder_actions.complete(signed_in_user(request), notification_id)
     if change is None:
-        return Status(_HTTP_NOT_FOUND, _NOT_FOUND)
-    return Status(_HTTP_OK, task_change_out(change))
+        return Status(HTTPStatus.NOT_FOUND, _NOT_FOUND)
+    return Status(HTTPStatus.OK, task_change_out(change))
 
 
 @router.post(
     "/{int:notification_id}/snooze",
-    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut},
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Snooze a Reminder",
 )
 def snooze(
@@ -53,5 +54,5 @@ def snooze(
 ) -> Status[None] | Status[ErrorOut]:
     """Fire a Reminder notification once more later, leaving its Task as it is."""
     if not reminder_actions.snooze(signed_in_user(request), notification_id, body.until):
-        return Status(_HTTP_NOT_FOUND, _NOT_FOUND)
-    return Status(_HTTP_NO_CONTENT, None)
+        return Status(HTTPStatus.NOT_FOUND, _NOT_FOUND)
+    return Status(HTTPStatus.NO_CONTENT, None)

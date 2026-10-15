@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from django.conf import settings
@@ -23,9 +24,6 @@ if TYPE_CHECKING:
 
 router = Router()
 
-_HTTP_CREATED = 201
-_HTTP_NO_CONTENT = 204
-_HTTP_NOT_FOUND = 404
 _NOT_FOUND = ErrorOut(detail="Notification not found.")
 
 
@@ -47,40 +45,42 @@ def notifications(request: HttpRequest) -> NotificationListOut:
 
 @router.post(
     "/{int:notification_id}/read",
-    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut},
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Mark a notification as read",
 )
 def mark_read(request: HttpRequest, notification_id: int) -> Status[None] | Status[ErrorOut]:
     """Mark one notification as read."""
     if not services.mark_read(_user(request), notification_id):
-        return Status(_HTTP_NOT_FOUND, _NOT_FOUND)
-    return Status(_HTTP_NO_CONTENT, None)
+        return Status(HTTPStatus.NOT_FOUND, _NOT_FOUND)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
-@router.post("/read-all", response={_HTTP_NO_CONTENT: None}, summary="Mark all as read")
+@router.post("/read-all", response={HTTPStatus.NO_CONTENT: None}, summary="Mark all as read")
 def mark_all_read(request: HttpRequest) -> Status[None]:
     """Mark every notification as read."""
     services.mark_all_read(_user(request))
-    return Status(_HTTP_NO_CONTENT, None)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
 @router.delete(
     "/{int:notification_id}",
-    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut},
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Dismiss a notification",
 )
 def dismiss(request: HttpRequest, notification_id: int) -> Status[None] | Status[ErrorOut]:
     """Remove one notification from the notification center."""
     if not services.dismiss(_user(request), notification_id):
-        return Status(_HTTP_NOT_FOUND, _NOT_FOUND)
-    return Status(_HTTP_NO_CONTENT, None)
+        return Status(HTTPStatus.NOT_FOUND, _NOT_FOUND)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
-@router.post("/test", response={_HTTP_CREATED: NotificationOut}, summary="Send a test notification")
+@router.post(
+    "/test", response={HTTPStatus.CREATED: NotificationOut}, summary="Send a test notification"
+)
 def send_test(request: HttpRequest) -> Status[NotificationOut]:
     """Notify the user, to check that notifications reach their devices."""
     notification = services.send_test_notification(_user(request))
-    return Status(_HTTP_CREATED, NotificationOut.from_orm(notification))
+    return Status(HTTPStatus.CREATED, NotificationOut.from_orm(notification))
 
 
 @router.get("/push", response=PushConfigOut, summary="Get push settings")
@@ -93,7 +93,7 @@ def push_config(request: HttpRequest) -> PushConfigOut:
 
 @router.post(
     "/push/subscriptions",
-    response={_HTTP_NO_CONTENT: None},
+    response={HTTPStatus.NO_CONTENT: None},
     summary="Register a browser for push",
 )
 def subscribe(request: HttpRequest, subscription: PushSubscriptionIn) -> Status[None]:
@@ -104,15 +104,15 @@ def subscribe(request: HttpRequest, subscription: PushSubscriptionIn) -> Status[
         p256dh=subscription.keys.p256dh,
         auth=subscription.keys.auth,
     )
-    return Status(_HTTP_NO_CONTENT, None)
+    return Status(HTTPStatus.NO_CONTENT, None)
 
 
 @router.delete(
     "/push/subscriptions",
-    response={_HTTP_NO_CONTENT: None},
+    response={HTTPStatus.NO_CONTENT: None},
     summary="Unregister a browser from push",
 )
 def unsubscribe(request: HttpRequest, subscription: PushUnsubscribeIn) -> Status[None]:
     """Stop pushing the user's notifications to this browser."""
     services.delete_push_subscription(_user(request), subscription.endpoint)
-    return Status(_HTTP_NO_CONTENT, None)
+    return Status(HTTPStatus.NO_CONTENT, None)

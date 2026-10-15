@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from http import HTTPStatus
 from typing import TYPE_CHECKING
 
 from ninja import Router, Status
@@ -34,9 +35,6 @@ if TYPE_CHECKING:
 
 router = Router()
 
-_HTTP_OK = 200
-_HTTP_NOT_FOUND = 404
-_HTTP_UNPROCESSABLE = 422
 _NOT_FOUND = ErrorOut(detail="Not every task, project or tag given was found.")
 
 # Every action but a move, which reports where the Tasks were as well.
@@ -53,7 +51,11 @@ _Change = (
 
 @router.post(
     "/tasks/bulk",
-    response={_HTTP_OK: TaskBulkOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    response={
+        HTTPStatus.OK: TaskBulkOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Change several Tasks at once",
 )
 def bulk_change(
@@ -69,8 +71,8 @@ def bulk_change(
     """
     out = _run(signed_in_user(request), payload.ids, payload.action)
     if out is None:
-        return Status(_HTTP_NOT_FOUND, _NOT_FOUND)
-    return Status(_HTTP_OK, out)
+        return Status(HTTPStatus.NOT_FOUND, _NOT_FOUND)
+    return Status(HTTPStatus.OK, out)
 
 
 def _run(user: User, ids: list[int], action: BulkAction) -> TaskBulkOut | None:

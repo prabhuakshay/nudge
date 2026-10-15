@@ -152,6 +152,13 @@ const TaskRow = memo(function TaskRow({
             }}
           />
           <div className="flex min-w-0 flex-1 flex-col">
+            {/* A Subtask listed without its parent, as in Today, says where it belongs. */}
+            {level === 0 && task.parent_title !== null && (
+              <span className="flex min-w-0 items-center gap-0.5 text-[11px] text-muted-foreground">
+                <span className="truncate">{task.parent_title}</span>
+                <ChevronRight className="size-3 shrink-0" aria-hidden />
+              </span>
+            )}
             <span
               data-task-title
               className={cn(

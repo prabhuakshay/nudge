@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
 
-import { useCreateTask } from "./tasks";
+import { useCreateTask, type DatesIn } from "./tasks";
 
 /** Whether a key press happened where typing `c` means text, not a shortcut. */
 function isTyping(target: EventTarget | null) {
@@ -18,13 +18,13 @@ function isTyping(target: EventTarget | null) {
 /**
  * The card above a list for adding a Task in one line: type a title and press Enter. The input
  * stays focused so several Tasks can be added in a row, and `C` focuses it from anywhere on the
- * page.
+ * page. A view can date the new Task, as Today does with today.
  */
-export function QuickAddCard({ projectId }: { projectId: number }) {
+export function QuickAddCard({ projectId, dates }: { projectId: number; dates?: DatesIn }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [title, setTitle] = useState("");
   const [focused, setFocused] = useState(false);
-  const createTask = useCreateTask(projectId);
+  const createTask = useCreateTask(projectId, dates);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {

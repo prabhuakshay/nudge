@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -124,12 +125,20 @@ export async function patches(fetchSpy: ReturnType<typeof mockApi>) {
  * Returns the router, to read the URL, and a user to drive the page.
  */
 export function renderTaskList({ url = "/", project = INBOX } = {}) {
+  return renderPage(<TaskList project={project} />, url);
+}
+
+/**
+ * Render a list page at `url` in a router of its own, with the tooltips and toasts the app shell
+ * gives it. Returns the router, to read the URL, and a user to drive the page.
+ */
+export function renderPage(page: ReactNode, url = "/") {
   const user = userEvent.setup();
   const rootRoute = createRootRoute({
     validateSearch: validateTaskSearch,
     component: () => (
       <TooltipProvider>
-        <TaskList project={project} />
+        {page}
         <Toaster />
       </TooltipProvider>
     ),

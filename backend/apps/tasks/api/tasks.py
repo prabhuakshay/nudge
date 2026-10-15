@@ -1,4 +1,4 @@
-"""Task endpoints: list a Project's Tasks, add one, read one and change one."""
+"""Task endpoints: list a Project's Tasks, add one, read one, change one and read its history."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from apps.tasks.api import signed_in_user
 from apps.tasks.pagination import InvalidCursorError
 from apps.tasks.schemas import (
     AffectedTaskOut,
+    TaskActivityListOut,
     TaskChangeOut,
     TaskDetailOut,
     TaskIn,
@@ -119,3 +120,35 @@ def update_task(
     return Status(
         _HTTP_OK, TaskChangeOut(task=TaskDetailOut.from_orm(change.task), affected=affected)
     )
+
+
+@router.get(
+    "/{int:task_id}/activity",
+    response={
+        _HTTP_OK: TaskActivityListOut,
+        _HTTP_NOT_FOUND: ErrorOut,
+        _HTTP_UNPROCESSABLE: ErrorOut,
+    },
+    summary="List a Task's Activity",
+)
+def list_activity(
+    request: HttpRequest,
+    task_id: int,
+    cursor: str | None = None,
+) -> Status[TaskActivityListOut] | Status[ErrorOut]:
+    """Return a page of a Task's history, newest first, with the number of events in all."""
+    task = services.live_task(signed_in_user(request), task_id)
+    if task is None:
+        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    try:
+        page = services.task_activity(task, cursor)
+    except InvalidCursorError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    activity = TaskActivityListOut.model_validate(
+        {
+            "items": page.items,
+            "next_cursor": page.next_cursor,
+            "count": services.activity_count(task),
+        },
+    )
+    return Status(_HTTP_OK, activity)

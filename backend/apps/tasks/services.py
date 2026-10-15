@@ -1,7 +1,8 @@
-"""Business rules for Projects and Tasks: the Inbox, ordering, listing and completing.
+"""Business rules for Projects and Tasks: the Inbox, ordering, listing, completing and Activity.
 
 Every function takes the user first and reaches Projects and Tasks through that user's related
-managers, so another user's ids behave as if they don't exist.
+managers, so another user's ids behave as if they don't exist. A change and the Activity event
+that records it are saved in one transaction, so a Task's history never misses or invents a change.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ from django.db import transaction
 from django.utils import timezone
 from fractional_indexing import generate_key_between
 
-from apps.tasks.models import INBOX_NAME, Project, Task
+from apps.tasks.models import INBOX_NAME, Project, Task, TaskActivity
 from apps.tasks.pagination import Page, newest_first
 
 if TYPE_CHECKING:
@@ -76,12 +77,14 @@ def create_task(project: Project, title: str) -> Task:
         Project.objects.select_for_update().get(pk=project.pk)
         first = project.tasks.order_by("position", "id").values_list("position", flat=True).first()
         position = str(generate_key_between(None, first))
-        return Task.objects.create(
+        task = Task.objects.create(
             owner_id=project.owner_id,
             project=project,
             title=title,
             position=position,
         )
+        TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
+        return task
 
 
 def live_task(user: User, task_id: int) -> Task | None:
@@ -105,10 +108,19 @@ def update_task(
     if task is None:
         return None
     changed: list[str] = []
+    events: list[TaskActivity] = []
     if title is not None and title != task.title:
+        events.append(
+            TaskActivity(
+                task=task,
+                kind=TaskActivity.Kind.TITLE_CHANGED,
+                data={"old": task.title, "new": title},
+            ),
+        )
         task.title = title
         changed.append("title")
     if description is not None and description != task.description:
+        events.append(TaskActivity(task=task, kind=TaskActivity.Kind.DESCRIPTION_EDITED))
         task.description = description
         changed.append("description")
     affected: list[tuple[int, Task.Status]] = []
@@ -117,6 +129,22 @@ def update_task(
         task.status = status
         task.completed_at = timezone.now() if status == Task.Status.COMPLETED else None
         changed += ["status", "completed_at"]
-    if changed:
-        task.save(update_fields=[*changed, "updated_at"])
+    with transaction.atomic():
+        if changed:
+            task.save(update_fields=[*changed, "updated_at"])
+        TaskActivity.objects.bulk_create(events)
     return TaskChange(task=task, affected=affected)
+
+
+def task_activity(task: Task, cursor: str | None = None) -> Page[TaskActivity]:
+    """Return a page of the Task's history, newest first.
+
+    Raises:
+        InvalidCursorError: The cursor wasn't one this function returned.
+    """
+    return newest_first(task.activity.all(), "at", cursor)
+
+
+def activity_count(task: Task) -> int:
+    """Return how many events the Task's history holds."""
+    return task.activity.count()

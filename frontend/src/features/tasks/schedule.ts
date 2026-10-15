@@ -14,6 +14,25 @@ export function todayIn(timeZone: string, now: Date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone }).format(now);
 }
 
+/**
+ * Now on the user's clock, as a local Date whose fields read as the time in their zone. Times are
+ * floating in the user's zone, so this is the "now" that dates in it count from.
+ */
+export function wallClock(timeZone: string, now: Date = new Date()): Date {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "numeric",
+    day: "numeric",
+    hour: "numeric",
+    minute: "numeric",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((candidate) => candidate.type === type)?.value);
+  return new Date(part("year"), part("month") - 1, part("day"), part("hour"), part("minute"));
+}
+
 /** The ISO date the given number of days after another. */
 export function addDays(date: string, days: number): string {
   return format(addCalendarDays(parseISO(date), days), "yyyy-MM-dd");

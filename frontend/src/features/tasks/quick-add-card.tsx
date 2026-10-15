@@ -1,11 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useRef, useState } from "react";
-import { toast } from "sonner";
 
 import { Kbd } from "@/components/ui/kbd";
-import { findProject } from "@/features/projects/projects";
 import { shortcutText } from "@/features/shortcuts/registry";
 import { useShortcuts, useSingleKeyShortcuts } from "@/features/shortcuts/use-shortcuts";
 import { cn } from "@/lib/utils";
@@ -13,8 +10,10 @@ import { cn } from "@/lib/utils";
 import type { QuickAdd } from "./quick-add";
 import { QuickAddChips, QuickAddHint } from "./quick-add-chips";
 import { QuickAddField } from "./quick-add-field";
+import { useAnnounceTask } from "./announce-task";
 import { useQuickAddTitle } from "./quick-add-people";
 import {
+  keptDefault,
   newTaskFields,
   showsTask,
   viewDefault,
@@ -36,31 +35,12 @@ function useFocusOnShortcut(input: { current: HTMLInputElement | null }) {
 }
 
 /**
- * Point to a new Task that landed outside the view, such as one sent to another Project with `~`,
- * with a toast whose "Open" shows it in its Project.
+ * Point to a new Task that landed outside the view, such as one sent to another Project with `~`.
  */
 function useAnnounceElsewhere(view: QuickAddView) {
-  const { data: sidebar } = useQuery(sidebarQuery);
-  const navigate = useNavigate();
+  const announce = useAnnounceTask();
   return (task: Task) => {
-    if (showsTask(view, task)) return;
-    const project = sidebar && findProject(sidebar, task.project_id);
-    toast(`Added to ${project?.name ?? "a project"}`, {
-      action: {
-        label: "Open",
-        onClick: () => {
-          void navigate(
-            project?.is_inbox
-              ? { to: "/inbox", search: { task: task.id } }
-              : {
-                  to: "/projects/$projectId",
-                  params: { projectId: String(task.project_id) },
-                  search: { task: task.id },
-                },
-          );
-        },
-      },
-    });
+    if (!showsTask(view, task)) announce(task);
   };
 }
 
@@ -107,7 +87,14 @@ function KeyHints({ focused, typed }: { focused: boolean; typed: boolean }) {
  * looking. Enter adds the Task and keeps the input focused for the next, and `C` focuses it from
  * anywhere on the page.
  */
-export function QuickAddCard({ view }: { view: QuickAddView }) {
+export function QuickAddCard({
+  view,
+  onAdded,
+}: {
+  view: QuickAddView;
+  /** Called with each new Task instead of pointing to ones that landed outside the view. */
+  onAdded?: (task: Task) => void;
+}) {
   const { data: sidebar } = useQuery(sidebarQuery);
   const [focused, setFocused] = useState(false);
   const [givenDropped, setGivenDropped] = useState(false);
@@ -122,7 +109,7 @@ export function QuickAddCard({ view }: { view: QuickAddView }) {
     if (!sidebar) return;
     const fields = newTaskFields(parsed, given, sidebar.inbox.id);
     const title = withGivenMention(await titleOf(text, parsed), given);
-    createTask({ title, ...fields }, { onSuccess: announce });
+    createTask({ title, ...fields }, { onSuccess: onAdded ?? announce });
   };
   const quick = useQuickAdd({
     inputRef,
@@ -132,12 +119,13 @@ export function QuickAddCard({ view }: { view: QuickAddView }) {
     },
   });
 
-  const { matches, projectId } = quick.parsed;
-  // A typed `~project` takes the place of the view's Project.
-  const shownGiven = given?.kind === "project" && projectId !== null ? null : given;
+  const { matches } = quick.parsed;
+  const shownGiven = keptDefault(quick.parsed, given);
 
   return (
     <div
+      // Marks the page as having Quick add, so `C` focuses it rather than opening the dialog.
+      data-quick-add-card
       className={cn(
         "mb-3 rounded-xl border border-border bg-surface px-3 py-1.5 shadow-sm transition-colors",
         focused && "border-primary ring-2 ring-primary/15",

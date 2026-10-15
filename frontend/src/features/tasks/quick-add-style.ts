@@ -1,6 +1,14 @@
 /* How Quick add's matches and chips look: their colours, icons and labels. */
 
-import { AtSign, CalendarDays, Flag, FolderInput, Hash, type LucideIcon } from "lucide-react";
+import {
+  AtSign,
+  CalendarDays,
+  Flag,
+  FolderInput,
+  Hash,
+  Repeat,
+  type LucideIcon,
+} from "lucide-react";
 
 import { HUE } from "@/features/projects/project-style";
 import { tagHue } from "@/features/tags/tags";
@@ -25,6 +33,8 @@ export function matchClass(match: QuickAddMatch | ViewDefault): string {
       return cn(HUE[match.project.color].soft, HUE[match.project.color].text);
     case "date":
       return "bg-success-soft text-success";
+    case "repeat":
+      return "bg-hue-violet-soft text-hue-violet";
   }
 }
 
@@ -35,6 +45,7 @@ export const CHIP_ICON: Record<(QuickAddMatch | ViewDefault)["kind"], LucideIcon
   person: AtSign,
   project: FolderInput,
   date: CalendarDays,
+  repeat: Repeat,
 };
 
 /** What a chip says: the item's name, and whether it will be created. */
@@ -49,6 +60,7 @@ export function chipLabel(match: QuickAddMatch | ViewDefault) {
     case "project":
       return match.project.name;
     case "date":
+    case "repeat":
       return match.label;
   }
 }

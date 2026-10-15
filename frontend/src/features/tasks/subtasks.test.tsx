@@ -262,6 +262,31 @@ describe("Subtasks in the drawer", () => {
     expect(drawer).toBeInTheDocument();
   });
 
+  it("reads a date in a new Subtask, but leaves a Repeat phrase as text", async () => {
+    // Thursday 15 October 2026.
+    vi.useFakeTimers({ now: new Date(2026, 9, 15, 10, 0), toFake: ["Date"] });
+    const fetchSpy = mockApi();
+    const user = renderList();
+    const drawer = await open(user, "Groceries");
+
+    await user.type(
+      await within(drawer).findByRole("combobox", { name: "Add a subtask" }),
+      "Check the fridge every monday tomorrow{Enter}",
+    );
+
+    await vi.waitFor(async () => {
+      const post = fetchSpy.mock.calls
+        .map(([input]) => input as Request)
+        .find((request) => request.method === "POST");
+      expect(await post?.clone().json()).toEqual({
+        title: "Check the fridge every monday",
+        parent_id: 2,
+        dates: { due_date: "2026-10-16", due_time: null, start_date: null, start_time: null },
+      });
+    });
+    vi.useRealTimers();
+  });
+
   it("offers no Pin action for a Subtask", async () => {
     mockApi();
     const user = renderList();

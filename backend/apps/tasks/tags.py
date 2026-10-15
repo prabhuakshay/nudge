@@ -16,7 +16,7 @@ from django.db.models import Count
 from fractional_indexing import generate_key_between
 
 from apps.accounts.models import User
-from apps.tasks import services
+from apps.tasks import repeat, services
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Project, Tag, Task, TaskActivity
 from apps.tasks.pagination import Page, newest_first
@@ -195,31 +195,36 @@ def _resolve(user: User, tags: Iterable[Tag | str]) -> list[Tag]:
     return [*(tag for tag in given if isinstance(tag, Tag)), *tags_named(user, names)]
 
 
-def create_tagged_task(
+def create_tagged_task(  # noqa: PLR0913 - each field of a new Task past its title is optional
     project: Project,
     title: str,
     dates: TaskDates | None = None,
     *,
     priority: Task.Priority = Task.Priority.NONE,
     tags: Iterable[Tag | str] = (),
+    repeat_with: repeat.Repeat | None = None,
 ) -> Task:
-    """Create a Task as `services.create_task` does, with Tags, in one transaction.
+    """Create a Task as `services.create_task` does, with Tags and a Repeat, in one transaction.
 
     `tags` holds Tags, or names of the owner's Tags, which are created if they're new.
 
     Raises:
         MentionError: The title mentions a Person who isn't the owner's.
         ArchivedProjectError: The Project is archived.
+        RepeatRuleError: The Repeat's rule is unreadable, or the Task has no due date.
     """
     with transaction.atomic():
         task = services.create_task(project, title, dates, priority=priority)
         task.tags.add(*_resolve(project.owner, tags))
+        if repeat_with is not None:
+            repeat.start(task, repeat_with.rule, Task.RepeatFrom(repeat_with.repeat_from))
     return task
 
 
 def create_tagged_subtask(
     parent: Task,
     title: str,
+    dates: TaskDates | None = None,
     *,
     priority: Task.Priority = Task.Priority.NONE,
     tags: Iterable[Tag | str] = (),
@@ -234,7 +239,7 @@ def create_tagged_subtask(
         ArchivedProjectError: The parent is in an archived Project.
     """
     with transaction.atomic():
-        change = services.create_subtask(parent, title, priority=priority)
+        change = services.create_subtask(parent, title, dates, priority=priority)
         change.task.tags.add(*_resolve(parent.owner, tags))
     # The row came with its Tags prefetched, before these were added.
     fresh = as_rows(Task.objects.filter(pk=change.task.pk), parent.owner).get()

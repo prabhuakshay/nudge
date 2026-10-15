@@ -13,7 +13,8 @@ import { useQuickAdd } from "./use-quick-add";
 
 /**
  * The drawer's field that adds a Subtask last under the Task and stays ready for the next. It is
- * Quick add without `~project`, since a Subtask always shares its root's Project.
+ * Quick add without `~project` and Repeat, since a Subtask always shares its root's Project and
+ * never repeats.
  */
 export function AddSubtask({ parentId, bordered }: { parentId: number; bordered: boolean }) {
   const { mutate: create } = useCreateSubtask(parentId);
@@ -22,6 +23,7 @@ export function AddSubtask({ parentId, bordered }: { parentId: number; bordered:
   const quick = useQuickAdd({
     inputRef,
     allowProject: false,
+    allowRepeat: false,
     onSubmit: (text, parsed) => {
       void titleOf(text, parsed).then((title) => {
         create({ title, ...typedFields(parsed) });

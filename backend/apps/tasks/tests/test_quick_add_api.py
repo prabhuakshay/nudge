@@ -1,4 +1,4 @@
-"""Tests for what Quick add sends with a new Task or Subtask: its Priority and its Tags."""
+"""Tests for what Quick add sends with a new Task or Subtask: Priority, Tags, dates, Repeat."""
 
 from __future__ import annotations
 
@@ -82,4 +82,75 @@ def test_a_subtask_cannot_use_another_users_tag(
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Tag not found."}
+    assert parent.subtasks.count() == 0
+
+
+@pytest.mark.django_db
+def test_create_sets_a_repeat(client: Client, ada: User) -> None:
+    response = _post(
+        client,
+        {
+            "title": "Water the plants",
+            "dates": {"due_date": "2026-10-19", "due_time": "09:00"},
+            "repeat_rule": "FREQ=WEEKLY;BYDAY=MO",
+            "repeat_from": "completion",
+        },
+    )
+
+    assert response.status_code == 201
+    body = response.json()
+    assert body["repeat_rule"] == "FREQ=WEEKLY;BYDAY=MO"
+    assert body["repeat_from"] == "completion"
+    assert str(ada.tasks.get().repeat_anchor) == "2026-10-19"
+
+
+@pytest.mark.django_db
+def test_create_refuses_a_repeat_without_a_due_date(client: Client, ada: User) -> None:
+    response = _post(client, {"title": "Water the plants", "repeat_rule": "FREQ=DAILY"})
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "A repeating task needs a due date."}
+    assert not ada.tasks.exists()
+
+
+@pytest.mark.django_db
+def test_create_refuses_an_unreadable_repeat(client: Client, ada: User) -> None:
+    response = _post(
+        client,
+        {"title": "Water", "dates": {"due_date": "2026-10-19"}, "repeat_rule": "FREQ=SOMETIMES"},
+    )
+
+    assert response.status_code == 422
+    assert not ada.tasks.exists()
+
+
+@pytest.mark.django_db
+def test_a_subtask_gets_its_dates(client: Client, ada: User) -> None:
+    parent = services.create_task(services.inbox(ada), "Plan the trip")
+
+    response = _post(
+        client,
+        {"title": "Book flights", "parent_id": parent.pk, "dates": {"due_date": "2026-10-20"}},
+    )
+
+    assert response.status_code == 201
+    assert response.json()["due_date"] == "2026-10-20"
+
+
+@pytest.mark.django_db
+def test_a_subtask_cannot_repeat(client: Client, ada: User) -> None:
+    parent = services.create_task(services.inbox(ada), "Plan the trip")
+
+    response = _post(
+        client,
+        {
+            "title": "Book flights",
+            "parent_id": parent.pk,
+            "dates": {"due_date": "2026-10-20"},
+            "repeat_rule": "FREQ=DAILY",
+        },
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "Only a top-level task can repeat."}
     assert parent.subtasks.count() == 0

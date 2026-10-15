@@ -177,6 +177,7 @@ def create_task(
 def create_subtask(
     parent: Task,
     title: str,
+    dates: TaskDates | None = None,
     *,
     priority: Task.Priority = Task.Priority.NONE,
 ) -> TaskChange:
@@ -205,6 +206,7 @@ def create_subtask(
             title=title,
             priority=priority,
             position=str(generate_key_between(last, None)),
+            **asdict(dates or TaskDates()),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
         sync_mentions(task)

@@ -169,6 +169,38 @@ describe("Quick add", () => {
     expect(await screen.findByText("Added to Inbox")).toBeInTheDocument();
   });
 
+  it("reads a Repeat and starts the Task on its first day", async () => {
+    // Thursday 15 October 2026.
+    vi.useFakeTimers({ now: new Date(2026, 9, 15, 10, 0), toFake: ["Date"] });
+    const { log } = mockApi();
+    const { user } = renderTaskList();
+
+    await user.type(await input(), "Water every monday 9am");
+    expect(screen.getByText("Weekly on Monday")).toBeInTheDocument();
+    expect(screen.getByText("Monday, 09:00")).toBeInTheDocument();
+    await user.keyboard("{Enter}");
+
+    await vi.waitFor(() => {
+      expect(posts(log)).toEqual([
+        [
+          "POST /api/v1/tasks",
+          {
+            title: "Water",
+            project_id: INBOX.id,
+            dates: {
+              due_date: "2026-10-19",
+              due_time: "09:00",
+              start_date: null,
+              start_time: null,
+            },
+            repeat_rule: "FREQ=WEEKLY;BYDAY=MO",
+          },
+        ],
+      ]);
+    });
+    vi.useRealTimers();
+  });
+
   it("mentions the Person in their view's new Tasks", async () => {
     const { log } = mockApi();
     const priya: Person = PRIYA;

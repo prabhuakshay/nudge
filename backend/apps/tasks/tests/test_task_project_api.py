@@ -57,7 +57,12 @@ def test_moving_a_task_is_logged_with_both_project_names(client: Client, ada: Us
 
     newest = client.get(f"/api/v1/tasks/{task.pk}/activity").json()["items"][0]
     assert newest["kind"] == "moved"
-    assert newest["data"] == {"from_project": "Inbox", "to_project": "Work"}
+    assert newest["data"] == {
+        "from_project": "Inbox",
+        "to_project": "Work",
+        "from_parent": None,
+        "to_parent": None,
+    }
 
 
 @pytest.mark.django_db

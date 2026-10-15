@@ -1548,6 +1548,74 @@
         ]
       }
     },
+    "/api/v1/tasks/{task_id}/move": {
+      "post": {
+        "operationId": "apps_tasks_api_tasks_move_task",
+        "summary": "Move a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskChangeOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Move a Task and its Subtasks under a parent, or to a Project's top level, after a sibling.\n\nThe server picks the new order key. The Task comes back with every Closed ancestor the move\nreopened, so the client can offer Undo.",
+        "tags": [
+          "tasks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/tasks/{task_id}/duplicate": {
       "post": {
         "operationId": "apps_tasks_api_tasks_duplicate_task",
@@ -3711,6 +3779,49 @@
         "title": "TaskPatchIn",
         "type": "object"
       },
+      "TaskMoveIn": {
+        "description": "Where a Task goes: under a parent, or to the top level of a Project, after a sibling.",
+        "properties": {
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the parent's Project, or the Task's own for a root.",
+            "title": "Project Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The top level when left out.",
+            "title": "Parent Id"
+          },
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The sibling it now follows; first when left out, last when it isn't there.",
+            "title": "After Id"
+          }
+        },
+        "title": "TaskMoveIn",
+        "type": "object"
+      },
       "AttachmentAddedActivityOut": {
         "description": "A file was attached to the Task.",
         "properties": {
@@ -3961,7 +4072,7 @@
         "type": "object"
       },
       "MovedActivityOut": {
-        "description": "The Task moved to another Project.",
+        "description": "The Task moved to another Project or parent.",
         "properties": {
           "id": {
             "title": "Id",
@@ -3991,7 +4102,7 @@
         "type": "object"
       },
       "MovedData": {
-        "description": "The Projects a Task moved between, by their names at the time.",
+        "description": "The Projects and parents a Task moved between, by their names and titles at the time.",
         "properties": {
           "from_project": {
             "title": "From Project",
@@ -4000,6 +4111,30 @@
           "to_project": {
             "title": "To Project",
             "type": "string"
+          },
+          "from_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when it was a root.",
+            "title": "From Parent"
+          },
+          "to_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when it became a root.",
+            "title": "To Parent"
           }
         },
         "required": [

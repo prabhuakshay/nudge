@@ -231,7 +231,7 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
                   <DescriptionField task={task} />
                 </div>
               </section>
-              <SubtaskSection task={task} onOpen={onOpen} />
+              <SubtaskSection task={task} readOnly={readOnly} onOpen={onOpen} />
               <Attachments taskId={task.id} />
             </fieldset>
           </TabsContent>

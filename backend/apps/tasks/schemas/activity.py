@@ -96,10 +96,12 @@ class DatesChangedActivityOut(Schema):
 
 
 class MovedData(Schema):
-    """The Projects a Task moved between, by their names at the time."""
+    """The Projects and parents a Task moved between, by their names and titles at the time."""
 
     from_project: str
     to_project: str
+    from_parent: str | None = Field(default=None, description="Null when it was a root.")
+    to_parent: str | None = Field(default=None, description="Null when it became a root.")
 
 
 class PersonMergedData(Schema):
@@ -119,7 +121,7 @@ class PersonMergedActivityOut(Schema):
 
 
 class MovedActivityOut(Schema):
-    """The Task moved to another Project."""
+    """The Task moved to another Project or parent."""
 
     id: int
     kind: Literal["moved"]

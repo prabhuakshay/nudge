@@ -42,7 +42,7 @@ export const TASKS_KEY = ["tasks"] as const;
 /** The key prefix of every open-Task list, so a change can show in all of them at once. */
 export const OPEN_KEY = [...TASKS_KEY, "open"] as const;
 /** The key prefix of every drawer's Task, so a change can show in a parent's Subtasks too. */
-const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
+export const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
 
 /** A Project's open Tasks with every Subtask under them, as flat rows in manual order. */
 export function openTasksQuery(projectId: number) {

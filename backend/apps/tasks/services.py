@@ -34,6 +34,7 @@ from apps.tasks.tree import (
     AffectedTask,
     cascade_status,
     move_tree,
+    moved_event,
     reopen_ancestors,
     root_status_in,
     rows_below,
@@ -298,7 +299,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     if edit.project is not None:
         ensure_writable(edit.project)
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
-    before["project_name"] = task.project.name
+    from_project, from_parent = task.project.name, task.parent_title
     dates_before = TaskDates.of(task)
     _apply(task, edit)
     changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
@@ -319,7 +320,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
         closed_subtasks = len(cascaded) if task.status in CLOSED_STATUSES else 0
         events = _activity(task, before, dates_before, closed_subtasks)
         if moved:
-            events.append(_moved(before["project_name"], task))
+            events.append(moved_event(task, from_project, from_parent))
         TaskActivity.objects.bulk_create(events)
     # Re-read, because a change of dates or Status can change whether the Task is overdue.
     fresh = as_rows(user.tasks.filter(pk=task.pk), user).get()
@@ -386,14 +387,6 @@ def _activity(
         data = {"old": dates_before.as_activity(), "new": dates.as_activity()}
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.DATES_CHANGED, data=data))
     return events
-
-
-def _moved(from_project: object, task: Task) -> TaskActivity:
-    return TaskActivity(
-        task=task,
-        kind=TaskActivity.Kind.MOVED,
-        data={"from_project": from_project, "to_project": task.project.name},
-    )
 
 
 def task_activity(task: Task, cursor: str | None = None) -> Page[TaskActivity]:

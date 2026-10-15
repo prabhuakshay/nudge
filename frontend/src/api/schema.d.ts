@@ -599,6 +599,29 @@ export interface paths {
     patch: operations["apps_tasks_api_tasks_update_task"];
     trace?: never;
   };
+  "/api/v1/tasks/{task_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Task
+     * @description Move a Task and its Subtasks under a parent, or to a Project's top level, after a sibling.
+     *
+     *     The server picks the new order key. The Task comes back with every Closed ancestor the move
+     *     reopened, so the client can offer Undo.
+     */
+    post: operations["apps_tasks_api_tasks_move_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/tasks/{task_id}/duplicate": {
     parameters: {
       query?: never;
@@ -1542,6 +1565,27 @@ export interface components {
       project_id?: number | null;
     };
     /**
+     * TaskMoveIn
+     * @description Where a Task goes: under a parent, or to the top level of a Project, after a sibling.
+     */
+    TaskMoveIn: {
+      /**
+       * Project Id
+       * @description Defaults to the parent's Project, or the Task's own for a root.
+       */
+      project_id?: number | null;
+      /**
+       * Parent Id
+       * @description The top level when left out.
+       */
+      parent_id?: number | null;
+      /**
+       * After Id
+       * @description The sibling it now follows; first when left out, last when it isn't there.
+       */
+      after_id?: number | null;
+    };
+    /**
      * AttachmentAddedActivityOut
      * @description A file was attached to the Task.
      */
@@ -1671,7 +1715,7 @@ export interface components {
     };
     /**
      * MovedActivityOut
-     * @description The Task moved to another Project.
+     * @description The Task moved to another Project or parent.
      */
     MovedActivityOut: {
       /** Id */
@@ -1690,13 +1734,23 @@ export interface components {
     };
     /**
      * MovedData
-     * @description The Projects a Task moved between, by their names at the time.
+     * @description The Projects and parents a Task moved between, by their names and titles at the time.
      */
     MovedData: {
       /** From Project */
       from_project: string;
       /** To Project */
       to_project: string;
+      /**
+       * From Parent
+       * @description Null when it was a root.
+       */
+      from_parent?: string | null;
+      /**
+       * To Parent
+       * @description Null when it became a root.
+       */
+      to_parent?: string | null;
     };
     /**
      * NoActivityData
@@ -2954,6 +3008,50 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["TaskPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskChangeOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_move_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskMoveIn"];
       };
     };
     responses: {

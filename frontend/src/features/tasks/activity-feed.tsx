@@ -2,6 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { plainMentions } from "@/features/people/mentions";
 
 import { activityTime, exactTime } from "./activity-time";
 import { describeDates } from "./due";
@@ -13,16 +14,18 @@ type ActivityData = { [E in TaskActivity as E["kind"]]: E["data"] };
 /** What each kind of event says happened, in the user's words rather than the API's. */
 const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string } = {
   created: () => "Created this task",
-  title_changed: (data) => `Renamed from “${data.old}” to “${data.new}”`,
+  title_changed: (data) =>
+    `Renamed from “${plainMentions(data.old)}” to “${plainMentions(data.new)}”`,
   description_edited: () => "Edited the description",
   status_changed: ({ new: status, blocked_reason: reason }) =>
-    reason ? `${STATUS_VERB[status]}: “${reason}”` : STATUS_VERB[status],
+    reason ? `${STATUS_VERB[status]}: “${plainMentions(reason)}”` : STATUS_VERB[status],
   priority_changed: (data) =>
     `Changed priority from ${PRIORITY[data.old].short} to ${PRIORITY[data.new].short}`,
   attachment_added: (data) => `Attached “${data.name}”`,
   attachment_removed: (data) => `Deleted the attachment “${data.name}”`,
   dates_changed: (data) => describeDatesChange(data),
   moved: (data) => `Moved from “${data.from_project}” to “${data.to_project}”`,
+  person_merged: (data) => `Merged @${data.from_person} into @${data.to_person}`,
 };
 
 function describe<K extends keyof ActivityData>(event: { kind: K; data: ActivityData[K] }) {

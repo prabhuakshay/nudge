@@ -21,6 +21,7 @@ from fractional_indexing import generate_key_between
 
 from apps.accounts.services import local_zone
 from apps.core.palette import PaletteColor
+from apps.tasks.mentions import TEXT_FIELDS, check_mentions, sync_mentions
 from apps.tasks.models import (
     CLOSED_STATUSES,
     INBOX_NAME,
@@ -150,8 +151,13 @@ def _with_overdue(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
     return tasks.annotate(is_overdue=Case(When(overdue, then=True), default=False))
 
 
+def task_rows(tasks: QuerySet[Task], user: User) -> QuerySet[Task]:
+    """Return the live Tasks among `tasks` with what a list row shows: counts and `is_overdue`."""
+    return _with_overdue(_with_counts(tasks.filter(deleted_at__isnull=True)), user)
+
+
 def _live_tasks(project: Project) -> QuerySet[Task]:
-    return _with_overdue(_with_counts(project.tasks.filter(deleted_at__isnull=True)), project.owner)
+    return task_rows(project.tasks.all(), project.owner)
 
 
 def open_tasks(project: Project) -> QuerySet[Task]:
@@ -178,7 +184,12 @@ def _first_position(project: Project) -> str:
 
 
 def create_task(project: Project, title: str) -> Task:
-    """Create a Task in the Project, first among its Tasks, owned by the Project's owner."""
+    """Create a Task in the Project, first among its Tasks, owned by the Project's owner.
+
+    Raises:
+        MentionError: The title mentions a Person the owner doesn't have.
+    """
+    check_mentions(project.owner, title)
     with transaction.atomic():
         task = Task.objects.create(
             owner_id=project.owner_id,
@@ -187,6 +198,7 @@ def create_task(project: Project, title: str) -> Task:
             position=_first_position(project),
         )
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.CREATED, at=task.created_at)
+        sync_mentions(task)
     return _with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)
 
 
@@ -217,6 +229,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
 
     Raises:
         TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked.
+        MentionError: A text mentions a Person the user doesn't have.
     """
     task = live_task(user, task_id)
     if task is None:
@@ -225,6 +238,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     dates_before = TaskDates.of(task)
     _apply(task, edit)
     changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
+    check_mentions(user, *(getattr(task, name) for name in TEXT_FIELDS if name in changed))
     affected = []
     if "status" in changed:
         affected.append(
@@ -239,6 +253,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
             changed += ["project", "position"]
         if changed:
             task.save(update_fields=[*changed, "updated_at"])
+            sync_mentions(task)
         TaskActivity.objects.bulk_create(events)
     # Re-read, because a change of dates or Status can change whether the Task is overdue.
     fresh = _with_overdue(_with_counts(user.tasks.all()), user).get(pk=task.pk)

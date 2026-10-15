@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Globe,
@@ -24,6 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import type { User } from "@/features/auth/session";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { CalendarFeedSettings } from "@/features/calendar-feed/calendar-feed-settings";
 import { NotificationSettings } from "@/features/notifications/notification-settings";
 import { PUSH_STATUS_LABELS, pushStatusQuery } from "@/features/notifications/push";
 import { THEME_LABELS, useTheme } from "@/features/theme/theme";
@@ -33,13 +35,14 @@ import { cn } from "@/lib/utils";
 
 import { PasswordPage, ProfilePage } from "./account-pages";
 
-type Page = "profile" | "password" | "time-zone" | "notifications" | "appearance";
+type Page = "profile" | "password" | "time-zone" | "notifications" | "calendar-feed" | "appearance";
 
 const PAGES: { page: Page; label: string; icon: LucideIcon }[] = [
   { page: "profile", label: "Profile", icon: UserRound },
   { page: "password", label: "Password", icon: KeyRound },
   { page: "time-zone", label: "Time zone", icon: Globe },
   { page: "notifications", label: "Notifications", icon: Bell },
+  { page: "calendar-feed", label: "Calendar feed", icon: CalendarDays },
   { page: "appearance", label: "Appearance", icon: Palette },
 ];
 
@@ -140,6 +143,8 @@ function PageContent({ page, user }: { page: Page; user: User }) {
       return <TimeZoneSettings timeZone={user.time_zone} />;
     case "notifications":
       return <NotificationSettings />;
+    case "calendar-feed":
+      return <CalendarFeedSettings />;
     case "appearance":
       return <ThemePicker />;
   }

@@ -161,7 +161,7 @@ class TaskIn(Schema):
     )
     dates: TaskDatesIn | None = Field(
         default=None,
-        description="Dates the Task from the start, such as today in Today. Not for a Subtask.",
+        description="Dates the Task from the start, such as today in Today.",
     )
     priority: Task.Priority | None = Field(
         default=None,
@@ -172,6 +172,15 @@ class TaskIn(Schema):
         description="Tag names, in any case; Tags the user doesn't have yet are created.",
     )
     tag_ids: list[int] = Field(default_factory=list, description="Tags picked by id.")
+    repeat_rule: RepeatRule | None = Field(
+        default=None,
+        description="Makes the Task repeat from its due date, as an RFC 5545 RRULE. Needs a due "
+        "date; a Subtask can't repeat.",
+    )
+    repeat_from: Task.RepeatFrom | None = Field(
+        default=None,
+        description="What a repeating Task's next date counts from; the calendar when left out.",
+    )
 
 
 class TaskPatchIn(Schema):

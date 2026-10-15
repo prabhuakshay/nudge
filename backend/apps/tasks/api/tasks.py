@@ -17,7 +17,7 @@ from apps.tasks.mentions import MentionError
 from apps.tasks.models import Task
 from apps.tasks.pagination import InvalidCursorError, Page
 from apps.tasks.reminders import ReminderRuleError
-from apps.tasks.repeat import RepeatRuleError
+from apps.tasks.repeat import SUBTASK_REPEAT, Repeat, RepeatRuleError
 from apps.tasks.schemas.activity import TaskActivityListOut
 from apps.tasks.schemas.reminders import ReminderOut
 from apps.tasks.schemas.tasks import (
@@ -147,7 +147,7 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
 
     With `parent_id` it is added last under that Task instead, which reopens the parent and its
     ancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are
-    created with the Task.
+    created with the Task. A dated top-level Task can repeat from the start.
     """
     user = signed_in_user(request)
     picked = tags.owned_tags(user, task.tag_ids)
@@ -177,8 +177,9 @@ def _create_root(
             _dates(task),
             priority=task.priority or Task.Priority.NONE,
             tags=with_tags,
+            repeat_with=_repeat(task),
         )
-    except (MentionError, ArchivedProjectError) as error:
+    except (MentionError, ArchivedProjectError, RepeatRuleError) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     return Status(_HTTP_CREATED, TaskOut.from_orm(created))
 
@@ -192,10 +193,13 @@ def _create_subtask(
     parent = services.live_task(user, parent_id)
     if parent is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    if task.repeat_rule:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=SUBTASK_REPEAT))
     try:
         change = tags.create_tagged_subtask(
             parent,
             task.title,
+            _dates(task),
             priority=task.priority or Task.Priority.NONE,
             tags=with_tags,
         )
@@ -374,6 +378,13 @@ def _edit(
         repeat_from=patch.repeat_from,
     )
     return edit, picked
+
+
+def _repeat(task: TaskIn) -> Repeat | None:
+    """Return the Repeat a new Task asks for, or None when it doesn't repeat."""
+    if not task.repeat_rule:
+        return None
+    return Repeat(task.repeat_rule, task.repeat_from or Task.RepeatFrom.CALENDAR)
 
 
 def _dates(body: TaskIn | TaskPatchIn) -> TaskDates | None:

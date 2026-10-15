@@ -25,6 +25,7 @@ from apps.tasks.rows import local_now
 _FREQUENCIES = frozenset({"DAILY", "WEEKLY", "MONTHLY", "YEARLY"})
 _COUNT = re.compile(r"(;?COUNT=)(\d+)")
 _UNREADABLE = "That isn't a repeat rule Nudge understands."
+SUBTASK_REPEAT = "Only a top-level task can repeat."
 
 
 class RepeatRuleError(Exception):
@@ -104,8 +105,7 @@ def apply_edit(
     if rule is not None:
         task.repeat_rule = normalise(rule) if rule else ""
         if task.repeat_rule and task.parent_id is not None:
-            message = "Only a top-level task can repeat."
-            raise RepeatRuleError(message)
+            raise RepeatRuleError(SUBTASK_REPEAT)
         if task.repeat_rule and task.due_date is None:
             message = "A repeating task needs a due date."
             raise RepeatRuleError(message)
@@ -115,6 +115,16 @@ def apply_edit(
         task.repeat_anchor = None
     elif rule is not None or TaskDates.of(task) != dates_before:
         task.repeat_anchor = task.due_date
+
+
+def start(task: Task, rule: str, repeat_from: Task.RepeatFrom | None) -> None:
+    """Make a new, saved Task repeat on the rule from its due date, and save that.
+
+    Raises:
+        RepeatRuleError: The rule is unreadable, or the Task is a Subtask or undated.
+    """
+    apply_edit(task, rule, repeat_from, TaskDates.of(task))
+    task.save(update_fields=["repeat_rule", "repeat_anchor", "repeat_from"])
 
 
 def edit_event(task: Task, before: Repeat | None, *, asked: bool) -> TaskActivity | None:

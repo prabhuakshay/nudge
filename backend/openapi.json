@@ -1805,7 +1805,7 @@
             }
           }
         },
-        "description": "Add a Task first in its Project, or in the Inbox when no Project is given.\n\nWith `parent_id` it is added last under that Task instead, which reopens the parent and its\nancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are\ncreated with the Task.",
+        "description": "Add a Task first in its Project, or in the Inbox when no Project is given.\n\nWith `parent_id` it is added last under that Task instead, which reopens the parent and its\nancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are\ncreated with the Task. A dated top-level Task can repeat from the start.",
         "tags": [
           "tasks"
         ],
@@ -4851,7 +4851,7 @@
                 "type": "null"
               }
             ],
-            "description": "Dates the Task from the start, such as today in Today. Not for a Subtask."
+            "description": "Dates the Task from the start, such as today in Today."
           },
           "priority": {
             "anyOf": [
@@ -4882,6 +4882,30 @@
             },
             "title": "Tag Ids",
             "type": "array"
+          },
+          "repeat_rule": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Makes the Task repeat from its due date, as an RFC 5545 RRULE. Needs a due date; a Subtask can't repeat.",
+            "title": "Repeat Rule"
+          },
+          "repeat_from": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatFrom"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What a repeating Task's next date counts from; the calendar when left out."
           }
         },
         "required": [

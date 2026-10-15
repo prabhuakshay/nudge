@@ -689,7 +689,7 @@ export interface paths {
      *
      *     With `parent_id` it is added last under that Task instead, which reopens the parent and its
      *     ancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are
-     *     created with the Task.
+     *     created with the Task. A dated top-level Task can repeat from the start.
      */
     post: operations["apps_tasks_api_tasks_create_task"];
     delete?: never;
@@ -1954,7 +1954,7 @@ export interface components {
        * @description Makes the Task the last Subtask of this one; reopens it if it's Closed.
        */
       parent_id?: number | null;
-      /** @description Dates the Task from the start, such as today in Today. Not for a Subtask. */
+      /** @description Dates the Task from the start, such as today in Today. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
       /** @description 1 (P1) is the most urgent; left out, the Task has no Priority. */
       priority?: components["schemas"]["Priority"] | null;
@@ -1968,6 +1968,13 @@ export interface components {
        * @description Tags picked by id.
        */
       tag_ids?: number[];
+      /**
+       * Repeat Rule
+       * @description Makes the Task repeat from its due date, as an RFC 5545 RRULE. Needs a due date; a Subtask can't repeat.
+       */
+      repeat_rule?: string | null;
+      /** @description What a repeating Task's next date counts from; the calendar when left out. */
+      repeat_from?: components["schemas"]["RepeatFrom"] | null;
     };
     /**
      * TaskPatchIn

@@ -3,6 +3,8 @@ import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
+import { Toaster } from "@/components/ui/sonner";
+
 import type { Sidebar, SidebarFolder, SidebarProject } from "./projects";
 import { SidebarProjects } from "./sidebar-projects";
 
@@ -64,6 +66,11 @@ function json(body: unknown, status = 200) {
   );
 }
 
+function withoutDeletedProject(sidebar: Sidebar, request: Request): Sidebar {
+  if (request.method !== "DELETE" || !request.url.includes("/projects/")) return sidebar;
+  return { ...sidebar, items: sidebar.items.filter((item) => item !== WORK) };
+}
+
 /** A stand-in server: the sidebar for reads, and an echo of every write. */
 function mockApi() {
   let sidebar = SIDEBAR;
@@ -75,8 +82,13 @@ function mockApi() {
       sidebar = { ...sidebar, items: [WORK, { ...PERSONAL, ...change }] };
       return json({ ...PERSONAL, ...change });
     }
-    if (request.method === "DELETE" || request.url.endsWith("/move")) return json(null, 204);
-    if (request.url.endsWith("/archive")) return json({ ...WORK, is_archived: true });
+    if (request.method === "DELETE" || request.url.endsWith("/move")) {
+      sidebar = withoutDeletedProject(sidebar, request);
+      return json(null, 204);
+    }
+    if (/\/(archive|restore)$/.test(request.url)) {
+      return json({ ...WORK, is_archived: request.url.endsWith("/archive") });
+    }
     const body = (await request.clone().json()) as object;
     return json({ ...WORK, id: 50, ...body }, request.method === "POST" ? 201 : 200);
   });
@@ -99,6 +111,7 @@ function renderSidebar() {
   render(
     <QueryClientProvider client={new QueryClient()}>
       <SidebarProjects />
+      <Toaster />
     </QueryClientProvider>,
   );
   return userEvent.setup();
@@ -201,6 +214,53 @@ describe("SidebarProjects", () => {
     await waitFor(async () => {
       expect(await writes(fetchSpy)).toEqual([["POST /api/v1/projects/1/archive", null]]);
     });
+  });
+
+  it("moves a Project to Trash after a confirm, and hides it straight away", async () => {
+    const fetchSpy = mockApi();
+    const user = renderSidebar();
+
+    await user.click(await screen.findByRole("button", { name: "Work options" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    const dialog = screen.getByRole("dialog", { name: "Delete “Work”?" });
+    expect(await writes(fetchSpy)).toEqual([]);
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    await waitFor(async () => {
+      expect(screen.queryByRole("link", { name: "Work, 2 open" })).not.toBeInTheDocument();
+      expect(await writes(fetchSpy)).toEqual([["DELETE /api/v1/projects/1", null]]);
+    });
+  });
+
+  it("offers to undo a Project's delete", async () => {
+    const fetchSpy = mockApi();
+    const user = renderSidebar();
+
+    await user.click(await screen.findByRole("button", { name: "Work options" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Delete" }));
+    await screen.findByText("Moved “Work” to Trash");
+    await user.click(screen.getByRole("button", { name: "Undo" }));
+
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([
+        ["DELETE /api/v1/projects/1", null],
+        ["POST /api/v1/projects/1/restore", null],
+      ]);
+    });
+  });
+
+  it("keeps a Project when its delete is cancelled", async () => {
+    const fetchSpy = mockApi();
+    const user = renderSidebar();
+
+    await user.click(await screen.findByRole("button", { name: "Work options" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Work, 2 open" })).toBeInTheDocument();
+    expect(await writes(fetchSpy)).toEqual([]);
   });
 
   it("deletes a Folder from its menu", async () => {

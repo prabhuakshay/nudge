@@ -1,4 +1,4 @@
-"""Project endpoints: create one, change it, move it in the sidebar, archive and unarchive it."""
+"""Project endpoints: create, change, move, archive, unarchive and delete a Project."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from ninja import Router, Status
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import projects
+from apps.tasks import project_trash, projects
 from apps.tasks.api import signed_in_user
 from apps.tasks.projects import ProjectRuleError, SiblingRef
 from apps.tasks.schemas.projects import ProjectIn, ProjectMoveIn, ProjectOut, ProjectPatchIn
@@ -137,3 +137,19 @@ def unarchive_project(
     if project is None:
         return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
     return Status(_HTTP_OK, ProjectOut.from_orm(project))
+
+
+@router.delete(
+    "/{int:project_id}",
+    response={_HTTP_NO_CONTENT: None, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    summary="Move a Project to Trash",
+)
+def delete_project(request: HttpRequest, project_id: int) -> Status[None] | Status[ErrorOut]:
+    """Move a Project and its Tasks to Trash as one unit. The Inbox can't be deleted."""
+    try:
+        trashed = project_trash.trash_project(signed_in_user(request), project_id)
+    except ProjectRuleError as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    if not trashed:
+        return Status(_HTTP_NOT_FOUND, _PROJECT_NOT_FOUND)
+    return Status(_HTTP_NO_CONTENT, None)

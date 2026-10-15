@@ -3,7 +3,13 @@ import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
-import { sidebarQuery, type Sidebar, type SidebarProject } from "@/features/tasks/tasks";
+import {
+  refreshTasks,
+  sidebarQuery,
+  type Sidebar,
+  type SidebarProject,
+} from "@/features/tasks/tasks";
+import { trashQuery, useRestoreProject } from "@/features/trash/trash";
 
 import { applyPlacement, type Placement, type SiblingRef } from "./sidebar-order";
 
@@ -186,4 +192,55 @@ export function useSetArchived() {
       },
     );
   };
+}
+
+/** The sidebar without a Project, wherever it sits. */
+function withoutProject(sidebar: Sidebar, id: number): Sidebar {
+  const keep = (project: SidebarProject) => project.id !== id;
+  return {
+    ...sidebar,
+    items: sidebar.items
+      .filter((item) => item.kind === "folder" || keep(item))
+      .map((item) =>
+        item.kind === "folder" ? { ...item, projects: item.projects.filter(keep) } : item,
+      ),
+    archived: sidebar.archived.filter(keep),
+  };
+}
+
+/**
+ * Move a Project and its Tasks to Trash, then offer Undo in a toast. It leaves the sidebar
+ * before the server answers.
+ */
+export function useDeleteProject() {
+  const queryClient = useQueryClient();
+  const { mutate: restore } = useRestoreProject();
+  return useMutation({
+    mutationFn: async (project: SidebarProject) => {
+      const { error } = await api.DELETE("/api/v1/projects/{project_id}", {
+        params: { path: { project_id: project.id } },
+      });
+      if (error) throw new Error(error.detail);
+    },
+    onMutate: async (project) => {
+      await queryClient.cancelQueries(sidebarQuery);
+      queryClient.setQueryData(
+        sidebarQuery.queryKey,
+        (sidebar) => sidebar && withoutProject(sidebar, project.id),
+      );
+    },
+    onSuccess: (_, project) => {
+      toast(`Moved “${project.name}” to Trash`, {
+        action: {
+          label: "Undo",
+          onClick: () => {
+            restore(project.id);
+          },
+        },
+      });
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () =>
+      Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),
+  });
 }

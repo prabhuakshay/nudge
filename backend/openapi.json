@@ -909,6 +909,55 @@
             "SessionAuth": []
           }
         ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_projects_delete_project",
+        "summary": "Move a Project to Trash",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Move a Project and its Tasks to Trash as one unit. The Inbox can't be deleted.",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     },
     "/api/v1/projects/{project_id}/move": {
@@ -2832,7 +2881,21 @@
               "application/json": {
                 "schema": {
                   "items": {
-                    "$ref": "#/components/schemas/TrashedTaskOut"
+                    "discriminator": {
+                      "mapping": {
+                        "project": "#/components/schemas/TrashedProjectOut",
+                        "task": "#/components/schemas/TrashedTaskOut"
+                      },
+                      "propertyName": "kind"
+                    },
+                    "oneOf": [
+                      {
+                        "$ref": "#/components/schemas/TrashedTaskOut"
+                      },
+                      {
+                        "$ref": "#/components/schemas/TrashedProjectOut"
+                      }
+                    ]
                   },
                   "title": "Response",
                   "type": "array"
@@ -2841,7 +2904,7 @@
             }
           }
         },
-        "description": "Return one row per deleted unit, most recently deleted first.",
+        "description": "Return one row per deleted Task or Project unit, most recently deleted first.",
         "tags": [
           "trash"
         ],
@@ -2919,10 +2982,58 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/restore": {
+      "post": {
+        "operationId": "apps_tasks_api_trash_restore_project",
+        "summary": "Restore a Project from Trash",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Bring back a Project with its Tasks, renamed \"<Name> (2)\" if its name was taken.",
+        "tags": [
+          "trash"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/trash/delete": {
       "post": {
         "operationId": "apps_tasks_api_trash_delete_forever",
-        "summary": "Delete Tasks in Trash forever",
+        "summary": "Delete Tasks and Projects in Trash forever",
         "parameters": [],
         "responses": {
           "204": {
@@ -6606,9 +6717,67 @@
         "title": "CalendarFeedOut",
         "type": "object"
       },
+      "TrashedProjectOut": {
+        "description": "One Trash unit: a deleted Project, with the Tasks that went with it counted.",
+        "properties": {
+          "kind": {
+            "const": "project",
+            "default": "project",
+            "title": "Kind",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/Icon"
+          },
+          "task_count": {
+            "description": "How many Tasks went to Trash with it.",
+            "title": "Task Count",
+            "type": "integer"
+          },
+          "deleted_at": {
+            "format": "date-time",
+            "title": "Deleted At",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "When it will be deleted for good.",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "icon",
+          "task_count",
+          "deleted_at",
+          "expires_at"
+        ],
+        "title": "TrashedProjectOut",
+        "type": "object"
+      },
       "TrashedTaskOut": {
         "description": "One Trash unit: a deleted Task, with the Subtasks that went with it counted.",
         "properties": {
+          "kind": {
+            "const": "task",
+            "default": "task",
+            "title": "Kind",
+            "type": "string"
+          },
           "id": {
             "title": "Id",
             "type": "integer"
@@ -6668,21 +6837,27 @@
         "type": "object"
       },
       "TrashDeleteIn": {
-        "description": "The trashed Tasks whose units to delete for good.",
+        "description": "The trashed Tasks and Projects whose units to delete for good; at least one id.",
         "properties": {
           "task_ids": {
+            "default": [],
             "description": "Trashed Tasks; each takes the whole unit it went to Trash with.",
             "items": {
               "type": "integer"
             },
-            "minItems": 1,
             "title": "Task Ids",
+            "type": "array"
+          },
+          "project_ids": {
+            "default": [],
+            "description": "Trashed Projects; each takes the Tasks that went to Trash with it.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Project Ids",
             "type": "array"
           }
         },
-        "required": [
-          "task_ids"
-        ],
         "title": "TrashDeleteIn",
         "type": "object"
       }

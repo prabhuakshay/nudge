@@ -1,4 +1,4 @@
-import type { SidebarProject } from "@/features/tasks/tasks";
+import type { SidebarProject } from "./tasks";
 import { makeTask } from "@/test/tasks";
 
 import { groupByProject } from "./group-by-project";

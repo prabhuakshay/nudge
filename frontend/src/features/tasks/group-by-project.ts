@@ -1,4 +1,4 @@
-import type { SidebarProject, Task } from "@/features/tasks/tasks";
+import type { SidebarProject, Task } from "./tasks";
 
 /** The Tasks of one Project, in a list that spans Projects. */
 export type ProjectGroup = { project: SidebarProject; tasks: Task[] };

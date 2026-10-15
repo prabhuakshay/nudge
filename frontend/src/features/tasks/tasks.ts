@@ -61,8 +61,9 @@ export function openTasksQuery(projectId: number) {
   });
 }
 
-/** Where a list's Tasks come from: a Project, a Tag, or a view that picks them by date. */
-type ListSource = { project: number } | { tag: number } | { view: ScheduleView };
+/** Where a list's Tasks come from: a Project, Tag or Person, or a view that picks them by date. */
+export type ListSource =
+  { project: number } | { tag: number } | { person: number } | { view: ScheduleView };
 
 /**
  * A view's open Tasks as flat rows, in the order the view lists them: Today has Overdue first,

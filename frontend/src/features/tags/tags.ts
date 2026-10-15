@@ -6,7 +6,7 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { HUE } from "@/features/projects/project-style";
 import type { PaletteColor } from "@/features/projects/projects";
-import { closedPagesQuery, OPEN_KEY, sidebarQuery, type Task } from "@/features/tasks/tasks";
+import { OPEN_KEY, sidebarQuery, type Task } from "@/features/tasks/tasks";
 
 export type Tag = components["schemas"]["TagOut"];
 export type SidebarTag = components["schemas"]["SidebarTagOut"];
@@ -23,11 +23,6 @@ export function tagTasksQuery(tagId: number) {
       return data.items;
     },
   });
-}
-
-/** A Tag's Closed Tasks as flat rows, most recently completed first, a page at a time. */
-export function closedTagTasksQuery(tagId: number) {
-  return closedPagesQuery({ tag: tagId });
 }
 
 /** The fields a Tag is created or edited with; a null colour shows it grey. */

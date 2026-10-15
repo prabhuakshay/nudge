@@ -1,10 +1,4 @@
-import {
-  infiniteQueryOptions,
-  queryOptions,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api } from "@/api/client";
@@ -45,24 +39,6 @@ export function personTasksQuery(personId: number) {
       if (!data) throw new Error("Could not load the tasks.");
       return data.items;
     },
-  });
-}
-
-/** The Closed Tasks that mention a Person, most recently completed first, a page at a time. */
-export function personClosedTasksQuery(personId: number) {
-  return infiniteQueryOptions({
-    queryKey: [...TASKS_KEY, "closed", "person", personId],
-    queryFn: async ({ pageParam }) => {
-      const { data } = await api.GET("/api/v1/tasks", {
-        params: {
-          query: { person: personId, closed: true, ...(pageParam && { cursor: pageParam }) },
-        },
-      });
-      if (!data) throw new Error("Could not load the closed tasks.");
-      return data;
-    },
-    initialPageParam: null as string | null,
-    getNextPageParam: (page) => page.next_cursor,
   });
 }
 

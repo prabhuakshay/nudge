@@ -1,5 +1,7 @@
 import { addDays, format, nextMonday, parseISO } from "date-fns";
+import { useQuery } from "@tanstack/react-query";
 import {
+  AlarmClock,
   CalendarArrowUp,
   CalendarRange,
   CalendarX,
@@ -15,8 +17,10 @@ import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 
-import { changeDates, shortTime, type Dates } from "./due";
-import { useUpdateTask } from "./tasks";
+import { shortTime, type Dates } from "./due";
+import { ReminderPicker } from "./reminder-picker";
+import { useSaveDates } from "./save-dates";
+import { taskQuery, useUpdateTask } from "./tasks";
 
 const TIMES = Array.from(
   { length: 48 },
@@ -31,8 +35,9 @@ const isoDate = (day: Date) => format(day, "yyyy-MM-dd");
 
 /**
  * A Task's dates in one popover, like TickTick's: quick days, a calendar for the due date, its
- * time (none = all-day) and an optional start for ranges. Each change saves straight away. The
- * trigger is `children`, so the Due cell and the drawer's Date chip style it their own way.
+ * time (none = all-day), an optional start for ranges and the Reminders. Each change saves
+ * straight away. The trigger is `children`, so the Due cell and the drawer's Date chip style it
+ * their own way.
  */
 export function DatePicker({
   task,
@@ -44,14 +49,7 @@ export function DatePicker({
   align?: "start" | "center" | "end";
 }) {
   const [open, setOpen] = useState(false);
-  const { mutate: update } = useUpdateTask();
-  const save = (change: Partial<Dates>) => {
-    const next = changeDates(task, change);
-    update({
-      id: task.id,
-      dates: next.due_date === null ? null : { ...next, due_date: next.due_date },
-    });
-  };
+  const save = useSaveDates(task);
   const today = new Date();
   const due = task.due_date === null ? undefined : parseISO(task.due_date);
 
@@ -78,6 +76,7 @@ export function DatePicker({
           className="mx-auto"
         />
         <TimeFields dates={task} onChange={save} />
+        <RemindRow task={task} />
         <div className="flex justify-end border-t border-border p-2">
           <Button
             variant="ghost"
@@ -175,6 +174,27 @@ function TimeFields({ dates, onChange }: DatesFieldProps) {
             </select>
           )}
         </div>
+      </Row>
+    </div>
+  );
+}
+
+/** The Task's Reminders, read from the drawer's query, which loads only while the picker is open. */
+function RemindRow({ task }: { task: Dates & { id: number } }) {
+  const { data } = useQuery(taskQuery(task.id));
+  const { mutate: update } = useUpdateTask();
+  const undated = task.due_date === null;
+  return (
+    <div className="border-t border-border p-2">
+      <Row icon={AlarmClock} label="Remind" hint={undated ? "Needs a due date" : undefined}>
+        <ReminderPicker
+          dates={task}
+          disabled={data === undefined}
+          reminders={data?.reminders.map((reminder) => reminder.offset) ?? []}
+          onChange={(reminders) => {
+            update({ id: task.id, reminders });
+          }}
+        />
       </Row>
     </div>
   );

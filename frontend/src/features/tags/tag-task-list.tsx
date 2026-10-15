@@ -1,34 +1,31 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ListTodo } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ProjectIcon } from "@/features/projects/project-icon";
 import { allProjects } from "@/features/projects/projects";
 import { useOpenTask } from "@/features/tasks/open-task";
 import { QuickAddCard } from "@/features/tasks/quick-add-card";
+import { useRowContext } from "@/features/tasks/row-context";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { ClosedGroup, Group, TaskTableHeader } from "@/features/tasks/task-list";
-import { isClosed } from "@/features/tasks/task-properties";
-import { TreeRows, type RowContext, type ToggleStatus } from "@/features/tasks/task-row";
-import type { TreeRow } from "@/features/tasks/task-tree";
-import { sidebarQuery, useSetTaskStatus, type Task } from "@/features/tasks/tasks";
-import { useMediaQuery } from "@/lib/use-media-query";
+import { TreeRows } from "@/features/tasks/task-row";
+import { flatRows } from "@/features/tasks/task-tree";
+import { sidebarQuery } from "@/features/tasks/tasks";
 
 import { groupByProject } from "./group-by-project";
 import { TagHeader } from "./tag-header";
 import { closedTagTasksQuery, tagTasksQuery, type SidebarTag } from "./tags";
 
-/** A Tag's list shows every Task flat, a Subtask with its parent's title rather than nested. */
-function flatRows(tasks: Task[]): TreeRow[] {
-  return tasks.map((task) => ({ task, level: 0, subtasks: { done: 0, total: 0 } }));
-}
-
-const NO_COLLAPSED: ReadonlySet<number> = new Set();
+/** Folding is for trees; a Tag's list is flat, so nothing is ever folded. */
+const NONE_FOLDED: ReadonlySet<number> = new Set();
+const ignoreFold = () => undefined;
 
 /**
  * A Tag's Tasks across Projects as a table: the page header, Quick add, the open Tasks grouped by
- * Project in sidebar order, then a collapsed Closed group. Quick add files new Tasks in the Inbox
- * with the Tag. Clicking a row opens the Task in the drawer, and the URL's `?task=` follows it.
+ * Project in sidebar order, then a collapsed Closed group. Rows are flat, a Subtask naming its
+ * parent under its title. Quick add files new Tasks in the Inbox with the Tag. Clicking a row
+ * opens the Task in the drawer, and the URL's `?task=` follows it.
  */
 export function TagTaskList({ tag }: { tag: SidebarTag }) {
   const { data: sidebar } = useQuery(sidebarQuery);
@@ -43,32 +40,9 @@ export function TagTaskList({ tag }: { tag: SidebarTag }) {
     () => (sidebar ? groupByProject(open, allProjects(sidebar)) : []),
     [open, sidebar],
   );
-  const order = useMemo(
-    () => [...groups.flatMap((group) => group.tasks), ...closedTasks].map((task) => task.id),
-    [groups, closedTasks],
-  );
-  const { openTaskId: openId, setOpenTask: setOpenId } = useOpenTask();
-  const touch = useMediaQuery("(pointer: coarse)");
-  const { mutate: setStatus } = useSetTaskStatus();
-  // Stable, so memoized rows don't re-render when the list does.
-  const toggle = useCallback<ToggleStatus>(
-    (task) => {
-      setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
-    },
-    [setStatus],
-  );
-  const context = useMemo<RowContext>(
-    () => ({
-      openId,
-      collapsed: NO_COLLAPSED,
-      indent: 0,
-      contextMenu: !touch,
-      onToggle: toggle,
-      onOpen: setOpenId,
-      onToggleCollapsed: () => undefined,
-    }),
-    [openId, touch, toggle, setOpenId],
-  );
+  const order = [...groups.flatMap((group) => group.tasks), ...closedTasks].map((task) => task.id);
+  const { openTaskId, setOpenTask } = useOpenTask();
+  const context = useRowContext({ collapsed: NONE_FOLDED, onToggleCollapsed: ignoreFold });
 
   return (
     // `data-wide` lets the app shell drop its reading width for this table.
@@ -109,21 +83,22 @@ export function TagTaskList({ tag }: { tag: SidebarTag }) {
 
         <ClosedGroup
           query={closed}
-          rows={flatRows(closedTasks)}
+          empty={closedTasks.length === 0}
           expanded={showClosed}
           onExpandedChange={setShowClosed}
-          context={context}
-        />
+        >
+          <TreeRows rows={flatRows(closedTasks)} context={context} />
+        </ClosedGroup>
       </div>
 
       {sidebar && (
         <TaskDetail
-          taskId={openId}
+          taskId={openTaskId}
           project={sidebar.inbox}
           order={order}
-          onOpen={setOpenId}
+          onOpen={setOpenTask}
           onClose={() => {
-            setOpenId(null);
+            setOpenTask(null);
           }}
         />
       )}

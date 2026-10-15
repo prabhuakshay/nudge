@@ -29,6 +29,7 @@ def _titles(response: Response) -> list[str]:
         ("post", "/api/v1/tasks"),
         ("get", "/api/v1/tasks/1"),
         ("patch", "/api/v1/tasks/1"),
+        ("post", "/api/v1/tasks/1/move"),
     ],
 )
 def test_every_endpoint_requires_a_session(method: str, path: str) -> None:

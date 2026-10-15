@@ -8,6 +8,7 @@ from typing import Annotated, Literal
 from ninja import Field, Schema
 
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
+from apps.tasks.schemas.reminders import RemindersChangedActivityOut
 from apps.tasks.schemas.tags import (
     TagAddedActivityOut,
     TagRemovedActivityOut,
@@ -101,10 +102,12 @@ class DatesChangedActivityOut(Schema):
 
 
 class MovedData(Schema):
-    """The Projects a Task moved between, by their names at the time."""
+    """The Projects and parents a Task moved between, by their names and titles at the time."""
 
     from_project: str
     to_project: str
+    from_parent: str | None = Field(default=None, description="Null when it was a root.")
+    to_parent: str | None = Field(default=None, description="Null when it became a root.")
 
 
 class PersonMergedData(Schema):
@@ -124,7 +127,7 @@ class PersonMergedActivityOut(Schema):
 
 
 class MovedActivityOut(Schema):
-    """The Task moved to another Project."""
+    """The Task moved to another Project or parent."""
 
     id: int
     kind: Literal["moved"]
@@ -203,6 +206,7 @@ TaskActivityOut = Annotated[
     | AttachmentAddedActivityOut
     | AttachmentRemovedActivityOut
     | DatesChangedActivityOut
+    | RemindersChangedActivityOut
     | MovedActivityOut
     | PersonMergedActivityOut
     | TagAddedActivityOut

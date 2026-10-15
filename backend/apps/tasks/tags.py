@@ -28,6 +28,7 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from apps.core.palette import PaletteColor
+    from apps.tasks.dates import TaskDates
 
 
 class TagRuleError(Exception):
@@ -190,7 +191,7 @@ def _event(task: Task, kind: TaskActivity.Kind, data: dict[str, str]) -> TaskAct
 def create_tagged_task(
     project: Project,
     title: str,
-    dates: services.TaskDates | None = None,
+    dates: TaskDates | None = None,
     *,
     tags: Iterable[Tag] = (),
     tag_names: Iterable[str] = (),

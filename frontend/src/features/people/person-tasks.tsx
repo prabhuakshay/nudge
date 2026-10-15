@@ -92,11 +92,12 @@ export function PersonTasks({ person }: { person: Person }) {
 
         <ClosedGroup
           query={closed}
-          rows={closedRows}
+          empty={closedRows.length === 0}
           expanded={showClosed}
           onExpandedChange={setShowClosed}
-          context={context}
-        />
+        >
+          <TreeRows rows={closedRows} context={context} />
+        </ClosedGroup>
       </div>
 
       {sidebar && (

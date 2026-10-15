@@ -3,23 +3,18 @@ import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query
 import { toast } from "sonner";
 
 import { api } from "@/api/client";
+import type { components } from "@/api/schema";
 import { HUE } from "@/features/projects/project-style";
 import type { PaletteColor } from "@/features/projects/projects";
-import {
-  closedPagesQuery,
-  sidebarQuery,
-  TAG_KEY,
-  type SidebarTag,
-  type Tag,
-  type Task,
-} from "@/features/tasks/tasks";
+import { closedPagesQuery, OPEN_KEY, sidebarQuery, type Task } from "@/features/tasks/tasks";
 
-export type { SidebarTag, Tag };
+export type Tag = components["schemas"]["TagOut"];
+export type SidebarTag = components["schemas"]["SidebarTagOut"];
 
 /** A Tag's open Tasks across Projects as flat rows, a Subtask with its parent's title. */
 export function tagTasksQuery(tagId: number) {
   return queryOptions({
-    queryKey: [...TAG_KEY, tagId],
+    queryKey: [...OPEN_KEY, "tag", tagId],
     queryFn: async (): Promise<Task[]> => {
       const { data } = await api.GET("/api/v1/tasks", { params: { query: { tag: tagId } } });
       if (!data) {

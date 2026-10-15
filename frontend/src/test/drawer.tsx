@@ -14,7 +14,8 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { validateTaskSearch } from "@/features/tasks/open-task";
 import { TaskList } from "@/features/tasks/task-list";
 import type { Person } from "@/features/people/people";
-import type { SidebarProject, SidebarTag, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
+import type { SidebarTag } from "@/features/tags/tags";
+import type { SidebarProject, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
 import { makeTask } from "@/test/tasks";
 
 /* A stand-in server and a rendered list for the tasks feature's tests, shared by their files. */

@@ -50,6 +50,14 @@ describe("treeRows", () => {
     });
   });
 
+  it("measures each Task's whole subtree, folded or not, for dragging it", () => {
+    const sizes = Object.fromEntries(
+      treeRows(ROWS, new Set([1])).map((row) => [row.task.title, [row.height, row.carried]]),
+    );
+
+    expect(sizes).toEqual({ Trip: [2, 3], Groceries: [0, 0] });
+  });
+
   it("starts from rows whose parent isn't among them, as in a drawer's Subtasks", () => {
     expect(outline(treeRows(ROWS.slice(2)))).toEqual(["Flights", "  Seats", "Hotel"]);
   });

@@ -10,6 +10,10 @@ from pydantic import StringConstraints, field_validator, model_validator
 
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.tasks.schedule import View  # noqa: TC001 - Pydantic needs the type at runtime
+from apps.tasks.schemas.reminders import (  # noqa: TC001 - Pydantic needs the types at runtime
+    ReminderOffset,
+    ReminderOut,
+)
 from apps.tasks.schemas.tags import TagName, TagOut  # noqa: TC001 - Pydantic needs it at runtime
 
 Title = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=500)]
@@ -63,6 +67,7 @@ class TaskDetailOut(TaskOut):
     subtasks: list[TaskOut] = Field(
         description="Every Subtask below, whatever its Status, as flat rows in manual order.",
     )
+    reminders: list[ReminderOut] = Field(description="Earliest offset first.")
 
 
 class TaskListQuery(Schema):
@@ -175,10 +180,28 @@ class TaskPatchIn(Schema):
     )
     dates: TaskDatesIn | None = Field(
         default=None,
-        description="Replaces all of the Task's dates; null removes them.",
+        description="Replaces all of the Task's dates; null removes them and its Reminders.",
+    )
+    reminders: list[ReminderOffset] | None = Field(
+        default=None,
+        description="Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.",
     )
     project_id: int | None = Field(default=None, description="Moves the Task first into it.")
     tag_ids: list[int] | None = Field(default=None, description="Replaces all of its Tags.")
+
+
+class TaskMoveIn(Schema):
+    """Where a Task goes: under a parent, or to the top level of a Project, after a sibling."""
+
+    project_id: int | None = Field(
+        default=None,
+        description="Defaults to the parent's Project, or the Task's own for a root.",
+    )
+    parent_id: int | None = Field(default=None, description="The top level when left out.")
+    after_id: int | None = Field(
+        default=None,
+        description="The sibling it now follows; first when left out, last when it isn't there.",
+    )
 
 
 class AffectedTaskOut(Schema):

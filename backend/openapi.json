@@ -1831,6 +1831,74 @@
         ]
       }
     },
+    "/api/v1/tasks/{task_id}/move": {
+      "post": {
+        "operationId": "apps_tasks_api_tasks_move_task",
+        "summary": "Move a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskChangeOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Move a Task and its Subtasks under a parent, or to a Project's top level, after a sibling.\n\nThe server picks the new order key. The Task comes back with every Closed ancestor the move\nreopened, so the client can offer Undo.",
+        "tags": [
+          "tasks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/tasks/{task_id}/duplicate": {
       "post": {
         "operationId": "apps_tasks_api_tasks_duplicate_task",
@@ -3838,6 +3906,37 @@
         "title": "TaskIn",
         "type": "object"
       },
+      "ReminderOut": {
+        "description": "One of a Task's Reminders.",
+        "properties": {
+          "offset": {
+            "description": "Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.",
+            "maximum": 525600,
+            "minimum": -525600,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "fire_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it fires next; null when it won't: the Task is Closed or archived, or the time has passed.",
+            "title": "Fire At"
+          }
+        },
+        "required": [
+          "offset",
+          "fire_at"
+        ],
+        "title": "ReminderOut",
+        "type": "object"
+      },
       "TaskAncestorOut": {
         "description": "A Task above another in the tree, as a breadcrumb links to it.",
         "properties": {
@@ -4043,6 +4142,14 @@
             },
             "title": "Subtasks",
             "type": "array"
+          },
+          "reminders": {
+            "description": "Earliest offset first.",
+            "items": {
+              "$ref": "#/components/schemas/ReminderOut"
+            },
+            "title": "Reminders",
+            "type": "array"
           }
         },
         "required": [
@@ -4068,7 +4175,8 @@
           "updated_at",
           "description",
           "ancestors",
-          "subtasks"
+          "subtasks",
+          "reminders"
         ],
         "title": "TaskDetailOut",
         "type": "object"
@@ -4200,7 +4308,25 @@
                 "type": "null"
               }
             ],
-            "description": "Replaces all of the Task's dates; null removes them."
+            "description": "Replaces all of the Task's dates; null removes them and its Reminders."
+          },
+          "reminders": {
+            "anyOf": [
+              {
+                "items": {
+                  "description": "Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.",
+                  "maximum": 525600,
+                  "minimum": -525600,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.",
+            "title": "Reminders"
           },
           "project_id": {
             "anyOf": [
@@ -4231,6 +4357,49 @@
           }
         },
         "title": "TaskPatchIn",
+        "type": "object"
+      },
+      "TaskMoveIn": {
+        "description": "Where a Task goes: under a parent, or to the top level of a Project, after a sibling.",
+        "properties": {
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the parent's Project, or the Task's own for a root.",
+            "title": "Project Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The top level when left out.",
+            "title": "Parent Id"
+          },
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The sibling it now follows; first when left out, last when it isn't there.",
+            "title": "After Id"
+          }
+        },
+        "title": "TaskMoveIn",
         "type": "object"
       },
       "AttachmentAddedActivityOut": {
@@ -4483,7 +4652,7 @@
         "type": "object"
       },
       "MovedActivityOut": {
-        "description": "The Task moved to another Project.",
+        "description": "The Task moved to another Project or parent.",
         "properties": {
           "id": {
             "title": "Id",
@@ -4513,7 +4682,7 @@
         "type": "object"
       },
       "MovedData": {
-        "description": "The Projects a Task moved between, by their names at the time.",
+        "description": "The Projects and parents a Task moved between, by their names and titles at the time.",
         "properties": {
           "from_project": {
             "title": "From Project",
@@ -4522,6 +4691,30 @@
           "to_project": {
             "title": "To Project",
             "type": "string"
+          },
+          "from_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when it was a root.",
+            "title": "From Parent"
+          },
+          "to_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when it became a root.",
+            "title": "To Parent"
           }
         },
         "required": [
@@ -4661,6 +4854,67 @@
           "new"
         ],
         "title": "PriorityChangedData",
+        "type": "object"
+      },
+      "RemindersChangedActivityOut": {
+        "description": "The Task's Reminders were added, changed or removed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "reminders_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RemindersChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RemindersChangedActivityOut",
+        "type": "object"
+      },
+      "RemindersChangedData": {
+        "description": "The Reminders before and after a change, as offsets in minutes.",
+        "properties": {
+          "old": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Old",
+            "type": "array"
+          },
+          "new": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "New",
+            "type": "array"
+          },
+          "all_day": {
+            "description": "Whether the offsets count from the start of a day.",
+            "title": "All Day",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "old",
+          "new",
+          "all_day"
+        ],
+        "title": "RemindersChangedData",
         "type": "object"
       },
       "StatusChangedActivityOut": {
@@ -4884,6 +5138,7 @@
                   "person_merged": "#/components/schemas/PersonMergedActivityOut",
                   "pinned": "#/components/schemas/PinnedActivityOut",
                   "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
+                  "reminders_changed": "#/components/schemas/RemindersChangedActivityOut",
                   "status_changed": "#/components/schemas/StatusChangedActivityOut",
                   "tag_added": "#/components/schemas/TagAddedActivityOut",
                   "tag_removed": "#/components/schemas/TagRemovedActivityOut",
@@ -4923,6 +5178,9 @@
                 },
                 {
                   "$ref": "#/components/schemas/DatesChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RemindersChangedActivityOut"
                 },
                 {
                   "$ref": "#/components/schemas/MovedActivityOut"

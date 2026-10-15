@@ -6,8 +6,14 @@ import { plainMentions } from "@/features/people/mentions";
 
 import { activityTime, exactTime } from "./activity-time";
 import { describeDates } from "./due";
+import { remindersLabel } from "./reminders";
 import { PRIORITY, STATUS_VERB } from "./task-properties";
-import { taskActivityQuery, type DatesChange, type TaskActivity } from "./tasks";
+import {
+  taskActivityQuery,
+  type DatesChange,
+  type RemindersChange,
+  type TaskActivity,
+} from "./tasks";
 
 type ActivityData = { [E in TaskActivity as E["kind"]]: E["data"] };
 
@@ -37,7 +43,8 @@ const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string }
   attachment_added: (data) => `Attached “${data.name}”`,
   attachment_removed: (data) => `Deleted the attachment “${data.name}”`,
   dates_changed: (data) => describeDatesChange(data),
-  moved: (data) => `Moved from “${data.from_project}” to “${data.to_project}”`,
+  reminders_changed: (data) => describeRemindersChange(data),
+  moved: (data) => describeMove(data),
   tag_added: (data) => `Added the tag #${data.name}`,
   tag_removed: (data) => `Removed the tag #${data.name}`,
   tags_merged: (data) => `Merged the tag #${data.from_tag} into #${data.into_tag}`,
@@ -48,11 +55,26 @@ function describe<K extends keyof ActivityData>(event: { kind: K; data: Activity
   return DESCRIBE[event.kind](event.data);
 }
 
+function describeMove(move: ActivityData["moved"]): string {
+  const under = move.to_parent ? `under “${move.to_parent}”` : null;
+  if (move.from_project !== move.to_project) {
+    const between = `Moved from “${move.from_project}” to “${move.to_project}”`;
+    return under ? `${between}, ${under}` : between;
+  }
+  return under ? `Moved ${under}` : "Moved to the top level";
+}
+
 function describeDatesChange({ old, new: next }: DatesChange): string {
   if (old === null)
     return next === null ? "Removed the date" : `Set the date to ${describeDates(next)}`;
   if (next === null) return `Removed the date (was ${describeDates(old)})`;
   return `Changed the date from ${describeDates(old)} to ${describeDates(next)}`;
+}
+
+function describeRemindersChange({ old, new: next, all_day: allDay }: RemindersChange): string {
+  if (old.length === 0) return `Set reminders: ${remindersLabel(next, allDay)}`;
+  if (next.length === 0) return `Removed reminders (was ${remindersLabel(old, allDay)})`;
+  return `Changed reminders from ${remindersLabel(old, allDay)} to ${remindersLabel(next, allDay)}`;
 }
 
 /** A Task's history as a timeline, newest first, with older events a click away. */

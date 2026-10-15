@@ -93,11 +93,12 @@ export function ScheduleList({
             <ClosedGroup
               label="Closed today"
               query={closed}
-              rows={flatRows(closedTasks)}
+              empty={closedTasks.length === 0}
               expanded={showClosed}
               onExpandedChange={setShowClosed}
-              context={context}
-            />
+            >
+              <TreeRows rows={flatRows(closedTasks)} context={context} />
+            </ClosedGroup>
           </>
         ) : (
           <UpcomingGroups tasks={tasks} today={today} context={context} />

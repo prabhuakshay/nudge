@@ -1,19 +1,23 @@
-"""Task endpoints: list a Project's, Person's or Tag's Tasks; add, read, change or copy one."""
+"""Task endpoints: list Tasks; add, read, change, move or duplicate one; read its history."""
 
 from __future__ import annotations
 
+from datetime import timedelta
 from functools import partial
 from typing import TYPE_CHECKING
 
 from ninja import Query, Router, Status
 
 from apps.accounts.schemas import ErrorOut
-from apps.tasks import people, schedule, services, tags, tree
+from apps.tasks import moves, people, schedule, services, tags, tree
 from apps.tasks.api import signed_in_user
 from apps.tasks.archive import ArchivedProjectError
+from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import MentionError
 from apps.tasks.pagination import InvalidCursorError, Page
+from apps.tasks.reminders import ReminderRuleError
 from apps.tasks.schemas.activity import TaskActivityListOut
+from apps.tasks.schemas.reminders import ReminderOut
 from apps.tasks.schemas.tasks import (
     AffectedTaskOut,
     TaskAncestorOut,
@@ -22,6 +26,7 @@ from apps.tasks.schemas.tasks import (
     TaskIn,
     TaskListOut,
     TaskListQuery,
+    TaskMoveIn,
     TaskOut,
     TaskPatchIn,
 )
@@ -196,6 +201,7 @@ def _detail(task: Task) -> TaskDetailOut:
             TaskAncestorOut(id=above.pk, title=above.title) for above in tree.ancestors(task)
         ],
         subtasks=[TaskOut.from_orm(below) for below in tree.descendants(task)],
+        reminders=[ReminderOut.of(reminder) for reminder in task.reminders.all()],
     )
 
 
@@ -233,12 +239,61 @@ def update_task(
         return edit
     try:
         change = tags.update_tagged_task(user, task_id, *edit)
-    except (services.TaskRuleError, MentionError, ArchivedProjectError) as error:
+    except (
+        services.TaskRuleError,
+        MentionError,
+        ReminderRuleError,
+        ArchivedProjectError,
+    ) as error:
         return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
     if change is None:
         return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
     affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
     return Status(_HTTP_OK, TaskChangeOut(task=_detail(change.task), affected=affected))
+
+
+@router.post(
+    "/{int:task_id}/move",
+    response={_HTTP_OK: TaskChangeOut, _HTTP_NOT_FOUND: ErrorOut, _HTTP_UNPROCESSABLE: ErrorOut},
+    summary="Move a Task",
+)
+def move_task(
+    request: HttpRequest,
+    task_id: int,
+    move: TaskMoveIn,
+) -> Status[TaskChangeOut] | Status[ErrorOut]:
+    """Move a Task and its Subtasks under a parent, or to a Project's top level, after a sibling.
+
+    The server picks the new order key. The Task comes back with every Closed ancestor the move
+    reopened, so the client can offer Undo.
+    """
+    user = signed_in_user(request)
+    task = services.live_task(user, task_id)
+    destination = _destination(user, move)
+    if task is None:
+        return Status(_HTTP_NOT_FOUND, _TASK_NOT_FOUND)
+    if isinstance(destination, ErrorOut):
+        return Status(_HTTP_NOT_FOUND, destination)
+    try:
+        change = moves.move_task(task, destination)
+    except (services.TaskRuleError, ArchivedProjectError) as error:
+        return Status(_HTTP_UNPROCESSABLE, ErrorOut(detail=str(error)))
+    affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
+    return Status(_HTTP_OK, TaskChangeOut(task=_detail(change.task), affected=affected))
+
+
+def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:
+    """Resolve the move's ids to the user's Project and parent, or say which wasn't found."""
+    project = parent = None
+    if move.project_id is not None:
+        project = services.live_project(user, move.project_id)
+        if project is None:
+            return _PROJECT_NOT_FOUND
+    if move.parent_id is not None:
+        parent = services.live_task(user, move.parent_id)
+        if parent is None:
+            return _TASK_NOT_FOUND
+    return moves.Destination(project, parent, move.after_id)
 
 
 @router.post(
@@ -278,19 +333,22 @@ def _edit(
         priority=patch.priority,
         pinned=patch.pinned,
         dates=_dates(patch),
+        reminders=None
+        if patch.reminders is None
+        else [timedelta(minutes=offset) for offset in patch.reminders],
         project=project,
     )
     return edit, picked
 
 
-def _dates(body: TaskIn | TaskPatchIn) -> services.TaskDates | None:
+def _dates(body: TaskIn | TaskPatchIn) -> TaskDates | None:
     """Return the dates the input sets, an empty set when it clears them, or None if neither."""
     if "dates" not in body.model_fields_set:
         return None
     if body.dates is None:
-        return services.TaskDates()
+        return TaskDates()
     dates = body.dates
-    return services.TaskDates(dates.due_date, dates.due_time, dates.start_date, dates.start_time)
+    return TaskDates(dates.due_date, dates.due_time, dates.start_date, dates.start_time)
 
 
 @router.get(

@@ -11,6 +11,7 @@ import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { plainMentions } from "@/features/people/mentions";
 
+import { remindersAfter } from "./reminders";
 import type { ScheduleView } from "./schedule";
 import { statusMessage } from "./task-properties";
 import { openTrees } from "./task-tree";
@@ -22,10 +23,9 @@ export type TaskPriority = components["schemas"]["Priority"];
 export type TaskActivity = components["schemas"]["TaskActivityListOut"]["items"][number];
 export type Attachment = components["schemas"]["AttachmentOut"];
 export type DatesChange = components["schemas"]["DatesChangedData"];
+export type RemindersChange = components["schemas"]["RemindersChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
-export type Tag = components["schemas"]["TagOut"];
-export type SidebarTag = components["schemas"]["SidebarTagOut"];
 
 /** The sidebar: the Inbox, Folders and Projects with open counts. Task changes invalidate it. */
 export const sidebarQuery = queryOptions({
@@ -45,8 +45,6 @@ export const TASKS_KEY = ["tasks"] as const;
 export const OPEN_KEY = [...TASKS_KEY, "open"] as const;
 /** The key prefix of every drawer's Task, so a change can show in a parent's Subtasks too. */
 export const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
-/** The key prefix of every Tag's open-Task list. */
-export const TAG_KEY = [...OPEN_KEY, "tag"] as const;
 
 /** A Project's open Tasks with every Subtask under them, as flat rows in manual order. */
 export function openTasksQuery(projectId: number) {
@@ -218,11 +216,12 @@ export type DatesIn = components["schemas"]["TaskDatesIn"] | null;
 
 /**
  * A change to a Task: the fields to set, which are all left as they are when absent. `dates`
- * replaces all four date fields at once, and `tags` all of its Tags.
+ * replaces all four date fields at once, and removing them removes the Reminders. `reminders`
+ * replaces the Reminders, as offsets in minutes, and `tags` all of its Tags.
  */
 export type TaskChange = { id: number; pinned?: boolean } & Partial<
   Pick<TaskDetail, "title" | "description" | "status" | "priority" | "blocked_reason" | "tags">
-> & { dates?: DatesIn };
+> & { dates?: DatesIn; reminders?: number[] };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
@@ -238,7 +237,10 @@ async function patchTask({ id, tags, ...change }: TaskChange) {
 }
 
 /** The Task as the server will return it after the change, for showing the change straight away. */
-function withChange<T extends Task>(task: T, { pinned, dates, ...change }: TaskChange): T {
+function withChange<T extends Task>(
+  task: T,
+  { pinned, dates, reminders, ...change }: TaskChange,
+): T {
   const leavesStatus = change.status !== undefined && change.status !== task.status;
   return {
     ...task,
@@ -247,6 +249,8 @@ function withChange<T extends Task>(task: T, { pinned, dates, ...change }: TaskC
     pinned_at: pinnedAt(task, pinned),
     ...change,
     ...(dates !== undefined && { ...UNDATED, ...dates }),
+    // Only the drawer's Task carries its Reminders; list rows don't.
+    ...("reminders" in task && remindersAfter(reminders, dates)),
   };
 }
 
@@ -338,15 +342,11 @@ export function useSetTaskStatus() {
  */
 export function useCreateTask(projectId: number, dates?: DatesIn, tagId?: number) {
   const queryClient = useQueryClient();
+  const tagged = tagId === undefined ? {} : { tag_ids: [tagId] };
   return useMutation({
     mutationFn: async (title: string) => {
       const { data } = await api.POST("/api/v1/tasks", {
-        body: {
-          title,
-          project_id: projectId,
-          ...(dates && { dates }),
-          ...(tagId !== undefined && { tag_ids: [tagId] }),
-        },
+        body: { title, project_id: projectId, ...(dates && { dates }), ...tagged },
       });
       if (!data) {
         throw new Error("Could not add the task.");
@@ -363,7 +363,7 @@ export function useCreateTask(projectId: number, dates?: DatesIn, tagId?: number
       Promise.all([
         queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "today"] }),
         queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "upcoming"] }),
-        queryClient.invalidateQueries({ queryKey: TAG_KEY }),
+        queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, "tag"] }),
         queryClient.invalidateQueries(sidebarQuery),
       ]),
   });

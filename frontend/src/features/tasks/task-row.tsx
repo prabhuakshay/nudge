@@ -8,6 +8,9 @@ import { cn } from "@/lib/utils";
 
 import { CountIcon } from "./count-icon";
 import { DueBadge } from "./due-badge";
+import { rowActivator, rowKeyDown, type MoveByKey } from "./row-drag";
+import { Grip } from "./row-grip";
+import type { DragHandle } from "./sortable-tree";
 import { SubtaskCount } from "./subtask-count";
 import { TaskActionsMenu, TaskContextMenu } from "./task-actions";
 import { DueCell, PriorityCell, StatusCell, TagsCell } from "./task-cells";
@@ -66,10 +69,11 @@ export function TreeRows({ rows, context }: { rows: TreeRow[]; context: RowConte
 /**
  * One Task in the table, stepped in by its level. A click anywhere on it, or Enter, opens the
  * Task; the chevron, checkbox and cell pickers keep their own action. Right-click or the ⋯ button
- * opens its actions. On phones the cells fold into a meta line under the title. Memoized so a
- * change to one row leaves the others alone.
+ * opens its actions. On phones the cells fold into a meta line under the title. Given a drag
+ * handle, the whole row drags: after a 5 px move with a mouse, after a press and hold on touch,
+ * or from its grip with the keyboard. Memoized so a change to one row leaves the others alone.
  */
-const TaskRow = memo(function TaskRow({
+export const TaskRow = memo(function TaskRow({
   task,
   level,
   subtasks,
@@ -80,6 +84,9 @@ const TaskRow = memo(function TaskRow({
   onToggle,
   onOpen,
   onToggleCollapsed,
+  onMoveByKey,
+  handle,
+  touch,
 }: {
   task: Task;
   level: number;
@@ -91,6 +98,11 @@ const TaskRow = memo(function TaskRow({
   onToggle: ToggleStatus;
   onOpen: OpenTask;
   onToggleCollapsed: ToggleCollapsed;
+  /** Tab, Shift+Tab and Alt+↑/↓ move the row; left out where rows don't move. */
+  onMoveByKey?: MoveByKey;
+  /** Left out where rows don't drag. */
+  handle?: DragHandle;
+  touch?: boolean;
 }) {
   const blocked = task.status === "blocked";
   return (
@@ -118,14 +130,15 @@ const TaskRow = memo(function TaskRow({
           }
         }}
         onKeyDown={(event) => {
-          if (event.key === "Enter" && event.target === event.currentTarget) {
-            event.preventDefault();
-            onOpen(task.id);
-          }
+          rowKeyDown(event, task.id, onOpen, onMoveByKey);
         }}
+        {...rowActivator(handle, touch)}
         className={cn(
           GRID,
-          "group/row flex min-h-11 cursor-pointer flex-col justify-center gap-1 border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors outline-none last:border-b-0 lg:min-h-10 lg:items-center lg:gap-0 lg:py-0",
+          // No text selection or iOS callout, so a long press starts a drag instead.
+          "select-none [-webkit-touch-callout:none]",
+          // A sortable row sits alone in its wrapper, so the last row is the last wrapper's child.
+          "group/row flex min-h-11 cursor-pointer flex-col justify-center gap-1 border-b border-border/60 py-1.5 pr-2 pl-3 transition-colors outline-none last:border-b-0 lg:min-h-10 lg:items-center lg:gap-0 lg:py-0 [:last-child>&]:border-b-0",
           "focus-visible:bg-primary-soft/50 focus-visible:shadow-[inset_2px_0_0_var(--primary)]",
           selected
             ? "bg-primary-soft/50 shadow-[inset_2px_0_0_var(--primary)]"
@@ -134,9 +147,15 @@ const TaskRow = memo(function TaskRow({
       >
         <div
           role="gridcell"
-          className="flex min-w-0 items-center gap-2.5"
+          className="relative flex min-w-0 items-center gap-2.5"
           style={{ paddingLeft: level * indent }}
         >
+          <Grip
+            title={plainMentions(task.title)}
+            handle={handle}
+            touch={touch}
+            left={level * indent - 12}
+          />
           <span className="-mr-1 flex w-5 shrink-0 justify-center">
             {subtasks.total > 0 && (
               <CollapseToggle

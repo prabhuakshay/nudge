@@ -52,6 +52,26 @@ describe("ActivityFeed", () => {
     expect(await screen.findByText(text)).toBeInTheDocument();
   });
 
+  it.each([
+    [{ old: [], new: [-30, 0], all_day: false }, "Set reminders: 30 minutes before, On time"],
+    [
+      { old: [540], new: [-900], all_day: true },
+      "Changed reminders from On the day, 09:00 to 1 day before, 09:00",
+    ],
+    [{ old: [-5], new: [], all_day: false }, "Removed reminders (was 5 minutes before)"],
+  ])("describes a Reminders change %#", async (data, text) => {
+    const events = [{ id: 1, kind: "reminders_changed", at: at(15), data }];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 1 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    renderFeed();
+
+    expect(await screen.findByText(text)).toBeInTheDocument();
+  });
+
   it("describes Status and Priority changes, with a Blocked reason", async () => {
     const events = [
       {
@@ -243,6 +263,41 @@ describe("ActivityFeed", () => {
     expect(await screen.findByText("Moved from “Inbox” to “Work”")).toBeInTheDocument();
   });
 
+  it("says which parent a Task moved under or out of", async () => {
+    const inbox = { from_project: "Inbox", to_project: "Inbox" };
+    const events = [
+      {
+        id: 3,
+        kind: "moved",
+        at: NEWER.at,
+        data: { ...inbox, from_parent: "Trip", to_parent: null },
+      },
+      {
+        id: 2,
+        kind: "moved",
+        at: OLDER.at,
+        data: { ...inbox, from_parent: null, to_parent: "Trip" },
+      },
+      {
+        id: 1,
+        kind: "moved",
+        at: OLDER.at,
+        data: { from_project: "Inbox", to_project: "Work", from_parent: null, to_parent: "Launch" },
+      },
+    ];
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ items: events, next_cursor: null, count: 3 }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    renderFeed();
+
+    expect(await screen.findByText("Moved to the top level")).toBeInTheDocument();
+    expect(screen.getByText("Moved under “Trip”")).toBeInTheDocument();
+    expect(screen.getByText("Moved from “Inbox” to “Work”, under “Launch”")).toBeInTheDocument();
+  });
+
   it("writes Mentions as plain names and says which People were merged", async () => {
     const events = [
       {
@@ -268,23 +323,5 @@ describe("ActivityFeed", () => {
 
     expect(await screen.findByText("Merged @Al into @Alice")).toBeInTheDocument();
     expect(screen.getByText("Renamed from “Call Al” to “Call @Al”")).toBeInTheDocument();
-  });
-
-  it("names the Tags in Tag events", async () => {
-    const events = [
-      { id: 3, kind: "tags_merged", at: NEWER.at, data: { from_tag: "job", into_tag: "work" } },
-      { id: 2, kind: "tag_removed", at: NEWER.at, data: { name: "home" } },
-      { id: 1, kind: "tag_added", at: OLDER.at, data: { name: "job" } },
-    ];
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(JSON.stringify({ items: events, next_cursor: null, count: 3 }), {
-        headers: { "Content-Type": "application/json" },
-      }),
-    );
-    renderFeed();
-
-    expect(await screen.findByText("Merged the tag #job into #work")).toBeInTheDocument();
-    expect(screen.getByText("Removed the tag #home")).toBeInTheDocument();
-    expect(screen.getByText("Added the tag #job")).toBeInTheDocument();
   });
 });

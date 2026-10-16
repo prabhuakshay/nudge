@@ -60,6 +60,7 @@ def test_create_adds_an_expanded_section_to_the_project(client: Client, ada: Use
         ("get", "/api/v1/projects/1/sections"),
         ("post", "/api/v1/projects/1/sections"),
         ("patch", "/api/v1/sections/1"),
+        ("post", "/api/v1/sections/1/move"),
     ],
 )
 def test_every_endpoint_requires_a_session(method: str, path: str) -> None:
@@ -275,3 +276,72 @@ def test_patch_of_another_users_section_is_not_found(client: Client, grace: User
     assert response.json() == {"detail": "Section not found."}
     theirs.refresh_from_db()
     assert (theirs.name, theirs.collapsed) == ("To do", False)
+
+
+def _move(client: Client, section_id: int, after_id: int | None) -> int:
+    response = client.post(
+        f"/api/v1/sections/{section_id}/move",
+        {"after_id": after_id},
+        content_type="application/json",
+    )
+    status: int = response.status_code
+    return status
+
+
+@pytest.mark.django_db
+def test_move_puts_a_section_right_after_another_or_first(client: Client, ada: User) -> None:
+    work = projects.create_project(ada, "Work")
+    to_do = _create(client, work, "To do")
+    _create(client, work, "Doing")
+    done = _create(client, work, "Done")
+
+    assert _move(client, to_do, done) == 204
+    assert _names(client, work) == ["Doing", "Done", "To do"]
+
+    assert _move(client, done, None) == 204
+    assert _names(client, work) == ["Done", "Doing", "To do"]
+
+    assert _move(client, to_do, done) == 204
+    assert _names(client, work) == ["Done", "To do", "Doing"]
+
+
+@pytest.mark.django_db
+def test_move_after_a_section_of_another_project_is_refused(client: Client, ada: User) -> None:
+    work = projects.create_project(ada, "Work")
+    home = projects.create_project(ada, "Home")
+    _create(client, work, "To do")
+    done = _create(client, work, "Done")
+    later = _create(client, home, "Later")
+
+    response = client.post(
+        f"/api/v1/sections/{done}/move",
+        {"after_id": later},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "That Section is in another Project."}
+    assert _names(client, work) == ["To do", "Done"]
+
+
+@pytest.mark.django_db
+def test_move_of_another_users_section_is_not_found(client: Client, grace: User) -> None:
+    theirs = projects.create_project(grace, "Theirs")
+    first = sections.create_section(theirs, "First")
+    second = sections.create_section(theirs, "Second")
+
+    assert _move(client, second.pk, None) == 404
+    assert list(sections.project_sections(theirs)) == [first, second]
+
+
+@pytest.mark.django_db
+def test_move_after_another_users_section_is_not_found(
+    client: Client, ada: User, grace: User
+) -> None:
+    theirs = sections.create_section(projects.create_project(grace, "Theirs"), "To do")
+    work = projects.create_project(ada, "Work")
+    _create(client, work, "To do")
+    done = _create(client, work, "Done")
+
+    assert _move(client, done, theirs.pk) == 404
+    assert _names(client, work) == ["To do", "Done"]

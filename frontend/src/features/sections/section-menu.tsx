@@ -1,55 +1,38 @@
-import { Ellipsis, Pencil } from "lucide-react";
-import { useRef, type Ref } from "react";
+import { Ellipsis } from "lucide-react";
+import type { ComponentProps, ReactNode, Ref } from "react";
 
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
 import type { Section } from "./sections";
 
-/**
- * A Section header's ⋯ menu, shown on hover or focus where there is a pointer, always on touch.
- * Each item is one thing to do with the Section.
- */
+/** A Section header's ⋯ menu. Its items are the `children`, so each action adds its own. */
 export function SectionMenu({
   section,
   triggerRef,
-  onRename,
+  onCloseAutoFocus,
+  children,
 }: {
   section: Section;
-  triggerRef: Ref<HTMLButtonElement>;
-  onRename: () => void;
+  triggerRef?: Ref<HTMLButtonElement>;
+  /** Runs as the menu closes; preventing it keeps focus where an item put it. */
+  onCloseAutoFocus?: ComponentProps<typeof DropdownMenuContent>["onCloseAutoFocus"];
+  children: ReactNode;
 }) {
-  // The menu traps focus while open, so the name field can only take it once the menu has closed.
-  const renameOnClose = useRef(false);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger
         ref={triggerRef}
-        aria-label={`${section.name} options`}
-        className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-surface hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100 lg:size-7 pointer-fine:opacity-0"
+        aria-label={`${section.name} actions`}
+        className="flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface hover:text-foreground lg:size-7"
       >
         <Ellipsis className="size-4" aria-hidden />
       </DropdownMenuTrigger>
-      <DropdownMenuContent
-        align="end"
-        onCloseAutoFocus={(event) => {
-          if (!renameOnClose.current) return;
-          renameOnClose.current = false;
-          event.preventDefault();
-          onRename();
-        }}
-      >
-        <DropdownMenuItem
-          onSelect={() => {
-            renameOnClose.current = true;
-          }}
-        >
-          <Pencil aria-hidden /> Rename
-        </DropdownMenuItem>
+      <DropdownMenuContent align="end" onCloseAutoFocus={onCloseAutoFocus}>
+        {children}
       </DropdownMenuContent>
     </DropdownMenu>
   );

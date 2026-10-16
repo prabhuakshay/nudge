@@ -1389,6 +1389,67 @@
         ]
       }
     },
+    "/api/v1/sections/{section_id}/move": {
+      "post": {
+        "operationId": "apps_tasks_api_sections_move_section",
+        "summary": "Move a Section in its Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "section_id",
+            "schema": {
+              "title": "Section Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Put a Section right after another one in the same Project, or first.",
+        "tags": [
+          "sections"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/people": {
       "get": {
         "operationId": "apps_tasks_api_people_list_people",
@@ -4933,6 +4994,25 @@
           }
         },
         "title": "SectionPatchIn",
+        "type": "object"
+      },
+      "SectionMoveIn": {
+        "description": "Where a Section goes among its Project's Sections.",
+        "properties": {
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Section it now follows in the same Project; first when left out.",
+            "title": "After Id"
+          }
+        },
+        "title": "SectionMoveIn",
         "type": "object"
       },
       "PersonOut": {

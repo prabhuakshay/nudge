@@ -34,3 +34,12 @@ class SectionPatchIn(Schema):
 
     name: str | None = Field(default=None, description=NAME_DESCRIPTION)
     collapsed: bool | None = None
+
+
+class SectionMoveIn(Schema):
+    """Where a Section goes among its Project's Sections."""
+
+    after_id: int | None = Field(
+        default=None,
+        description="The Section it now follows in the same Project; first when left out.",
+    )

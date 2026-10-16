@@ -1,4 +1,4 @@
-"""Section endpoints: list and add a Project's Sections, and change one.
+"""Section endpoints: list and add a Project's Sections, change one and reorder them.
 
 Mounted at the API root because a Project's Sections live under `/projects/{id}/sections` while
 a single Section lives under `/sections/{id}`.
@@ -15,7 +15,7 @@ from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import sections, services
 from apps.tasks.api.errors import PROJECT_NOT_FOUND, SECTION_NOT_FOUND
-from apps.tasks.schemas.sections import SectionIn, SectionOut, SectionPatchIn
+from apps.tasks.schemas.sections import SectionIn, SectionMoveIn, SectionOut, SectionPatchIn
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -83,3 +83,29 @@ def update_section(
         return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
     updated = sections.update_section(found, name=patch.name, collapsed=patch.collapsed)
     return Status(HTTPStatus.OK, SectionOut.from_orm(updated))
+
+
+@router.post(
+    "/sections/{int:section_id}/move",
+    response={
+        HTTPStatus.NO_CONTENT: None,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
+    summary="Move a Section in its Project",
+)
+def move_section(
+    request: HttpRequest, section_id: int, move: SectionMoveIn
+) -> Status[None] | Status[ErrorOut]:
+    """Put a Section right after another one in the same Project, or first."""
+    user = signed_in_user(request)
+    moved = sections.section(user, section_id)
+    if moved is None:
+        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    after = None
+    if move.after_id is not None:
+        after = sections.section(user, move.after_id)
+        if after is None:
+            return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    sections.move_section(moved, after)
+    return Status(HTTPStatus.NO_CONTENT, None)

@@ -6,6 +6,7 @@ import type { components } from "@/api/schema";
 
 export type Section = components["schemas"]["SectionOut"];
 export type SectionFields = components["schemas"]["SectionIn"];
+type SectionMove = components["schemas"]["SectionMoveIn"] & { id: number };
 
 /** As long as the server allows, so a name field stops where the server would refuse. */
 export const SECTION_NAME_MAX_LENGTH = 64;
@@ -92,4 +93,15 @@ export function useUpdateSection(projectId: number) {
           : section,
       ),
   );
+}
+
+/** Put a Section right after `after_id` among its Project's Sections, or first for null. */
+export function useMoveSection(projectId: number) {
+  return useSectionMutation(projectId, async ({ id, after_id }: SectionMove) => {
+    const { error } = await api.POST("/api/v1/sections/{section_id}/move", {
+      params: { path: { section_id: id } },
+      body: { after_id },
+    });
+    if (error) throw new Error(error.detail);
+  });
 }

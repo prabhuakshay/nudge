@@ -4,6 +4,7 @@ import { Group } from "@/features/tasks/task-groups";
 import { SortableTaskRows, type SortableRowContext } from "@/features/tasks/task-rows";
 import { rootCount } from "@/features/tasks/task-tree";
 
+import { MoveSectionItems } from "./move-section-items";
 import { SectionGroup } from "./section-group";
 import type { SectionTrees } from "./section-trees";
 
@@ -18,6 +19,7 @@ export function SectionedTasks({
   trees: SectionTrees;
   context: SortableRowContext;
 }) {
+  const order = trees.sections.map(({ section }) => section);
   return (
     <>
       {trees.unsectioned.length > 0 && (
@@ -30,7 +32,13 @@ export function SectionedTasks({
         </Group>
       )}
       {trees.sections.map(({ section, tasks }) => (
-        <SectionGroup key={section.id} section={section} count={rootCount(tasks)}>
+        <SectionGroup
+          key={section.id}
+          section={section}
+          count={rootCount(tasks)}
+          readOnly={!context.sortable}
+          menuItems={<MoveSectionItems section={section} order={order} />}
+        >
           {tasks.length > 0 && <SortableTaskRows tasks={tasks} context={context} />}
         </SectionGroup>
       ))}

@@ -1,6 +1,7 @@
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { GroupCount } from "@/features/tasks/task-groups";
 
 import { SectionMenu } from "./section-menu";
@@ -15,24 +16,32 @@ import { useUpdateSection, type Section } from "./sections";
 export function SectionGroup({
   section,
   count,
+  readOnly = false,
   actions,
+  menuItems,
   children,
 }: {
   section: Section;
   count: number;
-  /** Controls at the header's end, such as adding a Task. */
+  /** An archived Project's Sections have no menu. */
+  readOnly?: boolean;
+  /** Controls at the header's end, before the menu, such as adding a Task. */
   actions?: ReactNode;
+  /** The menu's items after Rename. */
+  menuItems?: ReactNode;
   children?: ReactNode;
 }) {
   const { mutate: update } = useUpdateSection(section.project_id);
   const [renaming, setRenaming] = useState(false);
+  // The menu traps focus while open, so the name field can only take it once the menu has closed.
+  const renameOnClose = useRef(false);
   const menuRef = useRef<HTMLButtonElement>(null);
   const expanded = !section.collapsed;
   const Chevron = expanded ? ChevronDown : ChevronRight;
 
   return (
     <section aria-label={section.name} className="border-b border-border">
-      <div className="group flex h-9 items-center gap-2 border-b border-border/70 bg-surface-muted/50 px-3">
+      <div className="flex h-9 items-center gap-2 border-b border-border/70 bg-surface-muted/50 px-3">
         {renaming ? (
           <SectionNameField
             name={section.name}
@@ -60,13 +69,27 @@ export function SectionGroup({
         <GroupCount count={count} />
         <div className="ml-auto flex shrink-0 items-center gap-1">
           {actions}
-          <SectionMenu
-            section={section}
-            triggerRef={menuRef}
-            onRename={() => {
-              setRenaming(true);
-            }}
-          />
+          {!readOnly && (
+            <SectionMenu
+              section={section}
+              triggerRef={menuRef}
+              onCloseAutoFocus={(event) => {
+                if (!renameOnClose.current) return;
+                renameOnClose.current = false;
+                event.preventDefault();
+                setRenaming(true);
+              }}
+            >
+              <DropdownMenuItem
+                onSelect={() => {
+                  renameOnClose.current = true;
+                }}
+              >
+                <Pencil aria-hidden /> Rename
+              </DropdownMenuItem>
+              {menuItems}
+            </SectionMenu>
+          )}
         </div>
       </div>
       {expanded && children}

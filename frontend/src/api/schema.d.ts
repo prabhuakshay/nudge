@@ -580,6 +580,26 @@ export interface paths {
     patch: operations["apps_tasks_api_sections_update_section"];
     trace?: never;
   };
+  "/api/v1/sections/{section_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Section in its Project
+     * @description Put a Section right after another one in the same Project, or first.
+     */
+    post: operations["apps_tasks_api_sections_move_section"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/people": {
     parameters: {
       query?: never;
@@ -1937,6 +1957,17 @@ export interface components {
       name?: string | null;
       /** Collapsed */
       collapsed?: boolean | null;
+    };
+    /**
+     * SectionMoveIn
+     * @description Where a Section goes among its Project's Sections.
+     */
+    SectionMoveIn: {
+      /**
+       * After Id
+       * @description The Section it now follows in the same Project; first when left out.
+       */
+      after_id?: number | null;
     };
     /**
      * PersonOut
@@ -4404,6 +4435,48 @@ export interface operations {
         content: {
           "application/json": components["schemas"]["SectionOut"];
         };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_sections_move_section: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        section_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SectionMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
       };
       /** @description Not Found */
       404: {

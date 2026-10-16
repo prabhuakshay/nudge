@@ -104,3 +104,18 @@ def update_section(
         found.collapsed = collapsed
     found.save()
     return found
+
+
+def move_section(moved: Section, after: Section | None) -> None:
+    """Put a Section right after `after`, or first when there is none.
+
+    Raises:
+        SectionRuleError: `after` is in another Project.
+    """
+    if after is not None and after.project_id != moved.project_id:
+        raise SectionRuleError(NOT_IN_THIS_PROJECT)
+    with transaction.atomic():
+        lock_project(moved.project_id)
+        siblings = [sibling for sibling in _sibling_keys(moved.project) if sibling[0] != moved.pk]
+        moved.position = key_after(siblings, None if after is None else after.pk)
+        moved.save(update_fields=["position", "updated_at"])

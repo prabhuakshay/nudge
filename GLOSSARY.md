@@ -104,6 +104,11 @@ The view of Tasks due today, ranges that include today, and everything Overdue.
 The view of Tasks due after today, grouped by day for a week and by month after that.
 _Avoid_: Next 7 days, scheduled
 
+**All**:
+The view of every open Task in the Inbox and every Project that isn't archived, grouped by date,
+with undated Tasks last.
+_Avoid_: Everything, all tasks list
+
 **Overdue**:
 An open Task whose date has passed: a timed Task once its time passes, an all-day Task once its
 day ends, a range once its end passes.

@@ -238,9 +238,18 @@ export async function patchTask({ id, tags, ...change }: TaskPatch) {
     body: { ...change, ...(tags && { tag_ids: tags.map((tag) => tag.id) }) },
   });
   if (!data) {
-    throw new Error(error.detail);
+    throw new Error(reasonOf(error) ?? "Could not save the task.");
   }
   return data;
+}
+
+/**
+ * The reason the server gives for refusing a request, if it gave one to show. A proxy's error page
+ * has no reason, and a request the schema rejects gives a list of field errors instead.
+ */
+function reasonOf(error: unknown) {
+  const detail = typeof error === "object" && error !== null && "detail" in error && error.detail;
+  return typeof detail === "string" && detail !== "" ? detail : undefined;
 }
 
 /** The Task as the server will return it after the change, for showing the change straight away. */

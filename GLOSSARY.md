@@ -53,7 +53,8 @@ The single markdown body of a Task.
 _Avoid_: Notes, content
 
 **Priority**:
-How urgent a Task is: None, or P1 (most urgent) through P4.
+How much a Task matters: None, or P1 (matters most) through P4. P1 and P2 make a Task
+Important in the Matrix.
 _Avoid_: Importance, level
 
 **Status**:
@@ -118,6 +119,22 @@ _Avoid_: Everything, all tasks list
 An open Task whose date has passed: a timed Task once its time passes, an all-day Task once its
 day ends, a range once its end passes.
 _Avoid_: Late, missed
+
+**Matrix**:
+The View that sorts every open root Task the All view shows into four Quadrants by whether it
+is Important and whether it is Urgent.
+_Avoid_: Eisenhower view, priority grid
+
+**Quadrant**:
+One of the Matrix's four groups: Urgent & Important, Important not urgent, Urgent not
+important, or Neither.
+
+**Important**:
+A Task whose Priority is P1 or P2.
+
+**Urgent**:
+A Task that is Overdue, or whose date (or a range's start) falls today or tomorrow. A Task with
+no date is never Urgent.
 
 **Layout**:
 How a View or Project arranges its Tasks: List, Board or Calendar. A View decides which Tasks

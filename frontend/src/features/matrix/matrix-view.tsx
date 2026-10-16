@@ -2,7 +2,6 @@ import { useQuery } from "@tanstack/react-query";
 import { LayoutGrid } from "lucide-react";
 import { useCallback, useMemo } from "react";
 
-import { Badge } from "@/components/ui/badge";
 import { useOpenTask } from "@/features/tasks/open-task";
 import { todayIn } from "@/features/tasks/schedule";
 import { useSetTaskStatus } from "@/features/tasks/set-status";
@@ -80,9 +79,6 @@ export function MatrixView({
           <LayoutGrid className="size-5" aria-hidden />
         </span>
         <h1 className="truncate text-2xl font-extrabold tracking-tight sm:text-3xl">Matrix</h1>
-        <Badge variant="secondary" className="shrink-0 tabular-nums">
-          {order.length} open
-        </Badge>
       </header>
 
       {wide ? (

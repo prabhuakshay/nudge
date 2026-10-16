@@ -9,16 +9,14 @@ needs lives in the advance's Activity event, so the server keeps no separate und
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import timedelta
-from typing import TYPE_CHECKING, TypedDict
+from datetime import date, timedelta
+from typing import TYPE_CHECKING, NotRequired, TypedDict
 
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task, TaskActivity
 from apps.tasks.tree import AffectedTask, below, set_status
 
 if TYPE_CHECKING:
-    from datetime import date
-
     from django.db.models import QuerySet
 
 # The Activity kinds that change where a Task stands, so a later one makes an advance final.
@@ -47,6 +45,8 @@ class _Undo(TypedDict):
     blocked_reason: str
     dates: dict[str, str | None]
     rule: str
+    # Missing from an advance logged before moved Occurrences were remembered.
+    occurrence_date: NotRequired[str | None]
     subtasks: list[_SubtaskBefore]
 
 
@@ -63,10 +63,20 @@ class Advance:
         prior = AffectedTask(task.pk, Task.Status(task.status), task.blocked_reason)
         assert task.due_date is not None  # noqa: S101 - only a dated Task repeats
         occurrence, dates_before, rule_before = task.due_date, TaskDates.of(task), task.repeat_rule
+        series_date = task.occurrence_date
         days = (self.due - occurrence).days
         _shift(task, days)
         task.status, task.blocked_reason, task.repeat_rule = Task.Status.OPEN, "", self.rule
-        task.save(update_fields=[*_DATE_FIELDS, "status", "blocked_reason", "repeat_rule"])
+        task.occurrence_date = None
+        task.save(
+            update_fields=[
+                *_DATE_FIELDS,
+                "status",
+                "blocked_reason",
+                "repeat_rule",
+                "occurrence_date",
+            ],
+        )
         # A snooze belongs to the Occurrence that fired it, which is over now.
         task.reminders.update(snoozed_until=None)
         subtasks = [_start_over(subtask, task, days) for subtask in _subtasks(task)]
@@ -75,6 +85,7 @@ class Advance:
             "blocked_reason": prior.prior_blocked_reason,
             "dates": dates_before.as_activity() or {},
             "rule": rule_before,
+            "occurrence_date": None if series_date is None else series_date.isoformat(),
             "subtasks": subtasks,
         }
         data = {
@@ -103,7 +114,9 @@ class Revert:
         task.due_date, task.due_time = restored.due_date, restored.due_time
         task.start_date, task.start_time = restored.start_date, restored.start_time
         task.repeat_rule = self.undo["rule"]
-        task.save(update_fields=[*_DATE_FIELDS, "repeat_rule"])
+        series_date = self.undo.get("occurrence_date")
+        task.occurrence_date = None if series_date is None else date.fromisoformat(series_date)
+        task.save(update_fields=[*_DATE_FIELDS, "repeat_rule", "occurrence_date"])
         data = {"old": dates_before.as_activity(), "new": restored.as_activity()}
         TaskActivity.objects.create(task=task, kind=TaskActivity.Kind.DATES_CHANGED, data=data)
         if self.undo["status"] != task.status:

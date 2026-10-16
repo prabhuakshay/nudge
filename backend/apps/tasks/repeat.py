@@ -6,6 +6,9 @@ saving. Closing a repeating Task doesn't close it: the same row moves on to its 
 (Won't do skips one), its Subtasks start over, and dated Subtasks move by as many days. Only when
 the rule has no next Occurrence does the Task close for real.
 
+An Occurrence moved on its own (a Calendar drag) keeps the series date it stands for in
+`occurrence_date`, and the series counts on from there, so no Occurrence repeats or goes missing.
+
 Closing works out the next Occurrence here; `apps.tasks.advance` moves the Task there. The
 Calendar asks here for the Occurrences after the current one.
 """
@@ -99,7 +102,8 @@ def apply_edit(
     """Set or clear the Task's Repeat; the caller saves it. A rule left as None stays as it is.
 
     The series restarts at the due date whenever the rule or the dates change, unless the new
-    dates only move the current Occurrence. A Task that has lost its due date stops repeating.
+    dates only move the current Occurrence, which then remembers the series date it stands for.
+    A Task that has lost its due date stops repeating.
 
     Raises:
         RepeatRuleError: The rule is unreadable, or the Task is a Subtask or undated.
@@ -107,18 +111,31 @@ def apply_edit(
     if repeat_from is not None:
         task.repeat_from = repeat_from
     if rule is not None:
-        task.repeat_rule = normalise(rule) if rule else ""
-        if task.repeat_rule and task.parent_id is not None:
-            raise RepeatRuleError(SUBTASK_REPEAT)
-        if task.repeat_rule and task.due_date is None:
-            message = "A repeating task needs a due date."
-            raise RepeatRuleError(message)
+        _set_rule(task, rule)
     if task.due_date is None:
         task.repeat_rule = ""
+    moved = TaskDates.of(task) != dates_before
     if not task.repeat_rule:
-        task.repeat_anchor = None
-    elif rule is not None or (TaskDates.of(task) != dates_before and not move_occurrence):
-        task.repeat_anchor = task.due_date
+        task.repeat_anchor, task.occurrence_date = None, None
+    elif rule is not None or (moved and not move_occurrence):
+        task.repeat_anchor, task.occurrence_date = task.due_date, None
+    elif moved:
+        series_date = task.occurrence_date or dates_before.due_date
+        task.occurrence_date = None if series_date == task.due_date else series_date
+
+
+def _set_rule(task: Task, rule: str) -> None:
+    """Set the Task's rule, or clear it with an empty one.
+
+    Raises:
+        RepeatRuleError: The rule is unreadable, or the Task is a Subtask or undated.
+    """
+    task.repeat_rule = normalise(rule) if rule else ""
+    if task.repeat_rule and task.parent_id is not None:
+        raise RepeatRuleError(SUBTASK_REPEAT)
+    if task.repeat_rule and task.due_date is None:
+        message = "A repeating task needs a due date."
+        raise RepeatRuleError(message)
 
 
 def start(task: Task, rule: str, repeat_from: Task.RepeatFrom | None) -> None:
@@ -128,7 +145,7 @@ def start(task: Task, rule: str, repeat_from: Task.RepeatFrom | None) -> None:
         RepeatRuleError: The rule is unreadable, or the Task is a Subtask or undated.
     """
     apply_edit(task, rule, repeat_from, TaskDates.of(task))
-    task.save(update_fields=["repeat_rule", "repeat_anchor", "repeat_from"])
+    task.save(update_fields=["repeat_rule", "repeat_anchor", "occurrence_date", "repeat_from"])
 
 
 def edit_event(task: Task, before: Repeat | None, *, asked: bool) -> TaskActivity | None:
@@ -156,7 +173,7 @@ def remove(task: Task) -> list[TaskActivity]:
     before = Repeat.of(task)
     if before is None:
         return []
-    task.repeat_rule, task.repeat_anchor = "", None
+    task.repeat_rule, task.repeat_anchor, task.occurrence_date = "", None, None
     return [
         TaskActivity(task=task, kind=TaskActivity.Kind.REPEAT_REMOVED, data=before.as_activity())
     ]
@@ -188,10 +205,9 @@ def _next(task: Task, today: date) -> tuple[date, str] | None:
     From completion, the series restarts today, so a `COUNT` can't count from the anchor; it
     counts down in the rule instead.
     """
-    assert task.due_date is not None  # noqa: S101 - only a dated Task repeats
     assert task.repeat_anchor is not None  # noqa: S101 - every repeating Task has one
     at = task.due_time or time.min
-    current = datetime.combine(task.due_date, at)
+    current = datetime.combine(_series_date(task), at)
     if task.repeat_from != Task.RepeatFrom.COMPLETION:
         series = _read(task.repeat_rule, datetime.combine(task.repeat_anchor, at))
         if task.repeat_from == Task.RepeatFrom.CALENDAR:
@@ -209,6 +225,12 @@ def _next(task: Task, today: date) -> tuple[date, str] | None:
     return None if found is None else (found.date(), rule)
 
 
+def _series_date(task: Task) -> date:
+    """Return the series date the Task's current Occurrence stands for."""
+    assert task.due_date is not None  # noqa: S101 - only a dated Task repeats
+    return task.occurrence_date or task.due_date
+
+
 def later_occurrences(task: Task, start: date, end: date) -> list[date]:
     """Return the days of the Task's Occurrences after its current one, from `start` to `end`.
 
@@ -217,10 +239,9 @@ def later_occurrences(task: Task, start: date, end: date) -> list[date]:
     """
     if not task.repeat_rule or task.repeat_from == Task.RepeatFrom.COMPLETION:
         return []
-    assert task.due_date is not None  # noqa: S101 - only a dated Task repeats
     assert task.repeat_anchor is not None  # noqa: S101 - every repeating Task has one
     at = task.due_time or time.min
-    current = task.due_date
+    current = _series_date(task)
     if task.repeat_from == Task.RepeatFrom.CALENDAR:
         current = max(current, local_now(task.owner).date())
     first = max(start, current + timedelta(days=1))

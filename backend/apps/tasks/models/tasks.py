@@ -112,6 +112,14 @@ class Task(models.Model):
         blank=True,
         help_text="The day the series starts (its DTSTART), at the Task's due time.",
     )
+    occurrence_date = models.DateField(
+        null=True,
+        blank=True,
+        help_text=(
+            "The day in the series the current Occurrence stands for, once it has moved off it; "
+            "empty when that is the due date."
+        ),
+    )
     repeat_from = models.CharField(max_length=16, choices=RepeatFrom, default=RepeatFrom.CALENDAR)
     tags = models.ManyToManyField(Tag, blank=True, related_name="tasks")
     created_at = models.DateTimeField(default=timezone.now)

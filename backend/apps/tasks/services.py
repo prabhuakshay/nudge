@@ -195,6 +195,7 @@ _EDITABLE_FIELDS = (
     "start_time",
     "repeat_rule",
     "repeat_anchor",
+    "occurrence_date",
     "repeat_from",
 )
 

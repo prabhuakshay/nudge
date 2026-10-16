@@ -93,6 +93,7 @@ def move_task(task: Task, destination: Destination) -> TaskChange:
                 "pinned_at",
                 "repeat_rule",
                 "repeat_anchor",
+                "occurrence_date",
                 "updated_at",
             ],
         )

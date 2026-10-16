@@ -100,6 +100,15 @@ def _tasks(user: User, start: date, end: date) -> QuerySet[Task]:
 
 
 def _repeating(user: User, end: date) -> QuerySet[Task]:
-    """Return the user's repeating Tasks due before `end`, the ones that may come back by then."""
-    repeating = active_tasks(user).exclude(repeat_rule="").filter(due_date__lt=end)
+    """Return the user's repeating Tasks whose series date is before `end`.
+
+    Those are the ones that may come back by then; a moved Occurrence counts from the series date
+    it stands for, wherever it was moved to.
+    """
+    repeating = (
+        active_tasks(user)
+        .exclude(repeat_rule="")
+        .alias(series_date=Coalesce("occurrence_date", "due_date"))
+        .filter(series_date__lt=end)
+    )
     return as_rows(repeating.select_related("owner"), user).order_by("id")

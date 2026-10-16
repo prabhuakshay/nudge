@@ -14,6 +14,7 @@ import type { SidebarProject } from "@/features/tasks/tasks";
 
 import { calendarQuery, useCalendarPlace, usePhone, type CalendarMode } from "./calendar";
 import { CalendarDrag } from "./calendar-drag";
+import { dayLabel } from "./day-label";
 import { DayTasks } from "./day-tasks";
 import { monthWeeks, shiftDays, shiftMonths, tasksOn, weekDays } from "./layout";
 import { MonthGrid } from "./month-grid";
@@ -23,36 +24,8 @@ import { slotView, type Slot } from "./slot";
 import type { TaskActions } from "./task-card";
 import { TimeGrid } from "./time-grid";
 
-const MODE_NAMES: Record<CalendarMode, string> = { month: "Month", week: "Week", day: "Day" };
-
-/** The days a mode shows around a date: whole weeks of its month, its week, or the day itself. */
-function shownDays(mode: CalendarMode, date: string): string[] {
-  switch (mode) {
-    case "month":
-      return monthWeeks(date).flat();
-    case "week":
-      return weekDays(date);
-    case "day":
-      return [date];
-  }
-}
-
-/** The date one step away in a mode, a month, a week or a day, back when `by` is -1. */
-function step(mode: CalendarMode, date: string, by: 1 | -1): string {
-  switch (mode) {
-    case "month":
-      return shiftMonths(date, by);
-    case "week":
-      return shiftDays(date, 7 * by);
-    case "day":
-      return shiftDays(date, by);
-  }
-}
-
-/** The heading: the month, the month or months a week falls in, or the day. */
-function title(mode: CalendarMode, date: string): string {
-  if (mode === "month") return format(parseISO(date), "MMMM yyyy");
-  if (mode === "day") return format(parseISO(date), "EEEE d MMMM yyyy");
+/** The heading of a week: the month it falls in, or both months when it spans two. */
+function weekTitle(date: string): string {
   const week = weekDays(date);
   const first = parseISO(week[0] ?? date);
   const last = parseISO(week[6] ?? date);
@@ -60,6 +33,34 @@ function title(mode: CalendarMode, date: string): string {
   const firstFormat = first.getFullYear() === last.getFullYear() ? "MMMM" : "MMMM yyyy";
   return `${format(first, firstFormat)} – ${format(last, "MMMM yyyy")}`;
 }
+
+/**
+ * What each mode shows around a date: its name, the days it draws (whole weeks of the month, the
+ * week, or the day itself), the date one step away (back when `by` is -1) and its heading.
+ */
+const BY_MODE: Record<
+  CalendarMode,
+  {
+    name: string;
+    days: (date: string) => string[];
+    step: (date: string, by: 1 | -1) => string;
+    title: (date: string) => string;
+  }
+> = {
+  month: {
+    name: "Month",
+    days: (date) => monthWeeks(date).flat(),
+    step: shiftMonths,
+    title: (date) => format(parseISO(date), "MMMM yyyy"),
+  },
+  week: {
+    name: "Week",
+    days: weekDays,
+    step: (date, by) => shiftDays(date, 7 * by),
+    title: weekTitle,
+  },
+  day: { name: "Day", days: (date) => [date], step: shiftDays, title: (date) => dayLabel(date) },
+};
 
 /** The user's wall clock, read again every minute so today and the current-time line keep up. */
 function useWallClock(timeZone: string): Date {
@@ -93,7 +94,7 @@ export function CalendarView({
   const today = format(now, "yyyy-MM-dd");
   const { mode, date, modes, go } = useCalendarPlace(today);
   const phone = usePhone();
-  const days = shownDays(mode, date);
+  const days = BY_MODE[mode].days(date);
   const { data } = useQuery(calendarQuery({ start: days[0] ?? date, end: days.at(-1) ?? date }));
   const [showClosed, setShowClosed] = useShowClosed();
   const shown = (data?.items ?? []).filter((task) => showClosed || !isClosed(task.status));
@@ -119,7 +120,7 @@ export function CalendarView({
           <CalendarRange className="size-5" aria-hidden />
         </span>
         <h1 className="min-w-0 truncate text-2xl font-extrabold tracking-tight sm:text-3xl">
-          {title(mode, date)}
+          {BY_MODE[mode].title(date)}
         </h1>
         {/* On a phone the controls take a row of their own below the title. */}
         <div className="flex w-full shrink-0 items-center gap-1 sm:ml-auto sm:w-auto">
@@ -138,7 +139,7 @@ export function CalendarView({
                   go(date, { mode: each });
                 }}
               >
-                {MODE_NAMES[each]}
+                {BY_MODE[each].name}
               </Button>
             ))}
           </div>
@@ -168,7 +169,7 @@ export function CalendarView({
             size="icon"
             aria-label={`Previous ${mode}`}
             onClick={() => {
-              go(step(mode, date, -1));
+              go(BY_MODE[mode].step(date, -1));
             }}
           >
             <ChevronLeft aria-hidden />
@@ -178,7 +179,7 @@ export function CalendarView({
             size="icon"
             aria-label={`Next ${mode}`}
             onClick={() => {
-              go(step(mode, date, 1));
+              go(BY_MODE[mode].step(date, 1));
             }}
           >
             <ChevronRight aria-hidden />

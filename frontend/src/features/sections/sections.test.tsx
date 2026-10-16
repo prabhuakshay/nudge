@@ -9,8 +9,9 @@ import type { Section } from "./sections";
 
 const TO_DO: Section = { id: 31, project_id: WORK.id, name: "To do", collapsed: false };
 const DOING: Section = { id: 32, project_id: WORK.id, name: "Doing", collapsed: false };
+const DONE: Section = { id: 33, project_id: WORK.id, name: "Done", collapsed: false };
 
-/** A stand-in server holding one Project's Sections and open Tasks, which adds and deletes Sections. */
+/** A stand-in server holding a Project's Sections and open Tasks; it adds, moves and deletes them. */
 function mockApi({
   sections = [TO_DO, DOING],
   open = [],
@@ -19,6 +20,20 @@ function mockApi({
   open?: Task[];
 }) {
   let nextId = 100;
+  /** Moves or deletes the Section a `/sections/{id}` request names. */
+  const changeSection = async (request: Request, path: string) => {
+    const id = Number(/\/sections\/(\d+)/.exec(path)?.[1]);
+    if (request.method === "DELETE") {
+      sections = sections.filter((section) => section.id !== id);
+      open = open.map((task) => (task.section_id === id ? { ...task, section_id: null } : task));
+      return;
+    }
+    const { after_id } = (await request.clone().json()) as { after_id: number | null };
+    const section = sections.find((other) => other.id === id);
+    const rest = sections.filter((other) => other !== section);
+    const at = after_id === null ? 0 : rest.findIndex((other) => other.id === after_id) + 1;
+    sections = section ? [...rest.slice(0, at), section, ...rest.slice(at)] : rest;
+  };
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
     const url = new URL(request.url);
@@ -28,10 +43,8 @@ function mockApi({
       sections = [...sections, created];
       return json(created, 201);
     }
-    if (url.pathname.startsWith("/api/v1/sections/") && request.method === "DELETE") {
-      const id = Number(url.pathname.split("/").at(-1));
-      sections = sections.filter((section) => section.id !== id);
-      open = open.map((task) => (task.section_id === id ? { ...task, section_id: null } : task));
+    if (url.pathname.startsWith("/api/v1/sections/")) {
+      await changeSection(request, url.pathname);
       return new Response(null, { status: 204 });
     }
     if (url.pathname.endsWith("/sections")) return json(sections);
@@ -150,7 +163,7 @@ describe("Sections in a Project", () => {
     const { user } = renderTaskList({ project: WORK });
     await screen.findByText("Write brief");
 
-    await user.click(screen.getByRole("button", { name: "To do options" }));
+    await user.click(screen.getByRole("button", { name: "To do actions" }));
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
     const dialog = screen.getByRole("dialog", { name: "Delete “To do”?" });
     expect(dialog).toHaveTextContent("Its tasks move to No section.");
@@ -169,7 +182,7 @@ describe("Sections in a Project", () => {
     const { user } = renderTaskList({ project: WORK });
     await screen.findByRole("region", { name: "To do" });
 
-    await user.click(screen.getByRole("button", { name: "To do options" }));
+    await user.click(screen.getByRole("button", { name: "To do actions" }));
     await user.click(screen.getByRole("menuitem", { name: "Delete" }));
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
@@ -186,5 +199,62 @@ describe("Sections in a Project", () => {
     expect(screen.queryByRole("button", { name: "Add section" })).not.toBeInTheDocument();
     const paths = fetchSpy.mock.calls.map(([input]) => new URL(requestOf(input).url).pathname);
     expect(paths.filter((path) => path.endsWith("/sections"))).toEqual([]);
+  });
+
+  it("moves a Section up or down from its header menu with the keyboard", async () => {
+    const fetchSpy = mockApi({ sections: [TO_DO, DOING, DONE] });
+    const { user } = renderTaskList({ project: WORK });
+    await screen.findByRole("region", { name: "Done" });
+
+    screen.getByRole("button", { name: "Done actions" }).focus();
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("menuitem", { name: "Move up" }));
+    await waitFor(() => {
+      expect(groupNames().slice(0, 3)).toEqual(["To do", "Done", "Doing"]);
+    });
+
+    screen.getByRole("button", { name: "To do actions" }).focus();
+    await user.keyboard("{Enter}");
+    await user.click(screen.getByRole("menuitem", { name: "Move down" }));
+    await waitFor(() => {
+      expect(groupNames().slice(0, 3)).toEqual(["Done", "To do", "Doing"]);
+    });
+
+    expect(await writes(fetchSpy)).toEqual([
+      [`POST /api/v1/sections/${String(DONE.id)}/move`, { after_id: TO_DO.id }],
+      [`POST /api/v1/sections/${String(TO_DO.id)}/move`, { after_id: DONE.id }],
+    ]);
+  });
+
+  it("moves the second Section to the top", async () => {
+    const fetchSpy = mockApi({});
+    const { user } = renderTaskList({ project: WORK });
+
+    await user.click(await screen.findByRole("button", { name: "Doing actions" }));
+    await user.click(screen.getByRole("menuitem", { name: "Move up" }));
+
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([
+        [`POST /api/v1/sections/${String(DOING.id)}/move`, { after_id: null }],
+      ]);
+    });
+  });
+
+  it("offers no Move up for the first Section or Move down for the last", async () => {
+    mockApi({});
+    const { user } = renderTaskList({ project: WORK });
+
+    await user.click(await screen.findByRole("button", { name: "To do actions" }));
+    expect(screen.getByRole("menuitem", { name: "Move up" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Doing actions" }));
+    expect(screen.getByRole("menuitem", { name: "Move down" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
   });
 });

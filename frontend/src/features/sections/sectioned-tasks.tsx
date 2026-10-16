@@ -1,11 +1,15 @@
 import { ListTodo } from "lucide-react";
+import { useState } from "react";
 
 import { Group } from "@/features/tasks/task-groups";
 import { SortableTaskRows, type SortableRowContext } from "@/features/tasks/task-rows";
 import { rootCount } from "@/features/tasks/task-tree";
 
+import { DeleteSectionDialog, DeleteSectionItem } from "./delete-section";
+import { MoveSectionItems } from "./move-section-items";
 import { SectionGroup } from "./section-group";
 import { SectionMenu } from "./section-menu";
+import type { Section } from "./sections";
 import type { SectionTrees } from "./section-trees";
 
 /**
@@ -19,6 +23,7 @@ export function SectionedTasks({
   trees: SectionTrees;
   context: SortableRowContext;
 }) {
+  const order = trees.sections.map(({ section }) => section);
   return (
     <>
       {trees.unsectioned.length > 0 && (
@@ -35,11 +40,33 @@ export function SectionedTasks({
           key={section.id}
           section={section}
           count={rootCount(tasks)}
-          actions={context.sortable && <SectionMenu section={section} />}
+          actions={context.sortable && <SectionActions section={section} order={order} />}
         >
           {tasks.length > 0 && <SortableTaskRows tasks={tasks} context={context} />}
         </SectionGroup>
       ))}
+    </>
+  );
+}
+
+/** A Section header's menu, and the dialogs its items open, which outlive the closed menu. */
+function SectionActions({ section, order }: { section: Section; order: Section[] }) {
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  return (
+    <>
+      <SectionMenu section={section}>
+        <MoveSectionItems section={section} order={order} />
+        <DeleteSectionItem
+          onSelect={() => {
+            setConfirmingDelete(true);
+          }}
+        />
+      </SectionMenu>
+      <DeleteSectionDialog
+        section={section}
+        open={confirmingDelete}
+        onOpenChange={setConfirmingDelete}
+      />
     </>
   );
 }

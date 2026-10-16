@@ -7,6 +7,7 @@ import { refreshTasks } from "@/features/tasks/tasks";
 
 export type Section = components["schemas"]["SectionOut"];
 export type SectionFields = components["schemas"]["SectionIn"];
+type SectionMove = components["schemas"]["SectionMoveIn"] & { id: number };
 
 /** The key prefix of every Project's Sections, kept apart from Tasks so Task changes skip them. */
 export const SECTIONS_KEY = ["sections"] as const;
@@ -49,6 +50,17 @@ export function useCreateSection(projectId: number) {
     });
     if (error) throw new Error(error.detail);
     return data;
+  });
+}
+
+/** Put a Section right after `after_id` among its Project's Sections, or first for null. */
+export function useMoveSection(projectId: number) {
+  return useSectionMutation(projectId, async ({ id, after_id }: SectionMove) => {
+    const { error } = await api.POST("/api/v1/sections/{section_id}/move", {
+      params: { path: { section_id: id } },
+      body: { after_id },
+    });
+    if (error) throw new Error(error.detail);
   });
 }
 

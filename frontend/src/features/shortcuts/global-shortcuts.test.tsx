@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { sessionQuery } from "@/features/auth/session";
@@ -29,11 +30,24 @@ const ada = {
   single_key_shortcuts: true,
 };
 
+/** The shortcuts holding the command bar's open state, as the app shell holds it. */
+function Shortcuts({ onAddTask }: { onAddTask: (draft: string) => void }) {
+  const [commandBar, setCommandBar] = useState(false);
+  return (
+    <GlobalShortcuts
+      user={ada}
+      commandBar={commandBar}
+      onCommandBarChange={setCommandBar}
+      onAddTask={onAddTask}
+    />
+  );
+}
+
 function renderApp(onAddTask: (draft: string) => void = vi.fn()) {
   const rootRoute = createRootRoute({
     component: () => (
       <>
-        <GlobalShortcuts user={ada} onAddTask={onAddTask} />
+        <Shortcuts onAddTask={onAddTask} />
         <Outlet />
         <Toaster />
       </>

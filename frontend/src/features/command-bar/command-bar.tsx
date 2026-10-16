@@ -32,20 +32,23 @@ function rowTaskId(target: EventTarget | null): number | null {
 }
 
 /**
- * The command bar, opened with Mod+K or `/`, or on phones from the search button it renders in
- * the top bar. Empty, it offers Go to and the Tasks opened last; typing finds commands for the
+ * The command bar, opened with Mod+K or `/`, on phones from the search button it renders in
+ * the top bar, or by whoever holds `open`, such as the sidebar's Search row. Empty, it offers Go to and the Tasks opened last; typing finds commands for the
  * focused or open Task, Tasks, Projects, Tags, People and Actions, and finally offers to create
  * a Task from the words, in the global Quick add. A command runs once the bar has closed and
  * handed focus back, so a picker it opens keeps focus.
  */
 export function CommandBar({
+  open,
+  onOpenChange: setOpen,
   actions,
   onCreateTask,
 }: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   actions: CommandActions;
   onCreateTask: (text: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const [focusedTaskId, setFocusedTaskId] = useState<number | null>(null);
   const pending = useRef<(() => void) | null>(null);
 
@@ -69,7 +72,6 @@ export function CommandBar({
         aria-label="Search and commands"
         className="text-muted-foreground lg:hidden"
         onClick={() => {
-          setFocusedTaskId(null);
           setOpen(true);
         }}
       >
@@ -81,6 +83,8 @@ export function CommandBar({
         open={open}
         onOpenChange={setOpen}
         onCloseAutoFocus={() => {
+          // Reset once closed rather than on opening, as the bar can be opened from outside.
+          setFocusedTaskId(null);
           const command = pending.current;
           pending.current = null;
           // After Radix has put focus back where it was, which it does once this returns.

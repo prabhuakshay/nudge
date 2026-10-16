@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useState, type ComponentProps } from "react";
 
 import { TooltipProvider } from "@/components/ui/tooltip";
 import type { SearchResult } from "@/features/search/search";
@@ -19,6 +20,12 @@ import { makeTask } from "@/test/tasks";
 import { requestOf } from "@/test/fetch";
 
 import { CommandBar, type CommandActions } from "./command-bar";
+
+/** The command bar holding its own open state, as the app shell holds it. */
+function Bar(props: Omit<ComponentProps<typeof CommandBar>, "open" | "onOpenChange">) {
+  const [open, setOpen] = useState(false);
+  return <CommandBar open={open} onOpenChange={setOpen} {...props} />;
+}
 
 const TOOLS = { ...GARDEN, name: "Tools" };
 const TODO_TAG = { ...TAGS[1], name: "todo" };
@@ -78,7 +85,7 @@ function renderBar({
     },
     component: () => (
       <TooltipProvider>
-        <CommandBar actions={actions} onCreateTask={onCreateTask} />
+        <Bar actions={actions} onCreateTask={onCreateTask} />
         <Outlet />
       </TooltipProvider>
     ),

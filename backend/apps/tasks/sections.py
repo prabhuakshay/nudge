@@ -10,7 +10,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.db import transaction
-from fractional_indexing import generate_key_between
 
 from apps.core.errors import DomainRuleError
 from apps.tasks.archive import ensure_writable
@@ -82,10 +81,8 @@ def create_section(project: Project, name: str, after: Section | None = None) ->
     with transaction.atomic():
         lock_project(project.pk)
         siblings = _sibling_keys(project)
-        if after is not None:
-            position = key_after(siblings, after.pk)
-        else:
-            position = str(generate_key_between(siblings[-1][1] if siblings else None, None))
+        last = siblings[-1][0] if siblings else None
+        position = key_after(siblings, last if after is None else after.pk)
         return Section.objects.create(
             owner=project.owner,
             project=project,
@@ -111,7 +108,7 @@ def update_section(
         found.name = clean_name(name)
     if collapsed is not None:
         found.collapsed = collapsed
-    found.save()
+    found.save(update_fields=["name", "collapsed", "updated_at"])
     return found
 
 

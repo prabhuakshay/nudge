@@ -20,7 +20,20 @@ from apps.tasks.schemas.sections import SectionIn, SectionMoveIn, SectionOut, Se
 if TYPE_CHECKING:
     from django.http import HttpRequest
 
+    from apps.accounts.models import User
+    from apps.tasks.models import Section
+
 router = Router()
+
+
+def _section_after(user: User, after_id: int | None) -> Section | Status[ErrorOut] | None:
+    """Return the Section `after_id` names, None when it names none, or a 404 if it isn't theirs."""
+    if after_id is None:
+        return None
+    after = sections.section(user, after_id)
+    if after is None:
+        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    return after
 
 
 @router.get(
@@ -56,11 +69,9 @@ def create_section(
     project = services.live_project(user, project_id)
     if project is None:
         return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
-    after = None
-    if section.after_id is not None:
-        after = sections.section(user, section.after_id)
-        if after is None:
-            return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    after = _section_after(user, section.after_id)
+    if isinstance(after, Status):
+        return after
     created = sections.create_section(project, section.name, after)
     return Status(HTTPStatus.CREATED, SectionOut.from_orm(created))
 
@@ -102,11 +113,9 @@ def move_section(
     moved = sections.section(user, section_id)
     if moved is None:
         return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
-    after = None
-    if move.after_id is not None:
-        after = sections.section(user, move.after_id)
-        if after is None:
-            return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    after = _section_after(user, move.after_id)
+    if isinstance(after, Status):
+        return after
     sections.move_section(moved, after)
     return Status(HTTPStatus.NO_CONTENT, None)
 

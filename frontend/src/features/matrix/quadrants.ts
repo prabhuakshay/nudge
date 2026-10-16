@@ -4,6 +4,7 @@ import type { Task, TaskPriority } from "@/features/tasks/tasks";
 /** The Matrix's four Quadrants, Important on top and Urgent on the left, in reading order. */
 export const QUADRANTS = ["urgent-important", "important", "urgent", "neither"] as const;
 
+/** One of the Matrix's Quadrants, by its id, which is also its drop target's id while dragging. */
 export type Quadrant = (typeof QUADRANTS)[number];
 
 /** Where a Quadrant sits, what it is called and coloured, and the Priority it gives Tasks. */

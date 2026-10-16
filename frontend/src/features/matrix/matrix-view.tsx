@@ -35,7 +35,7 @@ export function MatrixView({
   const quadrants = useMemo(() => matrixQuadrants(tasks, today), [tasks, today]);
   const order = QUADRANTS.flatMap((id) => quadrants[id].map((task) => task.id));
   const wide = useMediaQuery("(min-width: 1024px)");
-  const folds = useCollapsedQuadrants();
+  const collapsedQuadrants = useCollapsedQuadrants();
   const { openTaskId, setOpenTask } = useOpenTask();
   const { mutate: setStatus } = useSetTaskStatus();
   const toggle = useCallback(
@@ -45,7 +45,7 @@ export function MatrixView({
     [setStatus],
   );
   // Phones fold the Quadrants instead of dragging between them.
-  const grid = (target: Quadrant | null) => (
+  const quadrantSections = (target: Quadrant | null) => (
     <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2">
       {QUADRANTS.map((id) => (
         <QuadrantSection
@@ -60,9 +60,9 @@ export function MatrixView({
             wide
               ? undefined
               : {
-                  collapsed: folds.collapsed.includes(id),
+                  collapsed: collapsedQuadrants.collapsed.includes(id),
                   onToggle: () => {
-                    folds.toggle(id);
+                    collapsedQuadrants.toggle(id);
                   },
                 }
           }
@@ -85,7 +85,11 @@ export function MatrixView({
         </Badge>
       </header>
 
-      {wide ? <MatrixDrag quadrants={quadrants}>{grid}</MatrixDrag> : grid(null)}
+      {wide ? (
+        <MatrixDrag quadrants={quadrants}>{quadrantSections}</MatrixDrag>
+      ) : (
+        quadrantSections(null)
+      )}
 
       <TaskDetail
         taskId={openTaskId}

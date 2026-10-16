@@ -85,7 +85,7 @@ function quadrantOfId(id: UniqueIdentifier | undefined): Quadrant | null {
 
 /** What screen readers hear while a card is dragged, in Task titles and Quadrant labels. */
 function announcements(quadrants: MatrixQuadrants): Announcements {
-  const said = (
+  const describeDrag = (
     id: UniqueIdentifier,
     say: (title: string, dragged: Dragged) => string | undefined,
   ) => {
@@ -94,11 +94,14 @@ function announcements(quadrants: MatrixQuadrants): Announcements {
   };
   return {
     onDragStart: ({ active }) =>
-      said(active.id, (title, { from }) => `Picked up ${title} from ${QUADRANT[from].label}.`),
+      describeDrag(
+        active.id,
+        (title, { from }) => `Picked up ${title} from ${QUADRANT[from].label}.`,
+      ),
     // Silent over its own Quadrant: a drag starts there, and "Picked up" has already said so.
     onDragOver: ({ active, over }) => {
       const to = quadrantOfId(over?.id);
-      return said(active.id, (title, dragged) => {
+      return describeDrag(active.id, (title, dragged) => {
         if (!to) return `${title} is over no Quadrant.`;
         if (to === dragged.from) return undefined;
         if (droppedPriority(dragged, to) === null) {
@@ -108,14 +111,14 @@ function announcements(quadrants: MatrixQuadrants): Announcements {
       });
     },
     onDragEnd: ({ active, over }) =>
-      said(active.id, (title, dragged) => {
+      describeDrag(active.id, (title, dragged) => {
         const to = quadrantOfId(over?.id);
         const priority = to && droppedPriority(dragged, to);
         if (!to || !priority) return `${title} stays in ${QUADRANT[dragged.from].label}.`;
         return `${title} moved to ${QUADRANT[to].label}, now ${PRIORITY[priority].long}.`;
       }),
     onDragCancel: ({ active }) =>
-      said(active.id, (title, { from }) => `${title} stays in ${QUADRANT[from].label}.`),
+      describeDrag(active.id, (title, { from }) => `${title} stays in ${QUADRANT[from].label}.`),
   };
 }
 

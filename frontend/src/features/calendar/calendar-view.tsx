@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
-import { CalendarRange, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarRange, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
 import { useCallback } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import type { SidebarProject, Task } from "@/features/tasks/tasks";
 import { calendarQuery, useCalendarPlace } from "./calendar";
 import { monthWeeks, shiftMonths } from "./layout";
 import { MonthGrid } from "./month-grid";
+import { useShowClosed } from "./show-closed";
 
 /** The first and last day a Month grid shows, which is the range it asks the server for. */
 function monthRange(date: string) {
@@ -38,7 +39,8 @@ export function CalendarView({
   const today = todayIn(timeZone);
   const { date, go } = useCalendarPlace(today);
   const { data } = useQuery(calendarQuery(monthRange(date)));
-  const tasks = data?.items ?? [];
+  const [showClosed, setShowClosed] = useShowClosed();
+  const tasks = (data?.items ?? []).filter((task) => showClosed || !isClosed(task.status));
   const { openTaskId, setOpenTask } = useOpenTask();
   const { mutate: setStatus } = useSetTaskStatus();
   const toggle = useCallback(
@@ -59,6 +61,19 @@ export function CalendarView({
           {format(parseISO(date), "MMMM yyyy")}
         </h1>
         <div className="ml-auto flex shrink-0 items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Show Closed Tasks"
+            aria-pressed={showClosed}
+            title="Show Closed Tasks"
+            className="aria-pressed:bg-surface-muted aria-pressed:text-primary"
+            onClick={() => {
+              setShowClosed(!showClosed);
+            }}
+          >
+            <ListChecks aria-hidden />
+          </Button>
           <Button
             variant="outline"
             onClick={() => {

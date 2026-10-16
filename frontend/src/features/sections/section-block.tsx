@@ -14,7 +14,7 @@ import { useUpdateSection, type Section } from "./sections";
  * many open root Tasks it holds, any header `actions` and its menu, then its Task rows as
  * `children` while it is expanded. The server remembers whether it is collapsed.
  */
-export function SectionGroup({
+export function SectionBlock({
   section,
   count,
   readOnly = false,

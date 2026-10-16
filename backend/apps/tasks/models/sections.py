@@ -1,4 +1,4 @@
-"""Sections: the named, ordered groups of Tasks inside a Project."""
+"""Sections: the named, ordered parts of a Project that hold its root Tasks."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ SECTION_NAME_MAX_LENGTH = 64
 
 
 class Section(models.Model):
-    """A named group of root Tasks inside one Project.
+    """A named part of one Project that holds some of its root Tasks.
 
     `position` is a fractional-indexing key among the Project's Sections. A Section holds no
     content of its own, so it is deleted for good and its Tasks fall back to No section.

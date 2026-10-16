@@ -31,14 +31,14 @@ export type SortableRowContext = RowContext & {
 };
 
 /**
- * A run of Task trees in a sortable list. In a Project with Sections each Section is one, and
- * `sectionId` says which: null for No section.
+ * The Task trees of one Section of a sortable list: `sectionId` says which, null for No section.
+ * A list without Sections is a single one with no `sectionId`.
  */
-export type TaskGroup = { sectionId?: number | null; tasks: Task[] };
+export type TaskSection = { sectionId?: number | null; tasks: Task[] };
 
-/** Draws one group: its `rows`, under its draggable-past `header` when it has one. */
-export type RenderTaskGroup = (
-  group: TaskGroup,
+/** Draws one Section: its `rows`, under its draggable-past `header` when it has one. */
+export type RenderTaskSection = (
+  section: TaskSection,
   header: GroupHeader | null,
   rows: ReactNode,
 ) => ReactNode;
@@ -61,9 +61,9 @@ function keyPlacement(tasks: Task[], taskId: number, move: Parameters<MoveByKey>
 }
 
 /**
- * One group of Task trees as sortable table rows: drag a row to reorder or nest it, or use Tab,
- * Shift+Tab and Alt+↑/↓ on a focused row. Moves stay within the group's trees. Where rows can't
- * change, they are plain table rows.
+ * Task trees as sortable table rows: drag a row to reorder or nest it, or use Tab, Shift+Tab and
+ * Alt+↑/↓ on a focused row. Moves stay within these trees. Where rows can't change, they are
+ * plain table rows.
  */
 export function SortableTaskRows({
   tasks,
@@ -72,46 +72,46 @@ export function SortableTaskRows({
   tasks: Task[];
   context: SortableRowContext;
 }) {
-  const groups = useMemo(() => [{ tasks }], [tasks]);
-  return <SortableTaskGroups groups={groups} renderGroup={justRows} context={context} />;
+  const sections = useMemo(() => [{ tasks }], [tasks]);
+  return <SortableTaskSections sections={sections} renderSection={justRows} context={context} />;
 }
 
-const justRows: RenderTaskGroup = (_group, _header, rows) => rows;
+const justRows: RenderTaskSection = (_section, _header, rows) => rows;
 
 /**
- * Groups of Task trees, such as a Project's Sections, as one sortable list: a row dragged past a
- * group's header moves into that group. Tab, Shift+Tab and Alt+↑/↓ keep a row in its group.
- * Where rows can't change, they are plain table rows.
+ * A Project's Sections of Task trees as one sortable list: a row dragged past a Section's header
+ * moves into that Section. Tab, Shift+Tab and Alt+↑/↓ keep a row in its Section. Where rows
+ * can't change, they are plain table rows.
  */
-export function SortableTaskGroups({
-  groups,
-  renderGroup,
+export function SortableTaskSections({
+  sections,
+  renderSection,
   context,
 }: {
-  groups: TaskGroup[];
-  renderGroup: RenderTaskGroup;
+  sections: TaskSection[];
+  renderSection: RenderTaskSection;
   context: SortableRowContext;
 }) {
   const { collapsed, onMove } = context;
   const outline = useMemo(
     () =>
-      groups.map(({ sectionId, tasks }) => ({
+      sections.map(({ sectionId, tasks }) => ({
         id: `section-${String(sectionId ?? "none")}`,
         rows: treeRows(tasks, collapsed),
       })),
-    [groups, collapsed],
+    [sections, collapsed],
   );
-  // A Task that ends up at the top level takes its group's Section; a Subtask follows its root.
+  // A Task that ends up at the top level takes the Section; a Subtask follows its root.
   const moveInto = useCallback(
-    (taskId: number, placement: Placement, group: TaskGroup | undefined) => {
-      onMove(taskId, placement, placement.parentId === null ? group?.sectionId : undefined);
+    (taskId: number, placement: Placement, section: TaskSection | undefined) => {
+      onMove(taskId, placement, placement.parentId === null ? section?.sectionId : undefined);
     },
     [onMove],
   );
   const moveByKey = useCallback<MoveByKey>(
     (taskId, move) => {
-      const group = groups.find(({ tasks }) => tasks.some((task) => task.id === taskId));
-      const tasks = group?.tasks ?? [];
+      const section = sections.find(({ tasks }) => tasks.some((task) => task.id === taskId));
+      const tasks = section?.tasks ?? [];
       const placement = keyPlacement(tasks, taskId, move);
       if (!placement) return;
       const parent = tasks.find((task) => task.id === placement.parentId);
@@ -120,9 +120,9 @@ export function SortableTaskGroups({
         toast.error(TOO_DEEP);
         return;
       }
-      moveInto(taskId, placement, group);
+      moveInto(taskId, placement, section);
     },
-    [groups, moveInto],
+    [sections, moveInto],
   );
   // Stable between drag steps, so rows that don't move skip rendering.
   const renderRow = useCallback(
@@ -149,10 +149,10 @@ export function SortableTaskGroups({
   );
   const drawGroup = useCallback<RenderGroup>(
     (index, header, rows) => {
-      const group = groups[index];
-      return group && renderGroup(group, header, rows);
+      const section = sections[index];
+      return section && renderSection(section, header, rows);
     },
-    [groups, renderGroup],
+    [sections, renderSection],
   );
   if (!context.sortable) {
     return outline.map(({ id, rows }, index) => (
@@ -169,7 +169,7 @@ export function SortableTaskGroups({
       renderRow={renderRow}
       renderGroup={drawGroup}
       onMove={(taskId, placement, index) => {
-        moveInto(taskId, placement, groups[index]);
+        moveInto(taskId, placement, sections[index]);
       }}
     />
   );

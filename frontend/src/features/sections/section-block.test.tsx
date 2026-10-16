@@ -6,7 +6,7 @@ import { WORK, renderTaskList } from "@/test/drawer";
 import { DOING, TO_DO, mockApi, titlesIn, writes } from "@/test/sections";
 import { makeTask } from "@/test/tasks";
 
-import { SectionGroup } from "./section-group";
+import { SectionBlock } from "./section-block";
 
 describe("A Section's header", () => {
   it("collapses and expands a Section from its header, keeping its open-Task count", async () => {
@@ -44,7 +44,7 @@ describe("A Section's header", () => {
     const user = userEvent.setup();
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <SectionGroup section={TO_DO} count={0} readOnly />
+        <SectionBlock section={TO_DO} count={0} readOnly />
       </QueryClientProvider>,
     );
     const toggle = screen.getByRole("button", { name: "To do", expanded: true });

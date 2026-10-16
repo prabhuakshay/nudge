@@ -1,4 +1,4 @@
-"""Business rules for Sections: the named, ordered groups of root Tasks inside a Project.
+"""Business rules for Sections: the named, ordered parts of a Project that hold its roots.
 
 A Project's Sections have one order of fractional-indexing keys the server generates; the client
 only says which Section a new or moved one follows. Writes to that order lock the Project's row,

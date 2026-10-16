@@ -6,7 +6,7 @@ import { DOING, DONE, TO_DO, groupNames, mockApi, titlesIn, writes } from "@/tes
 import { makeTask } from "@/test/tasks";
 
 describe("Sections in a Project", () => {
-  it("groups root Tasks under No section, then each Section in order, Pinned first", async () => {
+  it("puts root Tasks under No section, then each Section in order, Pinned first", async () => {
     mockApi({
       open: [
         makeTask({

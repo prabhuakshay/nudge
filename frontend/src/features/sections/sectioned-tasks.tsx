@@ -4,22 +4,22 @@ import { useCallback, useMemo, useState, type ReactNode } from "react";
 import type { GroupHeader } from "@/features/tasks/sortable-tree";
 import { Group } from "@/features/tasks/task-groups";
 import {
-  SortableTaskGroups,
-  type RenderTaskGroup,
+  SortableTaskSections,
+  type RenderTaskSection,
   type SortableRowContext,
-  type TaskGroup,
+  type TaskSection,
 } from "@/features/tasks/task-rows";
 import { rootCount } from "@/features/tasks/task-tree";
 
 import { AddSectionTask, AddSectionTaskButton } from "./add-section-task";
 import { DeleteSectionDialog, DeleteSectionItem } from "./delete-section";
 import { MoveSectionItems } from "./move-section-items";
-import { SectionGroup } from "./section-group";
+import { SectionBlock } from "./section-block";
 import type { SectionTrees } from "./section-trees";
 import type { Section } from "./sections";
 
 /**
- * A Project's open Tasks grouped by Section: No section first, left out when it is empty, then
+ * A Project's open Tasks sorted into Sections: No section first, left out when it is empty, then
  * each Section's header with its Tasks under it. Dragging a Task past a header moves it into
  * that Section, and above the first one into No section.
  */
@@ -31,14 +31,14 @@ export function SectionedTasks({
   context: SortableRowContext;
 }) {
   const order = useMemo(() => trees.sections.map(({ section }) => section), [trees]);
-  const groups = useMemo<TaskGroup[]>(
+  const taskSections = useMemo<TaskSection[]>(
     () => [
       { sectionId: null, tasks: trees.unsectioned },
       ...trees.sections.map(({ section, tasks }) => ({ sectionId: section.id, tasks })),
     ],
     [trees],
   );
-  const renderGroup = useCallback<RenderTaskGroup>(
+  const renderSection = useCallback<RenderTaskSection>(
     ({ sectionId, tasks }, header, rows) => {
       const section = order.find(({ id }) => id === sectionId);
       if (!section) {
@@ -68,7 +68,9 @@ export function SectionedTasks({
     },
     [order, context.sortable],
   );
-  return <SortableTaskGroups groups={groups} renderGroup={renderGroup} context={context} />;
+  return (
+    <SortableTaskSections sections={taskSections} renderSection={renderSection} context={context} />
+  );
 }
 
 /**
@@ -95,7 +97,7 @@ function SectionTasks({
   const [adding, setAdding] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   return (
-    <SectionGroup
+    <SectionBlock
       section={section}
       count={count}
       readOnly={!editable}
@@ -138,6 +140,6 @@ function SectionTasks({
         />
       )}
       {children}
-    </SectionGroup>
+    </SectionBlock>
   );
 }

@@ -122,7 +122,7 @@ export function CalendarView({
         <h1 className="min-w-0 truncate text-2xl font-extrabold tracking-tight sm:text-3xl">
           {BY_MODE[mode].title(date)}
         </h1>
-        {/* On a phone the controls take a row of their own below the title. */}
+        {/* A phone is too narrow for the title and the controls on one line. */}
         <div className="flex w-full shrink-0 items-center gap-1 sm:ml-auto sm:w-auto">
           <div
             role="group"

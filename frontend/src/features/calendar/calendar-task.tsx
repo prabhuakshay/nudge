@@ -1,37 +1,15 @@
 import { useQuery } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
 
 import { HUE } from "@/features/projects/project-style";
 import { findProject } from "@/features/projects/projects";
 import { plainMentions } from "@/features/people/mentions";
 import { shortTime } from "@/features/tasks/due";
 import { TaskCheckbox } from "@/features/tasks/task-checkbox";
-import { isClosed, STATUS } from "@/features/tasks/task-properties";
+import { isClosed } from "@/features/tasks/task-properties";
 import { sidebarQuery, type Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
-function when(date: string, time: string | null) {
-  const day = format(parseISO(date), "EEEE d MMMM");
-  return time === null ? day : `${day}, ${shortTime(time)}`;
-}
-
-/** What a screen reader hears for a Task on the Calendar: its title, dates, Project and state. */
-function taskLabel(task: Task, projectName: string | undefined) {
-  const dates =
-    task.start_date === null
-      ? when(task.due_date ?? "", task.due_time)
-      : `${when(task.start_date, task.start_time)} – ${when(task.due_date ?? "", task.due_time)}`;
-  return [
-    plainMentions(task.title),
-    task.parent_title !== null && `Subtask of ${plainMentions(task.parent_title)}`,
-    dates,
-    projectName !== undefined && `in ${projectName}`,
-    task.status !== "open" && STATUS[task.status].label.toLowerCase(),
-    task.is_overdue && "overdue",
-  ]
-    .filter(Boolean)
-    .join(", ");
-}
+import { taskLabel } from "./task-label";
 
 /**
  * A Task as the Calendar draws it on a day: a chip in its Project's colour with a checkbox that

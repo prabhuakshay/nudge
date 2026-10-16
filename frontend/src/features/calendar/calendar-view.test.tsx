@@ -1,60 +1,16 @@
 import { screen, within } from "@testing-library/react";
 import { useState } from "react";
 
-import { INBOX, json, renderListRoute, WORK } from "@/test/drawer";
+import { calendarRequests, mockApi, renderCalendar } from "@/test/calendar";
+import { INBOX, renderListRoute, WORK } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 import { makeTask } from "@/test/tasks";
 import { GlobalQuickAdd } from "@/features/tasks/global-quick-add";
-import type { NewTask, TaskDetail } from "@/features/tasks/tasks";
 
 import { validateCalendarSearch } from "./calendar";
 import { CalendarView } from "./calendar-view";
 
 const task = makeTask;
-
-/** A stand-in server: the sidebar, the Calendar's Tasks, each Task's detail and its PATCHes. */
-function mockApi(tasks: TaskDetail[] = []) {
-  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = requestOf(input);
-    const url = new URL(request.url);
-    if (url.pathname === "/api/v1/sidebar") {
-      return json({ inbox: INBOX, items: [WORK], archived: [], tags: [], people: [] });
-    }
-    if (url.pathname === "/api/v1/tasks/calendar") return json({ items: tasks });
-    if (url.pathname === "/api/v1/tasks" && request.method === "POST") {
-      const body = (await request.clone().json()) as NewTask;
-      const added = task({ id: 50, title: body.title, ...body.dates });
-      tasks.push(added);
-      return json(added, 201);
-    }
-    if (url.pathname.endsWith("/activity")) return json({ items: [], next_cursor: null, count: 0 });
-    if (url.pathname.endsWith("/attachments") || url.pathname.endsWith("/comments"))
-      return json([]);
-    const found = tasks.find((each) => each.id === Number(url.pathname.split("/").at(-1)));
-    if (!found) return json({ detail: "Not found." }, 404);
-    if (request.method === "PATCH") {
-      const change = (await request.clone().json()) as Partial<TaskDetail>;
-      const affected = [{ id: found.id, prior_status: found.status, prior_blocked_reason: "" }];
-      Object.assign(found, change);
-      return json({ task: found, affected });
-    }
-    return json(found);
-  });
-}
-
-function calendarRequests(fetchSpy: ReturnType<typeof mockApi>) {
-  return fetchSpy.mock.calls
-    .map(([input]) => new URL(requestOf(input).url))
-    .filter((url) => url.pathname === "/api/v1/tasks/calendar")
-    .map((url) => url.search);
-}
-
-function renderCalendar(url = "/") {
-  return renderListRoute(<CalendarView inbox={INBOX} timeZone="Europe/London" />, {
-    url,
-    validateSearch: validateCalendarSearch,
-  });
-}
 
 /** The Quick add dialog as the app hosts it, open on the given draft. */
 function QuickAddHost({ draft }: { draft: string }) {

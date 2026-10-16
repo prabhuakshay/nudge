@@ -1,29 +1,75 @@
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { CalendarRange, ChevronLeft, ChevronRight } from "lucide-react";
-import { useCallback } from "react";
+import { useCallback, useEffect, useReducer } from "react";
 
 import { Button } from "@/components/ui/button";
 import { useOpenTask } from "@/features/tasks/open-task";
-import { todayIn } from "@/features/tasks/schedule";
+import { wallClock } from "@/features/tasks/schedule";
 import { useSetTaskStatus } from "@/features/tasks/set-status";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { isClosed } from "@/features/tasks/task-properties";
 import type { SidebarProject, Task } from "@/features/tasks/tasks";
 
-import { calendarQuery, useCalendarPlace } from "./calendar";
-import { monthWeeks, shiftMonths } from "./layout";
+import { calendarQuery, MODES, useCalendarPlace, type CalendarMode } from "./calendar";
+import { monthWeeks, shiftDays, shiftMonths, weekDays } from "./layout";
 import { MonthGrid } from "./month-grid";
+import { TimeGrid } from "./time-grid";
 
-/** The first and last day a Month grid shows, which is the range it asks the server for. */
-function monthRange(date: string) {
-  const weeks = monthWeeks(date);
-  return { start: weeks[0]?.[0] ?? date, end: weeks.at(-1)?.at(-1) ?? date };
+const MODE_NAMES: Record<CalendarMode, string> = { month: "Month", week: "Week", day: "Day" };
+
+/** The days a mode shows around a date: whole weeks of its month, its week, or the day itself. */
+function shownDays(mode: CalendarMode, date: string): string[] {
+  switch (mode) {
+    case "month":
+      return monthWeeks(date).flat();
+    case "week":
+      return weekDays(date);
+    case "day":
+      return [date];
+  }
+}
+
+/** The date one step away in a mode, a month, a week or a day, back when `by` is -1. */
+function step(mode: CalendarMode, date: string, by: 1 | -1): string {
+  switch (mode) {
+    case "month":
+      return shiftMonths(date, by);
+    case "week":
+      return shiftDays(date, 7 * by);
+    case "day":
+      return shiftDays(date, by);
+  }
+}
+
+/** The heading: the month, the month or months a week falls in, or the day. */
+function title(mode: CalendarMode, date: string): string {
+  if (mode === "month") return format(parseISO(date), "MMMM yyyy");
+  if (mode === "day") return format(parseISO(date), "EEEE d MMMM yyyy");
+  const week = weekDays(date);
+  const first = parseISO(week[0] ?? date);
+  const last = parseISO(week[6] ?? date);
+  if (first.getMonth() === last.getMonth()) return format(first, "MMMM yyyy");
+  const firstFormat = first.getFullYear() === last.getFullYear() ? "MMMM" : "MMMM yyyy";
+  return `${format(first, firstFormat)} – ${format(last, "MMMM yyyy")}`;
+}
+
+/** The user's wall clock, read again every minute so today and the current-time line keep up. */
+function useWallClock(timeZone: string): Date {
+  const [, tick] = useReducer((ticks: number) => ticks + 1, 0);
+  useEffect(() => {
+    const timer = setInterval(tick, 60_000);
+    return () => {
+      clearInterval(timer);
+    };
+  }, []);
+  return wallClock(timeZone);
 }
 
 /**
  * The Calendar View: every dated Task, open and Closed, drawn on the days its dates cover. It
- * shows a month at a time, with controls to step between months and back to today. Clicking a
+ * shows a month, a week or a day at a time, with controls to switch between them and to step
+ * forward, back and to today. Clicking a
  * Task opens its detail; ticking it closes it in place.
  */
 export function CalendarView({
@@ -35,9 +81,11 @@ export function CalendarView({
   /** The user's zone, which says what date today is. */
   timeZone: string;
 }) {
-  const today = todayIn(timeZone);
-  const { date, go } = useCalendarPlace(today);
-  const { data } = useQuery(calendarQuery(monthRange(date)));
+  const now = useWallClock(timeZone);
+  const today = format(now, "yyyy-MM-dd");
+  const { mode, date, go } = useCalendarPlace(today);
+  const days = shownDays(mode, date);
+  const { data } = useQuery(calendarQuery({ start: days[0] ?? date, end: days.at(-1) ?? date }));
   const tasks = data?.items ?? [];
   const { openTaskId, setOpenTask } = useOpenTask();
   const { mutate: setStatus } = useSetTaskStatus();
@@ -47,6 +95,9 @@ export function CalendarView({
     },
     [setStatus],
   );
+  const moveFocus = (day: string) => {
+    go(day, { replace: true });
+  };
 
   return (
     // `data-wide` lets the app shell drop its reading width for the grid.
@@ -56,9 +107,28 @@ export function CalendarView({
           <CalendarRange className="size-5" aria-hidden />
         </span>
         <h1 className="min-w-0 truncate text-2xl font-extrabold tracking-tight sm:text-3xl">
-          {format(parseISO(date), "MMMM yyyy")}
+          {title(mode, date)}
         </h1>
         <div className="ml-auto flex shrink-0 items-center gap-1">
+          <div
+            role="group"
+            aria-label="Mode"
+            className="mr-1 flex rounded-lg bg-surface-muted p-0.5"
+          >
+            {MODES.map((each) => (
+              <Button
+                key={each}
+                variant="ghost"
+                aria-pressed={each === mode}
+                className="h-8 px-2.5 aria-pressed:bg-surface aria-pressed:shadow-sm"
+                onClick={() => {
+                  go(date, { mode: each });
+                }}
+              >
+                {MODE_NAMES[each]}
+              </Button>
+            ))}
+          </div>
           <Button
             variant="outline"
             onClick={() => {
@@ -70,9 +140,9 @@ export function CalendarView({
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Previous month"
+            aria-label={`Previous ${mode}`}
             onClick={() => {
-              go(shiftMonths(date, -1));
+              go(step(mode, date, -1));
             }}
           >
             <ChevronLeft aria-hidden />
@@ -80,9 +150,9 @@ export function CalendarView({
           <Button
             variant="ghost"
             size="icon"
-            aria-label="Next month"
+            aria-label={`Next ${mode}`}
             onClick={() => {
-              go(shiftMonths(date, 1));
+              go(step(mode, date, 1));
             }}
           >
             <ChevronRight aria-hidden />
@@ -90,16 +160,27 @@ export function CalendarView({
         </div>
       </header>
 
-      <MonthGrid
-        date={date}
-        today={today}
-        tasks={tasks}
-        onDateChange={(day) => {
-          go(day, { replace: true });
-        }}
-        onOpen={setOpenTask}
-        onToggle={toggle}
-      />
+      {mode === "month" ? (
+        <MonthGrid
+          date={date}
+          today={today}
+          tasks={tasks}
+          onDateChange={moveFocus}
+          onOpen={setOpenTask}
+          onToggle={toggle}
+        />
+      ) : (
+        <TimeGrid
+          days={days}
+          date={date}
+          today={today}
+          now={now.getHours() * 60 + now.getMinutes()}
+          tasks={tasks}
+          onDateChange={moveFocus}
+          onOpen={setOpenTask}
+          onToggle={toggle}
+        />
+      )}
 
       <TaskDetail
         taskId={openTaskId}

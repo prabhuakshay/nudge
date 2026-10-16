@@ -11,12 +11,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from django.db import transaction
-from fractional_indexing import generate_key_between
 
 from apps.tasks import repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, Project, Task, TaskActivity
-from apps.tasks.positions import lock_project
+from apps.tasks.positions import key_after, lock_project
 from apps.tasks.rows import as_rows
 from apps.tasks.services import TaskChange, TaskRuleError
 from apps.tasks.tree import (
@@ -125,12 +124,4 @@ def _key_after(project: Project, parent: Task | None, task: Task, after_id: int 
         .order_by("position", "id")
         .values_list("pk", "position"),
     )
-    keys = [key for _, key in siblings]
-    if after_id is None:
-        return str(generate_key_between(None, keys[0] if keys else None))
-    ids = [pk for pk, _ in siblings]
-    if after_id not in ids:
-        return str(generate_key_between(keys[-1] if keys else None, None))
-    index = ids.index(after_id)
-    following = keys[index + 1] if index + 1 < len(keys) else None
-    return str(generate_key_between(keys[index], following))
+    return key_after(siblings, after_id)

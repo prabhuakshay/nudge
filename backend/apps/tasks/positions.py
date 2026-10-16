@@ -1,10 +1,31 @@
-"""Order keys in a Project: locking its sibling sets, and the key that puts a Task first."""
+"""Order keys: placing a row among its siblings, and locking a Project's sibling sets."""
 
 from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from fractional_indexing import generate_key_between
 
 from apps.tasks.models import Project
+
+if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+
+def key_after[Ref](siblings: Sequence[tuple[Ref, str]], after: Ref | None) -> str:
+    """Return a key right after `after`, first for None, or last when `after` isn't a sibling.
+
+    `siblings` are (reference, key) pairs in order; the row being placed must not be among them.
+    """
+    refs = [ref for ref, _ in siblings]
+    keys = [key for _, key in siblings]
+    if after is None:
+        return str(generate_key_between(None, keys[0] if keys else None))
+    if after not in refs:
+        return str(generate_key_between(keys[-1] if keys else None, None))
+    index = refs.index(after)
+    following = keys[index + 1] if index + 1 < len(keys) else None
+    return str(generate_key_between(keys[index], following))
 
 
 def lock_project(project_id: int) -> None:

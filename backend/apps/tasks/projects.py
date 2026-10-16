@@ -25,6 +25,7 @@ from apps.core.errors import DomainRuleError
 from apps.core.palette import PaletteColor
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import OPEN_STATUSES, Folder, Project
+from apps.tasks.positions import key_after
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -85,19 +86,6 @@ def sibling_keys(user: User, folder: Folder | None) -> list[tuple[SiblingRef, st
         for pk, position in user.folders.values_list("pk", "position")
     ]
     return sorted([*folders, *projects], key=lambda sibling: (sibling[1], sibling[0].id))
-
-
-def key_after(siblings: list[tuple[SiblingRef, str]], after: SiblingRef | None) -> str:
-    """Return a key right after `after`, first for None, or last when `after` isn't a sibling."""
-    refs = [ref for ref, _ in siblings]
-    keys = [key for _, key in siblings]
-    if after is None:
-        return str(generate_key_between(None, keys[0] if keys else None))
-    if after not in refs:
-        return str(generate_key_between(keys[-1] if keys else None, None))
-    index = refs.index(after)
-    following = keys[index + 1] if index + 1 < len(keys) else None
-    return str(generate_key_between(keys[index], following))
 
 
 def _key_after_moving(

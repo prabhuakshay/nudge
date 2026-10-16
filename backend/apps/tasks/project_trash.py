@@ -18,7 +18,8 @@ from django.utils import timezone
 from apps.tasks import reminders
 from apps.tasks.models import Project, TaskActivity
 from apps.tasks.models.projects import PROJECT_NAME_MAX_LENGTH
-from apps.tasks.projects import ProjectRuleError, key_after, lock_sidebar, sibling_keys
+from apps.tasks.positions import key_after
+from apps.tasks.projects import ProjectRuleError, lock_sidebar, sibling_keys
 from apps.tasks.trash import expires_at
 
 if TYPE_CHECKING:

@@ -36,12 +36,7 @@
   - Lists what was completed, grouped by Project, ready to copy as markdown.
   - Optional AI summary of that list, off unless `NUDGE_LLM_URL` and `NUDGE_LLM_API_KEY` are
     set. The page says which text leaves the server.
-- [ ] Add Habits
-  - A Habit is not a Task: a name, a schedule (every day, chosen weekdays or N times a week)
-    and a daily goal count. The user checks it in once per day, or up to the goal.
-  - Shows current and best streak and a year heatmap. Today shows a strip of today's Habits.
-  - Optional Reminder per Habit, delivered like Task Reminders.
-  - Add Habit, Check-in and Streak to GLOSSARY.md.
+- [ ] Add Habits (#114)
 - [ ] Add a daily digest
   - At a time the user picks, send Today's Tasks and the Overdue count through their channels;
     email gets an HTML version.
@@ -59,9 +54,7 @@
 
 ## Low impact
 
-- [ ] Add countdown
-  - Mark a dated Task as a countdown; its row and the Today header show "12 days left".
-  - Add Countdown to GLOSSARY.md.
+- [ ] Add Countdown (#113)
 - [ ] Add Share to Nudge on phones
   - The installed PWA registers a share target. Sharing a link or text opens Quick add with the
     shared title, and the URL goes into the Description.

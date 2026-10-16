@@ -15,7 +15,8 @@ archived, deleted or put in a Folder.
 
 **Archived**:
 A Project put away out of the sidebar's main list; its Tasks are hidden from every view but
-its own, and it can be brought back unchanged.
+its own, and it can be brought back unchanged. A Habit can be Archived too: it keeps its
+Check-ins but leaves Today and stops sending Reminders.
 _Avoid_: Hidden, closed
 
 **Folder**:
@@ -79,8 +80,13 @@ One date in a repeating Task's schedule. The Task always shows its current occur
 _Avoid_: Instance
 
 **Reminder**:
-A notification set to fire at a fixed distance before or after a Task's date.
+A notification set to fire at a fixed distance before or after a Task's date, or at a Habit's
+chosen time of day on its scheduled days until that day's goal is met.
 _Avoid_: Alert, alarm
+
+**Countdown**:
+A dated Task marked to show how many days are left until its date.
+_Avoid_: Countdown timer, event
 
 **Snooze**:
 Delaying a fired Reminder by a chosen amount without changing the Task.
@@ -168,3 +174,27 @@ _Avoid_: Contact, user, member
 **Mention**:
 A reference to a Person written with `@` in a Task's title, Description, Comments or Blocked
 reason. It always shows the Person's current name, and it puts the Task in that Person's view.
+
+## Habits
+
+**Habit**:
+Something the user wants to do regularly, tracked by Check-ins rather than closed; not a Task.
+_Avoid_: Routine, recurring task
+
+**Check-in**:
+A record that the user did a Habit on a given day, counted toward that day's goal.
+_Avoid_: Log, tick, completion
+
+**Frequency**:
+When a Habit is meant to be done: every day, on chosen weekdays, or a number of times a week.
+_Avoid_: Repeat, schedule, recurrence
+
+**Goal**:
+How many Check-ins a Habit needs on one day for that day to count as done; one unless set.
+_Avoid_: Target, quota
+
+**Streak**:
+The current run of a Habit's done days in a row, skipping days its Frequency doesn't ask for;
+for a number-of-times-a-week Habit, the run of weeks that met the number. The best Streak is
+the longest run ever.
+_Avoid_: Chain, combo

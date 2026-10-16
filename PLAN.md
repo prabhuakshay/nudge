@@ -35,6 +35,7 @@ nudge/
 │   └── apps/
 │       ├── accounts/
 │       ├── core/
+│       ├── habits/             # Habits, Check-ins, Streaks (docs/adr/0001)
 │       ├── notifications/      # notification center, Web Push, Reminder delivery
 │       └── tasks/              # Tasks, Projects, Folders, Tags, People, Comments,
 │                               # Attachments, Activity, Reminders
@@ -100,7 +101,7 @@ Offline mode is not planned.
 
 ### Later
 - Calendar view
-- Habits, Pomodoro
+- Habits (planned: #114), Pomodoro
 - Matrix view, an Eisenhower matrix (done: #103)
 - Shared Projects and collaboration
 - Native mobile apps

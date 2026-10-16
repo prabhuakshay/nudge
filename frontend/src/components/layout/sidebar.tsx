@@ -5,7 +5,6 @@ import { Search, Trash2 } from "lucide-react";
 import { Logo } from "@/components/brand/logo";
 import { Kbd } from "@/components/ui/kbd";
 import type { User } from "@/features/auth/session";
-import { SidebarArchived } from "@/features/projects/sidebar-archived";
 import { SidebarPeople } from "@/features/people/sidebar-people";
 import { SidebarProjects } from "@/features/projects/sidebar-projects";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
@@ -124,22 +123,13 @@ export function SidebarNav({
         })}
       </nav>
 
-      <div className="mt-5">
+      <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
         <SidebarProjects onNavigate={onNavigate} />
-      </div>
-      <div className="mt-3">
-        <SidebarArchived onNavigate={onNavigate} />
-      </div>
-
-      <div className="mt-5">
         <SidebarTags onNavigate={onNavigate} />
-      </div>
-
-      <div className="mt-5">
         <SidebarPeople onNavigate={onNavigate} />
       </div>
 
-      <div className="mt-5 px-2">
+      <div className="mt-3 border-t border-border px-2 pt-3">
         <Link to="/trash" onClick={onNavigate} className={LINK}>
           <Trash2 className="size-4" aria-hidden />
           Trash

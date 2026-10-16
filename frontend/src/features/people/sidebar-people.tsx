@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ROW, RowMenu } from "@/features/projects/sidebar-rows";
+import { HEADING_ACTION, SidebarSection } from "@/features/projects/sidebar-section";
 import { cn } from "@/lib/utils";
 
 import { PersonAvatar } from "./person-avatar";
@@ -25,56 +26,48 @@ export function SidebarPeople({ onNavigate }: { onNavigate?: () => void }) {
   };
 
   return (
-    <section aria-labelledby="people-heading" className="px-2">
-      <div className="flex h-8 items-center justify-between pr-1 pl-2.5">
-        <h2
-          id="people-heading"
-          className="text-xs font-bold tracking-wider text-muted-foreground uppercase"
-        >
-          People
-        </h2>
-        <button
-          type="button"
-          aria-label="Add a person"
-          onClick={add}
-          className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground lg:size-7"
-        >
-          <Plus className="size-4" aria-hidden />
-        </button>
-      </div>
-
-      {people.length === 0 ? (
-        <button
-          type="button"
-          onClick={add}
-          className="w-full rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted"
-        >
-          Mention people in tasks to track what you're waiting on.{" "}
-          <span className="text-primary">Add someone</span>
-        </button>
-      ) : (
-        <ul className="flex flex-col gap-0.5">
-          {people.map((person) => (
-            <li key={person.id}>
-              <PersonRow
-                person={person}
-                onNavigate={onNavigate}
-                onOpen={(kind) => {
-                  setDialog({ kind, person });
-                }}
-              />
-            </li>
-          ))}
-        </ul>
-      )}
-
+    <>
       <PeopleDialogs
         dialog={dialog}
         onClose={() => {
           setDialog(null);
         }}
       />
-    </section>
+      <SidebarSection
+        section="people"
+        title="People"
+        add={
+          <button type="button" aria-label="Add a person" onClick={add} className={HEADING_ACTION}>
+            <Plus className="size-4" aria-hidden />
+          </button>
+        }
+      >
+        {people.length === 0 ? (
+          <button
+            type="button"
+            onClick={add}
+            className="w-full rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted"
+          >
+            Mention people in tasks to track what you're waiting on.{" "}
+            <span className="text-primary">Add someone</span>
+          </button>
+        ) : (
+          <ul className="flex flex-col gap-0.5">
+            {people.map((person) => (
+              <li key={person.id}>
+                <PersonRow
+                  person={person}
+                  onNavigate={onNavigate}
+                  onOpen={(kind) => {
+                    setDialog({ kind, person });
+                  }}
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </SidebarSection>
+    </>
   );
 }
 

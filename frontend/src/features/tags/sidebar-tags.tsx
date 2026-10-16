@@ -17,6 +17,7 @@ import {
 import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog";
 import { useSidebarSensors } from "@/features/projects/sidebar-drag";
 import { ROW, RowMenu } from "@/features/projects/sidebar-rows";
+import { HEADING_ACTION, SidebarSection } from "@/features/projects/sidebar-section";
 import { sidebarQuery } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
@@ -39,59 +40,56 @@ export function SidebarTags({ onNavigate }: { onNavigate?: () => void }) {
   const tags = sidebar?.tags ?? [];
 
   return (
-    <section aria-labelledby="tags-heading" className="px-2">
-      <div className="flex h-8 items-center justify-between pr-1 pl-2.5">
-        <h2
-          id="tags-heading"
-          className="text-xs font-bold tracking-wider text-muted-foreground uppercase"
-        >
-          Tags
-        </h2>
-        <button
-          type="button"
-          aria-label="Add a tag"
-          onClick={() => {
-            setDialog({ kind: "edit" });
-          }}
-          className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground lg:size-7"
-        >
-          <Plus className="size-4" aria-hidden />
-        </button>
-      </div>
-
-      {tags.length === 0 ? (
-        <button
-          type="button"
-          onClick={() => {
-            setDialog({ kind: "edit" });
-          }}
-          className="w-full rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted"
-        >
-          Label tasks across projects. <span className="text-primary">Add a tag</span>
-        </button>
-      ) : (
-        <SortableTags
-          tags={tags}
-          onNavigate={onNavigate}
-          onEdit={(tag) => {
-            setDialog({ kind: "edit", tag });
-          }}
-          onMerge={(tag, into) => {
-            setDialog({ kind: "merge", tag, into });
-          }}
-          onDelete={(tag) => {
-            setDialog({ kind: "delete", tag });
-          }}
-        />
-      )}
-
+    <>
       <TagDialogs
         dialog={dialog}
         onClose={() => {
           setDialog(null);
         }}
       />
-    </section>
+      <SidebarSection
+        section="tags"
+        title="Tags"
+        add={
+          <button
+            type="button"
+            aria-label="Add a tag"
+            onClick={() => {
+              setDialog({ kind: "edit" });
+            }}
+            className={HEADING_ACTION}
+          >
+            <Plus className="size-4" aria-hidden />
+          </button>
+        }
+      >
+        {tags.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setDialog({ kind: "edit" });
+            }}
+            className="w-full rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted"
+          >
+            Label tasks across projects. <span className="text-primary">Add a tag</span>
+          </button>
+        ) : (
+          <SortableTags
+            tags={tags}
+            onNavigate={onNavigate}
+            onEdit={(tag) => {
+              setDialog({ kind: "edit", tag });
+            }}
+            onMerge={(tag, into) => {
+              setDialog({ kind: "merge", tag, into });
+            }}
+            onDelete={(tag) => {
+              setDialog({ kind: "delete", tag });
+            }}
+          />
+        )}
+      </SidebarSection>
+    </>
   );
 }
 

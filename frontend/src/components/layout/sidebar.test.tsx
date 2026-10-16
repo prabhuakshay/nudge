@@ -1,7 +1,12 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
+
+import type { Sidebar as SidebarData } from "@/features/tasks/tasks";
+import { INBOX } from "@/test/drawer";
+import { requestOf } from "@/test/fetch";
+import { EXPANDED_USER, signedInClient } from "@/test/session";
 
 import { Sidebar } from "./sidebar";
 
@@ -13,36 +18,63 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 vi.mock("@/features/settings/settings-dialog", () => ({ SettingsDialog: () => null }));
-vi.mock("@/features/projects/sidebar-projects", () => ({ SidebarProjects: () => null }));
-vi.mock("@/features/people/sidebar-people", () => ({ SidebarPeople: () => null }));
 
 const ada = {
-  id: 1,
-  email: "ada@example.com",
-  full_name: "Ada Lovelace",
-  time_zone: "Europe/London",
-  single_key_shortcuts: true,
+  ...EXPANDED_USER,
   projects_collapsed: true,
   tags_collapsed: true,
   people_collapsed: true,
 };
 
-describe("Sidebar", () => {
-  it("lists the Inbox first, with its open Task count", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({ inbox: { id: 7, name: "Inbox", open_count: 3 }, items: [], archived: [] }),
-        {
-          headers: { "Content-Type": "application/json" },
-        },
-      ),
-    );
+const SIDEBAR: SidebarData = {
+  inbox: INBOX,
+  items: [],
+  archived: [],
+  tags: [{ id: 21, name: "work", color: null, open_count: 0, task_count: 0 }],
+  people: [{ id: 1, name: "Al", color: "teal" }],
+  today_count: 0,
+  upcoming_count: 0,
+};
 
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <Sidebar user={ada} onSearch={vi.fn()} />
-      </QueryClientProvider>,
-    );
+/** A stand-in server: the sidebar for reads, and the updated user for section changes. */
+function mockApi(sidebar: SidebarData = SIDEBAR) {
+  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
+    const request = requestOf(input);
+    const body =
+      request.method === "GET"
+        ? sidebar
+        : { ...ada, ...((await request.clone().json()) as object) };
+    return new Response(JSON.stringify(body), {
+      headers: { "Content-Type": "application/json" },
+    });
+  });
+}
+
+async function writes(fetchSpy: ReturnType<typeof mockApi>) {
+  const requests = fetchSpy.mock.calls
+    .map(([input]) => requestOf(input))
+    .filter((request) => request.method !== "GET");
+  return Promise.all(
+    requests.map(async (request) => [
+      `${request.method} ${new URL(request.url).pathname}`,
+      (await request.clone().json()) as unknown,
+    ]),
+  );
+}
+
+function renderSidebar(onSearch = vi.fn()) {
+  render(
+    <QueryClientProvider client={signedInClient(ada)}>
+      <Sidebar user={ada} onSearch={onSearch} />
+    </QueryClientProvider>,
+  );
+  return userEvent.setup();
+}
+
+describe("Sidebar", () => {
+  it("lists the views, the Inbox first with its open Task count, and Trash last", async () => {
+    mockApi();
+    renderSidebar();
 
     expect(await screen.findByRole("link", { name: "Inbox, 3 open" })).toBeInTheDocument();
     expect(screen.getAllByRole("link").map((link) => link.getAttribute("href"))).toEqual([
@@ -54,43 +86,17 @@ describe("Sidebar", () => {
   });
 
   it("counts Today, Overdue included, and Upcoming", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({
-          inbox: { id: 7, name: "Inbox", open_count: 0 },
-          items: [],
-          archived: [],
-          today_count: 4,
-          upcoming_count: 2,
-        }),
-        { headers: { "Content-Type": "application/json" } },
-      ),
-    );
-
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <Sidebar user={ada} onSearch={vi.fn()} />
-      </QueryClientProvider>,
-    );
+    mockApi({ ...SIDEBAR, today_count: 4, upcoming_count: 2 });
+    renderSidebar();
 
     expect(await screen.findByRole("link", { name: "Today, 4 open" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Upcoming, 2 open" })).toBeInTheDocument();
   });
 
   it("opens the command bar from the Search row, by click or keyboard", async () => {
-    vi.spyOn(globalThis, "fetch").mockResolvedValue(
-      new Response(
-        JSON.stringify({ inbox: { id: 7, name: "Inbox", open_count: 0 }, items: [], archived: [] }),
-        { headers: { "Content-Type": "application/json" } },
-      ),
-    );
+    mockApi();
     const onSearch = vi.fn();
-    render(
-      <QueryClientProvider client={new QueryClient()}>
-        <Sidebar user={ada} onSearch={onSearch} />
-      </QueryClientProvider>,
-    );
-    const user = userEvent.setup();
+    const user = renderSidebar(onSearch);
 
     const search = screen.getByRole("button", { name: "Search" });
     expect(search).toHaveAttribute("aria-keyshortcuts", "Control+K /");
@@ -100,5 +106,64 @@ describe("Sidebar", () => {
     search.focus();
     await user.keyboard("{Enter}");
     expect(onSearch).toHaveBeenCalledTimes(2);
+  });
+
+  it("starts every section collapsed, and expanding one shows its rows and saves it", async () => {
+    const fetchSpy = mockApi();
+    const user = renderSidebar();
+
+    for (const name of ["Projects", "Tags", "People"]) {
+      expect(screen.getByRole("button", { name, expanded: false })).toBeInTheDocument();
+    }
+    expect(screen.queryByRole("link", { name: "work" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Tags" }));
+
+    expect(screen.getByRole("button", { name: "Tags", expanded: true })).toBeInTheDocument();
+    expect(await screen.findByRole("link", { name: "work" })).toBeInTheDocument();
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([
+        ["PATCH /api/v1/auth/sidebar-sections", { tags_collapsed: false }],
+      ]);
+    });
+  });
+
+  it("toggles a section from the keyboard with Enter or Space", async () => {
+    const fetchSpy = mockApi();
+    const user = renderSidebar();
+
+    screen.getByRole("button", { name: "People" }).focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("link", { name: "Al" })).toBeInTheDocument();
+    await user.keyboard(" ");
+
+    expect(screen.getByRole("button", { name: "People", expanded: false })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: "Al" })).not.toBeInTheDocument();
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([
+        ["PATCH /api/v1/auth/sidebar-sections", { people_collapsed: false }],
+        ["PATCH /api/v1/auth/sidebar-sections", { people_collapsed: true }],
+      ]);
+    });
+  });
+
+  it("adds to a collapsed section from its heading", async () => {
+    mockApi();
+    const user = renderSidebar();
+
+    await user.click(screen.getByRole("button", { name: "Add a project or folder" }));
+    expect(screen.getByRole("menuitem", { name: "New project" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "New folder" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Add a person" }));
+    expect(screen.getByRole("dialog", { name: "New person" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    await user.click(screen.getByRole("button", { name: "Add a tag" }));
+    expect(screen.getByRole("dialog", { name: "New tag" })).toBeInTheDocument();
+    await user.keyboard("{Escape}");
+
+    expect(screen.getByRole("button", { name: "Tags", expanded: false })).toBeInTheDocument();
   });
 });

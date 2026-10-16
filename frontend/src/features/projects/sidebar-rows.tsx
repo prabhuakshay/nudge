@@ -2,14 +2,15 @@ import { Link } from "@tanstack/react-router";
 import {
   Archive,
   ArchiveRestore,
-  ChevronDown,
   ChevronRight,
   Ellipsis,
   Folder,
   FolderInput,
+  FolderOpen,
   Pencil,
   Plus,
   Trash2,
+  type LucideIcon,
 } from "lucide-react";
 import { useState, type ReactNode, type SyntheticEvent } from "react";
 import { toast } from "sonner";
@@ -184,7 +185,7 @@ export function ArchivedProjectRow({
   const setArchived = useSetArchived();
   const [deleting, setDeleting] = useState(false);
   return (
-    <div className={cn(ROW, "font-medium has-[a[data-status=active]]:bg-primary-soft")}>
+    <div className={cn(ROW, "has-[a[data-status=active]]:bg-primary-soft")}>
       <Link
         to="/projects/$projectId"
         params={{ projectId: String(project.id) }}
@@ -213,6 +214,48 @@ export function ArchivedProjectRow({
   );
 }
 
+/**
+ * The button of a row that opens and closes like a Folder. Its icon turns into a chevron while
+ * the row is hovered or focused, so the row reads as collapsible without a chevron on every row.
+ */
+export function ToggleButton({
+  expanded,
+  icon: Icon,
+  onToggle,
+  children,
+}: {
+  expanded: boolean;
+  icon: LucideIcon;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
+  const swap = "absolute inset-0 size-4 transition";
+  return (
+    <button
+      type="button"
+      aria-expanded={expanded}
+      onClick={onToggle}
+      className="flex min-w-0 flex-1 items-center gap-2.5 self-stretch rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <span className="relative size-4 shrink-0">
+        <Icon
+          className={cn(swap, "group-focus-within:opacity-0 group-hover:opacity-0")}
+          aria-hidden
+        />
+        <ChevronRight
+          className={cn(
+            swap,
+            "opacity-0 group-focus-within:opacity-100 group-hover:opacity-100",
+            expanded && "rotate-90",
+          )}
+          aria-hidden
+        />
+      </span>
+      <span className="truncate">{children}</span>
+    </button>
+  );
+}
+
 /** A Folder in the sidebar: a button that collapses it, and its menu. */
 export function FolderRow({
   folder,
@@ -225,20 +268,17 @@ export function FolderRow({
 }) {
   const updateFolder = useUpdateFolder();
   const deleteFolder = useDeleteFolder();
-  const Chevron = folder.collapsed ? ChevronRight : ChevronDown;
   return (
     <div className={ROW}>
-      <button
-        type="button"
-        aria-expanded={!folder.collapsed}
-        onClick={() => {
+      <ToggleButton
+        expanded={!folder.collapsed}
+        icon={folder.collapsed ? Folder : FolderOpen}
+        onToggle={() => {
           updateFolder.mutate({ id: folder.id, collapsed: !folder.collapsed });
         }}
-        className="flex min-w-0 flex-1 items-center gap-2.5 self-stretch rounded-md text-left outline-none focus-visible:ring-2 focus-visible:ring-ring"
       >
-        <Chevron className="size-4 shrink-0" aria-hidden />
-        <span className="truncate">{folder.name}</span>
-      </button>
+        {folder.name}
+      </ToggleButton>
       <RowMenu label={`${folder.name} options`}>
         <DropdownMenuItem onSelect={onNewProject}>
           <Plus aria-hidden /> New project here

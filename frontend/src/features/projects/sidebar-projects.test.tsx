@@ -1,10 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { requestOf } from "@/test/fetch";
+import { signedInClient } from "@/test/session";
 
 import type { Sidebar, SidebarFolder, SidebarProject } from "./projects";
 import { SidebarProjects } from "./sidebar-projects";
@@ -74,8 +75,8 @@ function withoutDeletedProject(sidebar: Sidebar, request: Request): Sidebar {
 }
 
 /** A stand-in server: the sidebar for reads, and an echo of every write. */
-function mockApi() {
-  let sidebar = SIDEBAR;
+function mockApi(initial = SIDEBAR) {
+  let sidebar = initial;
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
     if (request.method === "GET") return json(sidebar);
@@ -102,7 +103,7 @@ async function writes(fetchSpy: ReturnType<typeof mockApi>) {
     .filter((request) => request.method !== "GET");
   return Promise.all(
     requests.map(async (request) => {
-      const text = await request.text();
+      const text = await request.clone().text();
       const body = text ? (JSON.parse(text) as unknown) : null;
       return [`${request.method} ${new URL(request.url).pathname}`, body];
     }),
@@ -111,7 +112,7 @@ async function writes(fetchSpy: ReturnType<typeof mockApi>) {
 
 function renderSidebar() {
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={signedInClient()}>
       <SidebarProjects />
       <Toaster />
     </QueryClientProvider>,
@@ -148,6 +149,48 @@ describe("SidebarProjects", () => {
     await waitFor(async () => {
       expect(await writes(fetchSpy)).toEqual([["PATCH /api/v1/folders/10", { collapsed: true }]]);
     });
+  });
+
+  it("toggles a Folder from the keyboard with Enter", async () => {
+    const fetchSpy = mockApi();
+    const user = renderSidebar();
+
+    (await screen.findByRole("button", { name: "Personal", expanded: true })).focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("button", { name: "Personal", expanded: false })).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([
+        ["PATCH /api/v1/folders/10", { collapsed: true }],
+        ["PATCH /api/v1/folders/10", { collapsed: false }],
+      ]);
+    });
+  });
+
+  it("lists Archived as the last row of Projects, closed until opened", async () => {
+    const garden = project(3, "Garden", { is_archived: true });
+    mockApi({ ...SIDEBAR, archived: [garden] });
+    const user = renderSidebar();
+
+    const archived = await screen.findByRole("button", { name: "Archived", expanded: false });
+    const rows = within(screen.getByRole("region", { name: "Projects" })).getAllByRole("button", {
+      name: /^(Personal|Archived)$/,
+    });
+    expect(rows.at(-1)).toBe(archived);
+    expect(screen.queryByRole("link", { name: "Garden" })).not.toBeInTheDocument();
+
+    await user.click(archived);
+
+    expect(screen.getByRole("link", { name: "Garden" })).toHaveAttribute("href", "/projects/3");
+  });
+
+  it("has no Archived row while nothing is archived", async () => {
+    mockApi();
+    renderSidebar();
+
+    await screen.findByRole("link", { name: "Work, 2 open" });
+    expect(screen.queryByRole("button", { name: "Archived" })).not.toBeInTheDocument();
   });
 
   it("creates a Project with the chosen name, colour and icon", async () => {

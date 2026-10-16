@@ -4,20 +4,13 @@ import { ProjectPage } from "@/features/projects/project-page";
 import type { SidebarProject } from "@/features/projects/projects";
 import { INBOX, WORK, json, renderListRoute } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
-import { DOING, TO_DO, mockApi, writes } from "@/test/sections";
+import { DOING, TO_DO, columnNames, mockApi, writes } from "@/test/sections";
 import { makeTask } from "@/test/tasks";
 
 const BOARD: SidebarProject = { ...WORK, layout: "board" };
 
 function renderProject(project: SidebarProject) {
   return renderListRoute(<ProjectPage projectId={project.id} />);
-}
-
-/** The Board's column labels, left to right. */
-function columnNames() {
-  return within(screen.getByRole("group", { name: "Work board" }))
-    .getAllByRole("region", { name: /, column \d+ of \d+$/ })
-    .map((column) => column.getAttribute("aria-label"));
 }
 
 /** The card titles in one column, top to bottom. */

@@ -54,7 +54,7 @@ describe("A Board column's Closed fold", () => {
       ],
     });
     const { user } = renderBoard();
-    await screen.findByRole("group", { name: "Work board" });
+    await screen.findByRole("region", { name: /^To do, column/ });
     await user.click(column("To do").getByRole("button", { name: "Closed" }));
 
     await user.click(await screen.findByRole("checkbox", { name: "Reopen “Sent invoice”" }));

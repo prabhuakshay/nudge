@@ -151,6 +151,16 @@ export async function writes(fetchSpy: ReturnType<typeof mockApi>) {
   );
 }
 
+/**
+ * The Board's column labels, left to right. Matched by label because each column's Closed fold is
+ * a labelled region too.
+ */
+export function columnNames() {
+  return within(screen.getByRole("group", { name: "Work board" }))
+    .getAllByRole("region", { name: /, column \d+ of \d+$/ })
+    .map((column) => column.getAttribute("aria-label"));
+}
+
 /** The list's group names, top to bottom. */
 export function groupNames() {
   return within(screen.getByRole("treegrid"))

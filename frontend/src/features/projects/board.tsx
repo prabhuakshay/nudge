@@ -63,13 +63,14 @@ export function ProjectBoard({ project }: { project: SidebarProject }) {
           aria-label={`${project.name} board`}
           className="flex snap-x snap-mandatory items-start gap-3 overflow-x-auto overscroll-x-contain pb-4"
         >
-          <BoardDrag columns={columns}>
+          <BoardDrag projectId={project.id} columns={columns}>
             {(shown) =>
               shown.map((column, index) => (
                 <BoardColumn
                   key={column.section?.id ?? "none"}
                   projectId={project.id}
                   column={column}
+                  order={sections}
                   position={index + 1}
                   count={shown.length}
                   openId={openTaskId}

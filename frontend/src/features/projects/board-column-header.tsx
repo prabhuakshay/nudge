@@ -2,26 +2,26 @@ import { ChevronDown, ChevronRight } from "lucide-react";
 import { useRef, useState } from "react";
 
 import { DeleteSectionDialog, DeleteSectionItem } from "@/features/sections/delete-section";
+import { MoveSectionItems } from "@/features/sections/move-section-items";
 import { SectionMenu } from "@/features/sections/section-menu";
 import { SectionNameField } from "@/features/sections/section-name-field";
 import { useUpdateSection, type Section } from "@/features/sections/sections";
+import { Grip } from "@/features/tasks/row-grip";
+import type { DragHandle } from "@/features/tasks/sortable-tree";
 import { cn } from "@/lib/utils";
 
 /**
  * The top of a Board column: its name and how many Tasks it holds. A Section's name collapses or
- * expands the column, which the server remembers, and its ⋯ menu renames or deletes it. No
- * section, given as null, has neither.
+ * expands the column, which the server remembers, and its ⋯ menu renames, moves or deletes it.
+ * No section, given as null, has neither.
  */
 export function BoardColumnHeader({
   section,
-  count,
-  readOnly,
+  ...props
 }: {
   section: Section | null;
-  count: number;
-  /** An archived Project's columns have no menu and can't be collapsed or expanded. */
-  readOnly: boolean;
-}) {
+} & Omit<SectionColumnHeaderProps, "section">) {
+  const { count } = props;
   if (!section) {
     return (
       <header className="flex min-h-10 items-center gap-2 px-3 pt-1">
@@ -30,7 +30,29 @@ export function BoardColumnHeader({
       </header>
     );
   }
-  return <SectionColumnHeader section={section} count={count} readOnly={readOnly} />;
+  return <SectionColumnHeader section={section} {...props} />;
+}
+
+type SectionColumnHeaderProps = {
+  section: Section;
+  /** The Board's Sections in order, which Move left and Move right step through. */
+  order: Section[];
+  count: number;
+  /** An archived Project's columns have no menu and can't be collapsed or expanded. */
+  readOnly: boolean;
+  /** How the column drags by its header; left out where it doesn't. */
+  drag?: { handle: DragHandle; touch: boolean } | undefined;
+};
+
+/**
+ * What makes a header drag its column: a press on it, after a 5 px move or a press and hold on
+ * touch screens, as on a card.
+ */
+function dragProps(drag: SectionColumnHeaderProps["drag"]) {
+  if (!drag) return {};
+  return drag.touch
+    ? { onTouchStart: drag.handle.onTouchStart }
+    : { onPointerDown: drag.handle.onPointerDown };
 }
 
 /** How many Tasks a column holds. */
@@ -45,27 +67,24 @@ function ColumnCount({ count }: { count: number }) {
 
 /**
  * A Section column's header. Collapsed, it stacks the name, sideways, over the count and drops
- * the menu, so the column fits a narrow strip.
+ * the menu and grip, so the column fits a narrow strip. It doesn't drag while renaming.
  */
-function SectionColumnHeader({
-  section,
-  count,
-  readOnly,
-}: {
-  section: Section;
-  count: number;
-  readOnly: boolean;
-}) {
+function SectionColumnHeader({ section, order, count, readOnly, drag }: SectionColumnHeaderProps) {
   const { mutate: update } = useUpdateSection(section.project_id);
   const [renaming, setRenaming] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const menuRef = useRef<HTMLButtonElement>(null);
   const expanded = !section.collapsed;
-  const Chevron = expanded ? ChevronDown : ChevronRight;
+  const dragging = renaming ? undefined : drag;
 
   return (
     <header
-      className={cn("flex items-center gap-2", expanded ? "min-h-10 px-3 pt-1" : "flex-col py-2")}
+      {...dragProps(dragging)}
+      className={cn(
+        "group/row relative flex items-center gap-2",
+        dragging && "select-none [-webkit-touch-callout:none]",
+        expanded ? "min-h-10 px-3 pt-1" : "flex-col py-2",
+      )}
     >
       {renaming ? (
         <SectionNameField
@@ -77,25 +96,13 @@ function SectionColumnHeader({
           }}
         />
       ) : (
-        <h2 className="min-w-0">
-          <button
-            type="button"
-            aria-expanded={expanded}
-            disabled={readOnly}
-            onClick={() => {
-              update({ id: section.id, collapsed: expanded });
-            }}
-            className={cn(
-              "flex min-w-0 items-center gap-1 rounded-md text-sm font-semibold",
-              !expanded && "flex-col",
-            )}
-          >
-            <Chevron className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-            <span className={cn("truncate", !expanded && "max-h-60 [writing-mode:vertical-rl]")}>
-              {section.name}
-            </span>
-          </button>
-        </h2>
+        <CollapseToggle
+          section={section}
+          readOnly={readOnly}
+          onToggle={() => {
+            update({ id: section.id, collapsed: expanded });
+          }}
+        />
       )}
       <ColumnCount count={count} />
       {expanded && !readOnly && (
@@ -107,6 +114,7 @@ function SectionColumnHeader({
               setRenaming(true);
             }}
           >
+            <MoveSectionItems section={section} order={order} horizontal />
             <DeleteSectionItem
               onSelect={() => {
                 setConfirmingDelete(true);
@@ -120,6 +128,42 @@ function SectionColumnHeader({
           />
         </div>
       )}
+      {expanded && dragging && (
+        <Grip title={section.name} handle={dragging.handle} touch={dragging.touch} left={0} />
+      )}
     </header>
+  );
+}
+
+/** A Section column's name, as the button that collapses or expands the column. */
+function CollapseToggle({
+  section,
+  readOnly,
+  onToggle,
+}: {
+  section: Section;
+  readOnly: boolean;
+  onToggle: () => void;
+}) {
+  const expanded = !section.collapsed;
+  const Chevron = expanded ? ChevronDown : ChevronRight;
+  return (
+    <h2 className="min-w-0">
+      <button
+        type="button"
+        aria-expanded={expanded}
+        disabled={readOnly}
+        onClick={onToggle}
+        className={cn(
+          "flex min-w-0 items-center gap-1 rounded-md text-sm font-semibold",
+          !expanded && "flex-col",
+        )}
+      >
+        <Chevron className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+        <span className={cn("truncate", !expanded && "max-h-60 [writing-mode:vertical-rl]")}>
+          {section.name}
+        </span>
+      </button>
+    </h2>
   );
 }

@@ -6,7 +6,11 @@ import {
   useSensors,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
-import { sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
+import {
+  sortableKeyboardCoordinates,
+  useSortable,
+  type UseSortableArguments,
+} from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   useMemo,
@@ -53,7 +57,10 @@ function ownPresses<E extends SyntheticEvent>(handler: ((event: E) => void) | un
  * What a sortable item drags with: the handle that starts the drag, and the node and style that
  * move with it.
  */
-export function useSortableHandle(id: UniqueIdentifier, disabled: boolean) {
+export function useSortableHandle(
+  id: UniqueIdentifier,
+  disabled: UseSortableArguments["disabled"],
+) {
   const {
     attributes,
     listeners,

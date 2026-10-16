@@ -5,11 +5,39 @@ import type { Section } from "@/features/sections/sections";
 
 import type { BoardColumnCards } from "./board-column";
 
-/* Where a dragged Board card goes, worked out from the columns as they stand. */
+/* Where a dragged Board card or column goes, worked out from the columns as they stand. */
 
-/** The id a column drops by, so a card can land in it even when it has no cards. */
+const NO_SECTION_COLUMN = "column-none";
+
+/**
+ * The id a column drags and drops by, so a card can land in it even when it has no cards. A
+ * Section's column drags by it too.
+ */
 export function columnId(section: Section | null) {
-  return `column-${String(section?.id ?? "none")}`;
+  return section ? `column-${String(section.id)}` : NO_SECTION_COLUMN;
+}
+
+/** Whether `id` names a Section's column, rather than a card or No section's column. */
+export function isSectionColumn(id: UniqueIdentifier) {
+  return typeof id === "string" && id.startsWith("column-") && id !== NO_SECTION_COLUMN;
+}
+
+/**
+ * The Section move a column dropped on another Section's column makes, as the move endpoint
+ * takes it: the dragged Section and the one it now follows. Null when it lands where it was.
+ */
+export function sectionMoveOf(
+  sections: Section[],
+  activeId: UniqueIdentifier,
+  overId: UniqueIdentifier,
+) {
+  const ids = sections.map(columnId);
+  const from = ids.indexOf(String(activeId));
+  const to = ids.indexOf(String(overId));
+  if (from === -1 || to === -1 || from === to) return null;
+  const order = arrayMove(sections, from, to);
+  const moved = order[to];
+  return moved && { id: moved.id, after_id: order[to - 1]?.id ?? null };
 }
 
 /** The index of the column `id` names, or of the column holding the card `id` names. */

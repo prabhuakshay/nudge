@@ -1,13 +1,11 @@
 import { screen, waitFor, within } from "@testing-library/react";
 
 import { ProjectPage } from "@/features/projects/project-page";
-import type { SidebarProject } from "@/features/projects/projects";
+import { BOARD, layOutBoard } from "@/test/board";
 import { WORK, json, renderListRoute } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 import { DOING, TO_DO, cardsIn, mockApi, writes } from "@/test/sections";
 import { makeTask } from "@/test/tasks";
-
-const BOARD: SidebarProject = { ...WORK, layout: "board" };
 
 const LOOSE = { id: 1, project_id: WORK.id, title: "Loose end" };
 const BRIEF = { id: 2, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id };
@@ -17,27 +15,6 @@ const REVIEW = { id: 4, project_id: WORK.id, title: "Review copy", section_id: D
 /** Loose end in No section, Write brief and Outline in To do, Review copy in Doing. */
 function seed() {
   return [makeTask(LOOSE), makeTask(BRIEF), makeTask(OUTLINE), makeTask(REVIEW)];
-}
-
-/**
- * jsdom lays nothing out, so place each column side by side and stack its cards down it for
- * dnd-kit to measure. The drag preview floats outside the Board, so it sits where the focused
- * grip's card is.
- */
-function layOutBoard() {
-  // Matched by label because each column's Closed fold is a labelled section too.
-  const COLUMN = 'section[aria-label*=", column "]';
-  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
-    const target = this.closest(COLUMN) ? this : document.activeElement;
-    const column = target?.closest(COLUMN);
-    if (!target || !column) return new DOMRect(0, 0, 0, 0);
-    const columns = [...document.querySelectorAll(COLUMN)];
-    const left = columns.indexOf(column) * 300;
-    const card = target.closest("li");
-    if (!card) return new DOMRect(left, 0, 280, 600);
-    const top = 40 + [...column.querySelectorAll("li")].indexOf(card) * 60;
-    return new DOMRect(left, top, 280, 50);
-  });
 }
 
 function renderBoard(open = seed(), sections = [TO_DO, DOING]) {

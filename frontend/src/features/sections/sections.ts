@@ -114,15 +114,31 @@ export function useUpdateSection(projectId: number) {
   );
 }
 
-/** Put a Section right after `after_id` among its Project's Sections, or first for null. */
+/** The Sections with one moved right after `afterId`, or first for null. */
+function placedAfter(sections: Section[], { id, after_id }: SectionMove) {
+  const moved = sections.find((section) => section.id === id);
+  if (!moved) return sections;
+  const rest = sections.filter((section) => section !== moved);
+  const at = after_id === null ? 0 : rest.findIndex((section) => section.id === after_id) + 1;
+  return rest.toSpliced(at, 0, moved);
+}
+
+/**
+ * Put a Section right after `after_id` among its Project's Sections, or first for null; the
+ * Sections show the new order at once, so a dropped Board column stays where it landed.
+ */
 export function useMoveSection(projectId: number) {
-  return useSectionMutation(projectId, async ({ id, after_id }: SectionMove) => {
-    const { error } = await api.POST("/api/v1/sections/{section_id}/move", {
-      params: { path: { section_id: id } },
-      body: { after_id },
-    });
-    if (error) throw new Error(error.detail);
-  });
+  return useSectionMutation(
+    projectId,
+    async ({ id, after_id }: SectionMove) => {
+      const { error } = await api.POST("/api/v1/sections/{section_id}/move", {
+        params: { path: { section_id: id } },
+        body: { after_id },
+      });
+      if (error) throw new Error(error.detail);
+    },
+    { optimistic: placedAfter },
+  );
 }
 
 /** Delete a Section for good. Its Tasks stay in the Project, in No section. */

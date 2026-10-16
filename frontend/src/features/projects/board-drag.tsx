@@ -1,16 +1,20 @@
 import {
+  closestCenter,
   closestCorners,
   DndContext,
   DragOverlay,
+  type CollisionDetection,
   type DragEndEvent,
   type DragOverEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { horizontalListSortingStrategy, SortableContext } from "@dnd-kit/sortable";
 import { GripVertical } from "lucide-react";
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
 import { plainMentions } from "@/features/people/mentions";
+import { useMoveSection, type Section } from "@/features/sections/sections";
 import { useDragSensors, useSortableHandle } from "@/features/tasks/sortable-handle";
 import { useMoveTask } from "@/features/tasks/task-placement";
 import type { TreeRow } from "@/features/tasks/task-tree";
@@ -18,31 +22,58 @@ import { useMediaQuery } from "@/lib/use-media-query";
 
 import { BoardCard, type BoardCardProps } from "./board-card";
 import type { BoardColumnCards } from "./board-column";
-import { cardOf, draggedOver, droppedOn, placeOf } from "./board-moves";
+import {
+  cardOf,
+  columnId,
+  draggedOver,
+  droppedOn,
+  isSectionColumn,
+  placeOf,
+  sectionMoveOf,
+} from "./board-moves";
 
 /** A card on the move, and the columns as they would be if it dropped now. */
 type Dragging = { card: TreeRow; columns: BoardColumnCards[] };
 
 /**
- * Lets the Board's cards be dragged between and within columns with the mouse, touch or keyboard.
- * While a card is dragged, `children` draws the columns as they would be if it dropped there. On
- * the drop the Task moves to that column's Section, after the card above it, since Task order is
- * one order across the Project; a refused move puts it back.
+ * A dragged card lands on the nearest card or column. A dragged column only lands among the
+ * Sections' columns, so nothing goes before No section.
+ */
+const boardCollisions: CollisionDetection = (args) =>
+  isSectionColumn(args.active.id)
+    ? closestCenter({
+        ...args,
+        droppableContainers: args.droppableContainers.filter(({ id }) => isSectionColumn(id)),
+      })
+    : closestCorners(args);
+
+/**
+ * Lets the Board's cards be dragged between and within columns, and its Sections' columns be
+ * dragged left and right, with the mouse, touch or keyboard. While a card is dragged, `children`
+ * draws the columns as they would be if it dropped there. On the drop the Task moves to that
+ * column's Section, after the card above it, since Task order is one order across the Project; a
+ * refused move puts it back. A dropped column's Section moves after the column now left of it.
  */
 export function BoardDrag({
+  projectId,
   columns,
   children,
 }: {
+  projectId: number;
   columns: BoardColumnCards[];
   children: (columns: BoardColumnCards[]) => ReactNode;
 }) {
   const sensors = useDragSensors();
   const [dragging, setDragging] = useState<Dragging | null>(null);
+  const [draggedSection, setDraggedSection] = useState<Section | null>(null);
   const { mutate: move } = useMoveTask();
+  const { mutate: moveSection } = useMoveSection(projectId);
+  const sections = useMemo(() => columns.flatMap(({ section }) => section ?? []), [columns]);
 
   const onDragStart = ({ active }: DragStartEvent) => {
     const card = cardOf(columns, active.id);
     setDragging(card ? { card, columns } : null);
+    setDraggedSection(sections.find((section) => columnId(section) === active.id) ?? null);
   };
   const onDragOver = ({ active, over }: DragOverEvent) => {
     if (!over) return;
@@ -55,7 +86,14 @@ export function BoardDrag({
   };
   const onDragEnd = ({ active, over }: DragEndEvent) => {
     setDragging(null);
-    if (!dragging || !over) return;
+    setDraggedSection(null);
+    if (!over) return;
+    if (draggedSection) {
+      const sectionMove = sectionMoveOf(sections, active.id, over.id);
+      if (sectionMove) moveSection(sectionMove);
+      return;
+    }
+    if (!dragging) return;
     const taskId = Number(active.id);
     const now = placeOf(columns, taskId);
     const next = placeOf(droppedOn(dragging.columns, active.id, over.id), taskId);
@@ -66,18 +104,22 @@ export function BoardDrag({
   return (
     <DndContext
       sensors={sensors}
-      collisionDetection={closestCorners}
+      collisionDetection={boardCollisions}
       onDragStart={onDragStart}
       onDragOver={onDragOver}
       onDragEnd={onDragEnd}
       onDragCancel={() => {
         setDragging(null);
+        setDraggedSection(null);
       }}
     >
-      {children(dragging?.columns ?? columns)}
+      <SortableContext items={sections.map(columnId)} strategy={horizontalListSortingStrategy}>
+        {children(dragging?.columns ?? columns)}
+      </SortableContext>
       {createPortal(
         <DragOverlay dropAnimation={null}>
           {dragging && <CardPreview card={dragging.card} />}
+          {draggedSection && <ColumnPreview section={draggedSection} />}
         </DragOverlay>,
         document.body,
       )}
@@ -93,6 +135,16 @@ export function SortableBoardCard(props: Omit<BoardCardProps, "drag">) {
   const touch = useMediaQuery("(pointer: coarse)");
   const drag = useSortableHandle(props.card.task.id, props.readOnly);
   return <BoardCard {...props} drag={props.readOnly ? undefined : { ...drag, touch }} />;
+}
+
+/** The column header under the pointer while dragging a column. */
+function ColumnPreview({ section }: { section: Section }) {
+  return (
+    <div className="flex w-72 items-center gap-2 rounded-xl border border-primary/40 bg-surface-muted px-3 py-2.5 shadow-xl ring-2 ring-primary/15">
+      <GripVertical className="size-4 shrink-0 text-muted-foreground" aria-hidden />
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{section.name}</span>
+    </div>
+  );
 }
 
 /** The card under the pointer while dragging. */

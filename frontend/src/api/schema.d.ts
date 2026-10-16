@@ -560,6 +560,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/sections/{section_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Section
+     * @description Delete a Section for good. Its Tasks stay in the Project, in No section.
+     */
+    delete: operations["apps_tasks_api_sections_delete_section"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/people": {
     parameters: {
       query?: never;
@@ -4339,6 +4359,35 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_sections_delete_section: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        section_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

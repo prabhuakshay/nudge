@@ -57,6 +57,7 @@ def test_create_adds_an_expanded_section_to_the_project(client: Client, ada: Use
     [
         ("get", "/api/v1/projects/1/sections"),
         ("post", "/api/v1/projects/1/sections"),
+        ("delete", "/api/v1/sections/1"),
     ],
 )
 def test_every_endpoint_requires_a_session(method: str, path: str) -> None:
@@ -205,3 +206,31 @@ def test_task_rows_carry_their_section(client: Client, ada: User) -> None:
 
     rows = {row["title"]: row["section_id"] for row in response.json()["items"]}
     assert rows == {"Grouped": to_do.pk, "Loose": None}
+
+
+@pytest.mark.django_db
+def test_delete_removes_the_section_and_keeps_its_tasks_in_no_section(
+    client: Client, ada: User
+) -> None:
+    work = projects.create_project(ada, "Work")
+    to_do = sections.create_section(work, "To do")
+    grouped = creation.create_task(work, "Grouped")
+    Task.objects.filter(pk=grouped.pk).update(section=to_do)
+
+    response = client.delete(f"/api/v1/sections/{to_do.pk}")
+
+    assert response.status_code == 204
+    assert _names(client, work) == []
+    rows = client.get("/api/v1/tasks", {"project": work.pk}).json()["items"]
+    assert [(row["title"], row["section_id"]) for row in rows] == [("Grouped", None)]
+
+
+@pytest.mark.django_db
+def test_deleting_another_users_section_is_not_found(client: Client, grace: User) -> None:
+    theirs = sections.create_section(projects.create_project(grace, "Theirs"), "To do")
+
+    response = client.delete(f"/api/v1/sections/{theirs.pk}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Section not found."}
+    assert grace.sections.filter(pk=theirs.pk).exists()

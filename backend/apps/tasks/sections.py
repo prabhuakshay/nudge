@@ -85,3 +85,12 @@ def create_section(project: Project, name: str, after: Section | None = None) ->
             name=cleaned,
             position=position,
         )
+
+
+def delete_section(user: User, section_id: int) -> bool:
+    """Delete one of the user's Sections; False if there's none.
+
+    Its Tasks stay in the Project, in No section.
+    """
+    deleted, _ = user.sections.filter(pk=section_id).delete()
+    return deleted > 0

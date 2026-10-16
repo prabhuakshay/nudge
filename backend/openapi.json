@@ -1321,6 +1321,47 @@
         ]
       }
     },
+    "/api/v1/sections/{section_id}": {
+      "delete": {
+        "operationId": "apps_tasks_api_sections_delete_section",
+        "summary": "Delete a Section",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "section_id",
+            "schema": {
+              "title": "Section Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete a Section for good. Its Tasks stay in the Project, in No section.",
+        "tags": [
+          "sections"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/people": {
       "get": {
         "operationId": "apps_tasks_api_people_list_people",

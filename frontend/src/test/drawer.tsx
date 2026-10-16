@@ -192,11 +192,20 @@ export function renderTaskList({ url = "/", project = INBOX } = {}) {
   return renderListRoute(<TaskList project={project} />, { url });
 }
 
-/** Render a list at a route that takes `?task=`, as every list route does, with a fresh cache. */
-export function renderListRoute(list: ReactNode, { url = "/" } = {}) {
+/**
+ * Render a list at a route that takes `?task=`, as every list route does, with a fresh cache. A
+ * route with more search parameters passes its own `validateSearch`.
+ */
+export function renderListRoute(
+  list: ReactNode,
+  {
+    url = "/",
+    validateSearch = validateTaskSearch,
+  }: { url?: string; validateSearch?: (search: Record<string, unknown>) => object } = {},
+) {
   const user = userEvent.setup();
   const rootRoute = createRootRoute({
-    validateSearch: validateTaskSearch,
+    validateSearch,
     component: () => (
       <TooltipProvider>
         {list}

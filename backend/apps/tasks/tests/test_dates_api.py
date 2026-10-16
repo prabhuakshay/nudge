@@ -186,3 +186,65 @@ def test_setting_the_same_dates_records_nothing(client: Client, ada: User) -> No
 
     events = client.get(f"/api/v1/tasks/{task.pk}/activity").json()["items"]
     assert [event["kind"] for event in events] == ["dates_changed", "created"]
+
+
+@pytest.mark.django_db
+def test_a_timed_task_gets_a_start_on_its_day_when_its_end_is_dragged(
+    client: Client,
+    ada: User,
+) -> None:
+    task = creation.create_task(services.inbox(ada), "Dentist")
+    _set_dates(client, task.pk, {"due_date": "2026-11-06", "due_time": "14:00"})
+
+    # The Calendar's resize keeps the block's top as the start and sets the end as due.
+    response = _set_dates(
+        client,
+        task.pk,
+        {
+            "start_date": "2026-11-06",
+            "start_time": "14:00",
+            "due_date": "2026-11-06",
+            "due_time": "15:30",
+        },
+    )
+
+    assert response.status_code == 200
+    assert _dates_of(client, task.pk) == {
+        "start_date": "2026-11-06",
+        "start_time": "14:00:00",
+        "due_date": "2026-11-06",
+        "due_time": "15:30:00",
+    }
+
+
+@pytest.mark.django_db
+def test_a_timed_range_on_one_day_becomes_all_day_without_its_times(
+    client: Client,
+    ada: User,
+) -> None:
+    task = creation.create_task(services.inbox(ada), "Workshop")
+    _set_dates(
+        client,
+        task.pk,
+        {
+            "start_date": "2026-11-06",
+            "start_time": "09:00",
+            "due_date": "2026-11-06",
+            "due_time": "11:00",
+        },
+    )
+
+    # Dropped in the Calendar's all-day strip of the next day.
+    response = _set_dates(
+        client,
+        task.pk,
+        {"start_date": None, "start_time": None, "due_date": "2026-11-07", "due_time": None},
+    )
+
+    assert response.status_code == 200
+    assert _dates_of(client, task.pk) == {
+        "start_date": None,
+        "start_time": None,
+        "due_date": "2026-11-07",
+        "due_time": None,
+    }

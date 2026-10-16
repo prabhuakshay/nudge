@@ -183,3 +183,35 @@ def test_a_repeating_task_shows_once_in_upcoming(client: Client, task: Task) -> 
     assert [(item["title"], item["due_date"]) for item in items] == [
         ("Water the plants", "2026-10-16"),
     ]
+
+
+def _later_occurrences(client: Client) -> list[str]:
+    response = client.get("/api/v1/tasks/calendar?start=2026-10-12&end=2026-11-08")
+    return [row["date"] for row in response.json()["occurrences"]]
+
+
+@pytest.mark.django_db
+def test_moving_only_the_occurrence_keeps_the_series(client: Client, task: Task) -> None:
+    _patch(client, task.pk, dates={**TODAY, "due_time": "09:00"}, repeat_rule="FREQ=WEEKLY;COUNT=3")
+
+    # A Calendar drag moves the current Occurrence alone.
+    response = _patch(
+        client,
+        task.pk,
+        dates={"due_date": "2026-10-16", "due_time": "14:15"},
+        move_occurrence=True,
+    )
+
+    body = response.json()["task"]
+    assert (body["due_date"], body["due_time"]) == ("2026-10-16", "14:15:00")
+    assert body["repeat_rule"] == "FREQ=WEEKLY;COUNT=3"
+    assert _later_occurrences(client) == ["2026-10-22", "2026-10-29"]
+
+
+@pytest.mark.django_db
+def test_new_dates_restart_the_series_at_the_new_due_date(client: Client, task: Task) -> None:
+    _patch(client, task.pk, dates=TODAY, repeat_rule="FREQ=WEEKLY;COUNT=3")
+
+    _patch(client, task.pk, dates={"due_date": "2026-10-16"})
+
+    assert _later_occurrences(client) == ["2026-10-23", "2026-10-30"]

@@ -6,14 +6,15 @@ saving. Closing a repeating Task doesn't close it: the same row moves on to its 
 (Won't do skips one), its Subtasks start over, and dated Subtasks move by as many days. Only when
 the rule has no next Occurrence does the Task close for real.
 
-Closing works out the next Occurrence here; `apps.tasks.advance` moves the Task there.
+Closing works out the next Occurrence here; `apps.tasks.advance` moves the Task there. The
+Calendar asks here for the Occurrences after the current one.
 """
 
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 
 from dateutil.rrule import rrule, rrulestr
 
@@ -92,11 +93,13 @@ def apply_edit(
     rule: str | None,
     repeat_from: Task.RepeatFrom | None,
     dates_before: TaskDates,
+    *,
+    move_occurrence: bool = False,
 ) -> None:
     """Set or clear the Task's Repeat; the caller saves it. A rule left as None stays as it is.
 
-    The series restarts at the due date whenever the rule or the dates change. A Task that has
-    lost its due date stops repeating.
+    The series restarts at the due date whenever the rule or the dates change, unless the new
+    dates only move the current Occurrence. A Task that has lost its due date stops repeating.
 
     Raises:
         RepeatRuleError: The rule is unreadable, or the Task is a Subtask or undated.
@@ -114,7 +117,7 @@ def apply_edit(
         task.repeat_rule = ""
     if not task.repeat_rule:
         task.repeat_anchor = None
-    elif rule is not None or TaskDates.of(task) != dates_before:
+    elif rule is not None or (TaskDates.of(task) != dates_before and not move_occurrence):
         task.repeat_anchor = task.due_date
 
 
@@ -204,3 +207,25 @@ def _next(task: Task, today: date) -> tuple[date, str] | None:
     start = datetime.combine(today, at)
     found = _read(_COUNT.sub("", task.repeat_rule).strip(";"), start).after(start)
     return None if found is None else (found.date(), rule)
+
+
+def later_occurrences(task: Task, start: date, end: date) -> list[date]:
+    """Return the days of the Task's Occurrences after its current one, from `start` to `end`.
+
+    Repeat from completion has no knowable future, so such a Task has none. On the calendar, an
+    overdue Task's next Occurrence comes after today, so the days up to today are skipped too.
+    """
+    if not task.repeat_rule or task.repeat_from == Task.RepeatFrom.COMPLETION:
+        return []
+    assert task.due_date is not None  # noqa: S101 - only a dated Task repeats
+    assert task.repeat_anchor is not None  # noqa: S101 - every repeating Task has one
+    at = task.due_time or time.min
+    current = task.due_date
+    if task.repeat_from == Task.RepeatFrom.CALENDAR:
+        current = max(current, local_now(task.owner).date())
+    first = max(start, current + timedelta(days=1))
+    series = _read(task.repeat_rule, datetime.combine(task.repeat_anchor, at))
+    found = series.between(
+        datetime.combine(first, time.min), datetime.combine(end, time.max), inc=True
+    )
+    return [occurrence.date() for occurrence in found]

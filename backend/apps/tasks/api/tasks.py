@@ -358,6 +358,7 @@ def _edit(
         repeat_rule=patch.repeat_rule,
         repeat_from=patch.repeat_from,
         tags=picked,
+        move_occurrence=bool(patch.move_occurrence),
     )
 
 

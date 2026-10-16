@@ -14,10 +14,13 @@ export function TaskCheckbox({
   task,
   onToggle,
   className,
+  tabIndex,
 }: {
   task: Task;
   onToggle: () => void;
   className?: string;
+  /** -1 keeps it out of the Tab order, for a grid that moves focus with the arrow keys. */
+  tabIndex?: number;
 }) {
   const closed = isClosed(task.status);
   const priority = PRIORITY[task.priority];
@@ -26,6 +29,7 @@ export function TaskCheckbox({
       type="button"
       role="checkbox"
       aria-checked={closed}
+      tabIndex={tabIndex}
       aria-label={`${closed ? "Reopen" : "Complete"} “${plainMentions(task.title)}”`}
       onClick={(event) => {
         // The row behind it opens the Task; the checkbox only toggles it.

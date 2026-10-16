@@ -25,6 +25,7 @@ export type RemindersChange = components["schemas"]["RemindersChangedData"];
 export type RepeatChange = components["schemas"]["RepeatChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
+type CalendarRange = components["schemas"]["CalendarOut"];
 
 /** The sidebar: the Inbox, Folders and Projects with open counts. Task changes invalidate it. */
 export const sidebarQuery = queryOptions({
@@ -44,6 +45,8 @@ export const TASKS_KEY = ["tasks"] as const;
 export const OPEN_KEY = [...TASKS_KEY, "open"] as const;
 /** The key prefix of every drawer's Task, so a change can show in a parent's Subtasks too. */
 export const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
+/** The key prefix of every range the Calendar has shown, so a change can show in all of them. */
+export const CALENDAR_KEY = [...TASKS_KEY, "calendar"] as const;
 
 /** A Project's open Tasks with every Subtask under them, as flat rows in manual order. */
 export function openTasksQuery(projectId: number) {
@@ -225,19 +228,28 @@ type Editable = "title" | "description" | "status" | "priority" | "blocked_reaso
  */
 export type TaskPatch = { id: number; pinned?: boolean } & Partial<
   Pick<TaskDetail, Editable | "tags" | "repeat_rule" | "repeat_from">
-> & { dates?: DatesIn; reminders?: number[] };
+> & { dates?: DatesIn; reminders?: number[]; move_occurrence?: boolean };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
 export async function patchTask({ id, tags, ...change }: TaskPatch) {
-  const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
+  const { data, error } = await api.PATCH("/api/v1/tasks/{task_id}", {
     params: { path: { task_id: id } },
     body: { ...change, ...(tags && { tag_ids: tags.map((tag) => tag.id) }) },
   });
   if (!data) {
-    throw new Error("Could not save the task.");
+    throw new Error(reasonOf(error) ?? "Could not save the task.");
   }
   return data;
+}
+
+/**
+ * The reason the server gives for refusing a request, if it gave one to show. A proxy's error page
+ * has no reason, and a request the schema rejects gives a list of field errors instead.
+ */
+function reasonOf(error: unknown) {
+  const detail = typeof error === "object" && error !== null && "detail" in error && error.detail;
+  return typeof detail === "string" && detail !== "" ? detail : undefined;
 }
 
 /** The Task as the server will return it after the change, for showing the change straight away. */
@@ -271,10 +283,14 @@ function applyTo<T extends Task>(task: T, change: TaskPatch): T {
   return task.id === change.id ? withChange(task, change) : task;
 }
 
-/** Show a change in every drawer and list before the server answers, dropping closed trees. */
+/**
+ * Show a change in every drawer, list and Calendar range before the server answers, dropping
+ * closed trees from the lists. The Calendar keeps Closed Tasks, so it drops nothing.
+ */
 export async function showChange(queryClient: QueryClient, change: TaskPatch) {
   await queryClient.cancelQueries({ queryKey: DETAIL_KEY });
   await queryClient.cancelQueries({ queryKey: OPEN_KEY });
+  await queryClient.cancelQueries({ queryKey: CALENDAR_KEY });
   queryClient.setQueriesData<TaskDetail>(
     { queryKey: DETAIL_KEY },
     (task) =>
@@ -286,6 +302,15 @@ export async function showChange(queryClient: QueryClient, change: TaskPatch) {
   queryClient.setQueriesData<Task[]>(
     { queryKey: OPEN_KEY },
     (tasks) => tasks && openTrees(tasks.map((task) => applyTo(task, change))),
+  );
+  queryClient.setQueriesData<CalendarRange>(
+    { queryKey: CALENDAR_KEY },
+    (range) =>
+      range && {
+        ...range,
+        items: range.items.map((task) => applyTo(task, change)),
+        repeating: range.repeating.map((task) => applyTo(task, change)),
+      },
   );
 }
 
@@ -337,6 +362,7 @@ export function useCreateTask() {
         ...["today", "upcoming", "all", "tag", "person"].map((list) =>
           queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, list] }),
         ),
+        queryClient.invalidateQueries({ queryKey: CALENDAR_KEY }),
         queryClient.invalidateQueries(sidebarQuery),
       ]),
   });

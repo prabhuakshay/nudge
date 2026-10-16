@@ -2418,6 +2418,69 @@
         ]
       }
     },
+    "/api/v1/tasks/calendar": {
+      "get": {
+        "operationId": "apps_tasks_api_calendar_view_calendar",
+        "summary": "List the Tasks on a range of days",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "start",
+            "schema": {
+              "description": "The first day shown.",
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            },
+            "required": true,
+            "description": "The first day shown."
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "schema": {
+              "description": "The last day shown; at most 42 days after `start`, counted in.",
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            },
+            "required": true,
+            "description": "The last day shown; at most 42 days after `start`, counted in."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the dated Tasks, open and Closed, whose dates overlap the range, both days included.\n\nRepeating Tasks also list the days they come back on after their current Occurrence.\nTrashed Tasks and archived Projects' Tasks are left out. A range that ends before it starts,\nor is over 42 days long, is refused.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/tasks/{task_id}/attachments": {
       "post": {
         "operationId": "apps_tasks_api_attachments_upload_attachment",
@@ -5657,6 +5720,18 @@
             ],
             "description": "Replaces all of the Task's dates; null removes them and its Reminders."
           },
+          "move_occurrence": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With `dates`, moves only a repeating Task's current Occurrence, as a Calendar drag does: its later Occurrences stay where they were. Otherwise new dates restart the series at the new due date.",
+            "title": "Move Occurrence"
+          },
           "reminders": {
             "anyOf": [
               {
@@ -7173,6 +7248,85 @@
           "data"
         ],
         "title": "UnpinnedActivityOut",
+        "type": "object"
+      },
+      "CalendarQuery": {
+        "description": "The days the Calendar shows, both included.",
+        "properties": {
+          "start": {
+            "description": "The first day shown.",
+            "format": "date",
+            "title": "Start",
+            "type": "string"
+          },
+          "end": {
+            "description": "The last day shown; at most 42 days after `start`, counted in.",
+            "format": "date",
+            "title": "End",
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end"
+        ],
+        "title": "CalendarQuery",
+        "type": "object"
+      },
+      "CalendarOut": {
+        "description": "The Tasks a range of days shows.",
+        "properties": {
+          "items": {
+            "description": "Open and Closed Tasks whose dates overlap the range, Subtasks as their own rows, by the day they start.",
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "occurrences": {
+            "description": "The days in the range that repeating Tasks come back on after their current Occurrence, by Task then day. Repeat from completion Tasks have none.",
+            "items": {
+              "$ref": "#/components/schemas/OccurrenceOut"
+            },
+            "title": "Occurrences",
+            "type": "array"
+          },
+          "repeating": {
+            "description": "The Tasks the Occurrences belong to, whose current Occurrence may be outside the range.",
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Repeating",
+            "type": "array"
+          }
+        },
+        "required": [
+          "items",
+          "occurrences",
+          "repeating"
+        ],
+        "title": "CalendarOut",
+        "type": "object"
+      },
+      "OccurrenceOut": {
+        "description": "A later Occurrence of a repeating Task: a day it will come back on.",
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "date"
+        ],
+        "title": "OccurrenceOut",
         "type": "object"
       },
       "AttachmentOut": {

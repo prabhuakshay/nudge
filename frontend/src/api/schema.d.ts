@@ -884,6 +884,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/tasks/calendar": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List the Tasks on a range of days
+     * @description Return the dated Tasks, open and Closed, whose dates overlap the range, both days included.
+     *
+     *     Repeating Tasks also list the days they come back on after their current Occurrence.
+     *     Trashed Tasks and archived Projects' Tasks are left out. A range that ends before it starts,
+     *     or is over 42 days long, is refused.
+     */
+    get: operations["apps_tasks_api_calendar_view_calendar"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/tasks/{task_id}/attachments": {
     parameters: {
       query?: never;
@@ -2311,6 +2335,11 @@ export interface components {
       /** @description Replaces all of the Task's dates; null removes them and its Reminders. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
       /**
+       * Move Occurrence
+       * @description With `dates`, moves only a repeating Task's current Occurrence, as a Calendar drag does: its later Occurrences stay where they were. Otherwise new dates restart the series at the new due date.
+       */
+      move_occurrence?: boolean | null;
+      /**
        * Reminders
        * @description Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.
        */
@@ -3108,6 +3137,58 @@ export interface components {
        */
       at: string;
       data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * CalendarQuery
+     * @description The days the Calendar shows, both included.
+     */
+    CalendarQuery: {
+      /**
+       * Start
+       * Format: date
+       * @description The first day shown.
+       */
+      start: string;
+      /**
+       * End
+       * Format: date
+       * @description The last day shown; at most 42 days after `start`, counted in.
+       */
+      end: string;
+    };
+    /**
+     * CalendarOut
+     * @description The Tasks a range of days shows.
+     */
+    CalendarOut: {
+      /**
+       * Items
+       * @description Open and Closed Tasks whose dates overlap the range, Subtasks as their own rows, by the day they start.
+       */
+      items: components["schemas"]["TaskOut"][];
+      /**
+       * Occurrences
+       * @description The days in the range that repeating Tasks come back on after their current Occurrence, by Task then day. Repeat from completion Tasks have none.
+       */
+      occurrences: components["schemas"]["OccurrenceOut"][];
+      /**
+       * Repeating
+       * @description The Tasks the Occurrences belong to, whose current Occurrence may be outside the range.
+       */
+      repeating: components["schemas"]["TaskOut"][];
+    };
+    /**
+     * OccurrenceOut
+     * @description A later Occurrence of a repeating Task: a day it will come back on.
+     */
+    OccurrenceOut: {
+      /** Task Id */
+      task_id: number;
+      /**
+       * Date
+       * Format: date
+       */
+      date: string;
     };
     /**
      * AttachmentOut
@@ -4875,6 +4956,40 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_view_calendar: {
+    parameters: {
+      query: {
+        /** @description The first day shown. */
+        start: string;
+        /** @description The last day shown; at most 42 days after `start`, counted in. */
+        end: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CalendarOut"];
         };
       };
       /** @description Unprocessable Content */

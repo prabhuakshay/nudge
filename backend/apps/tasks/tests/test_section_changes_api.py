@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import creation, projects, sections
+from apps.tasks import creation, project_trash, projects, sections
 
 if TYPE_CHECKING:
     from django.test import Client
@@ -197,3 +197,29 @@ def test_move_after_another_users_section_is_not_found(
 
     assert _move(client, done, theirs.pk) == 404
     assert _names(client, work) == ["To do", "Done"]
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("method", "suffix", "body"),
+    [
+        ("patch", "", {"name": "Next"}),
+        ("post", "/move", {"after_id": None}),
+        ("delete", "", None),
+    ],
+)
+def test_a_section_in_a_trashed_project_is_not_found(
+    client: Client, ada: User, method: str, suffix: str, body: dict[str, object] | None
+) -> None:
+    work = projects.create_project(ada, "Work")
+    to_do = sections.create_section(work, "To do")
+    project_trash.trash_project(ada, work.pk)
+
+    response = getattr(client, method)(
+        f"/api/v1/sections/{to_do.pk}{suffix}", body, content_type="application/json"
+    )
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Section not found."}
+    to_do.refresh_from_db()
+    assert to_do.name == "To do"

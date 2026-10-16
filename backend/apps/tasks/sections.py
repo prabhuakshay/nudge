@@ -46,9 +46,13 @@ def clean_name(name: str) -> str:
     return cleaned
 
 
+def _live_sections(user: User) -> QuerySet[Section]:
+    return user.sections.filter(project__deleted_at__isnull=True)
+
+
 def section(user: User, section_id: int) -> Section | None:
-    """Return one of the user's Sections, or None."""
-    return user.sections.filter(pk=section_id).first()
+    """Return one of the user's Sections whose Project isn't in Trash, or None."""
+    return _live_sections(user).filter(pk=section_id).first()
 
 
 def project_sections(project: Project) -> QuerySet[Section]:
@@ -122,9 +126,9 @@ def move_section(moved: Section, after: Section | None) -> None:
 
 
 def delete_section(user: User, section_id: int) -> bool:
-    """Delete one of the user's Sections; False if there's none.
+    """Delete one of the user's Sections whose Project isn't in Trash; False if there's none.
 
     Its Tasks stay in the Project, in No section.
     """
-    deleted, _ = user.sections.filter(pk=section_id).delete()
+    deleted, _ = _live_sections(user).filter(pk=section_id).delete()
     return deleted > 0

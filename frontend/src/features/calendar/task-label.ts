@@ -1,13 +1,12 @@
-import { format, parseISO } from "date-fns";
-
 import { plainMentions } from "@/features/people/mentions";
 import { shortTime } from "@/features/tasks/due";
 import { STATUS } from "@/features/tasks/task-properties";
 
+import { dayName } from "./day-label";
 import type { CalendarItem } from "./occurrences";
 
 function when(date: string, time: string | null) {
-  const day = format(parseISO(date), "EEEE d MMMM");
+  const day = dayName(date);
   return time === null ? day : `${day}, ${shortTime(time)}`;
 }
 

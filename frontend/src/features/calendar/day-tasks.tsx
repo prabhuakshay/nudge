@@ -1,9 +1,9 @@
-import { format, parseISO } from "date-fns";
 import { useId } from "react";
 
 import type { Task } from "@/features/tasks/tasks";
 
 import { DraggableTask } from "./calendar-drag";
+import { dayName } from "./day-label";
 
 /**
  * The selected day's Tasks, listed below the compact Month on a phone, where the grid has no room
@@ -25,7 +25,7 @@ export function DayTasks({
   return (
     <section aria-labelledby={heading} className="mt-4">
       <h2 id={heading} className="mb-2 text-sm font-semibold text-muted-foreground">
-        {format(parseISO(day), "EEEE d MMMM")}
+        {dayName(day)}
       </h2>
       {tasks.length === 0 ? (
         <p className="text-sm text-muted-foreground">Nothing planned.</p>

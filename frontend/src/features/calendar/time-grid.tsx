@@ -13,6 +13,7 @@ import type { Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
 import { DraggableBlock, DraggableTask } from "./calendar-drag";
+import { dayLabel } from "./day-label";
 import { useFocusLater } from "./grid-focus";
 import {
   allDayTasks,
@@ -35,13 +36,8 @@ function hourLabel(hour: number) {
   return clockTime(hour * 60);
 }
 
-function dayLabel(day: string, today: string) {
-  const label = format(parseISO(day), "EEEE d MMMM yyyy");
-  return day === today ? `${label}, today` : label;
-}
-
 function slotLabel(day: string, today: string, row: Row) {
-  return `${dayLabel(day, today)}, ${row === "all-day" ? "all day" : hourLabel(row)}`;
+  return `${dayLabel(day, day === today)}, ${row === "all-day" ? "all day" : hourLabel(row)}`;
 }
 
 /**
@@ -77,6 +73,7 @@ export function TimeGrid({
   const [row, setRow] = useState<Row>(FIRST_HOUR);
   const { grid, focusLater } = useFocusLater();
   const timeline = useRef<HTMLDivElement>(null);
+  const first = days[0] ?? date;
   const blocks = new Map(days.map((day) => [day, dayBlocks(tasks, day)]));
   const blocksAt = (day: string, hour: number) =>
     (blocks.get(day) ?? []).filter((block) => Math.floor(block.span.start / 60) === hour);
@@ -123,9 +120,7 @@ export function TimeGrid({
     <div
       ref={grid}
       role="grid"
-      aria-label={
-        days.length === 1 ? dayLabel(date, today) : `Week of ${dayLabel(days[0] ?? date, today)}`
-      }
+      aria-label={`${days.length === 1 ? "" : "Week of "}${dayLabel(first, first === today)}`}
       className="flex flex-col overflow-hidden rounded-xl border border-border bg-surface shadow-sm"
     >
       <div

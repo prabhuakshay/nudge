@@ -7,6 +7,7 @@ import { plural } from "@/features/trash/trash";
 import { cn } from "@/lib/utils";
 
 import { DraggableTask } from "./calendar-drag";
+import { dayLabel } from "./day-label";
 import { useFocusLater } from "./grid-focus";
 import { monthWeeks, shiftDays, tasksOn } from "./layout";
 import { MoreTasks } from "./more-tasks";
@@ -149,7 +150,7 @@ function DayCell({
       data-day={day}
       tabIndex={focused ? 0 : -1}
       // The compact grid only draws dots, so its label says how many Tasks they stand for.
-      aria-label={dayLabel(day, isToday, compact ? tasks.length : 0)}
+      aria-label={cellLabel(day, isToday, compact ? tasks.length : 0)}
       aria-current={isToday ? "date" : undefined}
       onKeyDown={(event) => {
         if (addsToSlot(event)) onAdd({ day, time: null });
@@ -216,14 +217,9 @@ function DayNumber({
 }
 
 /** "Thursday 15 October 2026, today, 2 Tasks", leaving out what doesn't apply. */
-function dayLabel(day: string, isToday: boolean, taskCount: number): string {
-  return [
-    format(parseISO(day), "EEEE d MMMM yyyy"),
-    isToday && "today",
-    taskCount > 0 && plural(taskCount, "Task"),
-  ]
-    .filter(Boolean)
-    .join(", ");
+function cellLabel(day: string, isToday: boolean, taskCount: number): string {
+  const label = dayLabel(day, isToday);
+  return taskCount > 0 ? `${label}, ${plural(taskCount, "Task")}` : label;
 }
 
 /** A full-size cell's Tasks: the first `CELL_TASKS` as chips, then "+N more" for the rest. */

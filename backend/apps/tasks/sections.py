@@ -55,6 +55,11 @@ def section(user: User, section_id: int) -> Section | None:
     return _live_sections(user).filter(pk=section_id).first()
 
 
+def project_section(project: Project, section_id: int) -> Section | None:
+    """Return one of the Project's Sections, or None."""
+    return project.sections.filter(pk=section_id).first()
+
+
 def project_sections(project: Project) -> QuerySet[Section]:
     """Return the Project's Sections in order."""
     return project.sections.order_by("position", "id")

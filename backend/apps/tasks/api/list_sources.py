@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Literal
 from ninja import Status
 
 from apps.core.schemas import ErrorOut
-from apps.tasks import people, schedule, sections, services, tags, tree
+from apps.tasks import people, schedule, sections, services, tags
 from apps.tasks.api.errors import (
     PERSON_NOT_FOUND,
     PROJECT_NOT_FOUND,
@@ -37,12 +37,11 @@ def list_source(user: User, query: TaskListQuery) -> ListSource | Status[ErrorOu
     by_id = (
         (query.person, _person_source),
         (query.tag, _tag_source),
+        (query.project, partial(_project_source, section=query.section)),
     )
     for source_id, source in by_id:
         if source_id is not None:
             return source(user, source_id)
-    if query.project is not None:
-        return _project_source(user, query.project, query.section)
     return Status(HTTPStatus.UNPROCESSABLE_ENTITY, _ONE_SOURCE)
 
 
@@ -82,13 +81,12 @@ def _project_source(
     if section is None:
         return partial(services.open_tasks, found), partial(services.closed_tasks, found)
     if section == "none":
-        trees = tree.root_in_section(None)
+        picked = None
     else:
-        picked = sections.project_sections(found).filter(pk=section).first()
+        picked = sections.project_section(found, section)
         if picked is None:
             return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
-        trees = tree.root_in_section(picked)
     return (
-        partial(services.open_tasks, found, trees),
-        partial(services.closed_tasks, found, trees=trees),
+        partial(services.section_open_tasks, found, picked),
+        partial(services.section_closed_tasks, found, picked),
     )

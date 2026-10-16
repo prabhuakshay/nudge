@@ -39,6 +39,7 @@ from apps.tasks.tree import (
     cascade_status,
     move_tree,
     moved_event,
+    root_in_section,
     root_status_in,
     rows_below,
     section_name,
@@ -50,6 +51,7 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from apps.accounts.models import User
+    from apps.tasks.models import Section
 
 
 class TaskRuleError(DomainRuleError):
@@ -114,39 +116,60 @@ def _live_tasks(project: Project) -> QuerySet[Task]:
     return as_rows(project.tasks.filter(deleted_at__isnull=True), project.owner)
 
 
-def open_tasks(project: Project, trees: Q | None = None) -> QuerySet[Task]:
+def open_tasks(project: Project) -> QuerySet[Task]:
     """Return the Project's open trees: open roots and every Subtask under them.
 
     Pinned roots come first, then the rest in manual order. Subtasks come whatever their Status,
-    so a list can show done steps under open work. `trees` narrows the list to the trees it
-    matches, such as `tree.root_in_section`.
+    so a list can show done steps under open work.
     """
+    return _open_trees(project, Q())
+
+
+def section_open_tasks(project: Project, section: Section | None) -> QuerySet[Task]:
+    """Return the Project's open trees in the Section, or in No section for None.
+
+    They come as in `open_tasks`.
+    """
+    return _open_trees(project, root_in_section(section))
+
+
+def _open_trees(project: Project, trees: Q) -> QuerySet[Task]:
     return (
         _live_tasks(project)
-        .filter(root_status_in(OPEN_STATUSES), trees or Q())
+        .filter(root_status_in(OPEN_STATUSES), trees)
         .order_by(F("pinned_at").asc(nulls_last=True), "position", "id")
     )
 
 
-def closed_tasks(
-    project: Project,
-    cursor: str | None = None,
-    trees: Q | None = None,
-) -> Page[Task]:
+def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
     """Return a page of the Project's Closed trees, most recently completed root first.
 
     Each page holds its Closed roots, newest first, then every Subtask under them in manual
-    order. A Closed root has no open descendants, so the whole tree is Closed. `trees` narrows
-    the list to the trees it matches, as in `open_tasks`.
+    order. A Closed root has no open descendants, so the whole tree is Closed.
 
     Raises:
         InvalidCursorError: The cursor wasn't one this function returned.
     """
-    roots = _live_tasks(project).filter(
-        trees or Q(),
-        parent__isnull=True,
-        status__in=CLOSED_STATUSES,
-    )
+    return _closed_trees(project, Q(), cursor)
+
+
+def section_closed_tasks(
+    project: Project,
+    section: Section | None,
+    cursor: str | None = None,
+) -> Page[Task]:
+    """Return a page of the Project's Closed trees in the Section, or in No section for None.
+
+    Pages come as in `closed_tasks`.
+
+    Raises:
+        InvalidCursorError: The cursor wasn't one this function returned.
+    """
+    return _closed_trees(project, root_in_section(section), cursor)
+
+
+def _closed_trees(project: Project, trees: Q, cursor: str | None) -> Page[Task]:
+    roots = _live_tasks(project).filter(trees, parent__isnull=True, status__in=CLOSED_STATUSES)
     page = newest_first(roots, "completed_at", cursor)
     rows = [*page.items, *rows_below(page.items, project.owner)]
     return Page(items=rows, next_cursor=page.next_cursor)

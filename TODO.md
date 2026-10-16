@@ -1,0 +1,31 @@
+# TODO
+
+- [ ] Limit Tags and People in the sidebar
+- [ ] Add a calendar view
+- [ ] Add a focus timer with YouTube playlist support
+- [ ] Add Discord integration?
+- [ ] Add a matrix view
+- [ ] Add a report
+- [ ] Add MCP
+- [ ] Add summarize
+- [ ] Add keyboard shortcuts
+- [ ] Add saved filters
+- [ ] Add smart lists
+- [ ] Add export
+- [ ] Add backup
+- [ ] Add Telegram integration
+- [ ] Add ntfy support
+- [ ] Add Gotify support
+- [ ] Add daily digest email
+- [ ] Add REST API tokens
+- [ ] Add Habits
+- [ ] Add time blocking
+- [ ] Add AI-powered review: a digest of what was done over any chosen period
+- [ ] Add dependencies between Tasks
+- [ ] Add streaks and completion stats
+- [ ] Add overdue nudges
+- [ ] Add OIDC / SSO login
+- [ ] Add webhooks on Task events
+- [ ] Add two-factor auth (TOTP)
+- [ ] Add Kanban boards
+- [ ] Add countdown

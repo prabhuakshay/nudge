@@ -176,8 +176,8 @@ export function CalendarView({
         </div>
       </header>
 
-      {mode === "month" ? (
-        <CalendarDrag tasks={tasks}>
+      <CalendarDrag tasks={tasks}>
+        {mode === "month" ? (
           <MonthGrid
             date={date}
             today={today}
@@ -186,19 +186,19 @@ export function CalendarView({
             onOpen={setOpenTask}
             onToggle={toggle}
           />
-        </CalendarDrag>
-      ) : (
-        <TimeGrid
-          days={days}
-          date={date}
-          today={today}
-          now={now.getHours() * 60 + now.getMinutes()}
-          tasks={tasks}
-          onDateChange={moveFocus}
-          onOpen={setOpenTask}
-          onToggle={toggle}
-        />
-      )}
+        ) : (
+          <TimeGrid
+            days={days}
+            date={date}
+            today={today}
+            now={now.getHours() * 60 + now.getMinutes()}
+            tasks={tasks}
+            onDateChange={moveFocus}
+            onOpen={setOpenTask}
+            onToggle={toggle}
+          />
+        )}
+      </CalendarDrag>
 
       <TaskDetail
         taskId={openTaskId}

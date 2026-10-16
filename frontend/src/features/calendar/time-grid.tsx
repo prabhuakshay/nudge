@@ -1,15 +1,21 @@
+import { useDroppable } from "@dnd-kit/core";
 import { format, parseISO } from "date-fns";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type ComponentProps, type KeyboardEvent } from "react";
 
 import type { Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
-import { CalendarBlock } from "./calendar-block";
-import { CalendarTask } from "./calendar-task";
-import { allDayTasks, clockTime, dayBlocks, percent, shiftDays, type Block } from "./layout";
-
-/** A row of the grid: the all-day strip or an hour of the day, 0 to 23. */
-type Row = "all-day" | number;
+import { DraggableBlock, DraggableTask } from "./calendar-drag";
+import {
+  allDayTasks,
+  clockTime,
+  dayBlocks,
+  percent,
+  shiftDays,
+  slotTarget,
+  type Block,
+  type Row,
+} from "./layout";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
@@ -92,7 +98,8 @@ export function TimeGrid({
   };
 
   const slot = (day: string, slotRow: Row) => ({
-    role: "gridcell",
+    day,
+    row: slotRow,
     "data-day": day,
     "data-hour": String(slotRow),
     tabIndex: day === date && slotRow === row ? 0 : -1,
@@ -148,13 +155,14 @@ export function TimeGrid({
           {days.map((day) => {
             const strip = allDayTasks(tasks, day);
             return (
-              <div key={day} {...slot(day, "all-day")} className={cn(slotClass, "min-h-8 p-0.5")}>
+              <Slot key={day} {...slot(day, "all-day")} className={cn(slotClass, "min-h-8 p-0.5")}>
                 {strip.length > 0 && (
                   <ul className="flex min-w-0 flex-col gap-0.5">
                     {strip.map((task) => (
-                      <CalendarTask
+                      <DraggableTask
                         key={task.id}
                         task={task}
+                        day={day}
                         tabbable={day === date}
                         onOpen={onOpen}
                         onToggle={onToggle}
@@ -162,7 +170,7 @@ export function TimeGrid({
                     ))}
                   </ul>
                 )}
-              </div>
+              </Slot>
             );
           })}
         </div>
@@ -184,24 +192,43 @@ export function TimeGrid({
               {hourLabel(hour)}
             </span>
             {days.map((day) => (
-              <div
+              <Slot
                 key={day}
                 {...slot(day, hour)}
                 className={cn(slotClass, "h-12", hour > 0 && "border-t")}
               >
                 {day === today && hour === Math.floor(now / 60) && <NowLine now={now} />}
                 <SlotBlocks
+                  day={day}
                   blocks={blocksAt(day, hour)}
                   tabbable={day === date}
                   onOpen={onOpen}
                   onToggle={onToggle}
                 />
-              </div>
+              </Slot>
             ))}
           </div>
         ))}
       </div>
     </div>
+  );
+}
+
+/** A slot of the grid: a grid cell that Tasks can be dropped on, lit while one is over it. */
+function Slot({
+  day,
+  row,
+  className,
+  ...props
+}: ComponentProps<"div"> & { day: string; row: Row }) {
+  const { setNodeRef, isOver } = useDroppable({ id: slotTarget(day, row) });
+  return (
+    <div
+      ref={setNodeRef}
+      role="gridcell"
+      className={cn(className, isOver && "bg-primary-soft")}
+      {...props}
+    />
   );
 }
 
@@ -219,11 +246,13 @@ function NowLine({ now }: { now: number }) {
 
 /** The blocks that start in an hour slot; each overflows down into the slots it covers. */
 function SlotBlocks({
+  day,
   blocks,
   tabbable,
   onOpen,
   onToggle,
 }: {
+  day: string;
   blocks: Block<Task>[];
   tabbable: boolean;
   onOpen: (taskId: number) => void;
@@ -233,9 +262,10 @@ function SlotBlocks({
   return (
     <ul>
       {blocks.map((block) => (
-        <CalendarBlock
+        <DraggableBlock
           key={block.task.id}
           block={block}
+          day={day}
           tabbable={tabbable}
           onOpen={onOpen}
           onToggle={onToggle}

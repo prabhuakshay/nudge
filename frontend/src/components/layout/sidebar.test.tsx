@@ -3,8 +3,9 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
+import type { components } from "@/api/schema";
 import type { Sidebar as SidebarData } from "@/features/tasks/tasks";
-import { INBOX } from "@/test/drawer";
+import { INBOX, json } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 import { EXPANDED_USER, signedInClient } from "@/test/session";
 
@@ -18,6 +19,8 @@ vi.mock("@tanstack/react-router", () => ({
   ),
 }));
 vi.mock("@/features/settings/settings-dialog", () => ({ SettingsDialog: () => null }));
+
+type SidebarSectionsIn = components["schemas"]["SidebarSectionsIn"];
 
 const ada = {
   ...EXPANDED_USER,
@@ -40,13 +43,10 @@ const SIDEBAR: SidebarData = {
 function mockApi(sidebar: SidebarData = SIDEBAR) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
-    const body =
-      request.method === "GET"
-        ? sidebar
-        : { ...ada, ...((await request.clone().json()) as object) };
-    return new Response(JSON.stringify(body), {
-      headers: { "Content-Type": "application/json" },
-    });
+    if (request.method === "GET") return json(sidebar);
+    // `json()` is untyped; the only write the sidebar sends is a sidebar sections change.
+    const changes = (await request.clone().json()) as SidebarSectionsIn;
+    return json({ ...ada, ...changes });
   });
 }
 
@@ -55,10 +55,10 @@ async function writes(fetchSpy: ReturnType<typeof mockApi>) {
     .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET");
   return Promise.all(
-    requests.map(async (request) => [
-      `${request.method} ${new URL(request.url).pathname}`,
-      (await request.clone().json()) as unknown,
-    ]),
+    requests.map(async (request) => {
+      const body: unknown = await request.clone().json();
+      return [`${request.method} ${new URL(request.url).pathname}`, body];
+    }),
   );
 }
 

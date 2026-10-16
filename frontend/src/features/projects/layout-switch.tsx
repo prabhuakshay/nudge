@@ -2,7 +2,7 @@ import { List, SquareKanban, type LucideIcon } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 
-import { useSetLayout, type ProjectLayout, type SidebarProject } from "./projects";
+import { useUpdateProject, type ProjectLayout, type SidebarProject } from "./projects";
 
 const LAYOUTS: { layout: ProjectLayout; label: string; icon: LucideIcon }[] = [
   { layout: "list", label: "List", icon: List },
@@ -14,7 +14,7 @@ const LAYOUTS: { layout: ProjectLayout; label: string; icon: LucideIcon }[] = [
  * opens it the same way. On phones the buttons show only their icons.
  */
 export function LayoutSwitch({ project }: { project: SidebarProject }) {
-  const { mutate: setLayout } = useSetLayout();
+  const { mutate: update } = useUpdateProject();
   return (
     <div
       role="group"
@@ -29,7 +29,7 @@ export function LayoutSwitch({ project }: { project: SidebarProject }) {
             type="button"
             aria-pressed={current}
             onClick={() => {
-              if (!current) setLayout({ id: project.id, layout });
+              if (!current) update({ id: project.id, layout });
             }}
             className={cn(
               "flex h-7 items-center gap-1.5 rounded px-2 text-xs font-medium transition-colors focus-visible:outline-2 focus-visible:outline-ring",

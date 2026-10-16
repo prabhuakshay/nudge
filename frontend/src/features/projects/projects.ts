@@ -80,10 +80,18 @@ export function useCreateProject() {
   });
 }
 
-/** Rename, recolour or change the icon of a Project. */
+/** A Project and the fields of it to change. */
+type ProjectChange = { id: number } & Partial<
+  Pick<SidebarProject, "name" | "color" | "icon" | "layout">
+>;
+
+/**
+ * Rename, recolour or change the icon or Layout of a Project; the sidebar and its page show the
+ * change at once.
+ */
 export function useUpdateProject() {
   return useSidebarMutation(
-    async ({ id, ...fields }: { id: number } & Partial<Omit<ProjectFields, "folder_id">>) => {
+    async ({ id, ...fields }: ProjectChange) => {
       const { data, error } = await api.PATCH("/api/v1/projects/{project_id}", {
         params: { path: { project_id: id } },
         body: fields,
@@ -91,6 +99,7 @@ export function useUpdateProject() {
       if (error) throw new Error(error.detail);
       return data;
     },
+    (sidebar, { id, ...fields }) => withProjectChanged(sidebar, id, fields),
   );
 }
 
@@ -109,20 +118,6 @@ function withProjectChanged(
     ),
     archived: sidebar.archived.map(apply),
   };
-}
-
-/** Switch a Project between the List and Board Layouts; its page redraws at once. */
-export function useSetLayout() {
-  return useSidebarMutation(
-    async ({ id, layout }: { id: number; layout: ProjectLayout }) => {
-      const { error } = await api.PATCH("/api/v1/projects/{project_id}", {
-        params: { path: { project_id: id } },
-        body: { layout },
-      });
-      if (error) throw new Error(error.detail);
-    },
-    (sidebar, { id, layout }) => withProjectChanged(sidebar, id, { layout }),
-  );
 }
 
 /** Move a Project into a Folder or onto the top level; the sidebar shows it there at once. */

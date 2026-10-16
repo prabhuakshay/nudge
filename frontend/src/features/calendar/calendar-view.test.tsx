@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 import { useState } from "react";
 
-import { calendarRequests, mockApi, renderCalendar } from "@/test/calendar";
+import { calendarRequests, day, fakeCalendarToday, mockApi, renderCalendar } from "@/test/calendar";
 import { INBOX, renderListRoute, WORK } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 import { makeTask } from "@/test/tasks";
@@ -18,18 +18,7 @@ function QuickAddHost({ draft }: { draft: string }) {
   return <GlobalQuickAdd draft={shown} onDraftChange={setShown} />;
 }
 
-function day(label: string) {
-  return screen.getByRole("gridcell", { name: new RegExp(`^${label}`) });
-}
-
-beforeEach(() => {
-  // Thursday 15 October 2026, 10:00 in London.
-  vi.useFakeTimers({ now: new Date("2026-10-15T09:00:00Z"), toFake: ["Date"] });
-});
-
-afterEach(() => {
-  vi.useRealTimers();
-});
+fakeCalendarToday();
 
 describe("CalendarView in Month mode", () => {
   it("shows this month in whole weeks from Monday, today marked", async () => {

@@ -1,16 +1,13 @@
-import { INBOX, json, renderListRoute, WORK } from "@/test/drawer";
-import { requestOf } from "@/test/fetch";
-import { makeTask } from "@/test/tasks";
+/** Test helpers for the Calendar View: a stand-in server and a router to render it on. */
+import { screen } from "@testing-library/react";
+
 import { validateCalendarSearch } from "@/features/calendar/calendar";
 import { CalendarView } from "@/features/calendar/calendar-view";
 import type { NewTask, TaskDetail } from "@/features/tasks/tasks";
 
-/*
- * Shared by the Calendar View's tests: a stand-in server, the Calendar requests it saw, and the
- * View rendered on a route.
- */
-
-const task = makeTask;
+import { INBOX, json, renderListRoute, WORK } from "./drawer";
+import { requestOf } from "./fetch";
+import { makeTask } from "./tasks";
 
 /** A stand-in server: the sidebar, the Calendar's Tasks, each Task's detail and its PATCHes. */
 export function mockApi(tasks: TaskDetail[] = []) {
@@ -23,7 +20,7 @@ export function mockApi(tasks: TaskDetail[] = []) {
     if (url.pathname === "/api/v1/tasks/calendar") return json({ items: tasks });
     if (url.pathname === "/api/v1/tasks" && request.method === "POST") {
       const body = (await request.clone().json()) as NewTask;
-      const added = task({ id: 50, title: body.title, ...body.dates });
+      const added = makeTask({ id: 50, title: body.title, ...body.dates });
       tasks.push(added);
       return json(added, 201);
     }
@@ -42,6 +39,7 @@ export function mockApi(tasks: TaskDetail[] = []) {
   });
 }
 
+/** The query strings of every Calendar range the page asked for. */
 export function calendarRequests(fetchSpy: ReturnType<typeof mockApi>) {
   return fetchSpy.mock.calls
     .map(([input]) => new URL(requestOf(input).url))
@@ -49,9 +47,25 @@ export function calendarRequests(fetchSpy: ReturnType<typeof mockApi>) {
     .map((url) => url.search);
 }
 
+/** The Calendar View on a test router, at `url`. */
 export function renderCalendar(url = "/") {
   return renderListRoute(<CalendarView inbox={INBOX} timeZone="Europe/London" />, {
     url,
     validateSearch: validateCalendarSearch,
+  });
+}
+
+/** The Month cell whose label starts with `label`. */
+export function day(label: string) {
+  return screen.getByRole("gridcell", { name: new RegExp(`^${label}`) });
+}
+
+/** Fixes the clock at Thursday 15 October 2026, 10:00 in London, for every test in the file. */
+export function fakeCalendarToday() {
+  beforeEach(() => {
+    vi.useFakeTimers({ now: new Date("2026-10-15T09:00:00Z"), toFake: ["Date"] });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
   });
 }

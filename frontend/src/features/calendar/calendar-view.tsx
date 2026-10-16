@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
-import { CalendarRange, ChevronLeft, ChevronRight } from "lucide-react";
+import { CalendarRange, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
 import { useCallback, useEffect, useReducer } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import type { SidebarProject, Task } from "@/features/tasks/tasks";
 import { calendarQuery, MODES, useCalendarPlace, type CalendarMode } from "./calendar";
 import { monthWeeks, shiftDays, shiftMonths, weekDays } from "./layout";
 import { MonthGrid } from "./month-grid";
+import { useShowClosed } from "./show-closed";
 import { TimeGrid } from "./time-grid";
 
 const MODE_NAMES: Record<CalendarMode, string> = { month: "Month", week: "Week", day: "Day" };
@@ -86,7 +87,8 @@ export function CalendarView({
   const { mode, date, go } = useCalendarPlace(today);
   const days = shownDays(mode, date);
   const { data } = useQuery(calendarQuery({ start: days[0] ?? date, end: days.at(-1) ?? date }));
-  const tasks = data?.items ?? [];
+  const [showClosed, setShowClosed] = useShowClosed();
+  const tasks = (data?.items ?? []).filter((task) => showClosed || !isClosed(task.status));
   const { openTaskId, setOpenTask } = useOpenTask();
   const { mutate: setStatus } = useSetTaskStatus();
   const toggle = useCallback(
@@ -129,6 +131,19 @@ export function CalendarView({
               </Button>
             ))}
           </div>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Show Closed Tasks"
+            aria-pressed={showClosed}
+            title="Show Closed Tasks"
+            className="aria-pressed:bg-surface-muted aria-pressed:text-primary"
+            onClick={() => {
+              setShowClosed(!showClosed);
+            }}
+          >
+            <ListChecks aria-hidden />
+          </Button>
           <Button
             variant="outline"
             onClick={() => {

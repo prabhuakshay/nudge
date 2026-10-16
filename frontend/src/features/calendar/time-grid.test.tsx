@@ -1,19 +1,12 @@
 import { screen, within } from "@testing-library/react";
 
-import { calendarRequests, mockApi, renderCalendar } from "@/test/calendar";
+import { calendarRequests, fakeCalendarToday, mockApi, renderCalendar } from "@/test/calendar";
 import { requestOf } from "@/test/fetch";
 import { makeTask } from "@/test/tasks";
 
 const task = makeTask;
 
-beforeEach(() => {
-  // Thursday 15 October 2026, 10:00 in London.
-  vi.useFakeTimers({ now: new Date("2026-10-15T09:00:00Z"), toFake: ["Date"] });
-});
-
-afterEach(() => {
-  vi.useRealTimers();
-});
+fakeCalendarToday();
 
 function headers() {
   return screen.getAllByRole("columnheader").map((header) => header.textContent);

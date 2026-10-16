@@ -69,7 +69,7 @@ export function TaskList({ project }: { project: SidebarProject }) {
   const touch = useMediaQuery("(pointer: coarse)");
   const { mutate: move } = useMoveTask();
   const moveTask = useCallback(
-    (taskId: number, placement: Placement) => {
+    (taskId: number, placement: Placement, sectionId?: number | null) => {
       // A Task moved under a folded parent would vanish, so the parent unfolds.
       setCollapsed((current) => {
         if (placement.parentId === null || !current.has(placement.parentId)) return current;
@@ -77,7 +77,7 @@ export function TaskList({ project }: { project: SidebarProject }) {
         next.delete(placement.parentId);
         return next;
       });
-      move({ taskId, ...placement });
+      move({ taskId, ...placement, sectionId });
     },
     [move],
   );

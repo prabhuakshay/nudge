@@ -1,3 +1,4 @@
+import type { UniqueIdentifier } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 
 import type { TreeRow } from "./task-tree";
@@ -67,6 +68,46 @@ export function projectDrop(
     afterId: siblingBefore(moved, overIndex, level),
     valid,
   };
+}
+
+/**
+ * One run of an outline split into groups, such as a Project's Sections. Every group after the
+ * first sits under a header, sortable as `id`, that rows are dragged past to change group.
+ */
+export type RowGroup = { id: string; rows: TreeRow[] };
+
+/** A sortable slot in a grouped outline: a row, or a group's header by its id. */
+type Slot = TreeRow | string;
+
+function slotId(slot: Slot): UniqueIdentifier {
+  return typeof slot === "string" ? slot : slot.task.id;
+}
+
+/**
+ * Where the dragged row lands in a grouped outline when over `overId`, a row or a header: in the
+ * group whose header it ends up below, placed among that group's rows as `projectDrop` places it.
+ */
+export function groupedDrop(
+  groups: RowGroup[],
+  activeId: number,
+  overId: UniqueIdentifier,
+  step: number,
+  base: TreeBase,
+): (Drop & { group: number }) | null {
+  const slots = groups.flatMap<Slot>(({ id, rows }, index) => (index === 0 ? rows : [id, ...rows]));
+  const from = slots.findIndex((slot) => slotId(slot) === activeId);
+  const to = slots.findIndex((slot) => slotId(slot) === overId);
+  if (from < 0 || to < 0) return null;
+  const moved = arrayMove(slots, from, to);
+  const isHeader = (slot: Slot) => typeof slot === "string";
+  const start = moved.findLastIndex((slot, index) => index < to && isHeader(slot)) + 1;
+  const end = moved.findIndex((slot, index) => index > to && isHeader(slot));
+  const rows = moved
+    .slice(start, end === -1 ? undefined : end)
+    .filter((slot): slot is TreeRow => typeof slot !== "string");
+  const drop = projectDrop(rows, activeId, activeId, step, base);
+  const group = moved.slice(0, to).filter(isHeader).length;
+  return drop && { ...drop, group };
 }
 
 /** Where the Task sits now, to tell a drop that changes nothing from a move. */

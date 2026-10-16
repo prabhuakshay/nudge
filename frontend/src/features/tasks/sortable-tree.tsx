@@ -13,6 +13,7 @@ import {
   type DragStartEvent,
   type DraggableAttributes,
   type DraggableSyntheticListeners,
+  type UniqueIdentifier,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -23,9 +24,11 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import {
+  Fragment,
   memo,
   useMemo,
   useState,
+  type CSSProperties,
   type PointerEventHandler,
   type ReactNode,
   type SyntheticEvent,
@@ -38,9 +41,10 @@ import { cn } from "@/lib/utils";
 
 import {
   currentPlacement,
-  projectDrop,
+  groupedDrop,
   TOO_DEEP,
   type Placement,
+  type RowGroup,
   type TreeBase,
 } from "./task-drag";
 import type { TreeRow } from "./task-tree";
@@ -71,6 +75,20 @@ const POINTER = { activationConstraint: { distance: 5 } };
 const TOUCH = { activationConstraint: { delay: 220, tolerance: 6 } };
 const KEYBOARD = { coordinateGetter: sortableKeyboardCoordinates };
 
+/** What a group's header takes so dragged rows can pass it, and so it makes way for them. */
+export type GroupHeader = {
+  setNode: (node: HTMLElement | null) => void;
+  style: CSSProperties;
+};
+
+/**
+ * Draws one group: its `rows`, under its `header` when it has one. Every group after the first
+ * has a header; dragging a row past it moves the row into that group.
+ */
+export type RenderGroup = (index: number, header: GroupHeader | null, rows: ReactNode) => ReactNode;
+
+const justRows: RenderGroup = (_index, _header, rows) => rows;
+
 /** The rows on show while one is dragged: its Subtasks travel with it, out of sight. */
 function withoutSubtasksOf(rows: TreeRow[], activeId: number | null) {
   const start = rows.findIndex((row) => row.task.id === activeId);
@@ -82,27 +100,31 @@ function withoutSubtasksOf(rows: TreeRow[], activeId: number | null) {
 
 /**
  * An outline of Tasks that sorts by dragging whole rows: up and down to reorder, sideways in
- * indent steps to change level. A drop that would break the depth limit is refused with a toast.
- * `renderRow` must be stable, so rows that don't move skip rendering while a drag is under way.
+ * indent steps to change level. The outline may be split into groups that rows are dragged
+ * between, drawn by `renderGroup`; `onMove` gets the index of the group the row lands in. A drop
+ * that would break the depth limit is refused with a toast. `renderRow` must be stable, so rows
+ * that don't move skip rendering while a drag is under way.
  */
 export function SortableTree({
-  rows: outline,
+  groups: outline,
   base,
   indent,
   renderRow,
+  renderGroup = justRows,
   onMove,
   disabled = false,
 }: {
-  rows: TreeRow[];
+  groups: RowGroup[];
   base: TreeBase;
   indent: number;
   renderRow: (props: SortableRowProps) => ReactNode;
-  onMove: (taskId: number, placement: Placement) => void;
+  renderGroup?: RenderGroup;
+  onMove: (taskId: number, placement: Placement, group: number) => void;
   /** Rows that can't change, as in an archived Project, don't drag. */
   disabled?: boolean;
 }) {
   const [activeId, setActiveId] = useState<number | null>(null);
-  const [overId, setOverId] = useState<number | null>(null);
+  const [overId, setOverId] = useState<UniqueIdentifier | null>(null);
   // Sideways drag in whole indent steps, not pixels, so the tree re-renders only when the level
   // it would drop at can change.
   const [step, setStep] = useState(0);
@@ -111,11 +133,22 @@ export function SortableTree({
     useSensor(TouchSensor, TOUCH),
     useSensor(KeyboardSensor, KEYBOARD),
   );
-  const rows = useMemo(() => withoutSubtasksOf(outline, activeId), [outline, activeId]);
-  const ids = useMemo(() => rows.map((row) => row.task.id), [rows]);
+  const groups = useMemo(
+    () => outline.map((group) => ({ ...group, rows: withoutSubtasksOf(group.rows, activeId) })),
+    [outline, activeId],
+  );
+  const ids = useMemo(
+    () =>
+      groups.flatMap<UniqueIdentifier>(({ id, rows }, index) => [
+        ...(index === 0 ? [] : [id]),
+        ...rows.map((row) => row.task.id),
+      ]),
+    [groups],
+  );
   const drop =
-    activeId !== null && overId !== null ? projectDrop(rows, activeId, overId, step, base) : null;
-  const active = rows.find((row) => row.task.id === activeId);
+    activeId !== null && overId !== null ? groupedDrop(groups, activeId, overId, step, base) : null;
+  const from = groups.findIndex(({ rows }) => rows.some((row) => row.task.id === activeId));
+  const active = groups[from]?.rows.find((row) => row.task.id === activeId);
 
   const reset = () => {
     setActiveId(null);
@@ -130,10 +163,22 @@ export function SortableTree({
       return;
     }
     const taskId = Number(dragged.id);
-    const now = currentPlacement(rows, taskId, base);
-    if (now.parentId === drop.parentId && now.afterId === drop.afterId) return;
-    onMove(taskId, { parentId: drop.parentId, afterId: drop.afterId });
+    const now = currentPlacement(groups[from]?.rows ?? [], taskId, base);
+    const unmoved =
+      drop.group === from && now.parentId === drop.parentId && now.afterId === drop.afterId;
+    if (unmoved) return;
+    onMove(taskId, { parentId: drop.parentId, afterId: drop.afterId }, drop.group);
   };
+  const sortableRows = (rows: TreeRow[]) =>
+    rows.map((row) => (
+      <SortableRow
+        key={row.task.id}
+        row={row}
+        level={row.task.id === activeId && drop ? drop.level : row.level}
+        renderRow={renderRow}
+        disabled={disabled}
+      />
+    ));
 
   return (
     <DndContext
@@ -147,21 +192,21 @@ export function SortableTree({
         setStep(Math.round(delta.x / indent));
       }}
       onDragOver={({ over }: DragOverEvent) => {
-        setOverId(over ? Number(over.id) : null);
+        setOverId(over ? over.id : null);
       }}
       onDragEnd={onDragEnd}
       onDragCancel={reset}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        {rows.map((row) => (
-          <SortableRow
-            key={row.task.id}
-            row={row}
-            level={row.task.id === activeId && drop ? drop.level : row.level}
-            renderRow={renderRow}
-            disabled={disabled}
-          />
-        ))}
+        {groups.map(({ id, rows }, index) =>
+          index === 0 ? (
+            <Fragment key={id}>{renderGroup(index, null, sortableRows(rows))}</Fragment>
+          ) : (
+            <SortableHeader key={id} id={id}>
+              {(header) => renderGroup(index, header, sortableRows(rows))}
+            </SortableHeader>
+          ),
+        )}
       </SortableContext>
       {createPortal(
         <DragOverlay dropAnimation={null}>
@@ -171,6 +216,24 @@ export function SortableTree({
       )}
     </DndContext>
   );
+}
+
+/** A group's header, which never drags itself but makes way for the rows dragged past it. */
+function SortableHeader({
+  id,
+  children,
+}: {
+  id: string;
+  children: (header: GroupHeader) => ReactNode;
+}) {
+  const { setNodeRef, transform, transition } = useSortable({
+    id,
+    disabled: { draggable: true, droppable: false },
+  });
+  return children({
+    setNode: setNodeRef,
+    style: { transform: CSS.Translate.toString(transform), transition },
+  });
 }
 
 /**

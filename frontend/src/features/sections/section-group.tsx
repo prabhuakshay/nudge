@@ -2,6 +2,7 @@ import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+import type { GroupHeader } from "@/features/tasks/sortable-tree";
 import { GroupCount } from "@/features/tasks/task-groups";
 
 import { SectionMenu } from "./section-menu";
@@ -19,6 +20,7 @@ export function SectionGroup({
   readOnly = false,
   actions,
   menuItems,
+  header,
   children,
 }: {
   section: Section;
@@ -29,6 +31,8 @@ export function SectionGroup({
   actions?: ReactNode;
   /** The menu's items after Rename. */
   menuItems?: ReactNode;
+  /** Lets dragged Tasks pass the header into this Section. */
+  header?: GroupHeader | null;
   children?: ReactNode;
 }) {
   const { mutate: update } = useUpdateSection(section.project_id);
@@ -41,7 +45,11 @@ export function SectionGroup({
 
   return (
     <section aria-label={section.name} className="border-b border-border">
-      <div className="flex h-9 items-center gap-2 border-b border-border/70 bg-surface-muted/50 px-3">
+      <div
+        ref={header?.setNode}
+        style={header?.style}
+        className="flex h-9 items-center gap-2 border-b border-border/70 bg-surface-muted/50 px-3"
+      >
         {renaming ? (
           <SectionNameField
             name={section.name}

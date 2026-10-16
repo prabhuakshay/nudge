@@ -1,8 +1,14 @@
 import { ListTodo } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 
+import type { GroupHeader } from "@/features/tasks/sortable-tree";
 import { Group } from "@/features/tasks/task-groups";
-import { SortableTaskRows, type SortableRowContext } from "@/features/tasks/task-rows";
+import {
+  SortableTaskGroups,
+  type RenderTaskGroup,
+  type SortableRowContext,
+  type TaskGroup,
+} from "@/features/tasks/task-rows";
 import { rootCount } from "@/features/tasks/task-tree";
 
 import { AddSectionTask, AddSectionTaskButton } from "./add-section-task";
@@ -14,7 +20,8 @@ import type { Section } from "./sections";
 
 /**
  * A Project's open Tasks grouped by Section: No section first, left out when it is empty, then
- * each Section's header with its Tasks under it.
+ * each Section's header with its Tasks under it. Dragging a Task past a header moves it into
+ * that Section, and above the first one into No section.
  */
 export function SectionedTasks({
   trees,
@@ -23,29 +30,45 @@ export function SectionedTasks({
   trees: SectionTrees;
   context: SortableRowContext;
 }) {
-  const order = trees.sections.map(({ section }) => section);
-  return (
-    <>
-      {trees.unsectioned.length > 0 && (
-        <Group
-          icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
-          label="No section"
-          count={rootCount(trees.unsectioned)}
-        >
-          <SortableTaskRows tasks={trees.unsectioned} context={context} />
-        </Group>
-      )}
-      {trees.sections.map(({ section, tasks }) => (
-        <SectionTasks
-          key={section.id}
-          section={section}
-          tasks={tasks}
-          order={order}
-          context={context}
-        />
-      ))}
-    </>
+  const order = useMemo(() => trees.sections.map(({ section }) => section), [trees]);
+  const groups = useMemo<TaskGroup[]>(
+    () => [
+      { sectionId: null, tasks: trees.unsectioned },
+      ...trees.sections.map(({ section, tasks }) => ({ sectionId: section.id, tasks })),
+    ],
+    [trees],
   );
+  const renderGroup = useCallback<RenderTaskGroup>(
+    ({ sectionId, tasks }, header, rows) => {
+      const section = order.find(({ id }) => id === sectionId);
+      if (!section) {
+        return (
+          tasks.length > 0 && (
+            <Group
+              icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
+              label="No section"
+              count={rootCount(tasks)}
+            >
+              {rows}
+            </Group>
+          )
+        );
+      }
+      return (
+        <SectionTasks
+          section={section}
+          count={rootCount(tasks)}
+          order={order}
+          header={header}
+          editable={context.sortable}
+        >
+          {rows}
+        </SectionTasks>
+      );
+    },
+    [order, context.sortable],
+  );
+  return <SortableTaskGroups groups={groups} renderGroup={renderGroup} context={context} />;
 }
 
 /**
@@ -54,24 +77,31 @@ export function SectionedTasks({
  */
 function SectionTasks({
   section,
-  tasks,
+  count,
   order,
-  context,
+  header,
+  editable,
+  children,
 }: {
   section: Section;
-  tasks: SectionTrees["unsectioned"];
+  count: number;
   order: Section[];
-  context: SortableRowContext;
+  header: GroupHeader | null;
+  /** False where the list can't change, as in an archived Project. */
+  editable: boolean;
+  /** The Section's Task rows. */
+  children: ReactNode;
 }) {
   const [adding, setAdding] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   return (
     <SectionGroup
       section={section}
-      count={rootCount(tasks)}
-      readOnly={!context.sortable}
+      count={count}
+      readOnly={!editable}
+      header={header}
       actions={
-        context.sortable && (
+        editable && (
           <>
             <AddSectionTaskButton
               section={section}
@@ -107,7 +137,7 @@ function SectionTasks({
           }}
         />
       )}
-      {tasks.length > 0 && <SortableTaskRows tasks={tasks} context={context} />}
+      {children}
     </SectionGroup>
   );
 }

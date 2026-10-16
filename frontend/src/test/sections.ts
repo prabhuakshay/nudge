@@ -1,6 +1,7 @@
 import { screen, within } from "@testing-library/react";
 
 import type { Section } from "@/features/sections/sections";
+import { moveRow } from "@/features/tasks/task-drag";
 import type { Task } from "@/features/tasks/tasks";
 import { INBOX, WORK, json } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
@@ -27,9 +28,22 @@ function placedAfter(sections: Section[], movedId: number, afterId: number | nul
   return section ? [...rest.slice(0, at), section, ...rest.slice(at)] : rest;
 }
 
+/** A Task move as the client sends it. */
+type MoveBody = { parent_id: number | null; after_id: number | null; section_id?: number | null };
+
+/** The Tasks with one moved as `body` says; a Section left out stays as it was. */
+function movedTask(tasks: Task[], movedId: number, body: MoveBody) {
+  const placement = { parentId: body.parent_id, afterId: body.after_id };
+  return moveRow(tasks, movedId, placement).map((task) =>
+    task.id === movedId && body.section_id !== undefined
+      ? { ...task, section_id: body.section_id }
+      : task,
+  );
+}
+
 /**
  * A stand-in server holding a Project's Sections and open Tasks; it adds, changes, moves and
- * deletes Sections, and adds Tasks.
+ * deletes Sections, and adds and moves Tasks.
  */
 export function mockApi({
   sections = [TO_DO, DOING],
@@ -69,6 +83,12 @@ export function mockApi({
       const created = makeTask({ id: nextId++, project_id: WORK.id, ...body });
       open = [created, ...open];
       return json(created, 201);
+    }
+    const moved = /^\/api\/v1\/tasks\/(\d+)\/move$/.exec(url.pathname);
+    if (moved) {
+      const id = Number(moved[1]);
+      open = movedTask(open, id, (await request.clone().json()) as MoveBody);
+      return json({ task: makeTask({ id }), affected: [] });
     }
     if (url.pathname.startsWith("/api/v1/sections/")) return changeSection(request, url.pathname);
     if (url.pathname.endsWith("/sections")) return json(sections);

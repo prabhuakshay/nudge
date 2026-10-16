@@ -1,7 +1,12 @@
-import { useCallback, useMemo } from "react";
+import { Fragment, useCallback, useMemo, type ReactNode } from "react";
 import { toast } from "sonner";
 
-import { SortableTree, type SortableRowProps } from "./sortable-tree";
+import {
+  SortableTree,
+  type GroupHeader,
+  type RenderGroup,
+  type SortableRowProps,
+} from "./sortable-tree";
 import {
   indentPlacement,
   nudgePlacement,
@@ -21,8 +26,22 @@ export type SortableRowContext = RowContext & {
   touch: boolean;
   /** False where the rows can't change, as in an archived Project. */
   sortable: boolean;
-  onMove: (taskId: number, placement: Placement) => void;
+  /** `sectionId` is the Section a top-level drop lands in, when the list has Sections. */
+  onMove: (taskId: number, placement: Placement, sectionId?: number | null) => void;
 };
+
+/**
+ * A run of Task trees in a sortable list. In a Project with Sections each Section is one, and
+ * `sectionId` says which: null for No section.
+ */
+export type TaskGroup = { sectionId?: number | null; tasks: Task[] };
+
+/** Draws one group: its `rows`, under its draggable-past `header` when it has one. */
+export type RenderTaskGroup = (
+  group: TaskGroup,
+  header: GroupHeader | null,
+  rows: ReactNode,
+) => ReactNode;
 
 /** A Project's roots sit at the top, and may nest down to the fourth level. */
 const PROJECT_TREE: TreeBase = { parentId: null, maxLevel: MAX_DEPTH };
@@ -53,10 +72,46 @@ export function SortableTaskRows({
   tasks: Task[];
   context: SortableRowContext;
 }) {
-  const rows = useMemo(() => treeRows(tasks, context.collapsed), [tasks, context.collapsed]);
-  const { onMove } = context;
+  const groups = useMemo(() => [{ tasks }], [tasks]);
+  return <SortableTaskGroups groups={groups} renderGroup={justRows} context={context} />;
+}
+
+const justRows: RenderTaskGroup = (_group, _header, rows) => rows;
+
+/**
+ * Groups of Task trees, such as a Project's Sections, as one sortable list: a row dragged past a
+ * group's header moves into that group. Tab, Shift+Tab and Alt+↑/↓ keep a row in its group.
+ * Where rows can't change, they are plain table rows.
+ */
+export function SortableTaskGroups({
+  groups,
+  renderGroup,
+  context,
+}: {
+  groups: TaskGroup[];
+  renderGroup: RenderTaskGroup;
+  context: SortableRowContext;
+}) {
+  const { collapsed, onMove } = context;
+  const outline = useMemo(
+    () =>
+      groups.map(({ sectionId, tasks }) => ({
+        id: `section-${String(sectionId ?? "none")}`,
+        rows: treeRows(tasks, collapsed),
+      })),
+    [groups, collapsed],
+  );
+  // A Task that ends up at the top level takes its group's Section; a Subtask follows its root.
+  const moveInto = useCallback(
+    (taskId: number, placement: Placement, group: TaskGroup | undefined) => {
+      onMove(taskId, placement, placement.parentId === null ? group?.sectionId : undefined);
+    },
+    [onMove],
+  );
   const moveByKey = useCallback<MoveByKey>(
     (taskId, move) => {
+      const group = groups.find(({ tasks }) => tasks.some((task) => task.id === taskId));
+      const tasks = group?.tasks ?? [];
       const placement = keyPlacement(tasks, taskId, move);
       if (!placement) return;
       const parent = tasks.find((task) => task.id === placement.parentId);
@@ -65,9 +120,9 @@ export function SortableTaskRows({
         toast.error(TOO_DEEP);
         return;
       }
-      onMove(taskId, placement);
+      moveInto(taskId, placement, group);
     },
-    [tasks, onMove],
+    [groups, moveInto],
   );
   // Stable between drag steps, so rows that don't move skip rendering.
   const renderRow = useCallback(
@@ -92,14 +147,30 @@ export function SortableTaskRows({
     ),
     [context, moveByKey],
   );
-  if (!context.sortable) return <TreeRows rows={rows} context={context} />;
+  const drawGroup = useCallback<RenderGroup>(
+    (index, header, rows) => {
+      const group = groups[index];
+      return group && renderGroup(group, header, rows);
+    },
+    [groups, renderGroup],
+  );
+  if (!context.sortable) {
+    return outline.map(({ id, rows }, index) => (
+      <Fragment key={id}>
+        {drawGroup(index, null, <TreeRows rows={rows} context={context} />)}
+      </Fragment>
+    ));
+  }
   return (
     <SortableTree
-      rows={rows}
+      groups={outline}
       base={PROJECT_TREE}
       indent={context.indent}
       renderRow={renderRow}
-      onMove={onMove}
+      renderGroup={drawGroup}
+      onMove={(taskId, placement, index) => {
+        moveInto(taskId, placement, groups[index]);
+      }}
     />
   );
 }

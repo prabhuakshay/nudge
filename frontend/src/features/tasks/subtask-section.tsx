@@ -36,6 +36,7 @@ export function SubtaskSection({
   onOpen: (taskId: number) => void;
 }) {
   const rows = useMemo(() => treeRows(task.subtasks), [task.subtasks]);
+  const groups = useMemo(() => [{ id: "subtasks", rows }], [rows]);
   const direct = rows.filter((row) => row.level === 0);
   const done = direct.filter((row) => isClosed(row.task.status)).length;
   const base = useMemo(
@@ -80,7 +81,7 @@ export function SubtaskSection({
         {rows.length > 0 && (
           <div role="list" className="divide-y divide-border/70">
             <SortableTree
-              rows={rows}
+              groups={groups}
               base={base}
               indent={INDENT}
               renderRow={renderRow}

@@ -1,6 +1,7 @@
 import {
   KeyboardSensor,
   PointerSensor,
+  type KeyboardSensorOptions,
   TouchSensor,
   useSensor,
   useSensors,
@@ -25,12 +26,16 @@ const POINTER = { activationConstraint: { distance: 5 } };
 const TOUCH = { activationConstraint: { delay: 220, tolerance: 6 } };
 const KEYBOARD = { coordinateGetter: sortableKeyboardCoordinates };
 
-/** Drags start after a 5 px mouse move, a press and hold on touch, or Space or Enter on a grip. */
-export function useDragSensors() {
+/**
+ * Drags start after a 5 px mouse move, a press and hold on touch, or Space or Enter on a grip.
+ * The arrow keys then step through a sortable list, or as `keyboard` says. Pass a module
+ * constant, for the same reason as above.
+ */
+export function useDragSensors(keyboard: KeyboardSensorOptions = KEYBOARD) {
   return useSensors(
     useSensor(PointerSensor, POINTER),
     useSensor(TouchSensor, TOUCH),
-    useSensor(KeyboardSensor, KEYBOARD),
+    useSensor(KeyboardSensor, keyboard),
   );
 }
 

@@ -1,3 +1,4 @@
+import { useDroppable } from "@dnd-kit/core";
 import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 
@@ -7,6 +8,7 @@ import type { Task } from "@/features/tasks/tasks";
 import { plural } from "@/features/trash/trash";
 import { cn } from "@/lib/utils";
 
+import { DraggableMatrixCard } from "./matrix-drag";
 import { QuadrantAddTask } from "./quadrant-add-task";
 import { QUADRANT_LABEL, type Quadrant } from "./quadrants";
 
@@ -21,9 +23,13 @@ const ACCENT: Record<Quadrant, string> = {
 /** Whether a phone's Quadrant is folded away, and what folds or opens it. */
 export type QuadrantFold = { collapsed: boolean; onToggle: () => void };
 
+/** That a Quadrant's cards drag inside `MatrixDrag`, and whether it would take the one dragged. */
+export type QuadrantDrop = { accepts: boolean };
+
 /**
  * One Quadrant of the Matrix: its label and how many Tasks it holds, then its Tasks as cards, or
- * a line saying it is empty, and Quick add for adding one there. Given `fold`, as on a phone, its heading folds it away.
+ * a line saying it is empty, and Quick add for adding one there. Given `fold`, as on a phone, its
+ * heading folds it away. Given `drop`, its cards drag and it takes dropped ones.
  */
 export function QuadrantSection({
   quadrant,
@@ -33,6 +39,7 @@ export function QuadrantSection({
   onOpen,
   onToggle,
   fold,
+  drop,
 }: {
   quadrant: Quadrant;
   tasks: Task[];
@@ -44,7 +51,11 @@ export function QuadrantSection({
   onToggle: (task: Task) => void;
   /** Left out in the grid, where every Quadrant shows. */
   fold?: QuadrantFold;
+  /** Left out on phones, where Priority changes in the drawer and touch scrolls the page. */
+  drop?: QuadrantDrop;
 }) {
+  const { setNodeRef } = useDroppable({ id: quadrant, disabled: !drop });
+  const Card = drop ? DraggableMatrixCard : BoardCard;
   const label = QUADRANT_LABEL[quadrant];
   const labelId = `quadrant-${quadrant}`;
   const heading = (
@@ -59,8 +70,12 @@ export function QuadrantSection({
   );
   return (
     <section
+      ref={setNodeRef}
       aria-labelledby={labelId}
-      className="flex min-w-0 flex-col rounded-xl border border-border/60 bg-surface-muted/60"
+      className={cn(
+        "flex min-w-0 flex-col rounded-xl border border-border/60 bg-surface-muted/60 transition-colors",
+        drop?.accepts && "border-primary/60 bg-primary-soft/40",
+      )}
     >
       <h2 className="flex h-10 text-sm font-semibold">
         {fold ? (
@@ -74,7 +89,7 @@ export function QuadrantSection({
       ) : (
         <ul aria-label={`${label} tasks`} className="flex flex-col gap-2 px-2 pb-2">
           {flatRows(tasks).map((card, index) => (
-            <BoardCard
+            <Card
               key={card.task.id}
               card={card}
               place={{ index, count: tasks.length, column: label }}

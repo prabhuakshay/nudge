@@ -63,6 +63,27 @@ export function renderMatrix({ wide = true } = {}) {
   return renderListRoute(<MatrixView inbox={INBOX} timeZone="Europe/London" />);
 }
 
+/**
+ * jsdom lays nothing out, so place the Quadrants in their 2×2 grid and stack each one's cards
+ * down it for dnd-kit to measure. The drag preview floats outside the grid, so it sits where the
+ * focused grip's card is.
+ */
+export function layOutMatrix() {
+  const QUADRANT = 'section[aria-labelledby^="quadrant-"]';
+  vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (this: Element) {
+    const target = this.closest(QUADRANT) ? this : document.activeElement;
+    const section = target?.closest(QUADRANT);
+    if (!target || !section) return new DOMRect(0, 0, 0, 0);
+    const index = [...document.querySelectorAll(QUADRANT)].indexOf(section);
+    const left = (index % 2) * 500;
+    const top = Math.floor(index / 2) * 400;
+    const card = target.closest("li");
+    if (!card) return new DOMRect(left, top, 480, 380);
+    const below = [...section.querySelectorAll("li")].indexOf(card) * 60;
+    return new DOMRect(left + 10, top + 40 + below, 460, 50);
+  });
+}
+
 /** A Quadrant's region, by its label. */
 export function quadrant(label: string) {
   return screen.getByRole("region", { name: label });

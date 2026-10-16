@@ -143,7 +143,7 @@ export function SortableBoardCard(props: Omit<BoardCardProps, "drag">) {
 }
 
 /** What is under the pointer while dragging: a card's title, or a column header's name. */
-function DragPreview({ title, column = false }: { title: string; column?: boolean }) {
+export function DragPreview({ title, column = false }: { title: string; column?: boolean }) {
   return (
     <div
       className={cn(

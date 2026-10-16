@@ -12,8 +12,9 @@ import { viewTasksQuery, type SidebarProject, type Task } from "@/features/tasks
 import { useMediaQuery } from "@/lib/use-media-query";
 
 import { useCollapsedQuadrants } from "./collapsed-quadrants";
+import { MatrixDrag } from "./matrix-drag";
 import { QuadrantSection } from "./quadrant-section";
-import { matrixQuadrants, QUADRANTS } from "./quadrants";
+import { matrixQuadrants, QUADRANTS, type Quadrant } from "./quadrants";
 
 /**
  * The Matrix: every open root Task All shows, sorted into four Quadrants by whether it is
@@ -43,6 +44,33 @@ export function MatrixView({
     },
     [setStatus],
   );
+  // Phones fold the Quadrants instead of dragging between them.
+  const grid = (target: Quadrant | null) => (
+    <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2">
+      {QUADRANTS.map((id) => (
+        <QuadrantSection
+          key={id}
+          quadrant={id}
+          tasks={quadrants[id]}
+          today={today}
+          openId={openTaskId}
+          onOpen={setOpenTask}
+          onToggle={toggle}
+          fold={
+            wide
+              ? undefined
+              : {
+                  collapsed: folds.collapsed.includes(id),
+                  onToggle: () => {
+                    folds.toggle(id);
+                  },
+                }
+          }
+          drop={wide ? { accepts: target === id } : undefined}
+        />
+      ))}
+    </div>
+  );
 
   return (
     // `data-wide` lets the app shell drop its reading width for the grid.
@@ -57,29 +85,7 @@ export function MatrixView({
         </Badge>
       </header>
 
-      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2">
-        {QUADRANTS.map((id) => (
-          <QuadrantSection
-            key={id}
-            quadrant={id}
-            tasks={quadrants[id]}
-            today={today}
-            openId={openTaskId}
-            onOpen={setOpenTask}
-            onToggle={toggle}
-            fold={
-              wide
-                ? undefined
-                : {
-                    collapsed: folds.collapsed.includes(id),
-                    onToggle: () => {
-                      folds.toggle(id);
-                    },
-                  }
-            }
-          />
-        ))}
-      </div>
+      {wide ? <MatrixDrag quadrants={quadrants}>{grid}</MatrixDrag> : grid(null)}
 
       <TaskDetail
         taskId={openTaskId}

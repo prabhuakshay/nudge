@@ -1,4 +1,4 @@
-import { addDays } from "@/features/tasks/schedule";
+import { addDays, startsOn } from "@/features/tasks/schedule";
 import type { Task } from "@/features/tasks/tasks";
 
 /** The Matrix's four Quadrants, Important on top and Urgent on the left, in reading order. */
@@ -16,7 +16,7 @@ function isImportant(task: Task): boolean {
  * on or before tomorrow. A Task with no date never presses.
  */
 function isUrgent(task: Task, today: string): boolean {
-  const from = task.start_date ?? task.due_date;
+  const from = startsOn(task);
   return task.is_overdue || (from !== null && from <= addDays(today, 1));
 }
 
@@ -49,8 +49,8 @@ function priorityRank(task: Task): number {
 function byPinThenDateThenPriority(a: Task, b: Task): number {
   const pinned = Number(b.pinned_at !== null) - Number(a.pinned_at !== null);
   if (pinned !== 0) return pinned;
-  const aDate = a.start_date ?? a.due_date;
-  const bDate = b.start_date ?? b.due_date;
+  const aDate = startsOn(a);
+  const bDate = startsOn(b);
   if (aDate !== bDate) {
     if (aDate === null) return 1;
     if (bDate === null) return -1;

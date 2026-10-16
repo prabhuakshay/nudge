@@ -4,6 +4,7 @@ import type { Person } from "@/features/people/people";
 import { splitMentions } from "@/features/people/mentions";
 
 import type { QuickAdd, QuickAddTag } from "./quick-add";
+import { startsOn } from "./schedule";
 import type { DatesIn, NewTask, SidebarProject, Task, TaskPriority } from "./tasks";
 
 /** The list Quick add sits above. */
@@ -123,7 +124,7 @@ type DateView = Extract<QuickAddView, { kind: "calendar" | "today" | "upcoming" 
 
 /** Whether a Task shows in a view chosen by the date its dates begin on. */
 function showsOnDate(view: DateView, task: Task): boolean {
-  const from = task.start_date ?? task.due_date;
+  const from = startsOn(task);
   if (from === null) return false;
   switch (view.kind) {
     case "calendar":

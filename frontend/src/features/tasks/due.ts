@@ -1,5 +1,6 @@
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
 
+import { startsOn } from "./schedule";
 import type { Task } from "./tasks";
 
 /**
@@ -75,8 +76,9 @@ export function describeDates(dates: Dates): string {
  */
 export function dueTone(dates: Dates & Pick<Task, "is_overdue">, now: Date): DueTone {
   if (dates.is_overdue) return "overdue";
-  if (dates.due_date === null) return "later";
-  const starts = differenceInCalendarDays(parseISO(dates.start_date ?? dates.due_date), now);
+  const from = startsOn(dates);
+  if (from === null) return "later";
+  const starts = differenceInCalendarDays(parseISO(from), now);
   const diff = Math.max(starts, 0);
   if (diff === 0) return "today";
   if (diff === 1) return "tomorrow";

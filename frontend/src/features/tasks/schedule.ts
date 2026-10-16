@@ -38,12 +38,17 @@ export function addDays(date: string, days: number): string {
   return format(addCalendarDays(parseISO(date), days), "yyyy-MM-dd");
 }
 
+/** The date a Task's dates begin on: a range's start, otherwise its due date, if it has one. */
+export function startsOn(dates: Pick<Task, "start_date" | "due_date">): string | null {
+  return dates.start_date ?? dates.due_date;
+}
+
 /** A heading in Upcoming and the Tasks under it, in the server's order. */
 export type UpcomingGroup = { key: string; label: string; hint: string | null; tasks: Task[] };
 
 function groupOf(task: Task, today: string): Omit<UpcomingGroup, "tasks"> {
   // Only dated Tasks get here; a range goes on the day it starts.
-  const date = parseISO(task.start_date ?? task.due_date ?? today);
+  const date = parseISO(startsOn(task) ?? today);
   const days = differenceInCalendarDays(date, parseISO(today));
   if (days <= DAYS_BY_NAME) {
     const label = days === 1 ? "Tomorrow" : format(date, "EEEE");
@@ -82,7 +87,7 @@ export type AllSections = { overdue: Task[]; today: Task[]; later: Task[]; undat
 export function allSections(tasks: Task[], today: string): AllSections {
   const sections: AllSections = { overdue: [], today: [], later: [], undated: [] };
   for (const task of tasks) {
-    const from = task.start_date ?? task.due_date;
+    const from = startsOn(task);
     if (task.is_overdue) sections.overdue.push(task);
     else if (from === null) sections.undated.push(task);
     else if (from <= today) sections.today.push(task);

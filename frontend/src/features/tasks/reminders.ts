@@ -1,6 +1,7 @@
 import { format, parseISO } from "date-fns";
 
 import type { Dates } from "./due";
+import { startsOn } from "./schedule";
 import type { DatesIn } from "./tasks";
 
 /*
@@ -70,7 +71,7 @@ export function remindersLabel(offsets: number[], allDay: boolean): string {
  * instant, as on the server, so "09:00 the day before" stays 09:00 across a daylight saving change.
  */
 export function fireTime(dates: Dates, offset: number): Date | null {
-  const day = dates.start_date ?? dates.due_date;
+  const day = startsOn(dates);
   if (day === null) return null;
   const time = (dates.start_date === null ? dates.due_time : dates.start_time) ?? "00:00";
   const anchor = parseISO(`${day}T${time}`);

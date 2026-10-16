@@ -11,6 +11,7 @@ import {
 } from "date-fns";
 
 import type { Dates } from "@/features/tasks/due";
+import { startsOn } from "@/features/tasks/schedule";
 
 /*
  * Pure layout for the Calendar: which days a grid shows and which Tasks fall on each. Days are ISO
@@ -56,8 +57,9 @@ export function shiftDays(date: string, days: number): string {
 
 /** Whether a Task's dates cover a day: its due date, or every day of its range. */
 export function coversDay(dates: Dates, day: string): boolean {
-  if (dates.due_date === null) return false;
-  return (dates.start_date ?? dates.due_date) <= day && day <= dates.due_date;
+  const from = startsOn(dates);
+  if (from === null || dates.due_date === null) return false;
+  return from <= day && day <= dates.due_date;
 }
 
 /** The Tasks whose dates cover a day, in the order given. */

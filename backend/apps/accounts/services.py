@@ -60,7 +60,7 @@ def set_single_key_shortcuts(user: User, *, enabled: bool) -> User:
     return user
 
 
-def collapse_sidebar_sections(
+def set_sidebar_sections(
     user: User,
     *,
     projects: bool | None = None,

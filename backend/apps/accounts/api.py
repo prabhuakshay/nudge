@@ -32,7 +32,7 @@ from apps.accounts.schemas import (
 from apps.accounts.services import (
     PasswordChangeError,
     change_password,
-    collapse_sidebar_sections,
+    set_sidebar_sections,
     set_single_key_shortcuts,
     set_time_zone,
     update_profile,
@@ -158,7 +158,7 @@ def shortcuts(request: HttpRequest, changes: ShortcutsIn) -> Status[UserOut]:
 )
 def sidebar_sections(request: HttpRequest, changes: SidebarSectionsIn) -> Status[UserOut]:
     """Collapse or expand the signed-in user's sidebar sections and return the updated user."""
-    user = collapse_sidebar_sections(
+    user = set_sidebar_sections(
         signed_in_user(request),
         projects=changes.projects_collapsed,
         tags=changes.tags_collapsed,

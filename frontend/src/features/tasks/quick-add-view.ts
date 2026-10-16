@@ -32,10 +32,10 @@ function todayChip(today: string): ViewDefault {
 
 /** A Quadrant's chips: its Priority, then today. */
 function quadrantDefaults(view: Extract<QuickAddView, { kind: "quadrant" }>): ViewDefault[] {
-  return [
-    ...(view.priority === null ? [] : [{ kind: "priority", priority: view.priority } as const]),
-    ...(view.today === null ? [] : [todayChip(view.today)]),
-  ];
+  const chips: ViewDefault[] = [];
+  if (view.priority !== null) chips.push({ kind: "priority", priority: view.priority });
+  if (view.today !== null) chips.push(todayChip(view.today));
+  return chips;
 }
 
 /**

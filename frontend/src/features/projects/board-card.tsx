@@ -6,6 +6,7 @@ import { plainMentions } from "@/features/people/mentions";
 import { TagBadge } from "@/features/tags/tag-badge";
 import { DueBadge } from "@/features/tasks/due-badge";
 import { Grip } from "@/features/tasks/row-grip";
+import { pressToDrag } from "@/features/tasks/sortable-handle";
 import type { DragHandle } from "@/features/tasks/sortable-tree";
 import { SubtaskCount } from "@/features/tasks/subtask-count";
 import { TaskActionsMenu } from "@/features/tasks/task-actions";
@@ -57,8 +58,7 @@ function dragProps(drag: CardDrag | undefined) {
       if (touch) handle.setNode(node);
     },
     style: drag.style,
-    onPointerDown: touch ? undefined : handle.onPointerDown,
-    onTouchStart: touch ? handle.onTouchStart : undefined,
+    ...pressToDrag(handle, touch),
   };
 }
 

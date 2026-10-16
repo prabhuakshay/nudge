@@ -7,6 +7,7 @@ import { SectionMenu } from "@/features/sections/section-menu";
 import { SectionNameField } from "@/features/sections/section-name-field";
 import { sectionName, useUpdateSection, type Section } from "@/features/sections/sections";
 import { Grip } from "@/features/tasks/row-grip";
+import { pressToDrag } from "@/features/tasks/sortable-handle";
 import type { DragHandle } from "@/features/tasks/sortable-tree";
 import { cn } from "@/lib/utils";
 
@@ -44,17 +45,6 @@ type SectionColumnHeaderProps = {
   drag?: { handle: DragHandle; touch: boolean } | undefined;
 };
 
-/**
- * What makes a header drag its column: a press on it, after a 5 px move or a press and hold on
- * touch screens, as on a card.
- */
-function dragProps(drag: SectionColumnHeaderProps["drag"]) {
-  if (!drag) return {};
-  return drag.touch
-    ? { onTouchStart: drag.handle.onTouchStart }
-    : { onPointerDown: drag.handle.onPointerDown };
-}
-
 /** How many Tasks a column holds. */
 function ColumnCount({ count }: { count: number }) {
   return (
@@ -79,7 +69,7 @@ function SectionColumnHeader({ section, order, count, readOnly, drag }: SectionC
 
   return (
     <header
-      {...dragProps(dragging)}
+      {...(dragging && pressToDrag(dragging.handle, dragging.touch))}
       className={cn(
         "group/row relative flex items-center gap-2",
         dragging && "select-none [-webkit-touch-callout:none]",

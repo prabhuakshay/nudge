@@ -54,6 +54,14 @@ function ownPresses<E extends SyntheticEvent>(handler: ((event: E) => void) | un
 }
 
 /**
+ * The press handler that starts a drag from anywhere on an element: a mouse press, or a press and
+ * hold on touch screens.
+ */
+export function pressToDrag(handle: DragHandle, touch: boolean) {
+  return touch ? { onTouchStart: handle.onTouchStart } : { onPointerDown: handle.onPointerDown };
+}
+
+/**
  * What a sortable item drags with: the handle that starts the drag, and the node and style that
  * move with it.
  */

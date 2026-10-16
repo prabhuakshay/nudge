@@ -2306,7 +2306,7 @@
             }
           }
         },
-        "description": "Add a Task first in its Project, or in the Inbox when no Project is given.\n\nWith `parent_id` it is added last under that Task instead, which reopens the parent and its\nancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are\ncreated with the Task. A dated top-level Task can repeat from the start.",
+        "description": "Add a Task first in its Project, or in the Inbox when no Project is given.\n\nWith `last` it goes last among the Project's top-level Tasks instead. With `parent_id` it is\nadded last under that Task, which reopens the parent and its ancestors if they are Closed.\nTags named in `tags` that the user doesn't have yet are created with the Task. A dated\ntop-level Task can repeat from the start.",
         "tags": [
           "tasks"
         ],
@@ -6145,6 +6145,18 @@
               }
             ],
             "description": "What a repeating Task's next date counts from; the calendar when left out."
+          },
+          "last": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Adds the Task last among its Project's top-level Tasks instead of first, as a Board column adds at its bottom. Ignored for a Subtask, which is always added last.",
+            "title": "Last"
           }
         },
         "required": [

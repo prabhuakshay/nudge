@@ -91,9 +91,10 @@ def list_tasks(
 def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[ErrorOut]:
     """Add a Task first in its Project, or in the Inbox when no Project is given.
 
-    With `parent_id` it is added last under that Task instead, which reopens the parent and its
-    ancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are
-    created with the Task. A dated top-level Task can repeat from the start.
+    With `last` it goes last among the Project's top-level Tasks instead. With `parent_id` it is
+    added last under that Task, which reopens the parent and its ancestors if they are Closed.
+    Tags named in `tags` that the user doesn't have yet are created with the Task. A dated
+    top-level Task can repeat from the start.
     """
     user = signed_in_user(request)
     picked = tags.owned_tags(user, task.tag_ids)
@@ -120,7 +121,7 @@ def _create_root(
     )
     if project is None:
         return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
-    new = replace(_new_task(task, with_tags), section=section)
+    new = replace(_new_task(task, with_tags), section=section, last=bool(task.last))
     created = creation.create_task(project, task.title, new)
     return Status(HTTPStatus.CREATED, TaskOut.from_orm(created))
 

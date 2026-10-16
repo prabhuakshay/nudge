@@ -196,6 +196,11 @@ class TaskIn(Schema):
         default=None,
         description="What a repeating Task's next date counts from; the calendar when left out.",
     )
+    last: bool | None = Field(
+        default=None,
+        description="Adds the Task last among its Project's top-level Tasks instead of first, as "
+        "a Board column adds at its bottom. Ignored for a Subtask, which is always added last.",
+    )
 
 
 class TaskPatchIn(Schema):

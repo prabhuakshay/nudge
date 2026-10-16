@@ -6,6 +6,7 @@ import { plainMentions } from "@/features/people/mentions";
 import { TagBadge } from "@/features/tags/tag-badge";
 import { DueBadge } from "@/features/tasks/due-badge";
 import { SubtaskCount } from "@/features/tasks/subtask-count";
+import { TaskActionsMenu } from "@/features/tasks/task-actions";
 import { TaskCheckbox } from "@/features/tasks/task-checkbox";
 import { PriorityFlag } from "@/features/tasks/task-priority";
 import type { TreeRow } from "@/features/tasks/task-tree";
@@ -15,7 +16,7 @@ import { cn } from "@/lib/utils";
 /**
  * A root Task on the Board: its checkbox and title, then its Priority, date, Tags and Subtask
  * progress. The title's button stretches over the whole card, so a click anywhere opens the Task
- * while the checkbox above it closes it. Memoized so a change to one card leaves the others alone.
+ * while the checkbox and ⋯ menu above it close or move it. Memoized so a change to one card leaves the others alone.
  */
 export const BoardCard = memo(function BoardCard({
   card: { task, subtasks },
@@ -69,6 +70,7 @@ export const BoardCard = memo(function BoardCard({
             aria-label="Pinned"
           />
         )}
+        <TaskActionsMenu task={task} readOnly={readOnly} className="z-10 -my-1.5 -mr-1.5" />
       </div>
       <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 pl-7 empty:hidden">
         <PriorityFlag priority={task.priority} />

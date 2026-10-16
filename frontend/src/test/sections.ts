@@ -65,6 +65,16 @@ export function mockApi({
   project?: SidebarProject;
 }) {
   let nextId = 100;
+  /** Adds the Task a POST describes, first in the Project or last when it asks; its answer. */
+  const createTask = async (request: Request) => {
+    const { last, ...body } = (await request.clone().json()) as Pick<
+      Task,
+      "title" | "section_id"
+    > & { last?: boolean };
+    const created = makeTask({ id: nextId++, project_id: WORK.id, ...body });
+    open = last ? [...open, created] : [created, ...open];
+    return json(created, 201);
+  };
   /** Changes, moves or deletes the Section a `/sections/{id}` request names; its answer. */
   const changeSection = async (request: Request, path: string) => {
     const id = Number(/\/sections\/(\d+)/.exec(path)?.[1]);
@@ -97,12 +107,7 @@ export function mockApi({
       sections = [...sections, created];
       return json(created, 201);
     }
-    if (url.pathname === "/api/v1/tasks" && request.method === "POST") {
-      const body = (await request.clone().json()) as Pick<Task, "title" | "section_id">;
-      const created = makeTask({ id: nextId++, project_id: WORK.id, ...body });
-      open = [created, ...open];
-      return json(created, 201);
-    }
+    if (url.pathname === "/api/v1/tasks" && request.method === "POST") return createTask(request);
     const moved = /^\/api\/v1\/tasks\/(\d+)\/move$/.exec(url.pathname);
     if (moved) {
       const id = Number(moved[1]);

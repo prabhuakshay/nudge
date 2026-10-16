@@ -17,7 +17,7 @@ from apps.tasks.archive import ensure_writable
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import check_mentions, sync_mentions
 from apps.tasks.models import MAX_DEPTH, Tag, Task, TaskActivity
-from apps.tasks.positions import first_root_position, lock_project
+from apps.tasks.positions import first_root_position, last_root_position, lock_project
 from apps.tasks.repeat import SUBTASK_REPEAT, Repeat, RepeatRuleError
 from apps.tasks.rows import as_rows, with_overdue
 from apps.tasks.sections import NOT_IN_THIS_PROJECT, SectionRuleError
@@ -37,7 +37,8 @@ class NewTask:
     """What a new Task starts with besides its title; all of it is optional.
 
     `tags` holds Tags, or names of the owner's Tags, which are created if they're new. Only a
-    root Task can repeat or sit in a Section.
+    root Task can repeat or sit in a Section. `last` adds a root Task after its Project's other
+    roots rather than before them.
     """
 
     description: str = ""
@@ -46,10 +47,13 @@ class NewTask:
     tags: Sequence[Tag | str] = ()
     repeat: Repeat | None = None
     section: Section | None = None
+    last: bool = False
 
 
 def create_task(project: Project, title: str, new: NewTask | None = None) -> Task:
-    """Create a Task in the Project, first among its roots, owned by the Project's owner.
+    """Create a Task in the Project, owned by the Project's owner.
+
+    It goes first among the Project's roots, or last when `new.last` is set.
 
     Raises:
         ArchivedProjectError: The Project is archived.
@@ -63,7 +67,8 @@ def create_task(project: Project, title: str, new: NewTask | None = None) -> Tas
         raise SectionRuleError(NOT_IN_THIS_PROJECT)
     check_mentions(project.owner, title)
     with transaction.atomic():
-        task = _insert(project, title, new, position=first_root_position(project))
+        position = last_root_position(project) if new.last else first_root_position(project)
+        task = _insert(project, title, new, position=position)
         if new.repeat is not None:
             repeat.start(task, new.repeat.rule, Task.RepeatFrom(new.repeat.repeat_from))
     return with_overdue(project.tasks.all(), project.owner).get(pk=task.pk)

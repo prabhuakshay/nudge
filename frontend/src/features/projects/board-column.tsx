@@ -2,6 +2,7 @@ import type { Section } from "@/features/sections/sections";
 import type { TreeRow } from "@/features/tasks/task-tree";
 import type { Task } from "@/features/tasks/tasks";
 
+import { BoardAddTask } from "./board-add-task";
 import { BoardCard } from "./board-card";
 import { BoardClosedFold } from "./board-closed";
 
@@ -10,9 +11,9 @@ export type BoardColumnCards = { section: Section | null; cards: TreeRow[] };
 
 /**
  * A Board column: the Section's name and how many Tasks it holds, then its cards, Pinned ones
- * first as the server lists them. Labelled with its place on the Board for screen readers. On
- * phones it fills most of the Board's width and snaps into place as the Board scrolls. A
- * collapsed fold of the column's Closed Tasks ends it.
+ * first as the server lists them, then a control to add a Task at the bottom and a collapsed
+ * fold of its Closed Tasks. Labelled with its place on the Board for screen readers. On phones it
+ * fills most of the Board's width and snaps into place as the Board scrolls.
  */
 export function BoardColumn({
   projectId,
@@ -65,6 +66,7 @@ export function BoardColumn({
           ))}
         </ul>
       )}
+      {!readOnly && <BoardAddTask projectId={projectId} section={section} />}
       <BoardClosedFold
         projectId={projectId}
         section={section}

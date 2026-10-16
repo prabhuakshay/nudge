@@ -15,6 +15,11 @@ export const SECTION_NAME_MAX_LENGTH = 64;
 /** The key prefix of every Project's Sections, kept apart from Tasks so Task changes skip them. */
 export const SECTIONS_KEY = ["sections"] as const;
 
+/** The name of a control that adds a Task to the Section, or to No section for null. */
+export function addTaskLabel(section: Section | null) {
+  return `Add a task to ${section?.name ?? "No section"}`;
+}
+
 /** A Project's Sections in order. The Inbox has none, so don't ask for its. */
 export function sectionsQuery(projectId: number) {
   return queryOptions({

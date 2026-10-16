@@ -27,3 +27,12 @@ class SectionIn(Schema):
         default=None,
         description="The Section it follows in the Project; last when left out.",
     )
+
+
+class SectionMoveIn(Schema):
+    """Where a Section goes among its Project's Sections."""
+
+    after_id: int | None = Field(
+        default=None,
+        description="The Section it now follows in the same Project; first when left out.",
+    )

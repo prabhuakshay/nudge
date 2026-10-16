@@ -6,7 +6,9 @@ import { SortableTaskRows, type SortableRowContext } from "@/features/tasks/task
 import { rootCount } from "@/features/tasks/task-tree";
 
 import { AddSectionTask, AddSectionTaskButton } from "./add-section-task";
+import { MoveSectionItems } from "./move-section-items";
 import { SectionGroup } from "./section-group";
+import { SectionMenu } from "./section-menu";
 import type { SectionTrees } from "./section-trees";
 import type { Section } from "./sections";
 
@@ -21,6 +23,7 @@ export function SectionedTasks({
   trees: SectionTrees;
   context: SortableRowContext;
 }) {
+  const order = trees.sections.map(({ section }) => section);
   return (
     <>
       {trees.unsectioned.length > 0 && (
@@ -33,7 +36,13 @@ export function SectionedTasks({
         </Group>
       )}
       {trees.sections.map(({ section, tasks }) => (
-        <SectionTasks key={section.id} section={section} tasks={tasks} context={context} />
+        <SectionTasks
+          key={section.id}
+          section={section}
+          tasks={tasks}
+          order={order}
+          context={context}
+        />
       ))}
     </>
   );
@@ -43,10 +52,12 @@ export function SectionedTasks({
 function SectionTasks({
   section,
   tasks,
+  order,
   context,
 }: {
   section: Section;
   tasks: SectionTrees["unsectioned"];
+  order: Section[];
   context: SortableRowContext;
 }) {
   const [adding, setAdding] = useState(false);
@@ -55,13 +66,20 @@ function SectionTasks({
       section={section}
       count={rootCount(tasks)}
       actions={
-        <AddSectionTaskButton
-          section={section}
-          open={adding}
-          onOpen={() => {
-            setAdding(true);
-          }}
-        />
+        context.sortable && (
+          <>
+            <AddSectionTaskButton
+              section={section}
+              open={adding}
+              onOpen={() => {
+                setAdding(true);
+              }}
+            />
+            <SectionMenu section={section}>
+              <MoveSectionItems section={section} order={order} />
+            </SectionMenu>
+          </>
+        )
       }
     >
       {adding && (

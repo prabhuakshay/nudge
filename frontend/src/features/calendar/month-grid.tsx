@@ -7,6 +7,10 @@ import { cn } from "@/lib/utils";
 
 import { DraggableTask } from "./calendar-drag";
 import { monthWeeks, shiftDays, tasksOn } from "./layout";
+import { MoreTasks } from "./more-tasks";
+
+/** The most Tasks a Month cell lists before the rest go behind "+N more". */
+const CELL_TASKS = 3;
 
 /** How far each arrow key moves the focused day. */
 const ARROW_DAYS: Partial<Record<string, number>> = {
@@ -156,7 +160,7 @@ function DayCell({
       </span>
       {tasks.length > 0 && (
         <ul className="flex min-w-0 flex-col gap-0.5">
-          {tasks.map((task) => (
+          {tasks.slice(0, CELL_TASKS).map((task) => (
             <DraggableTask
               key={task.id}
               task={task}
@@ -167,6 +171,16 @@ function DayCell({
             />
           ))}
         </ul>
+      )}
+      {tasks.length > CELL_TASKS && (
+        <MoreTasks
+          day={day}
+          tasks={tasks}
+          hidden={tasks.length - CELL_TASKS}
+          tabbable={focused}
+          onOpen={onOpen}
+          onToggle={onToggle}
+        />
       )}
     </div>
   );

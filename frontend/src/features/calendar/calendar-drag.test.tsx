@@ -1,6 +1,6 @@
 import { fireEvent, screen, within } from "@testing-library/react";
 
-import { day, mockApi, renderCalendar } from "@/test/calendar";
+import { day, fakeCalendarToday, mockApi, renderCalendar } from "@/test/calendar";
 import { json } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 import { makeTask } from "@/test/tasks";
@@ -46,14 +46,7 @@ function patchesOf(fetchSpy: ReturnType<typeof mockApi>) {
   );
 }
 
-beforeEach(() => {
-  // Thursday 15 October 2026, 10:00 in London.
-  vi.useFakeTimers({ now: new Date("2026-10-15T09:00:00Z"), toFake: ["Date"] });
-});
-
-afterEach(() => {
-  vi.useRealTimers();
-});
+fakeCalendarToday();
 
 describe("CalendarView drag to reschedule in Month mode", () => {
   beforeEach(layOutGrid);

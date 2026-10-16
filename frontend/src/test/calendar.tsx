@@ -1,17 +1,13 @@
+/** Test helpers for the Calendar View: a stand-in server and a router to render it on. */
 import { screen } from "@testing-library/react";
 
-import { CalendarView } from "@/features/calendar/calendar-view";
 import { validateCalendarSearch } from "@/features/calendar/calendar";
+import { CalendarView } from "@/features/calendar/calendar-view";
 import type { NewTask, TaskDetail } from "@/features/tasks/tasks";
 
 import { INBOX, json, renderListRoute, WORK } from "./drawer";
 import { requestOf } from "./fetch";
 import { makeTask } from "./tasks";
-
-/*
- * What the Calendar's component tests share: a stand-in server, the Calendar rendered on a route,
- * and a way to find a day in the grid.
- */
 
 /** A stand-in server: the sidebar, the Calendar's Tasks, each Task's detail and its PATCHes. */
 export function mockApi(tasks: TaskDetail[] = []) {
@@ -45,7 +41,7 @@ export function mockApi(tasks: TaskDetail[] = []) {
   });
 }
 
-/** The search of every Calendar range asked for, in order. */
+/** The query strings of every Calendar range the page asked for. */
 export function calendarRequests(fetchSpy: ReturnType<typeof mockApi>) {
   return fetchSpy.mock.calls
     .map(([input]) => new URL(requestOf(input).url))
@@ -53,7 +49,7 @@ export function calendarRequests(fetchSpy: ReturnType<typeof mockApi>) {
     .map((url) => url.search);
 }
 
-/** The Calendar View on a route at `url`, in London. */
+/** The Calendar View on a test router, at `url`. */
 export function renderCalendar(url = "/") {
   return renderListRoute(<CalendarView inbox={INBOX} timeZone="Europe/London" />, {
     url,
@@ -61,7 +57,17 @@ export function renderCalendar(url = "/") {
   });
 }
 
-/** The grid's day whose label starts with `label`, such as "Thursday 15 October". */
+/** The Month cell whose label starts with `label`. */
 export function day(label: string) {
   return screen.getByRole("gridcell", { name: new RegExp(`^${label}`) });
+}
+
+/** Fixes the clock at Thursday 15 October 2026, 10:00 in London, for every test in the file. */
+export function fakeCalendarToday() {
+  beforeEach(() => {
+    vi.useFakeTimers({ now: new Date("2026-10-15T09:00:00Z"), toFake: ["Date"] });
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+  });
 }

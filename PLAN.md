@@ -93,8 +93,8 @@ The full v1 spec is issue #30.
 - Sign-in page and responsive app shell (done: bottom navigation on phones, sidebar from `lg`)
 
 ### How Nudge differs from TickTick
-- Self-host friendly notifications: Web Push (installable PWA), email, and Apprise/ntfy. (Web Push done: notification center, per-device push setting, test notification; VAPID keys from `.env`.)
-- A private, read-only Calendar feed so Tasks appear in any calendar app. Two-way CalDAV later.
+- Self-host friendly notifications: Web Push (installable PWA) and email. (Web Push done: notification center, per-device push setting, test notification; VAPID keys from `.env`.)
+- A private, read-only Calendar feed so Tasks appear in any calendar app. Two-way CalDAV sync is not planned.
 
 Offline mode is not planned.
 
@@ -103,7 +103,6 @@ Offline mode is not planned.
 - Habits, Pomodoro
 - Matrix view, an Eisenhower matrix (done: #103)
 - Shared Projects and collaboration
-- CalDAV sync
 - Native mobile apps
 
 ## Rules to keep from day one

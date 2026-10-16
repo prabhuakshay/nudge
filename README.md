@@ -25,7 +25,7 @@
   [`.env.example`](.env.example).
 
 Planned for v1: natural-language quick add, projects and tags, repeating tasks, reminders by
-browser push, email and ntfy, and an iCal feed.
+browser push and email, and an iCal feed.
 
 ## Self-hosting
 

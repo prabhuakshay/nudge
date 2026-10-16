@@ -11,13 +11,16 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Literal
 
+from django.db.models import Q, Subquery
 from fractional_indexing import generate_key_between, generate_n_keys_between
 
 from apps.accounts.models import User
-from apps.tasks.models import Project, Section, Task
+from apps.tasks.models import Project, Section, Tag, Task
 
 if TYPE_CHECKING:
     from collections.abc import Callable
+
+    from django.db.models import QuerySet
 
     from apps.tasks.models import Folder
 
@@ -32,6 +35,8 @@ class Siblings[Ref]:
 
     lock: Callable[[], None]
     _ordered: Callable[[], list[tuple[Ref, str]]]
+    before: Callable[[Ref], Ref | None]
+    """Return the sibling right before a row, or None when it's first. It takes no lock."""
 
     def _locked(self, moving: Ref | None = None) -> list[tuple[Ref, str]]:
         """Lock the set and return its siblings in order, leaving out the row being placed."""
@@ -71,12 +76,6 @@ class Siblings[Ref]:
             return key
         return str(generate_key_between(*_gap_after(siblings, clash)))
 
-    def before(self, ref: Ref) -> Ref | None:
-        """Return the sibling right before `ref`, or None when it's first. It takes no lock."""
-        refs = [sibling for sibling, _ in self._ordered()]
-        index = refs.index(ref)
-        return refs[index - 1] if index > 0 else None
-
 
 def _gap_after[Ref](
     siblings: list[tuple[Ref, str]],
@@ -107,36 +106,50 @@ def _lock_user(user: User) -> Callable[[], None]:
     return lock
 
 
+def _before_by_key[Row: (Task, Section, Tag)](
+    rows: QuerySet[Row],
+) -> Callable[[int], int | None]:
+    """Return a lookup of the row right before another, in one query however big the set is."""
+
+    def before(ref: int) -> int | None:
+        key = Subquery(rows.filter(pk=ref).values("position")[:1])
+        earlier = rows.filter(Q(position__lt=key) | Q(position=key, pk__lt=ref))
+        return earlier.order_by("-position", "-id").values_list("pk", flat=True).first()
+
+    return before
+
+
 def task_siblings(project_id: int, parent_id: int | None) -> Siblings[int]:
     """Return a Project's root Tasks, or a Task's Subtasks, ordered by key and then id.
 
     Trashed Tasks keep their place, so they stay in the set. Writes lock the Project.
     """
+    rows = Task.objects.filter(project_id=project_id, parent_id=parent_id)
 
     def ordered() -> list[tuple[int, str]]:
-        rows = Task.objects.filter(project_id=project_id, parent_id=parent_id)
         return list(rows.order_by("position", "id").values_list("pk", "position"))
 
-    return Siblings(_lock_project(project_id), ordered)
+    return Siblings(_lock_project(project_id), ordered, _before_by_key(rows))
 
 
 def section_siblings(project_id: int) -> Siblings[int]:
     """Return a Project's Sections, ordered by key and then id. Writes lock the Project."""
+    rows = Section.objects.filter(project_id=project_id)
 
     def ordered() -> list[tuple[int, str]]:
-        rows = Section.objects.filter(project_id=project_id)
         return list(rows.order_by("position", "id").values_list("pk", "position"))
 
-    return Siblings(_lock_project(project_id), ordered)
+    return Siblings(_lock_project(project_id), ordered, _before_by_key(rows))
 
 
 def tag_siblings(user: User) -> Siblings[int]:
     """Return the user's Tags, ordered by key and then id. Writes lock the user."""
+    rows = user.tags.all()
 
     def ordered() -> list[tuple[int, str]]:
-        return list(user.tags.order_by("position", "id").values_list("pk", "position"))
+        return list(rows.order_by("position", "id").values_list("pk", "position"))
 
-    return Siblings(_lock_user(user), ordered)
+    return Siblings(_lock_user(user), ordered, _before_by_key(rows))
 
 
 @dataclass(frozen=True)
@@ -167,4 +180,9 @@ def sidebar_siblings(user: User, folder: Folder | None) -> Siblings[SiblingRef]:
             ]
         return sorted(siblings, key=lambda sibling: (sibling[1], sibling[0].id))
 
-    return Siblings(_lock_user(user), ordered)
+    def before(ref: SiblingRef) -> SiblingRef | None:
+        refs = [sibling for sibling, _ in ordered()]
+        index = refs.index(ref)
+        return refs[index - 1] if index > 0 else None
+
+    return Siblings(_lock_user(user), ordered, before)

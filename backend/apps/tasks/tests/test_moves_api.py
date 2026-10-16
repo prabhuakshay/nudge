@@ -131,12 +131,16 @@ def test_a_change_of_parent_is_logged_with_both_parents(client: Client, ada: Use
             "to_project": "Inbox",
             "from_parent": "Packing",
             "to_parent": None,
+            "from_section": None,
+            "to_section": None,
         },
         {
             "from_project": "Inbox",
             "to_project": "Inbox",
             "from_parent": "Plan the trip",
             "to_parent": "Packing",
+            "from_section": None,
+            "to_section": None,
         },
     ]
 
@@ -244,6 +248,8 @@ def test_a_subtask_moved_to_another_project_becomes_a_root_there(
         "to_project": "Work",
         "from_parent": "Plan the trip",
         "to_parent": None,
+        "from_section": None,
+        "to_section": None,
     }
 
 

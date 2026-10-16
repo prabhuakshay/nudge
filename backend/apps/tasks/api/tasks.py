@@ -311,8 +311,8 @@ def move_task(
 
 
 def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:
-    """Resolve the move's ids to the user's Project and parent, or say which wasn't found."""
-    project = parent = None
+    """Resolve the move's ids to the user's Project, parent and Section, or say which is missing."""
+    project = parent = section = None
     if move.project_id is not None:
         project = services.live_project(user, move.project_id)
         if project is None:
@@ -321,7 +321,17 @@ def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:
         parent = services.live_task(user, move.parent_id)
         if parent is None:
             return TASK_NOT_FOUND
-    return moves.Destination(project, parent, move.after_id)
+    if move.section_id is not None:
+        section = sections.section(user, move.section_id)
+        if section is None:
+            return SECTION_NOT_FOUND
+    return moves.Destination(
+        project,
+        parent,
+        move.after_id,
+        section=section,
+        section_given="section_id" in move.model_fields_set,
+    )
 
 
 @router.post(

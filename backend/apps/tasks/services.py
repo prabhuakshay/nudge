@@ -41,6 +41,7 @@ from apps.tasks.tree import (
     moved_event,
     root_status_in,
     rows_below,
+    section_name,
 )
 
 if TYPE_CHECKING:
@@ -192,6 +193,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
         ensure_writable(edit.project)
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
     from_project, from_parent = task.project.name, task.parent_title
+    from_section = section_name(task)
     dates_before, repeat_before = TaskDates.of(task), repeat.Repeat.of(task)
     # Closing a repeating Task moves it on instead, and reopening it may undo that.
     step = repeat.plan(task, edit.status)
@@ -221,7 +223,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
         closed_subtasks = len(cascaded) if task.status in CLOSED_STATUSES else 0
         events = _activity(task, before, dates_before, closed_subtasks)
         if moved:
-            events.append(moved_event(task, from_project, from_parent))
+            events.append(moved_event(task, from_project, from_parent, from_section))
         asked = edit.repeat_rule is not None or edit.repeat_from is not None
         events.extend(filter(None, [repeat.edit_event(task, repeat_before, asked=asked)]))
         events.extend([] if edit.tags is None else retag(task, edit.tags))

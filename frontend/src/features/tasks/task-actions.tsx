@@ -18,6 +18,10 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  MoveToSectionContextSub,
+  MoveToSectionDropdownSub,
+} from "@/features/sections/move-to-section";
 import { ariaKeyShortcuts, shortcutText, type ShortcutId } from "@/features/shortcuts/registry";
 import { useDeleteTask } from "@/features/trash/trash";
 import { cn } from "@/lib/utils";
@@ -138,6 +142,7 @@ export function TaskActionsMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
+        {!readOnly && <MoveToSectionDropdownSub task={task} />}
         {actions.map(({ label, icon: Icon, run, danger, shortcut }) => (
           <Fragment key={label}>
             {danger && <DropdownMenuSeparator />}
@@ -193,6 +198,7 @@ export function TaskContextMenu({
           <ContextMenuShortcut aria-hidden>{shortcutText("completeTask")}</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuSeparator />
+        <MoveToSectionContextSub task={task} />
         {actions.map(({ label, icon: Icon, run, danger, shortcut }) => (
           <Fragment key={label}>
             {danger && <ContextMenuSeparator />}

@@ -2518,6 +2518,11 @@ export interface components {
        * @description The sibling it now follows; first when left out, last when it isn't there.
        */
       after_id?: number | null;
+      /**
+       * Section Id
+       * @description The Section of the destination Project a root joins; null for No section. When left out, a root staying in its Project keeps its Section and any other move clears it.
+       */
+      section_id?: number | null;
     };
     /**
      * TaskSearchQuery
@@ -2781,7 +2786,7 @@ export interface components {
     };
     /**
      * MovedActivityOut
-     * @description The Task moved to another Project or parent.
+     * @description The Task moved to another Project, parent or Section.
      */
     MovedActivityOut: {
       /** Id */
@@ -2800,7 +2805,7 @@ export interface components {
     };
     /**
      * MovedData
-     * @description The Projects and parents a Task moved between, by their names and titles at the time.
+     * @description The Projects, parents and Sections a Task moved between, by their names at the time.
      */
     MovedData: {
       /** From Project */
@@ -2817,6 +2822,16 @@ export interface components {
        * @description Null when it became a root.
        */
       to_parent?: string | null;
+      /**
+       * From Section
+       * @description Null for No section.
+       */
+      from_section?: string | null;
+      /**
+       * To Section
+       * @description Null for No section.
+       */
+      to_section?: string | null;
     };
     /**
      * NoActivityData

@@ -1,7 +1,7 @@
 """Subtask trees: reading a Task's ancestors and descendants, and keeping their Statuses consistent.
 
 Moving a Task within or between trees is recorded here too, as one `moved` event naming the
-Project and parent it left and the ones it joined.
+Project, parent and Section it left and the ones it joined.
 
 A tree holds one rule across Status changes: a Closed Task has no open descendants. Closing a Task
 closes the open work under it, and opening work under a Closed Task reopens it. Every knock-on
@@ -82,13 +82,25 @@ def height(task: Task) -> int:
     return 0
 
 
-def moved_event(task: Task, from_project: str, from_parent: str | None) -> TaskActivity:
-    """Return the Activity event for a Task that left a Project or parent for where it is now."""
+def section_name(task: Task) -> str | None:
+    """Return the name of the Task's own Section, which Activity records; None for No section."""
+    return None if task.section is None else task.section.name
+
+
+def moved_event(
+    task: Task,
+    from_project: str,
+    from_parent: str | None,
+    from_section: str | None,
+) -> TaskActivity:
+    """Return the Activity event for a Task that left a Project, parent or Section for this one."""
     data = {
         "from_project": from_project,
         "to_project": task.project.name,
         "from_parent": from_parent,
         "to_parent": task.parent_title,
+        "from_section": from_section,
+        "to_section": section_name(task),
     }
     return TaskActivity(task=task, kind=TaskActivity.Kind.MOVED, data=data)
 
@@ -99,7 +111,7 @@ def move_descendants(task: Task, project: Project) -> None:
 
 
 def move_tree(task: Task, project: Project, position: str) -> list[str]:
-    """Move the Task and its Subtasks into the Project, as a root at the position.
+    """Move the Task and its Subtasks into the Project, as a root in No section at the position.
 
     Returns:
         The Task's fields that changed, for the caller to save.
@@ -108,7 +120,8 @@ def move_tree(task: Task, project: Project, position: str) -> list[str]:
     task.position = position
     task.project = project
     task.parent = None
-    return ["project", "position", "parent"]
+    task.section = None
+    return ["project", "position", "parent", "section"]
 
 
 def cascade_status(task: Task) -> list[AffectedTask]:

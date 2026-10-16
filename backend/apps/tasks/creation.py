@@ -103,7 +103,7 @@ def duplicate_task(user: User, task_id: int) -> Task | None:
     """Copy one of the user's Tasks to right after it; return None if it isn't theirs.
 
     The copy is a fresh open Task with the original's title, Description and Priority, under the
-    same parent. Being open, it reopens any Closed ancestors.
+    same parent and in the same Section. Being open, it reopens any Closed ancestors.
 
     Raises:
         ArchivedProjectError: The Task is in an archived Project.
@@ -120,7 +120,11 @@ def duplicate_task(user: User, task_id: int) -> Task | None:
         task = _insert(
             original.project,
             original.title,
-            NewTask(description=original.description, priority=Task.Priority(original.priority)),
+            NewTask(
+                description=original.description,
+                priority=Task.Priority(original.priority),
+                section=original.section,
+            ),
             position=str(generate_key_between(original.position, following)),
             parent=original.parent,
         )

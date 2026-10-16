@@ -246,6 +246,12 @@ class TaskMoveIn(Schema):
         default=None,
         description="The sibling it now follows; first when left out, last when it isn't there.",
     )
+    section_id: int | None = Field(
+        default=None,
+        description="The Section of the destination Project a root joins; null for No section. "
+        "When left out, a root staying in its Project keeps its Section and any other move "
+        "clears it.",
+    )
 
 
 class AffectedTaskOut(Schema):

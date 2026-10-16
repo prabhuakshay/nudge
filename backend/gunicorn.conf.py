@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import logging
 import os
+
+from apps.core.log_redaction import RedactFeedTokens
 
 bind = f"{os.environ.get('NUDGE_WEB_HOST', '127.0.0.1')}:{os.environ.get('NUDGE_WEB_PORT', '8000')}"
 workers = int(os.environ.get("NUDGE_WEB_WORKERS", "2"))
@@ -14,3 +17,7 @@ errorlog = "-"
 forwarded_allow_ips = os.environ.get("NUDGE_FORWARDED_ALLOW_IPS", "127.0.0.1")
 # The runtime control socket isn't used, and the container's filesystem is read-only.
 control_socket_disable = True
+
+# Gunicorn logs request URLs, and a Calendar feed's URL holds its only secret.
+for _name in ("gunicorn.access", "gunicorn.error"):
+    logging.getLogger(_name).addFilter(RedactFeedTokens())

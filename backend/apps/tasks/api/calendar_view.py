@@ -12,9 +12,8 @@ from ninja import Query, Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
-from apps.tasks.calendar_view import calendar_occurrences, calendar_tasks
-from apps.tasks.schemas.calendar_view import CalendarOut, CalendarQuery, OccurrenceOut
-from apps.tasks.schemas.tasks import TaskOut
+from apps.tasks import calendar_view
+from apps.tasks.schemas.calendar_view import CalendarOut, CalendarQuery
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -34,13 +33,5 @@ def calendar(request: HttpRequest, query: Query[CalendarQuery]) -> Status[Calend
     Trashed Tasks and archived Projects' Tasks are left out. A range that ends before it starts,
     or is over 42 days long, is refused.
     """
-    user = signed_in_user(request)
-    tasks = calendar_tasks(user, query.start, query.end)
-    items = [TaskOut.from_orm(task) for task in tasks]
-    later = calendar_occurrences(user, query.start, query.end)
-    occurrences = [OccurrenceOut(task_id=each.task.pk, date=each.date) for each in later]
-    repeating = [TaskOut.from_orm(task) for task in dict.fromkeys(each.task for each in later)]
-    return Status(
-        HTTPStatus.OK,
-        CalendarOut(items=items, occurrences=occurrences, repeating=repeating),
-    )
+    shown = calendar_view.calendar(signed_in_user(request), query.start, query.end)
+    return Status(HTTPStatus.OK, CalendarOut.from_orm(shown))

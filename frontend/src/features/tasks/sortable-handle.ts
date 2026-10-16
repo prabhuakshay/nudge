@@ -6,11 +6,7 @@ import {
   useSensors,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
-import {
-  sortableKeyboardCoordinates,
-  useSortable,
-  type UseSortableArguments,
-} from "@dnd-kit/sortable";
+import { sortableKeyboardCoordinates, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
   useMemo,
@@ -63,11 +59,12 @@ export function pressToDrag(handle: DragHandle, touch: boolean) {
 
 /**
  * What a sortable item drags with: the handle that starts the drag, and the node and style that
- * move with it.
+ * move with it. `drags` says whether it can be dragged, `takesDrops` whether others can be dropped
+ * on it.
  */
 export function useSortableHandle(
   id: UniqueIdentifier,
-  disabled: UseSortableArguments["disabled"],
+  { drags, takesDrops }: { drags: boolean; takesDrops: boolean },
 ) {
   const {
     attributes,
@@ -77,7 +74,7 @@ export function useSortableHandle(
     transform,
     transition,
     isDragging,
-  } = useSortable({ id, disabled });
+  } = useSortable({ id, disabled: { draggable: !drags, droppable: !takesDrops } });
   const handle = useMemo<DragHandle>(
     () => ({
       listeners,

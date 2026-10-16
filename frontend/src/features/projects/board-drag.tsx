@@ -135,7 +135,10 @@ export function BoardDrag({
  */
 export function SortableBoardCard(props: Omit<BoardCardProps, "drag">) {
   const touch = useMediaQuery("(pointer: coarse)");
-  const drag = useSortableHandle(props.card.task.id, props.readOnly);
+  const drag = useSortableHandle(props.card.task.id, {
+    drags: !props.readOnly,
+    takesDrops: !props.readOnly,
+  });
   return <BoardCard {...props} drag={props.readOnly ? undefined : { ...drag, touch }} />;
 }
 

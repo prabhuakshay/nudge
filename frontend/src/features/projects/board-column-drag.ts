@@ -11,10 +11,10 @@ import { columnId } from "./board-moves";
  */
 export function useColumnDrag(section: Section | null, readOnly: boolean) {
   const touch = useMediaQuery("(pointer: coarse)");
-  const fixed = readOnly || !section;
+  const drags = !readOnly && section !== null;
   const { handle, setNode, style, isDragging } = useSortableHandle(columnId(section), {
-    draggable: fixed,
-    droppable: readOnly,
+    drags,
+    takesDrops: !readOnly,
   });
-  return { setNode, style, isDragging, header: fixed ? undefined : { handle, touch } };
+  return { setNode, style, isDragging, header: drags ? { handle, touch } : undefined };
 }

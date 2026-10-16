@@ -228,7 +228,10 @@ function SortableRow({
   renderRow: (props: SortableRowProps) => ReactNode;
   disabled: boolean;
 }) {
-  const { handle, setNode, style, isDragging } = useSortableHandle(row.task.id, disabled);
+  const { handle, setNode, style, isDragging } = useSortableHandle(row.task.id, {
+    drags: !disabled,
+    takesDrops: !disabled,
+  });
   return (
     <div ref={setNode} style={style} className={cn(isDragging && "opacity-40")}>
       <RowContent renderRow={renderRow} row={row} level={level} handle={handle} />

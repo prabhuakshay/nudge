@@ -49,8 +49,29 @@ export function calendarRequests(fetchSpy: ReturnType<typeof mockApi>) {
     .map((url) => url.search);
 }
 
-/** The Calendar View on a test router, at `url`. */
-export function renderCalendar(url = "/") {
+const PHONE_WIDTH = 390;
+const DESKTOP_WIDTH = 1280;
+
+/**
+ * Makes media queries answer as a desktop screen would, or a phone's when `wide` is false. Only
+ * width queries match, so neither screen is a touch screen.
+ */
+export function stubScreenWidth({ wide }: { wide: boolean }) {
+  const width = wide ? DESKTOP_WIDTH : PHONE_WIDTH;
+  vi.stubGlobal("matchMedia", (query: string) => ({
+    media: query,
+    matches: width >= Number(/min-width: (\d+)px/.exec(query)?.[1] ?? Infinity),
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  }));
+}
+
+/**
+ * The Calendar View on a test router, at `url`, on a screen from `sm` up unless `wide` is false,
+ * which makes it a phone.
+ */
+export function renderCalendar(url = "/", { wide = true } = {}) {
+  stubScreenWidth({ wide });
   return renderListRoute(<CalendarView inbox={INBOX} timeZone="Europe/London" />, {
     url,
     validateSearch: validateCalendarSearch,
@@ -69,5 +90,6 @@ export function fakeCalendarToday() {
   });
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 }

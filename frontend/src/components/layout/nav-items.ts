@@ -13,16 +13,18 @@ export type NavItem = {
   icon: LucideIcon;
 };
 
-/** Smart views in the bottom bar on phones. The Inbox comes first. */
-export const BOTTOM_NAV_ITEMS: readonly NavItem[] = [
-  { to: "/inbox", label: "Inbox", icon: Inbox },
-  { to: "/", label: "Today", icon: CalendarCheck },
-  { to: "/upcoming", label: "Upcoming", icon: CalendarDays },
-];
+const INBOX: NavItem = { to: "/inbox", label: "Inbox", icon: Inbox };
+const TODAY: NavItem = { to: "/", label: "Today", icon: CalendarCheck };
+const CALENDAR: NavItem = { to: "/calendar", label: "Calendar", icon: CalendarRange };
 
-/** Views in the sidebar and the phone menu: the bottom bar's, then those it has no room for. */
+/** Views in the bottom bar on phones. The Inbox comes first; Upcoming waits in the menu. */
+export const BOTTOM_NAV_ITEMS: readonly NavItem[] = [INBOX, TODAY, CALENDAR];
+
+/** Views in the sidebar and the phone menu, which also holds those the bottom bar leaves out. */
 export const NAV_ITEMS: readonly NavItem[] = [
-  ...BOTTOM_NAV_ITEMS,
-  { to: "/calendar", label: "Calendar", icon: CalendarRange },
+  INBOX,
+  TODAY,
+  { to: "/upcoming", label: "Upcoming", icon: CalendarDays },
+  CALENDAR,
   { to: "/all", label: "All", icon: Layers },
 ];

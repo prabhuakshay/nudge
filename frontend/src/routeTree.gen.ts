@@ -13,6 +13,7 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAllRouteImport } from './routes/_app/all'
+import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
 import { Route as AppSearchRouteImport } from './routes/_app/search'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
@@ -38,6 +39,11 @@ const AppIndexRoute = AppIndexRouteImport.update({
 const AppAllRoute = AppAllRouteImport.update({
   id: '/all',
   path: '/all',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppCalendarRoute = AppCalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
   getParentRoute: () => AppRoute,
 } as any)
 const AppInboxRoute = AppInboxRouteImport.update({
@@ -80,6 +86,7 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/all': typeof AppAllRoute
+  '/calendar': typeof AppCalendarRoute
   '/inbox': typeof AppInboxRoute
   '/search': typeof AppSearchRoute
   '/trash': typeof AppTrashRoute
@@ -91,6 +98,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/all': typeof AppAllRoute
+  '/calendar': typeof AppCalendarRoute
   '/inbox': typeof AppInboxRoute
   '/search': typeof AppSearchRoute
   '/trash': typeof AppTrashRoute
@@ -105,6 +113,7 @@ export interface FileRoutesById {
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/all': typeof AppAllRoute
+  '/_app/calendar': typeof AppCalendarRoute
   '/_app/inbox': typeof AppInboxRoute
   '/_app/search': typeof AppSearchRoute
   '/_app/trash': typeof AppTrashRoute
@@ -120,6 +129,7 @@ export interface FileRouteTypes {
     | '/'
     | '/login'
     | '/all'
+    | '/calendar'
     | '/inbox'
     | '/search'
     | '/trash'
@@ -131,6 +141,7 @@ export interface FileRouteTypes {
   to:
     | '/login'
     | '/all'
+    | '/calendar'
     | '/inbox'
     | '/search'
     | '/trash'
@@ -144,6 +155,7 @@ export interface FileRouteTypes {
     | '/_app'
     | '/login'
     | '/_app/all'
+    | '/_app/calendar'
     | '/_app/inbox'
     | '/_app/search'
     | '/_app/trash'
@@ -187,6 +199,13 @@ declare module '@tanstack/react-router' {
       path: '/all'
       fullPath: '/all'
       preLoaderRoute: typeof AppAllRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/calendar': {
+      id: '/_app/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof AppCalendarRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/inbox': {
@@ -243,6 +262,7 @@ declare module '@tanstack/react-router' {
 
 interface AppRouteChildren {
   AppAllRoute: typeof AppAllRoute
+  AppCalendarRoute: typeof AppCalendarRoute
   AppInboxRoute: typeof AppInboxRoute
   AppSearchRoute: typeof AppSearchRoute
   AppTrashRoute: typeof AppTrashRoute
@@ -255,6 +275,7 @@ interface AppRouteChildren {
 
 const AppRouteChildren: AppRouteChildren = {
   AppAllRoute: AppAllRoute,
+  AppCalendarRoute: AppCalendarRoute,
   AppInboxRoute: AppInboxRoute,
   AppSearchRoute: AppSearchRoute,
   AppTrashRoute: AppTrashRoute,

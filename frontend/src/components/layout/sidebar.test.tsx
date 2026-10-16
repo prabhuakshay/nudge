@@ -85,6 +85,7 @@ describe("Sidebar", () => {
       "/inbox",
       "/",
       "/upcoming",
+      "/calendar",
       "/all",
       "/trash",
     ]);

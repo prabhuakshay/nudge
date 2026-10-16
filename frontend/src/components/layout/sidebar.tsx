@@ -51,14 +51,15 @@ export function Sidebar({ user, onSearch }: { user: User; onSearch: () => void }
   );
 }
 
-/** How many open Tasks a view lists; Today's count takes in Overdue. */
+/** How many open Tasks a view lists; Today's count takes in Overdue. The Calendar has none. */
 function navCount(sidebar: SidebarData, to: NavItem["to"]) {
-  return {
+  const counts: Partial<Record<NavItem["to"], number>> = {
     "/inbox": sidebar.inbox.open_count,
     "/": sidebar.today_count,
     "/upcoming": sidebar.upcoming_count,
     "/all": sidebar.all_count,
-  }[to];
+  };
+  return counts[to];
 }
 
 const LINK =

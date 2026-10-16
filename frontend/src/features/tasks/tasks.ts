@@ -25,6 +25,7 @@ export type RemindersChange = components["schemas"]["RemindersChangedData"];
 export type RepeatChange = components["schemas"]["RepeatChangedData"];
 export type Sidebar = components["schemas"]["SidebarOut"];
 export type SidebarProject = components["schemas"]["SidebarProjectOut"];
+type CalendarRange = components["schemas"]["CalendarOut"];
 
 /** The sidebar: the Inbox, Folders and Projects with open counts. Task changes invalidate it. */
 export const sidebarQuery = queryOptions({
@@ -44,6 +45,8 @@ export const TASKS_KEY = ["tasks"] as const;
 export const OPEN_KEY = [...TASKS_KEY, "open"] as const;
 /** The key prefix of every drawer's Task, so a change can show in a parent's Subtasks too. */
 export const DETAIL_KEY = [...TASKS_KEY, "detail"] as const;
+/** The key prefix of every range the Calendar has shown, so a change can show in all of them. */
+export const CALENDAR_KEY = [...TASKS_KEY, "calendar"] as const;
 
 /** A Project's open Tasks with every Subtask under them, as flat rows in manual order. */
 export function openTasksQuery(projectId: number) {
@@ -271,10 +274,14 @@ function applyTo<T extends Task>(task: T, change: TaskPatch): T {
   return task.id === change.id ? withChange(task, change) : task;
 }
 
-/** Show a change in every drawer and list before the server answers, dropping closed trees. */
+/**
+ * Show a change in every drawer, list and Calendar range before the server answers, dropping
+ * closed trees from the lists. The Calendar keeps Closed Tasks, so it drops nothing.
+ */
 export async function showChange(queryClient: QueryClient, change: TaskPatch) {
   await queryClient.cancelQueries({ queryKey: DETAIL_KEY });
   await queryClient.cancelQueries({ queryKey: OPEN_KEY });
+  await queryClient.cancelQueries({ queryKey: CALENDAR_KEY });
   queryClient.setQueriesData<TaskDetail>(
     { queryKey: DETAIL_KEY },
     (task) =>
@@ -286,6 +293,10 @@ export async function showChange(queryClient: QueryClient, change: TaskPatch) {
   queryClient.setQueriesData<Task[]>(
     { queryKey: OPEN_KEY },
     (tasks) => tasks && openTrees(tasks.map((task) => applyTo(task, change))),
+  );
+  queryClient.setQueriesData<CalendarRange>(
+    { queryKey: CALENDAR_KEY },
+    (range) => range && { ...range, items: range.items.map((task) => applyTo(task, change)) },
   );
 }
 
@@ -337,6 +348,7 @@ export function useCreateTask() {
         ...["today", "upcoming", "all", "tag", "person"].map((list) =>
           queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, list] }),
         ),
+        queryClient.invalidateQueries({ queryKey: CALENDAR_KEY }),
         queryClient.invalidateQueries(sidebarQuery),
       ]),
   });

@@ -1,10 +1,12 @@
 import { Pin } from "lucide-react";
-import { memo } from "react";
+import { memo, type CSSProperties } from "react";
 
 import { MentionText } from "@/features/people/mention-text";
 import { plainMentions } from "@/features/people/mentions";
 import { TagBadge } from "@/features/tags/tag-badge";
 import { DueBadge } from "@/features/tasks/due-badge";
+import { Grip } from "@/features/tasks/row-grip";
+import type { DragHandle } from "@/features/tasks/sortable-tree";
 import { SubtaskCount } from "@/features/tasks/subtask-count";
 import { TaskActionsMenu } from "@/features/tasks/task-actions";
 import { TaskCheckbox } from "@/features/tasks/task-checkbox";
@@ -13,10 +15,51 @@ import type { TreeRow } from "@/features/tasks/task-tree";
 import type { Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
+/** How a card drags, from `useSortableHandle`, and whether a press and hold starts it. */
+export type CardDrag = {
+  handle: DragHandle;
+  setNode: (node: HTMLElement | null) => void;
+  style: CSSProperties;
+  isDragging: boolean;
+  touch: boolean;
+};
+
+export type BoardCardProps = {
+  card: TreeRow;
+  /** Where the card sits, such as "2 of 5 in To do", read after its title. */
+  label: string;
+  selected: boolean;
+  readOnly: boolean;
+  onOpen: (taskId: number) => void;
+  onToggle: (task: Task) => void;
+  /** Left out where cards don't drag. */
+  drag?: CardDrag;
+};
+
+/**
+ * What makes a card drag: it moves with the drag, and a press anywhere on it starts one, as on a
+ * List row. On touch screens the card is also the keyboard activator, as it has no grip there.
+ */
+function dragProps(drag: CardDrag | undefined) {
+  if (!drag) return {};
+  const { handle, touch } = drag;
+  return {
+    ref: (node: HTMLElement | null) => {
+      drag.setNode(node);
+      if (touch) handle.setNode(node);
+    },
+    style: drag.style,
+    onPointerDown: touch ? undefined : handle.onPointerDown,
+    onTouchStart: touch ? handle.onTouchStart : undefined,
+  };
+}
+
 /**
  * A root Task on the Board: its checkbox and title, then its Priority, date, Tags and Subtask
  * progress. The title's button stretches over the whole card, so a click anywhere opens the Task
- * while the checkbox and ⋯ menu above it close or move it. Memoized so a change to one card leaves the others alone.
+ * while the checkbox and ⋯ menu above it close or move it. Given `drag`, the card drags between
+ * and within columns, from its grip with the keyboard. Memoized so a change to one card leaves
+ * the others alone.
  */
 export const BoardCard = memo(function BoardCard({
   card: { task, subtasks },
@@ -25,21 +68,18 @@ export const BoardCard = memo(function BoardCard({
   readOnly,
   onOpen,
   onToggle,
-}: {
-  card: TreeRow;
-  /** Where the card sits, such as "2 of 5 in To do", read after its title. */
-  label: string;
-  selected: boolean;
-  readOnly: boolean;
-  onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
-}) {
+  drag,
+}: BoardCardProps) {
   const title = plainMentions(task.title);
   return (
     <li
       data-task-id={task.id}
+      {...dragProps(drag)}
       className={cn(
-        "relative flex flex-col gap-2 rounded-lg border bg-surface p-3 shadow-xs transition-colors",
+        "group/row relative flex flex-col gap-2 rounded-lg border bg-surface p-3 shadow-xs transition-colors",
+        // No text selection or iOS callout, so a long press starts a drag instead.
+        drag && "select-none [-webkit-touch-callout:none]",
+        drag?.isDragging && "opacity-40",
         selected ? "border-primary bg-primary-soft/40" : "border-border hover:border-ring/60",
       )}
     >
@@ -80,6 +120,8 @@ export const BoardCard = memo(function BoardCard({
         ))}
         <SubtaskCount {...subtasks} />
       </div>
+      {/* Last, so it sits above the title's stretched click area. */}
+      <Grip title={title} handle={drag?.handle} touch={drag?.touch} left={-1} />
     </li>
   );
 });

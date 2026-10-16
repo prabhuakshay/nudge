@@ -4,20 +4,13 @@ import { ProjectPage } from "@/features/projects/project-page";
 import type { SidebarProject } from "@/features/projects/projects";
 import { INBOX, WORK, json, renderListRoute } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
-import { DOING, TO_DO, columnNames, mockApi, writes } from "@/test/sections";
+import { DOING, TO_DO, cardsIn, columnNames, mockApi, writes } from "@/test/sections";
 import { makeTask } from "@/test/tasks";
 
 const BOARD: SidebarProject = { ...WORK, layout: "board" };
 
 function renderProject(project: SidebarProject) {
   return renderListRoute(<ProjectPage projectId={project.id} />);
-}
-
-/** The card titles in one column, top to bottom. */
-function cardsIn(column: string) {
-  return within(screen.getByRole("list", { name: `${column} tasks` }))
-    .getAllByRole("listitem")
-    .map((card) => card.querySelector("[data-task-title]")?.textContent);
 }
 
 describe("A Project's Layout", () => {

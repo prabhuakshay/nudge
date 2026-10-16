@@ -161,6 +161,13 @@ export function columnNames() {
     .map((column) => column.getAttribute("aria-label"));
 }
 
+/** The card titles in one Board column, top to bottom. */
+export function cardsIn(column: string) {
+  return within(screen.getByRole("list", { name: `${column} tasks` }))
+    .getAllByRole("listitem")
+    .map((card) => card.querySelector("[data-task-title]")?.textContent);
+}
+
 /** The list's group names, top to bottom. */
 export function groupNames() {
   return within(screen.getByRole("treegrid"))

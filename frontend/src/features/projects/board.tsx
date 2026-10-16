@@ -14,14 +14,16 @@ import { openTasksQuery, type Task } from "@/features/tasks/tasks";
 
 import { ArchivedNotice } from "./archived-notice";
 import { BoardColumn, type BoardColumnCards } from "./board-column";
+import { BoardDrag } from "./board-drag";
 import { ProjectHeader } from "./project-header";
 import type { SidebarProject } from "./projects";
 
 /**
  * A Project's open Tasks as a Board: one column of cards per Section, in Section order, after a
  * No section column that only shows when it has Tasks. A card is a root Task; its Subtasks show
- * as progress on it. An Add section control ends the Board. On phones the columns scroll sideways inside the Board, one at a time, so
- * the page itself never does. An archived Project's Board is read-only.
+ * as progress on it; cards drag between and within columns. An Add section control ends the
+ * Board. On phones the columns scroll sideways inside the Board, one at a time, so the page itself
+ * never does. An archived Project's Board is read-only.
  */
 export function ProjectBoard({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));
@@ -61,19 +63,23 @@ export function ProjectBoard({ project }: { project: SidebarProject }) {
           aria-label={`${project.name} board`}
           className="flex snap-x snap-mandatory items-start gap-3 overflow-x-auto overscroll-x-contain pb-4"
         >
-          {columns.map((column, index) => (
-            <BoardColumn
-              key={column.section?.id ?? "none"}
-              projectId={project.id}
-              column={column}
-              position={index + 1}
-              count={columns.length}
-              openId={openTaskId}
-              readOnly={project.is_archived}
-              onOpen={setOpenTask}
-              onToggle={toggle}
-            />
-          ))}
+          <BoardDrag columns={columns}>
+            {(shown) =>
+              shown.map((column, index) => (
+                <BoardColumn
+                  key={column.section?.id ?? "none"}
+                  projectId={project.id}
+                  column={column}
+                  position={index + 1}
+                  count={shown.length}
+                  openId={openTaskId}
+                  readOnly={project.is_archived}
+                  onOpen={setOpenTask}
+                  onToggle={toggle}
+                />
+              ))
+            }
+          </BoardDrag>
           {!project.is_archived && (
             <AddSection
               projectId={project.id}

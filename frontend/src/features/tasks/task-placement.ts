@@ -24,7 +24,7 @@ export type TaskMove = Placement & { taskId: number; sectionId?: number | null }
 /**
  * Move a Task, with its Subtasks, under a new parent or to the top level after a sibling. Lists
  * and drawers show it in its new place straight away; the server picks the key and checks the
- * rules, and a refusal comes back as a toast with its reason.
+ * rules, and a refusal puts it back where it was and comes back as a toast with its reason.
  */
 export function useMoveTask() {
   const queryClient = useQueryClient();
@@ -43,6 +43,10 @@ export function useMoveTask() {
     onMutate: async ({ taskId, sectionId, ...placement }) => {
       await queryClient.cancelQueries({ queryKey: OPEN_KEY });
       await queryClient.cancelQueries({ queryKey: DETAIL_KEY });
+      const before = [
+        ...queryClient.getQueriesData({ queryKey: OPEN_KEY }),
+        ...queryClient.getQueriesData({ queryKey: DETAIL_KEY }),
+      ];
       queryClient.setQueriesData<Task[]>(
         { queryKey: OPEN_KEY },
         (tasks) => tasks && withSection(moveRow(tasks, taskId, placement), taskId, sectionId),
@@ -51,8 +55,15 @@ export function useMoveTask() {
         { queryKey: DETAIL_KEY },
         (task) => task && { ...task, subtasks: moveRow(task.subtasks, taskId, placement) },
       );
+      return { before };
     },
-    onError: (error) => toast.error(error.message),
+    onError: (error, _move, context) => {
+      // Put the Task back at once, so a refused move never shows as saved while lists refetch.
+      for (const [queryKey, data] of context?.before ?? []) {
+        queryClient.setQueryData(queryKey, data);
+      }
+      toast.error(error.message);
+    },
     onSettled: () => refreshTasks(queryClient),
   });
 }

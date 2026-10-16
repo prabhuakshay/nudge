@@ -24,9 +24,12 @@ import {
 
 /**
  * How far a Project in a Folder is indented, lining its icon up with the Folder's name (the
- * Folder icon's width plus the gap after it), and how far to drag sideways to change level.
+ * Folder icon's width plus the gap after it).
  */
 export const INDENT = 26;
+
+/** How far to drag sideways to move a Project into or out of a Folder. */
+const DRAG_STEP = 16;
 
 /** What a row renders, with the props that make it draggable already applied to its wrapper. */
 export type RenderRow = (row: SidebarRow) => ReactNode;
@@ -46,7 +49,7 @@ export function SidebarTree({
 }) {
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const [overKey, setOverKey] = useState<string | null>(null);
-  // Sideways drag in whole indents, so pointer moves re-render only when the level can change.
+  // Sideways drag in whole steps, so pointer moves re-render only when the level can change.
   const [steps, setSteps] = useState(0);
   const justDropped = useRef(false);
   const sensors = useSidebarSensors();
@@ -72,7 +75,7 @@ export function SidebarTree({
         setOverKey(String(active.id));
       }}
       onDragMove={({ delta }: DragMoveEvent) => {
-        setSteps(Math.round(delta.x / INDENT));
+        setSteps(Math.round(delta.x / DRAG_STEP));
       }}
       onDragOver={({ over }: DragOverEvent) => {
         setOverKey(over ? String(over.id) : null);

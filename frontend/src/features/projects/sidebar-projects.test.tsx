@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
@@ -245,6 +245,36 @@ describe("SidebarProjects", () => {
     await waitFor(async () => {
       expect(await writes(fetchSpy)).toEqual([
         ["POST /api/v1/projects/1/move", { folder_id: 10, after: { kind: "project", id: 2 } }],
+      ]);
+    });
+  });
+
+  it("moves a Project out of its Folder with a short drag to the left", async () => {
+    // jsdom lays nothing out, so stack the rows 32 px apart for dnd-kit to measure.
+    const rowNames = ["Work", "Personal", "Health"];
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: Element,
+    ) {
+      const row = Math.max(
+        rowNames.findIndex((name) => this.textContent.includes(name)),
+        0,
+      );
+      return new DOMRect(0, row * 32, 200, 32);
+    });
+    const fetchSpy = mockApi();
+    renderSidebar();
+
+    const health = (await screen.findByRole("link", { name: "Health" })).closest("li");
+    if (!health) throw new Error("Health has no row.");
+    // The first move only starts the drag; the second leaves the row 11 px left of where it was.
+    fireEvent.mouseDown(health, { button: 0, clientX: 100, clientY: 80 });
+    fireEvent.mouseMove(document, { clientX: 94, clientY: 80 });
+    fireEvent.mouseMove(document, { clientX: 89, clientY: 80 });
+    fireEvent.mouseUp(document, { clientX: 89, clientY: 80 });
+
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([
+        ["POST /api/v1/projects/2/move", { folder_id: null, after: { kind: "folder", id: 10 } }],
       ]);
     });
   });

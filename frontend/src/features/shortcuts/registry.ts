@@ -2,7 +2,7 @@
  * Every keyboard shortcut in Nudge, in one place. Handlers, the `?` dialog, tooltips and menus
  * all read their keys from here, so a key is changed once and shows the same everywhere.
  */
-import { matchKeyBindingPress, parseKeybinding } from "tinykeys";
+import { matchKeybindingPress, parseKeybinding } from "tinykeys";
 
 /**
  * Where a shortcut works: anywhere, on a focused row of a Task list (Task keys also work in the
@@ -90,7 +90,7 @@ export function matchingBinding(event: KeyboardEvent, id: ShortcutId): string | 
   const keys: readonly string[] = SHORTCUTS[id].keys;
   return keys.find((binding) => {
     const [press, ...rest] = parseKeybinding(binding);
-    return press !== undefined && rest.length === 0 && matchKeyBindingPress(event, press);
+    return press !== undefined && rest.length === 0 && matchKeybindingPress(event, press);
   });
 }
 
@@ -105,7 +105,7 @@ export function matchesShortcut(event: KeyboardEvent, id: ShortcutId): boolean {
  */
 export function isSingleKey(binding: string): boolean {
   return parseKeybinding(binding).every(
-    ([mods, key]) =>
+    ([mods, , key]) =>
       typeof key === "string" && key.length === 1 && mods.every((mod) => mod === "Shift"),
   );
 }

@@ -207,9 +207,7 @@ def test_a_task_whose_section_was_deleted_comes_back_in_no_section(
 ) -> None:
     project = projects.create_project(ada, "Home")
     kitchen = sections.create_section(project, "Kitchen")
-    task = creation.create_task(project, "Paint walls")
-    # No endpoint puts a Task in a Section yet, so the test places it directly.
-    Task.objects.filter(pk=task.pk).update(section=kitchen)
+    task = creation.create_task(project, "Paint walls", creation.NewTask(section=kitchen))
     _delete(client, task)
     client.delete(f"/api/v1/sections/{kitchen.pk}")
 
@@ -224,9 +222,7 @@ def test_a_task_whose_section_was_deleted_comes_back_in_no_section(
 def test_a_task_that_comes_back_to_the_inbox_leaves_its_section(client: Client, ada: User) -> None:
     project = projects.create_project(ada, "Home")
     kitchen = sections.create_section(project, "Kitchen")
-    task = creation.create_task(project, "Paint walls")
-    # No endpoint puts a Task in a Section yet, so the test places it directly.
-    Task.objects.filter(pk=task.pk).update(section=kitchen)
+    task = creation.create_task(project, "Paint walls", creation.NewTask(section=kitchen))
     _delete(client, task)
     Project.objects.filter(pk=project.pk).update(deleted_at=timezone.now())
 

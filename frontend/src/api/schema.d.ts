@@ -2400,6 +2400,11 @@ export interface components {
        * @description Makes the Task the last Subtask of this one; reopens it if it's Closed.
        */
       parent_id?: number | null;
+      /**
+       * Section Id
+       * @description Puts the Task in this Section of its Project. Ignored for a Subtask, which follows its root's.
+       */
+      section_id?: number | null;
       /** @description Dates the Task from the start, such as today in Today. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
       /** @description 1 (P1) is the most urgent; left out, the Task has no Priority. */

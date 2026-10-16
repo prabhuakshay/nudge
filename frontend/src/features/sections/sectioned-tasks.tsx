@@ -5,12 +5,13 @@ import { Group } from "@/features/tasks/task-groups";
 import { SortableTaskRows, type SortableRowContext } from "@/features/tasks/task-rows";
 import { rootCount } from "@/features/tasks/task-tree";
 
+import { AddSectionTask, AddSectionTaskButton } from "./add-section-task";
 import { DeleteSectionDialog, DeleteSectionItem } from "./delete-section";
 import { MoveSectionItems } from "./move-section-items";
 import { SectionGroup } from "./section-group";
 import { SectionMenu } from "./section-menu";
-import type { Section } from "./sections";
 import type { SectionTrees } from "./section-trees";
+import type { Section } from "./sections";
 
 /**
  * A Project's open Tasks grouped by Section: No section first, left out when it is empty, then
@@ -36,37 +37,75 @@ export function SectionedTasks({
         </Group>
       )}
       {trees.sections.map(({ section, tasks }) => (
-        <SectionGroup
+        <SectionTasks
           key={section.id}
           section={section}
-          count={rootCount(tasks)}
-          actions={context.sortable && <SectionActions section={section} order={order} />}
-        >
-          {tasks.length > 0 && <SortableTaskRows tasks={tasks} context={context} />}
-        </SectionGroup>
+          tasks={tasks}
+          order={order}
+          context={context}
+        />
       ))}
     </>
   );
 }
 
-/** A Section header's menu, and the dialogs its items open, which outlive the closed menu. */
-function SectionActions({ section, order }: { section: Section; order: Section[] }) {
+/**
+ * One Section's header and its Tasks, with the field for adding one when it's open. The dialogs
+ * its menu opens sit beside the menu, so they outlive it closing.
+ */
+function SectionTasks({
+  section,
+  tasks,
+  order,
+  context,
+}: {
+  section: Section;
+  tasks: SectionTrees["unsectioned"];
+  order: Section[];
+  context: SortableRowContext;
+}) {
+  const [adding, setAdding] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   return (
-    <>
-      <SectionMenu section={section}>
-        <MoveSectionItems section={section} order={order} />
-        <DeleteSectionItem
-          onSelect={() => {
-            setConfirmingDelete(true);
+    <SectionGroup
+      section={section}
+      count={rootCount(tasks)}
+      actions={
+        context.sortable && (
+          <>
+            <AddSectionTaskButton
+              section={section}
+              open={adding}
+              onOpen={() => {
+                setAdding(true);
+              }}
+            />
+            <SectionMenu section={section}>
+              <MoveSectionItems section={section} order={order} />
+              <DeleteSectionItem
+                onSelect={() => {
+                  setConfirmingDelete(true);
+                }}
+              />
+            </SectionMenu>
+            <DeleteSectionDialog
+              section={section}
+              open={confirmingDelete}
+              onOpenChange={setConfirmingDelete}
+            />
+          </>
+        )
+      }
+    >
+      {adding && (
+        <AddSectionTask
+          section={section}
+          onClose={() => {
+            setAdding(false);
           }}
         />
-      </SectionMenu>
-      <DeleteSectionDialog
-        section={section}
-        open={confirmingDelete}
-        onOpenChange={setConfirmingDelete}
-      />
-    </>
+      )}
+      {tasks.length > 0 && <SortableTaskRows tasks={tasks} context={context} />}
+    </SectionGroup>
   );
 }

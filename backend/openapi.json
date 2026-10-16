@@ -5884,6 +5884,18 @@
             "description": "Makes the Task the last Subtask of this one; reopens it if it's Closed.",
             "title": "Parent Id"
           },
+          "section_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Puts the Task in this Section of its Project. Ignored for a Subtask, which follows its root's.",
+            "title": "Section Id"
+          },
           "dates": {
             "anyOf": [
               {

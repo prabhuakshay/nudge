@@ -11,6 +11,14 @@ const TO_DO: Section = { id: 31, project_id: WORK.id, name: "To do", collapsed: 
 const DOING: Section = { id: 32, project_id: WORK.id, name: "Doing", collapsed: false };
 const DONE: Section = { id: 33, project_id: WORK.id, name: "Done", collapsed: false };
 
+/** The Sections with one moved right after `afterId`, or first when it's null. */
+function placedAfter(sections: Section[], movedId: number, afterId: number | null) {
+  const section = sections.find(({ id }) => id === movedId);
+  const rest = sections.filter((other) => other !== section);
+  const at = afterId === null ? 0 : rest.findIndex(({ id }) => id === afterId) + 1;
+  return section ? [...rest.slice(0, at), section, ...rest.slice(at)] : rest;
+}
+
 /** A stand-in server holding a Project's Sections and open Tasks; it adds, moves and deletes them. */
 function mockApi({
   sections = [TO_DO, DOING],
@@ -29,10 +37,7 @@ function mockApi({
       return;
     }
     const { after_id } = (await request.clone().json()) as { after_id: number | null };
-    const section = sections.find((other) => other.id === id);
-    const rest = sections.filter((other) => other !== section);
-    const at = after_id === null ? 0 : rest.findIndex((other) => other.id === after_id) + 1;
-    sections = section ? [...rest.slice(0, at), section, ...rest.slice(at)] : rest;
+    sections = placedAfter(sections, id, after_id);
   };
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
@@ -41,6 +46,12 @@ function mockApi({
       const { name } = (await request.clone().json()) as { name: string };
       const created = { id: nextId++, project_id: WORK.id, name, collapsed: false };
       sections = [...sections, created];
+      return json(created, 201);
+    }
+    if (url.pathname === "/api/v1/tasks" && request.method === "POST") {
+      const body = (await request.clone().json()) as Pick<Task, "title" | "section_id">;
+      const created = makeTask({ id: nextId++, project_id: WORK.id, ...body });
+      open = [created, ...open];
       return json(created, 201);
     }
     if (url.pathname.startsWith("/api/v1/sections/")) {
@@ -187,6 +198,33 @@ describe("Sections in a Project", () => {
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(screen.getByRole("region", { name: "To do" })).toBeInTheDocument();
+    expect(await writes(fetchSpy)).toEqual([]);
+  });
+
+  it("adds a Task inside a Section from its header", async () => {
+    const fetchSpy = mockApi({});
+    const { user } = renderTaskList({ project: WORK });
+
+    await user.click(await screen.findByRole("button", { name: "Add a task to Doing" }));
+    await user.keyboard("Review copy{Enter}");
+
+    await waitFor(() => {
+      expect(titlesIn("Doing")).toEqual(["Review copy"]);
+    });
+    expect(screen.getByRole("combobox", { name: "Add a task to Doing" })).toHaveFocus();
+    expect(await writes(fetchSpy)).toEqual([
+      ["POST /api/v1/tasks", { title: "Review copy", project_id: WORK.id, section_id: DOING.id }],
+    ]);
+  });
+
+  it("closes a Section's add-Task field left empty", async () => {
+    const fetchSpy = mockApi({});
+    const { user } = renderTaskList({ project: WORK });
+    await user.click(await screen.findByRole("button", { name: "Add a task to Doing" }));
+
+    await user.tab();
+
+    expect(screen.queryByRole("combobox", { name: "Add a task to Doing" })).not.toBeInTheDocument();
     expect(await writes(fetchSpy)).toEqual([]);
   });
 

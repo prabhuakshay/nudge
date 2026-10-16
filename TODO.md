@@ -1,31 +1,39 @@
 # TODO
 
-- [ ] Limit Tags and People in the sidebar
-- [ ] Add a calendar view
-- [ ] Add a focus timer with YouTube playlist support
-- [ ] Add Discord integration?
-- [ ] Add a matrix view
-- [ ] Add a report
-- [ ] Add MCP
-- [ ] Add summarize
-- [ ] Add keyboard shortcuts
-- [ ] Add saved filters
-- [ ] Add smart lists
+## High impact
+
+- [x] Add a Board layout for Projects (#70)
 - [ ] Add export
 - [ ] Add backup
-- [ ] Add Telegram integration
-- [ ] Add ntfy support
-- [ ] Add Gotify support
-- [ ] Add daily digest email
+- [ ] Add saved filters
+- [ ] Add smart lists
 - [ ] Add REST API tokens
-- [ ] Add Habits
-- [ ] Add time blocking
-- [ ] Add AI-powered review: a digest of what was done over any chosen period
-- [ ] Add dependencies between Tasks
-- [ ] Add streaks and completion stats
+- [ ] Add ntfy support
 - [ ] Add overdue nudges
-- [ ] Add OIDC / SSO login
+
+## Medium impact
+
+- [ ] Add Habits
+- [ ] Add streaks and completion stats
+- [ ] Add a report
+- [ ] Add a matrix view
+- [ ] Add time blocking
+- [ ] Add daily digest email
+- [ ] Add MCP
 - [ ] Add webhooks on Task events
+- [ ] Add OIDC / SSO login
 - [ ] Add two-factor auth (TOTP)
-- [ ] Add Kanban boards
+- [ ] Add dependencies between Tasks
+- [ ] Add a focus timer with YouTube playlist support
+- [ ] Add a per-user week start setting
+
+## Low impact
+
+- [ ] Limit Tags and People in the sidebar
+- [ ] Add Quick add syntax for Sections
 - [ ] Add countdown
+- [ ] Add Gotify support
+- [ ] Add Telegram integration
+- [ ] Add Discord integration?
+- [ ] Add summarize
+- [ ] Add AI-powered review: a digest of what was done over any chosen period

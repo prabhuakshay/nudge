@@ -28,6 +28,12 @@ function mockApi({
       sections = [...sections, created];
       return json(created, 201);
     }
+    if (url.pathname === "/api/v1/tasks" && request.method === "POST") {
+      const body = (await request.clone().json()) as Pick<Task, "title" | "section_id">;
+      const created = makeTask({ id: nextId++, project_id: WORK.id, ...body });
+      open = [created, ...open];
+      return json(created, 201);
+    }
     if (url.pathname.endsWith("/sections")) return json(sections);
     if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX, items: [WORK] });
     if (url.searchParams.get("closed") === "true") return json({ items: [], next_cursor: null });
@@ -131,6 +137,33 @@ describe("Sections in a Project", () => {
     await user.keyboard("Review{Escape}");
 
     expect(screen.getByRole("button", { name: "Add section" })).toHaveFocus();
+    expect(await writes(fetchSpy)).toEqual([]);
+  });
+
+  it("adds a Task inside a Section from its header", async () => {
+    const fetchSpy = mockApi({});
+    const { user } = renderTaskList({ project: WORK });
+
+    await user.click(await screen.findByRole("button", { name: "Add a task to Doing" }));
+    await user.keyboard("Review copy{Enter}");
+
+    await waitFor(() => {
+      expect(titlesIn("Doing")).toEqual(["Review copy"]);
+    });
+    expect(screen.getByRole("combobox", { name: "Add a task to Doing" })).toHaveFocus();
+    expect(await writes(fetchSpy)).toEqual([
+      ["POST /api/v1/tasks", { title: "Review copy", project_id: WORK.id, section_id: DOING.id }],
+    ]);
+  });
+
+  it("closes a Section's add-Task field left empty", async () => {
+    const fetchSpy = mockApi({});
+    const { user } = renderTaskList({ project: WORK });
+    await user.click(await screen.findByRole("button", { name: "Add a task to Doing" }));
+
+    await user.tab();
+
+    expect(screen.queryByRole("combobox", { name: "Add a task to Doing" })).not.toBeInTheDocument();
     expect(await writes(fetchSpy)).toEqual([]);
   });
 

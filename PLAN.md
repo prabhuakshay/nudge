@@ -100,7 +100,8 @@ Offline mode is not planned.
 
 ### Later
 - Calendar view
-- Habits, Pomodoro, Eisenhower matrix
+- Habits, Pomodoro
+- Matrix view, an Eisenhower matrix (done: #103)
 - Shared Projects and collaboration
 - CalDAV sync
 - Native mobile apps

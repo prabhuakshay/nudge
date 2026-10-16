@@ -49,7 +49,7 @@
 
 ## Medium impact
 
-- [ ] Add the Matrix view (#103, split into #104 to #106)
+- [x] Add the Matrix view (#103, split into #104 to #106)
 - [ ] Add Review (replaces "report", "streaks and completion stats", "summarize" and "AI review")
   - A page for any period (this week, this month, a custom range): Tasks completed per day,
     by Project and by Tag, share closed on time, and current and best streak of days with at

@@ -2,6 +2,7 @@ import type { UniqueIdentifier } from "@dnd-kit/core";
 import { arrayMove } from "@dnd-kit/sortable";
 
 import type { Section } from "@/features/sections/sections";
+import type { TreeRow } from "@/features/tasks/task-tree";
 
 import type { BoardColumnCards } from "./board-column";
 
@@ -51,6 +52,37 @@ function indexIn(column: BoardColumnCards | undefined, taskId: UniqueIdentifier)
   return column?.cards.findIndex(({ task }) => task.id === taskId) ?? -1;
 }
 
+function isPinned({ task }: TreeRow) {
+  return task.pinned_at !== null;
+}
+
+/**
+ * The cards with `card` put among them as near `at` as the column's order allows: Pinned cards
+ * stay at the top in the order they were pinned, as the server lists them, and the rest below.
+ */
+function insertCard(cards: TreeRow[], card: TreeRow, at: number) {
+  const pinned = cards.filter(isPinned);
+  const pinnedAt = card.task.pinned_at;
+  const index =
+    pinnedAt === null
+      ? Math.max(at, pinned.length)
+      : pinned.filter(({ task }) => (task.pinned_at ?? "") <= pinnedAt).length;
+  return [...cards.slice(0, index), card, ...cards.slice(index)];
+}
+
+/**
+ * The cards with the Pinned ones first, in the order they were pinned, as the server lists them,
+ * so a card moved before the server answers already shows where it will stay.
+ */
+export function pinnedFirst(cards: TreeRow[]) {
+  const byPinning = (a: TreeRow, b: TreeRow) =>
+    (a.task.pinned_at ?? "").localeCompare(b.task.pinned_at ?? "");
+  return [
+    ...cards.filter(isPinned).toSorted(byPinning),
+    ...cards.filter((card) => !isPinned(card)),
+  ];
+}
+
 /** The card `taskId` names, wherever it is. */
 export function cardOf(columns: BoardColumnCards[], taskId: UniqueIdentifier) {
   const column = columns[columnOf(columns, taskId)];
@@ -78,7 +110,7 @@ export function draggedOver(
   return columns.map((column, index) => {
     if (index === from) return { ...column, cards: column.cards.filter((row) => row !== card) };
     if (index !== to) return column;
-    return { ...column, cards: [...column.cards.slice(0, at), card, ...column.cards.slice(at)] };
+    return { ...column, cards: insertCard(column.cards, card, at) };
   });
 }
 
@@ -90,18 +122,25 @@ export function droppedOn(
 ) {
   const at = columnOf(columns, activeId);
   const column = columns[at];
-  const from = indexIn(column, activeId);
+  const card = column?.cards[indexIn(column, activeId)];
   const to = indexIn(column, overId);
-  if (!column || to === -1 || from === to) return columns;
-  return columns.with(at, { ...column, cards: arrayMove(column.cards, from, to) });
+  if (!column || !card || to === -1) return columns;
+  const rest = column.cards.filter((row) => row !== card);
+  return columns.with(at, { ...column, cards: insertCard(rest, card, to) });
 }
 
-/** Where a card sits, as the move endpoint takes it: its Section and the card it follows. */
+/**
+ * Where a card sits, as the move endpoint takes it: its Section and the card it follows. The
+ * first card below the Pinned ones follows none, so it goes first among the unpinned: Pinned
+ * cards sit first whatever their place in the Project's order.
+ */
 export function placeOf(columns: BoardColumnCards[], taskId: number) {
   const column = columns[columnOf(columns, taskId)];
   const index = indexIn(column, taskId);
+  const card = column?.cards[index];
+  const above = column?.cards[index - 1];
   return {
     sectionId: column?.section?.id ?? null,
-    afterId: column?.cards[index - 1]?.task.id ?? null,
+    afterId: card && above && isPinned(above) === isPinned(card) ? above.task.id : null,
   };
 }

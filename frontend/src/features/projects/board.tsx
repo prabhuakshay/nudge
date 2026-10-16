@@ -15,6 +15,7 @@ import { openTasksQuery, type Task } from "@/features/tasks/tasks";
 import { ArchivedNotice } from "./archived-notice";
 import { BoardColumn, type BoardColumnCards } from "./board-column";
 import { BoardDrag } from "./board-drag";
+import { pinnedFirst } from "./board-moves";
 import { ProjectHeader } from "./project-header";
 import type { SidebarProject } from "./projects";
 
@@ -105,7 +106,8 @@ export function ProjectBoard({ project }: { project: SidebarProject }) {
 
 /** The Board's columns in order: No section first when it has Tasks, then every Section. */
 function boardColumns(open: Task[], sections: Section[]) {
-  const cardsOf = (tasks: Task[]) => treeRows(tasks).filter(({ level }) => level === 0);
+  const cardsOf = (tasks: Task[]) =>
+    pinnedFirst(treeRows(tasks).filter(({ level }) => level === 0));
   const trees = bySection(open, sections);
   const columns: BoardColumnCards[] = trees.sections.map(({ section, tasks }) => ({
     section,

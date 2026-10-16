@@ -96,6 +96,31 @@ describe("dragging Board cards", () => {
     ]);
   });
 
+  it("keeps a card dragged above a Pinned one below it, first of the rest", async () => {
+    const pinned = makeTask({ ...BRIEF, pinned_at: "2026-10-01T09:00:00Z" });
+    const draft = makeTask({ id: 5, project_id: WORK.id, title: "Draft", section_id: TO_DO.id });
+    const { fetchSpy, user } = renderBoard([pinned, makeTask(OUTLINE), draft]);
+
+    await dragByKeyboard(user, "Draft", "{ArrowUp}{ArrowUp}");
+
+    await waitFor(() => {
+      expect(cardsIn("To do")).toEqual(["Write brief", "Draft", "Outline"]);
+    });
+    expect(await moves(fetchSpy)).toEqual([
+      { parent_id: null, after_id: null, section_id: TO_DO.id },
+    ]);
+  });
+
+  it("keeps a Pinned card among the Pinned ones, where it was", async () => {
+    const pinned = makeTask({ ...BRIEF, pinned_at: "2026-10-01T09:00:00Z" });
+    const { fetchSpy, user } = renderBoard([pinned, makeTask(OUTLINE)]);
+
+    await dragByKeyboard(user, "Write brief", "{ArrowDown}");
+
+    expect(cardsIn("To do")).toEqual(["Write brief", "Outline"]);
+    expect(await moves(fetchSpy)).toEqual([]);
+  });
+
   it("sends nothing when a card is dropped where it was", async () => {
     const { fetchSpy, user } = renderBoard();
 

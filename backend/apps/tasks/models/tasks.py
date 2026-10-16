@@ -54,7 +54,7 @@ class Task(models.Model):
         BLOCKED = "blocked", "Blocked"
 
     class Priority(models.IntegerChoices):
-        """How urgent a Task is; P1 is the most urgent."""
+        """How much a Task matters; P1 matters most."""
 
         NONE = 0, "None"
         P1 = 1, "P1"

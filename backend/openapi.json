@@ -4018,7 +4018,7 @@
         "type": "string"
       },
       "Priority": {
-        "description": "How urgent a Task is; P1 is the most urgent.",
+        "description": "How much a Task matters; P1 matters most.",
         "enum": [
           0,
           1,

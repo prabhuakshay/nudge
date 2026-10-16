@@ -1451,7 +1451,7 @@ export interface components {
     PaletteColor: "red" | "orange" | "amber" | "green" | "teal" | "blue" | "violet" | "pink";
     /**
      * Priority
-     * @description How urgent a Task is; P1 is the most urgent.
+     * @description How much a Task matters; P1 matters most.
      * @enum {integer}
      */
     Priority: 0 | 1 | 2 | 3 | 4;

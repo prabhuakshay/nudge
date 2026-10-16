@@ -5,6 +5,7 @@ import { SortableTaskRows, type SortableRowContext } from "@/features/tasks/task
 import { rootCount } from "@/features/tasks/task-tree";
 
 import { SectionGroup } from "./section-group";
+import { SectionMenu } from "./section-menu";
 import type { SectionTrees } from "./section-trees";
 
 /**
@@ -30,7 +31,12 @@ export function SectionedTasks({
         </Group>
       )}
       {trees.sections.map(({ section, tasks }) => (
-        <SectionGroup key={section.id} section={section} count={rootCount(tasks)}>
+        <SectionGroup
+          key={section.id}
+          section={section}
+          count={rootCount(tasks)}
+          actions={context.sortable && <SectionMenu section={section} />}
+        >
           {tasks.length > 0 && <SortableTaskRows tasks={tasks} context={context} />}
         </SectionGroup>
       ))}

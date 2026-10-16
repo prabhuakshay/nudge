@@ -10,7 +10,7 @@ import type { Section } from "./sections";
 const TO_DO: Section = { id: 31, project_id: WORK.id, name: "To do", collapsed: false };
 const DOING: Section = { id: 32, project_id: WORK.id, name: "Doing", collapsed: false };
 
-/** A stand-in server holding one Project's Sections and open Tasks, which adds Sections. */
+/** A stand-in server holding one Project's Sections and open Tasks, which adds and deletes Sections. */
 function mockApi({
   sections = [TO_DO, DOING],
   open = [],
@@ -28,6 +28,12 @@ function mockApi({
       sections = [...sections, created];
       return json(created, 201);
     }
+    if (url.pathname.startsWith("/api/v1/sections/") && request.method === "DELETE") {
+      const id = Number(url.pathname.split("/").at(-1));
+      sections = sections.filter((section) => section.id !== id);
+      open = open.map((task) => (task.section_id === id ? { ...task, section_id: null } : task));
+      return new Response(null, { status: 204 });
+    }
     if (url.pathname.endsWith("/sections")) return json(sections);
     if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX, items: [WORK] });
     if (url.searchParams.get("closed") === "true") return json({ items: [], next_cursor: null });
@@ -40,10 +46,13 @@ async function writes(fetchSpy: ReturnType<typeof mockApi>) {
     .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET");
   return Promise.all(
-    requests.map(async (request) => [
-      `${request.method} ${new URL(request.url).pathname}`,
-      (await request.json()) as unknown,
-    ]),
+    requests.map(async (request) => {
+      const body = await request.text();
+      return [
+        `${request.method} ${new URL(request.url).pathname}`,
+        body ? (JSON.parse(body) as unknown) : null,
+      ];
+    }),
   );
 }
 
@@ -131,6 +140,40 @@ describe("Sections in a Project", () => {
     await user.keyboard("Review{Escape}");
 
     expect(screen.getByRole("button", { name: "Add section" })).toHaveFocus();
+    expect(await writes(fetchSpy)).toEqual([]);
+  });
+
+  it("deletes a Section after a confirm, moving its Tasks to No section", async () => {
+    const fetchSpy = mockApi({
+      open: [makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id })],
+    });
+    const { user } = renderTaskList({ project: WORK });
+    await screen.findByText("Write brief");
+
+    await user.click(screen.getByRole("button", { name: "To do options" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    const dialog = screen.getByRole("dialog", { name: "Delete “To do”?" });
+    expect(dialog).toHaveTextContent("Its tasks move to No section.");
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("region", { name: "To do" })).not.toBeInTheDocument();
+    });
+    expect(await screen.findByRole("region", { name: "No section" })).toBeInTheDocument();
+    expect(titlesIn("No section")).toEqual(["Write brief"]);
+    expect(await writes(fetchSpy)).toEqual([[`DELETE /api/v1/sections/${String(TO_DO.id)}`, null]]);
+  });
+
+  it("keeps a Section when its delete is cancelled", async () => {
+    const fetchSpy = mockApi({});
+    const { user } = renderTaskList({ project: WORK });
+    await screen.findByRole("region", { name: "To do" });
+
+    await user.click(screen.getByRole("button", { name: "To do options" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByRole("region", { name: "To do" })).toBeInTheDocument();
     expect(await writes(fetchSpy)).toEqual([]);
   });
 

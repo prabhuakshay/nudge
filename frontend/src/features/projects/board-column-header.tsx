@@ -5,7 +5,7 @@ import { DeleteSectionDialog, DeleteSectionItem } from "@/features/sections/dele
 import { MoveSectionItems } from "@/features/sections/move-section-items";
 import { SectionMenu } from "@/features/sections/section-menu";
 import { SectionNameField } from "@/features/sections/section-name-field";
-import { useUpdateSection, type Section } from "@/features/sections/sections";
+import { sectionName, useUpdateSection, type Section } from "@/features/sections/sections";
 import { Grip } from "@/features/tasks/row-grip";
 import type { DragHandle } from "@/features/tasks/sortable-tree";
 import { cn } from "@/lib/utils";
@@ -25,7 +25,7 @@ export function BoardColumnHeader({
   if (!section) {
     return (
       <header className="flex min-h-10 items-center gap-2 px-3 pt-1">
-        <h2 className="min-w-0 truncate text-sm font-semibold">No section</h2>
+        <h2 className="min-w-0 truncate text-sm font-semibold">{sectionName(null)}</h2>
         <ColumnCount count={count} />
       </header>
     );

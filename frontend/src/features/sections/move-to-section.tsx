@@ -18,7 +18,7 @@ import {
 import { useMoveTask } from "@/features/tasks/task-placement";
 import { sidebarQuery, type Task } from "@/features/tasks/tasks";
 
-import { sectionsQuery } from "./sections";
+import { sectionName, sectionsQuery } from "./sections";
 
 type Choice = { id: number | null; name: string };
 
@@ -38,7 +38,9 @@ function useSectionChoices(task: Task) {
   const { mutate: move } = useMoveTask();
   const choices: Choice[] =
     canMove && sections.length > 0
-      ? [{ id: null, name: "No section" }, ...sections].filter(({ id }) => id !== task.section_id)
+      ? [{ id: null, name: sectionName(null) }, ...sections].filter(
+          ({ id }) => id !== task.section_id,
+        )
       : [];
   return {
     choices,

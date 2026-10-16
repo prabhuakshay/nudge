@@ -1,7 +1,7 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 
-import type { Section } from "@/features/sections/sections";
+import { sectionName, type Section } from "@/features/sections/sections";
 import { ClosedGroup } from "@/features/tasks/task-groups";
 import { treeRows } from "@/features/tasks/task-tree";
 import { sectionClosedQuery, type Task } from "@/features/tasks/tasks";
@@ -40,7 +40,7 @@ export function BoardClosedFold({
       ),
     [closed.data],
   );
-  const name = section?.name ?? "No section";
+  const name = sectionName(section);
 
   return (
     <ClosedGroup

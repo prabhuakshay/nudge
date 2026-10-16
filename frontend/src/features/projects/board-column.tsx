@@ -1,6 +1,6 @@
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 
-import type { Section } from "@/features/sections/sections";
+import { sectionName, type Section } from "@/features/sections/sections";
 import type { TreeRow } from "@/features/tasks/task-tree";
 import type { Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
@@ -50,7 +50,7 @@ export function BoardColumn({
   onOpen: (taskId: number) => void;
   onToggle: (task: Task) => void;
 }) {
-  const name = section?.name ?? "No section";
+  const name = sectionName(section);
   const label = `${name}, column ${String(position)} of ${String(count)}`;
   const collapsed = section?.collapsed ?? false;
   const drag = useColumnDrag(section, readOnly);

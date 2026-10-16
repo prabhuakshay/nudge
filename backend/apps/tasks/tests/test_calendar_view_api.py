@@ -2,17 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import date, time
+from datetime import UTC, date, datetime, time
 from typing import TYPE_CHECKING
 
 import pytest
 from django.test import Client
 
+from apps.accounts.services import set_time_zone
 from apps.tasks import creation, projects, services, trash
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from apps.accounts.models import User
 
 
@@ -21,6 +24,19 @@ def _task(user: User, title: str, dates: TaskDates | None = None) -> Task:
     if dates is not None:
         services.update_task(user, task.pk, services.TaskEdit(dates=dates))
     return task
+
+
+def _repeating(user: User, title: str, due: date, rule: str, repeat_from: Task.RepeatFrom) -> Task:
+    task = _task(user, title, TaskDates(due_date=due))
+    edit = services.TaskEdit(repeat_rule=rule, repeat_from=repeat_from)
+    services.update_task(user, task.pk, edit)
+    return task
+
+
+def _occurrences(client: Client, start: str, end: str) -> list[tuple[int, str]]:
+    response = client.get(f"/api/v1/tasks/calendar?start={start}&end={end}")
+    assert response.status_code == 200
+    return [(row["task_id"], row["date"]) for row in response.json()["occurrences"]]
 
 
 def _calendar(client: Client, start: str, end: str) -> list[str]:
@@ -168,3 +184,84 @@ def test_the_calendar_requires_a_session() -> None:
     response = Client().get("/api/v1/tasks/calendar?start=2026-10-01&end=2026-10-31")
 
     assert response.status_code == 401
+
+
+@pytest.mark.django_db
+def test_a_weekly_task_shows_its_later_occurrences_but_not_its_current_one(
+    client: Client,
+    ada: User,
+) -> None:
+    gym = _repeating(ada, "Gym", date(2026, 10, 15), "FREQ=WEEKLY", Task.RepeatFrom.DUE)
+
+    assert _occurrences(client, "2026-10-12", "2026-11-08") == [
+        (gym.pk, "2026-10-22"),
+        (gym.pk, "2026-10-29"),
+        (gym.pk, "2026-11-05"),
+    ]
+
+
+@pytest.mark.django_db
+def test_a_series_that_ends_inside_the_range_shows_no_occurrences_after_its_end(
+    client: Client,
+    ada: User,
+) -> None:
+    gym = _repeating(ada, "Gym", date(2026, 10, 15), "FREQ=WEEKLY;COUNT=3", Task.RepeatFrom.DUE)
+
+    assert _occurrences(client, "2026-10-12", "2026-11-08") == [
+        (gym.pk, "2026-10-22"),
+        (gym.pk, "2026-10-29"),
+    ]
+
+
+@pytest.mark.django_db
+def test_a_task_due_before_the_range_shows_the_occurrences_inside_it(
+    client: Client,
+    ada: User,
+) -> None:
+    rent = _repeating(ada, "Rent", date(2026, 9, 1), "FREQ=MONTHLY", Task.RepeatFrom.DUE)
+    _repeating(ada, "Later", date(2026, 11, 20), "FREQ=DAILY", Task.RepeatFrom.DUE)
+
+    assert _occurrences(client, "2026-10-01", "2026-10-31") == [(rent.pk, "2026-10-01")]
+
+
+@pytest.mark.django_db
+def test_a_task_that_repeats_from_completion_shows_no_later_occurrences(
+    client: Client,
+    ada: User,
+) -> None:
+    _repeating(ada, "Haircut", date(2026, 10, 15), "FREQ=WEEKLY", Task.RepeatFrom.COMPLETION)
+
+    assert _occurrences(client, "2026-10-12", "2026-11-08") == []
+
+
+@pytest.mark.django_db
+def test_another_users_occurrences_are_never_shown(client: Client, grace: User) -> None:
+    _repeating(grace, "Grace's", date(2026, 10, 15), "FREQ=DAILY", Task.RepeatFrom.DUE)
+
+    assert _occurrences(client, "2026-10-12", "2026-11-08") == []
+
+
+@pytest.mark.django_db
+def test_an_overdue_task_repeating_on_the_calendar_skips_the_days_up_to_today(
+    client: Client,
+    ada: User,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    freeze_time(datetime(2026, 10, 15, 11, 0, tzinfo=UTC))
+    set_time_zone(ada, "Europe/London")
+    bins = _repeating(ada, "Bins", date(2026, 10, 1), "FREQ=WEEKLY", Task.RepeatFrom.CALENDAR)
+
+    assert _occurrences(client, "2026-10-01", "2026-10-31") == [
+        (bins.pk, "2026-10-22"),
+        (bins.pk, "2026-10-29"),
+    ]
+
+
+@pytest.mark.django_db
+def test_the_tasks_occurrences_belong_to_come_with_them(client: Client, ada: User) -> None:
+    _repeating(ada, "Rent", date(2026, 9, 1), "FREQ=MONTHLY", Task.RepeatFrom.DUE)
+    _repeating(ada, "Haircut", date(2026, 10, 15), "FREQ=WEEKLY", Task.RepeatFrom.COMPLETION)
+
+    response = client.get("/api/v1/tasks/calendar?start=2026-10-01&end=2026-10-31")
+
+    assert [row["title"] for row in response.json()["repeating"]] == ["Rent"]

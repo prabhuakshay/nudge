@@ -12,7 +12,8 @@ const NO_SECTION_COLUMN = "column-none";
 
 /**
  * The id a column drags and drops by, so a card can land in it even when it has no cards. A
- * Section's column drags by it too.
+ * Section's column drags by it too. Column ids are strings and card ids are their Tasks' numeric
+ * ids, so the two never clash.
  */
 export function columnId(section: Section | null) {
   return section ? `column-${String(section.id)}` : NO_SECTION_COLUMN;
@@ -20,7 +21,7 @@ export function columnId(section: Section | null) {
 
 /** Whether `id` names a Section's column, rather than a card or No section's column. */
 export function isSectionColumn(id: UniqueIdentifier) {
-  return typeof id === "string" && id.startsWith("column-") && id !== NO_SECTION_COLUMN;
+  return typeof id === "string" && id !== NO_SECTION_COLUMN;
 }
 
 /**

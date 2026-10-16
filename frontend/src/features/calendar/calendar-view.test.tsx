@@ -1,7 +1,14 @@
 import { screen, within } from "@testing-library/react";
 import { useState } from "react";
 
-import { calendarRequests, day, fakeCalendarToday, mockApi, renderCalendar } from "@/test/calendar";
+import {
+  calendarRequests,
+  day,
+  fakeCalendarToday,
+  mockApi,
+  renderCalendar,
+  stubScreenWidth,
+} from "@/test/calendar";
 import { INBOX, renderListRoute, WORK } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 import { makeTask } from "@/test/tasks";
@@ -188,6 +195,7 @@ describe("CalendarView in Month mode", () => {
 
   it("shows a Task added from Quick add straight away", async () => {
     mockApi();
+    stubScreenWidth({ wide: true });
     const { user } = renderListRoute(
       <>
         <CalendarView inbox={INBOX} timeZone="Europe/London" />

@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { CalendarRange, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { QuickAddDialog } from "@/features/tasks/global-quick-add";
 import { useOpenTask } from "@/features/tasks/open-task";
 import { wallClock } from "@/features/tasks/schedule";
 import { useSetTaskStatus } from "@/features/tasks/set-status";
@@ -11,12 +12,14 @@ import { TaskDetail } from "@/features/tasks/task-detail";
 import { isClosed } from "@/features/tasks/task-properties";
 import type { SidebarProject, Task } from "@/features/tasks/tasks";
 
-import { calendarQuery, MODES, useCalendarPlace, type CalendarMode } from "./calendar";
+import { calendarQuery, useCalendarPlace, usePhone, type CalendarMode } from "./calendar";
 import { CalendarDrag } from "./calendar-drag";
-import { monthWeeks, shiftDays, shiftMonths, weekDays } from "./layout";
+import { DayTasks } from "./day-tasks";
+import { monthWeeks, shiftDays, shiftMonths, tasksOn, weekDays } from "./layout";
 import { MonthGrid } from "./month-grid";
 import { futureOccurrences } from "./occurrences";
 import { useShowClosed } from "./show-closed";
+import { slotView, type Slot } from "./slot";
 import { TimeGrid } from "./time-grid";
 
 const MODE_NAMES: Record<CalendarMode, string> = { month: "Month", week: "Week", day: "Day" };
@@ -73,8 +76,8 @@ function useWallClock(timeZone: string): Date {
  * The Calendar View: every dated Task, open and Closed, drawn on the days its dates cover. It
  * shows a month, a week or a day at a time, with controls to switch between them and to step
  * forward, back and to today. Clicking a
- * Task opens its detail; ticking it closes it in place. Repeating Tasks also show faded on the
- * days they come back on.
+ * Task opens its detail; ticking it closes it in place. Clicking an empty day or hour opens Quick
+ * add with its date and time. Repeating Tasks also show faded on the days they come back on.
  */
 export function CalendarView({
   inbox,
@@ -87,13 +90,15 @@ export function CalendarView({
 }) {
   const now = useWallClock(timeZone);
   const today = format(now, "yyyy-MM-dd");
-  const { mode, date, go } = useCalendarPlace(today);
+  const { mode, date, modes, go } = useCalendarPlace(today);
+  const phone = usePhone();
   const days = shownDays(mode, date);
   const { data } = useQuery(calendarQuery({ start: days[0] ?? date, end: days.at(-1) ?? date }));
   const [showClosed, setShowClosed] = useShowClosed();
   const shown = (data?.items ?? []).filter((task) => showClosed || !isClosed(task.status));
   const tasks = data ? [...shown, ...futureOccurrences(data)] : shown;
   const { openTaskId, setOpenTask } = useOpenTask();
+  const [adding, setAdding] = useState<Slot | null>(null);
   const { mutate: setStatus } = useSetTaskStatus();
   const toggle = useCallback(
     (task: Task) => {
@@ -108,20 +113,21 @@ export function CalendarView({
   return (
     // `data-wide` lets the app shell drop its reading width for the grid.
     <div data-wide className="mx-auto w-full max-w-6xl">
-      <header className="mb-4 flex items-center gap-2.5 sm:gap-3">
+      <header className="mb-4 flex flex-wrap items-center gap-2.5 sm:flex-nowrap sm:gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-hue-teal-soft text-hue-teal">
           <CalendarRange className="size-5" aria-hidden />
         </span>
         <h1 className="min-w-0 truncate text-2xl font-extrabold tracking-tight sm:text-3xl">
           {title(mode, date)}
         </h1>
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        {/* On a phone the controls take a row of their own below the title. */}
+        <div className="flex w-full shrink-0 items-center gap-1 sm:ml-auto sm:w-auto">
           <div
             role="group"
             aria-label="Mode"
-            className="mr-1 flex rounded-lg bg-surface-muted p-0.5"
+            className="mr-auto flex rounded-lg bg-surface-muted p-0.5 sm:mr-1"
           >
-            {MODES.map((each) => (
+            {modes.map((each) => (
               <Button
                 key={each}
                 variant="ghost"
@@ -185,10 +191,20 @@ export function CalendarView({
             date={date}
             today={today}
             tasks={tasks}
+            compact={phone}
             onDateChange={moveFocus}
+            onAdd={setAdding}
             onOpen={setOpenTask}
             onToggle={toggle}
           />
+          {phone && (
+            <DayTasks
+              day={date}
+              tasks={tasksOn(tasks, date)}
+              onOpen={setOpenTask}
+              onToggle={toggle}
+            />
+          )}
         </CalendarDrag>
       ) : (
         <TimeGrid
@@ -198,8 +214,18 @@ export function CalendarView({
           now={now.getHours() * 60 + now.getMinutes()}
           tasks={tasks}
           onDateChange={moveFocus}
+          onAdd={setAdding}
           onOpen={setOpenTask}
           onToggle={toggle}
+        />
+      )}
+
+      {adding && (
+        <QuickAddDialog
+          view={slotView(adding)}
+          onClose={() => {
+            setAdding(null);
+          }}
         />
       )}
 

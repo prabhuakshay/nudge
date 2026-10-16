@@ -29,7 +29,10 @@ describe("A Board column's Closed fold", () => {
   it("loads only that column's Closed Tasks, and only once opened", async () => {
     const fetchSpy = mockApi({
       project: BOARD,
-      open: [makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id })],
+      open: [
+        makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id }),
+        makeTask({ id: 4, project_id: WORK.id, title: "Loose end" }),
+      ],
       closed: [
         makeTask({ id: 2, title: "Sent invoice", section_id: TO_DO.id, status: "completed" }),
         makeTask({ id: 3, title: "Reviewed copy", section_id: DOING.id, status: "completed" }),
@@ -44,6 +47,20 @@ describe("A Board column's Closed fold", () => {
     expect(await column("To do").findByText("Sent invoice")).toBeInTheDocument();
     expect(screen.queryByText("Reviewed copy")).not.toBeInTheDocument();
     expect(closedListsAsked(fetchSpy)).toEqual([String(TO_DO.id)]);
+  });
+
+  it("shows No section with only Closed Tasks, so they stay reachable", async () => {
+    mockApi({
+      project: BOARD,
+      open: [makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id })],
+      closed: [makeTask({ id: 2, title: "Sent invoice", status: "completed" })],
+    });
+    const { user } = renderBoard();
+
+    await screen.findByRole("region", { name: /^No section, column/ });
+    await user.click(column("No section").getByRole("button", { name: "Closed" }));
+
+    expect(await column("No section").findByText("Sent invoice")).toBeInTheDocument();
   });
 
   it("puts a Task reopened from the fold back among the column's cards", async () => {

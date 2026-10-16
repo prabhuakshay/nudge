@@ -68,6 +68,19 @@ describe("dragging Board cards", () => {
     expect(await moves(fetchSpy)).toEqual([{ parent_id: null, after_id: null, section_id: null }]);
   });
 
+  it("shows No section while a card is dragged, so it can be dropped there", async () => {
+    const { fetchSpy, user } = renderBoard([makeTask(BRIEF), makeTask(OUTLINE)]);
+    await screen.findByText("Write brief");
+    expect(screen.queryByRole("region", { name: /^No section, column/ })).not.toBeInTheDocument();
+
+    await dragByKeyboard(user, "Outline", "{ArrowLeft}");
+
+    await waitFor(() => {
+      expect(cardsIn("No section")).toEqual(["Outline"]);
+    });
+    expect(await moves(fetchSpy)).toEqual([{ parent_id: null, after_id: null, section_id: null }]);
+  });
+
   it("moves a card to the end of a collapsed column", async () => {
     const { fetchSpy, user } = renderBoard(seed(), [TO_DO, { ...DOING, collapsed: true }]);
 

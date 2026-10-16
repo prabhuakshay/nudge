@@ -61,7 +61,8 @@ export function BoardDrag({
 }: {
   projectId: number;
   columns: BoardColumnCards[];
-  children: (columns: BoardColumnCards[]) => ReactNode;
+  /** Draws the columns, told whether a card is on the move. */
+  children: (columns: BoardColumnCards[], cardDragged: boolean) => ReactNode;
 }) {
   const sensors = useDragSensors();
   const [dragging, setDragging] = useState<Dragging | null>(null);
@@ -114,7 +115,7 @@ export function BoardDrag({
       }}
     >
       <SortableContext items={sections.map(columnId)} strategy={horizontalListSortingStrategy}>
-        {children(dragging?.columns ?? columns)}
+        {children(dragging?.columns ?? columns, dragging !== null)}
       </SortableContext>
       {createPortal(
         <DragOverlay dropAnimation={null}>

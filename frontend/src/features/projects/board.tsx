@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 
 import { AddSection } from "@/features/sections/add-section";
@@ -10,7 +10,7 @@ import { useSetTaskStatus } from "@/features/tasks/set-status";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { isClosed } from "@/features/tasks/task-properties";
 import { treeRows } from "@/features/tasks/task-tree";
-import { openTasksQuery, type Task } from "@/features/tasks/tasks";
+import { openTasksQuery, sectionClosedQuery, type Task } from "@/features/tasks/tasks";
 
 import { ArchivedNotice } from "./archived-notice";
 import { BoardColumn, type BoardColumnCards } from "./board-column";
@@ -21,15 +21,19 @@ import type { SidebarProject } from "./projects";
 
 /**
  * A Project's open Tasks as a Board: one column of cards per Section, in Section order, after a
- * No section column that only shows when it has Tasks. A card is a root Task; its Subtasks show
+ * No section column that only shows when it has open or Closed Tasks, or while a card is dragged
+ * so it can be dropped there. A card is a root Task; its Subtasks show
  * as progress on it; cards drag between and within columns. An Add section control ends the
  * Board. On phones the columns scroll sideways inside the Board, one at a time, so the page itself
  * never does. An archived Project's Board is read-only.
  */
 export function ProjectBoard({ project }: { project: SidebarProject }) {
-  const { data: open = [] } = useQuery(openTasksQuery(project.id));
+  const { data: open = [], isSuccess: loaded } = useQuery(openTasksQuery(project.id));
   const { data: sections = [] } = useQuery(sectionsQuery(project.id));
   const columns = useMemo(() => boardColumns(open, sections), [open, sections]);
+  const noSectionEmpty = columns[0]?.cards.length === 0;
+  const noSectionClosed = useNoSectionHasClosed(project.id, loaded && noSectionEmpty);
+  const visible = onShow(columns, noSectionClosed);
   const order = useMemo(
     () => columns.flatMap(({ cards }) => cards.map(({ task }) => task.id)),
     [columns],
@@ -53,20 +57,20 @@ export function ProjectBoard({ project }: { project: SidebarProject }) {
         <QuickAddCard view={{ kind: "project", project }} />
       )}
 
-      {columns.length === 0 && (
+      {visible.length === 0 && (
         <p className="px-4 py-8 text-center text-sm text-muted-foreground">
           Nothing here yet. Add a task above.
         </p>
       )}
-      {(columns.length > 0 || !project.is_archived) && (
+      {(visible.length > 0 || !project.is_archived) && (
         <div
           role="group"
           aria-label={`${project.name} board`}
           className="flex snap-x snap-mandatory items-start gap-3 overflow-x-auto overscroll-x-contain pb-4"
         >
           <BoardDrag projectId={project.id} columns={columns}>
-            {(shown) =>
-              shown.map((column, index) => (
+            {(current, cardDragged) =>
+              onShow(current, noSectionClosed || cardDragged).map((column, index, shown) => (
                 <BoardColumn
                   key={column.section?.id ?? "none"}
                   projectId={project.id}
@@ -104,7 +108,7 @@ export function ProjectBoard({ project }: { project: SidebarProject }) {
   );
 }
 
-/** The Board's columns in order: No section first when it has Tasks, then every Section. */
+/** The Board's columns in order: No section first, then every Section. */
 function boardColumns(open: Task[], sections: Section[]) {
   const cardsOf = (tasks: Task[]) =>
     pinnedFirst(treeRows(tasks).filter(({ level }) => level === 0));
@@ -113,6 +117,20 @@ function boardColumns(open: Task[], sections: Section[]) {
     section,
     cards: cardsOf(tasks),
   }));
-  const unsectioned = cardsOf(trees.unsectioned);
-  return unsectioned.length > 0 ? [{ section: null, cards: unsectioned }, ...columns] : columns;
+  return [{ section: null, cards: cardsOf(trees.unsectioned) }, ...columns];
+}
+
+/** The columns on show: No section only when it has cards or `keepNoSection` says so. */
+function onShow(columns: BoardColumnCards[], keepNoSection: boolean) {
+  const [noSection, ...sectioned] = columns;
+  return noSection && (noSection.cards.length > 0 || keepNoSection) ? columns : sectioned;
+}
+
+/**
+ * Whether No section has Closed Tasks, asked only when `ask` is set, so its column can show to
+ * reach them. Its fold reads the same first page.
+ */
+function useNoSectionHasClosed(projectId: number, ask: boolean) {
+  const { data } = useInfiniteQuery({ ...sectionClosedQuery(projectId, null), enabled: ask });
+  return (data?.pages[0]?.items.length ?? 0) > 0;
 }

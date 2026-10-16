@@ -2,7 +2,8 @@ import { screen, waitFor, within } from "@testing-library/react";
 
 import { ProjectPage } from "@/features/projects/project-page";
 import type { SidebarProject } from "@/features/projects/projects";
-import { INBOX, WORK, renderListRoute } from "@/test/drawer";
+import { INBOX, WORK, json, renderListRoute } from "@/test/drawer";
+import { requestOf } from "@/test/fetch";
 import { DOING, TO_DO, mockApi, writes } from "@/test/sections";
 import { makeTask } from "@/test/tasks";
 
@@ -58,6 +59,13 @@ describe("A Project's Layout", () => {
     expect(screen.queryByRole("group", { name: "Layout" })).not.toBeInTheDocument();
   });
 });
+
+/** The ⋯ menu button on the card titled `title`. */
+function cardMenu(title: string) {
+  const card = screen.getByText(title).closest("li");
+  if (!card) throw new Error(`No card for “${title}”`);
+  return within(card).getByRole("button", { name: "More actions" });
+}
 
 describe("A Project's Board", () => {
   it("shows No section first, then each Section in order, each with its count", async () => {
@@ -228,5 +236,56 @@ describe("A Project's Board", () => {
 
     expect(await screen.findByText("Write brief")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Add a task to/ })).not.toBeInTheDocument();
+  });
+
+  it("moves a card to another column from its menu with the keyboard", async () => {
+    const fetchSpy = mockApi({
+      project: BOARD,
+      open: [makeTask({ id: 5, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id })],
+    });
+    const { user } = renderProject(BOARD);
+    await screen.findByText("Write brief");
+
+    cardMenu("Write brief").focus();
+    await user.keyboard("{Enter}");
+    (await screen.findByRole("menuitem", { name: "Move to section" })).focus();
+    await user.keyboard("{ArrowRight}");
+    // To do, the card's own column, isn't offered: No section, then Doing.
+    expect(await screen.findByRole("menuitem", { name: "Doing" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "To do" })).not.toBeInTheDocument();
+    await user.keyboard("{ArrowDown}{Enter}");
+
+    await waitFor(() => {
+      expect(cardsIn("Doing")).toEqual(["Write brief"]);
+    });
+    expect(await writes(fetchSpy)).toEqual([
+      ["POST /api/v1/tasks/5/move", { parent_id: null, after_id: null, section_id: DOING.id }],
+    ]);
+  });
+
+  it("keeps a card in its column and says why when a move fails", async () => {
+    const fetchSpy = mockApi({
+      project: BOARD,
+      open: [makeTask({ id: 5, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id })],
+    });
+    const server = fetchSpy.getMockImplementation();
+    fetchSpy.mockImplementation(async (input, init) =>
+      requestOf(input).url.endsWith("/move")
+        ? json({ detail: "That Section is gone." }, 422)
+        : (server?.(input, init) ?? json({})),
+    );
+    const { user } = renderProject(BOARD);
+    await screen.findByText("Write brief");
+
+    await user.click(cardMenu("Write brief"));
+    (await screen.findByRole("menuitem", { name: "Move to section" })).focus();
+    await user.keyboard("{ArrowRight}");
+    (await screen.findByRole("menuitem", { name: "Doing" })).focus();
+    await user.keyboard("{Enter}");
+
+    expect(await screen.findByText("That Section is gone.")).toBeInTheDocument();
+    await waitFor(() => {
+      expect(cardsIn("To do")).toEqual(["Write brief"]);
+    });
   });
 });

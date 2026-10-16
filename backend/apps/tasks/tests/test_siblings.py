@@ -239,3 +239,26 @@ def test_every_set_locks_before_handing_out_a_key(
 
     with pytest.raises(TransactionManagementError):
         siblings.last()
+
+
+@pytest.mark.django_db(transaction=True)
+@pytest.mark.parametrize(
+    "place",
+    [
+        lambda roots: roots.first(),
+        lambda roots: roots.last(),
+        lambda roots: roots.after(None),
+        lambda roots: roots.keys_after(0, 2),
+        lambda roots: roots.keep(0, "a0"),
+        lambda roots: roots.lock(),
+    ],
+    ids=["first", "last", "after", "keys_after", "keep", "lock"],
+)
+def test_every_way_of_placing_a_row_locks_the_set_first(
+    ada: User,
+    place: Callable[[Siblings[int]], object],
+) -> None:
+    roots = task_siblings(projects.create_project(ada, "Work").pk, None)
+
+    with pytest.raises(TransactionManagementError):
+        place(roots)

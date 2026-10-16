@@ -11,8 +11,24 @@ from ninja import Query, Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
-from apps.tasks import creation, moves, people, schedule, services, tags, trash, tree
-from apps.tasks.api.errors import PERSON_NOT_FOUND, PROJECT_NOT_FOUND, TAG_NOT_FOUND, TASK_NOT_FOUND
+from apps.tasks import (
+    creation,
+    moves,
+    people,
+    schedule,
+    sections,
+    services,
+    tags,
+    trash,
+    tree,
+)
+from apps.tasks.api.errors import (
+    PERSON_NOT_FOUND,
+    PROJECT_NOT_FOUND,
+    SECTION_NOT_FOUND,
+    TAG_NOT_FOUND,
+    TASK_NOT_FOUND,
+)
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
 from apps.tasks.pagination import Page
@@ -300,8 +316,8 @@ def move_task(
 
 
 def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:
-    """Resolve the move's ids to the user's Project and parent, or say which wasn't found."""
-    project = parent = None
+    """Resolve the move's ids to the user's Project, parent and Section, or say which is missing."""
+    project = parent = section = None
     if move.project_id is not None:
         project = services.live_project(user, move.project_id)
         if project is None:
@@ -310,7 +326,17 @@ def _destination(user: User, move: TaskMoveIn) -> moves.Destination | ErrorOut:
         parent = services.live_task(user, move.parent_id)
         if parent is None:
             return TASK_NOT_FOUND
-    return moves.Destination(project, parent, move.after_id)
+    if move.section_id is not None:
+        section = sections.section(user, move.section_id)
+        if section is None:
+            return SECTION_NOT_FOUND
+    return moves.Destination(
+        project,
+        parent,
+        move.after_id,
+        section=section,
+        section_given="section_id" in move.model_fields_set,
+    )
 
 
 @router.post(

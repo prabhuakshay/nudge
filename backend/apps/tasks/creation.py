@@ -16,7 +16,7 @@ from apps.tasks import repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import check_mentions, sync_mentions
-from apps.tasks.models import MAX_DEPTH, Tag, Task, TaskActivity
+from apps.tasks.models import MAX_DEPTH, Section, Tag, Task, TaskActivity
 from apps.tasks.positions import first_root_position, lock_project
 from apps.tasks.repeat import SUBTASK_REPEAT, Repeat, RepeatRuleError
 from apps.tasks.rows import as_rows, with_overdue
@@ -36,7 +36,7 @@ class NewTask:
     """What a new Task starts with besides its title; all of it is optional.
 
     `tags` holds Tags, or names of the owner's Tags, which are created if they're new. Only a
-    root Task can repeat.
+    root Task can repeat or be in a Section.
     """
 
     description: str = ""
@@ -44,6 +44,7 @@ class NewTask:
     priority: Task.Priority = Task.Priority.NONE
     tags: Sequence[Tag | str] = ()
     repeat: Repeat | None = None
+    section: Section | None = None
 
 
 def create_task(project: Project, title: str, new: NewTask | None = None) -> Task:
@@ -98,7 +99,7 @@ def duplicate_task(user: User, task_id: int) -> Task | None:
     """Copy one of the user's Tasks to right after it; return None if it isn't theirs.
 
     The copy is a fresh open Task with the original's title, Description and Priority, under the
-    same parent. Being open, it reopens any Closed ancestors.
+    same parent and in the same Section. Being open, it reopens any Closed ancestors.
 
     Raises:
         ArchivedProjectError: The Task is in an archived Project.
@@ -115,7 +116,11 @@ def duplicate_task(user: User, task_id: int) -> Task | None:
         task = _insert(
             original.project,
             original.title,
-            NewTask(description=original.description, priority=Task.Priority(original.priority)),
+            NewTask(
+                description=original.description,
+                priority=Task.Priority(original.priority),
+                section=original.section,
+            ),
             position=str(generate_key_between(original.position, following)),
             parent=original.parent,
         )
@@ -136,6 +141,7 @@ def _insert(
         owner_id=project.owner_id,
         project=project,
         parent=parent,
+        section=new.section,
         title=title,
         description=new.description,
         priority=new.priority,

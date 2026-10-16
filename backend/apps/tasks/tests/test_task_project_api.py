@@ -62,6 +62,8 @@ def test_moving_a_task_is_logged_with_both_project_names(client: Client, ada: Us
         "to_project": "Work",
         "from_parent": None,
         "to_parent": None,
+        "from_section": None,
+        "to_section": None,
     }
 
 

@@ -114,7 +114,7 @@ def restore_task(user: User, task_id: int) -> Restored | None:
 
     The unit goes back under its parent if the parent is live and the unit still fits below it,
     else it becomes the last root of its Project; a unit whose Project is in Trash goes to the
-    Inbox. An archived Project takes it back as it is.
+    Inbox, in No section. An archived Project takes it back as it is.
     """
     task = (
         user.tasks.filter(pk=task_id, trash_unit__isnull=False)
@@ -128,7 +128,15 @@ def restore_task(user: User, task_id: int) -> Restored | None:
     with transaction.atomic():
         _place(user, head, height=max(member.depth for member in unit) - head.depth)
         head.deleted_at = head.trash_unit = None
-        fields = ["deleted_at", "trash_unit", "project", "parent", "position", "updated_at"]
+        fields = [
+            "deleted_at",
+            "trash_unit",
+            "project",
+            "parent",
+            "section",
+            "position",
+            "updated_at",
+        ]
         head.save(update_fields=fields)
         others = user.tasks.filter(pk__in=[member.pk for member in unit if member != head])
         reminders.update_tasks(
@@ -166,4 +174,6 @@ def _place(user: User, head: Task, height: int) -> None:
     head.position = str(
         generate_key_between(roots.values_list("position", flat=True).first(), None)
     )
+    if project != head.project:
+        head.section = None
     head.project, head.parent = project, None

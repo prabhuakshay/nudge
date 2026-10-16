@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { useEffect, useLayoutEffect, useRef } from "react";
-import { tinykeys, type KeyBindingMap } from "tinykeys";
+import { tinykeys, type KeybindingsMap } from "tinykeys";
 
 import { sessionQuery } from "@/features/auth/session";
 
@@ -105,7 +105,7 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled = true) {
   useEffect(() => {
     if (!enabled) return;
     watchChords();
-    const bindings: KeyBindingMap = {};
+    const bindings: KeybindingsMap = {};
     // `ids` is the handlers' keys joined, so every part is a ShortcutId.
     for (const id of ids.split(" ").filter(Boolean) as ShortcutId[]) {
       for (const binding of SHORTCUTS[id].keys) {
@@ -118,6 +118,7 @@ export function useShortcuts(handlers: ShortcutHandlers, enabled = true) {
         };
       }
     }
-    return tinykeys(window, bindings);
+    // `allowed` decides which keys a text field keeps; tinykeys' own filter would drop them all.
+    return tinykeys(window, bindings, { ignore: () => false });
   }, [ids, enabled, singleKey]);
 }

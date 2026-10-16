@@ -15,10 +15,13 @@ export function TaskCheckbox({
   onToggle,
   className,
   tabIndex,
+  disabled,
 }: {
   task: Task;
   onToggle: () => void;
   className?: string;
+  /** True where the Task can't change, as in an archived Project. */
+  disabled?: boolean;
   /** -1 keeps it out of the Tab order, for a grid that moves focus with the arrow keys. */
   tabIndex?: number;
 }) {
@@ -30,6 +33,7 @@ export function TaskCheckbox({
       role="checkbox"
       aria-checked={closed}
       tabIndex={tabIndex}
+      disabled={disabled}
       aria-label={`${closed ? "Reopen" : "Complete"} “${plainMentions(task.title)}”`}
       onClick={(event) => {
         // The row behind it opens the Task; the checkbox only toggles it.

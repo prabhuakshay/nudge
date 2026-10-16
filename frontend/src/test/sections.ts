@@ -2,7 +2,7 @@ import { screen, within } from "@testing-library/react";
 
 import type { Section } from "@/features/sections/sections";
 import { moveRow } from "@/features/tasks/task-drag";
-import type { Task } from "@/features/tasks/tasks";
+import type { SidebarProject, Task } from "@/features/tasks/tasks";
 import { INBOX, WORK, json } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 import { makeTask } from "@/test/tasks";
@@ -43,14 +43,17 @@ function movedTask(tasks: Task[], movedId: number, body: MoveBody) {
 
 /**
  * A stand-in server holding a Project's Sections and open Tasks; it adds, changes, moves and
- * deletes Sections, and adds and moves Tasks.
+ * deletes Sections, adds and moves Tasks, and changes the Project.
  */
 export function mockApi({
   sections = [TO_DO, DOING],
   open = [],
+  project = WORK,
 }: {
   sections?: Section[];
   open?: Task[];
+  /** The Project the sidebar lists beside the Inbox; PATCHes to it change it. */
+  project?: SidebarProject;
 }) {
   let nextId = 100;
   /** Changes, moves or deletes the Section a `/sections/{id}` request names; its answer. */
@@ -68,6 +71,13 @@ export function mockApi({
     const { after_id } = (await request.clone().json()) as { after_id: number | null };
     sections = placedAfter(sections, id, after_id);
     return new Response(null, { status: 204 });
+  };
+  /** The sidebar, or the Project after a PATCH to it; undefined for any other request. */
+  const sidebarAndProject = async (request: Request, path: string) => {
+    if (path === "/api/v1/sidebar") return json({ inbox: INBOX, items: [project], archived: [] });
+    if (!path.startsWith("/api/v1/projects/") || request.method !== "PATCH") return undefined;
+    project = { ...project, ...((await request.clone().json()) as Partial<SidebarProject>) };
+    return json(project);
   };
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
@@ -92,7 +102,8 @@ export function mockApi({
     }
     if (url.pathname.startsWith("/api/v1/sections/")) return changeSection(request, url.pathname);
     if (url.pathname.endsWith("/sections")) return json(sections);
-    if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX, items: [WORK] });
+    const sidebarOrProject = await sidebarAndProject(request, url.pathname);
+    if (sidebarOrProject) return sidebarOrProject;
     if (url.searchParams.get("closed") === "true") return json({ items: [], next_cursor: null });
     return json({ items: open, next_cursor: null });
   });

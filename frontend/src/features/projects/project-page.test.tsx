@@ -1,0 +1,169 @@
+import { screen, waitFor, within } from "@testing-library/react";
+
+import { ProjectPage } from "@/features/projects/project-page";
+import type { SidebarProject } from "@/features/projects/projects";
+import { INBOX, WORK, renderListRoute } from "@/test/drawer";
+import { DOING, TO_DO, mockApi, writes } from "@/test/sections";
+import { makeTask } from "@/test/tasks";
+
+const BOARD: SidebarProject = { ...WORK, layout: "board" };
+
+function renderProject(project: SidebarProject) {
+  return renderListRoute(<ProjectPage projectId={project.id} />);
+}
+
+/** The Board's column labels, left to right. */
+function columnNames() {
+  return within(screen.getByRole("group", { name: "Work board" }))
+    .getAllByRole("region")
+    .map((column) => column.getAttribute("aria-label"));
+}
+
+/** The card titles in one column, top to bottom. */
+function cardsIn(column: string) {
+  return within(screen.getByRole("list", { name: `${column} tasks` }))
+    .getAllByRole("listitem")
+    .map((card) => card.querySelector("[data-task-title]")?.textContent);
+}
+
+describe("A Project's Layout", () => {
+  it("switches a Project to Board and back from its header", async () => {
+    const fetchSpy = mockApi({});
+    const { user } = renderProject(WORK);
+    expect(await screen.findByRole("treegrid", { name: "Work tasks" })).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Board" }));
+
+    expect(await screen.findByRole("group", { name: "Work board" })).toBeInTheDocument();
+    expect(screen.queryByRole("treegrid")).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Board" })).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(screen.getByRole("button", { name: "List" }));
+
+    expect(await screen.findByRole("treegrid", { name: "Work tasks" })).toBeInTheDocument();
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([
+        [`PATCH /api/v1/projects/${String(WORK.id)}`, { layout: "board" }],
+        [`PATCH /api/v1/projects/${String(WORK.id)}`, { layout: "list" }],
+      ]);
+    });
+  });
+
+  it("offers no Layout switch in the Inbox", async () => {
+    mockApi({});
+
+    renderProject(INBOX);
+
+    expect(await screen.findByRole("treegrid", { name: "Inbox tasks" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Layout" })).not.toBeInTheDocument();
+  });
+});
+
+describe("A Project's Board", () => {
+  it("shows No section first, then each Section in order, each with its count", async () => {
+    mockApi({
+      project: BOARD,
+      open: [
+        makeTask({ id: 1, project_id: WORK.id, title: "Loose end" }),
+        makeTask({ id: 2, project_id: WORK.id, title: "Review copy", section_id: DOING.id }),
+        makeTask({ id: 3, project_id: WORK.id, title: "Write brief", section_id: DOING.id }),
+      ],
+    });
+
+    renderProject(BOARD);
+
+    expect(await screen.findByText("Review copy")).toBeInTheDocument();
+    expect(columnNames()).toEqual([
+      "No section, column 1 of 3",
+      "To do, column 2 of 3",
+      "Doing, column 3 of 3",
+    ]);
+    expect(within(screen.getByRole("region", { name: /^Doing/ })).getByText("2")).toBeVisible();
+    expect(cardsIn("No section")).toEqual(["Loose end"]);
+    expect(cardsIn("Doing")).toEqual(["Review copy", "Write brief"]);
+  });
+
+  it("hides No section when every Task has a Section", async () => {
+    mockApi({
+      project: BOARD,
+      open: [makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id })],
+    });
+
+    renderProject(BOARD);
+
+    expect(await screen.findByText("Write brief")).toBeInTheDocument();
+    expect(columnNames()).toEqual(["To do, column 1 of 2", "Doing, column 2 of 2"]);
+  });
+
+  it("shows a card's Priority, date, Tags and Subtask progress, Pinned cards first", async () => {
+    mockApi({
+      project: BOARD,
+      open: [
+        makeTask({
+          id: 1,
+          project_id: WORK.id,
+          title: "Pinned plan",
+          section_id: TO_DO.id,
+          pinned_at: "2026-10-15T09:00:00Z",
+        }),
+        makeTask({
+          id: 2,
+          project_id: WORK.id,
+          title: "Write brief",
+          section_id: TO_DO.id,
+          priority: 1,
+          due_date: "2030-01-02",
+          tags: [{ id: 21, name: "work", color: "teal" }],
+        }),
+        makeTask({ id: 3, project_id: WORK.id, title: "Outline", parent_id: 2, depth: 1 }),
+        makeTask({
+          id: 4,
+          project_id: WORK.id,
+          title: "Research",
+          parent_id: 2,
+          depth: 1,
+          status: "completed",
+        }),
+      ],
+    });
+
+    renderProject(BOARD);
+
+    expect(await screen.findByText("Write brief")).toBeInTheDocument();
+    expect(cardsIn("To do")).toEqual(["Pinned plan", "Write brief"]);
+    const card = screen.getByRole("button", { name: "Write brief, 2 of 2 in To do" });
+    const item = within(card.closest("li") ?? document.body);
+    expect(item.getByRole("img", { name: "Priority 1" })).toBeInTheDocument();
+    expect(item.getByText("work")).toBeInTheDocument();
+    expect(item.getByText("1 of 2 subtasks done")).toBeInTheDocument();
+    expect(item.getByText(/2 Jan/)).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Pinned" })).toBeInTheDocument();
+  });
+
+  it("opens a Task from its card", async () => {
+    mockApi({
+      project: BOARD,
+      open: [makeTask({ id: 5, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id })],
+    });
+    const { user, router } = renderProject(BOARD);
+
+    await user.click(await screen.findByRole("button", { name: "Write brief, 1 of 1 in To do" }));
+
+    expect(router.state.location.search).toEqual({ task: 5 });
+  });
+
+  it("closes a Task ticked on its card", async () => {
+    const fetchSpy = mockApi({
+      project: BOARD,
+      open: [makeTask({ id: 5, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id })],
+    });
+    const { user, router } = renderProject(BOARD);
+
+    await user.click(await screen.findByRole("checkbox", { name: "Complete “Write brief”" }));
+
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([["PATCH /api/v1/tasks/5", { status: "completed" }]]);
+    });
+    expect(router.state.location.search).toEqual({});
+  });
+});

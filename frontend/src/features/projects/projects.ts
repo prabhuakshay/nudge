@@ -20,6 +20,7 @@ export type SidebarFolder = components["schemas"]["SidebarFolderOut"];
 export type PaletteColor = components["schemas"]["PaletteColor"];
 export type ProjectIconKey = components["schemas"]["Icon"];
 export type ProjectFields = components["schemas"]["ProjectIn"];
+export type ProjectLayout = components["schemas"]["Layout"];
 
 /** The palette in the order the colour picker shows it. */
 export const PALETTE: readonly PaletteColor[] = [
@@ -90,6 +91,37 @@ export function useUpdateProject() {
       if (error) throw new Error(error.detail);
       return data;
     },
+  );
+}
+
+/** The sidebar with one Project's fields changed, wherever it sits. */
+function withProjectChanged(
+  sidebar: Sidebar,
+  id: number,
+  change: Partial<SidebarProject>,
+): Sidebar {
+  const apply = (project: SidebarProject) =>
+    project.id === id ? { ...project, ...change } : project;
+  return {
+    ...sidebar,
+    items: sidebar.items.map((item) =>
+      item.kind === "folder" ? { ...item, projects: item.projects.map(apply) } : apply(item),
+    ),
+    archived: sidebar.archived.map(apply),
+  };
+}
+
+/** Switch a Project between the List and Board Layouts; its page redraws at once. */
+export function useSetLayout() {
+  return useSidebarMutation(
+    async ({ id, layout }: { id: number; layout: ProjectLayout }) => {
+      const { error } = await api.PATCH("/api/v1/projects/{project_id}", {
+        params: { path: { project_id: id } },
+        body: { layout },
+      });
+      if (error) throw new Error(error.detail);
+    },
+    (sidebar, { id, layout }) => withProjectChanged(sidebar, id, { layout }),
   );
 }
 

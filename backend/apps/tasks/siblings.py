@@ -26,15 +26,16 @@ if TYPE_CHECKING:
 class Siblings[Ref]:
     """An ordered set of siblings, each named by a reference such as its id.
 
-    Every method that returns a key locks the set first, so call it inside a transaction.
+    Every method that returns a key locks the set first, so call it inside a transaction. `lock`
+    takes the same lock alone, for a write that reads the set's rows before asking for a key.
     """
 
-    _lock: Callable[[], None]
+    lock: Callable[[], None]
     _ordered: Callable[[], list[tuple[Ref, str]]]
 
     def _locked(self, moving: Ref | None = None) -> list[tuple[Ref, str]]:
         """Lock the set and return its siblings in order, leaving out the row being placed."""
-        self._lock()
+        self.lock()
         return [(ref, key) for ref, key in self._ordered() if ref != moving]
 
     def first(self) -> str:

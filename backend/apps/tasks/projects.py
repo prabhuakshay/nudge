@@ -292,9 +292,10 @@ def delete_folder(user: User, folder_id: int) -> bool:
     if found is None:
         return False
     with transaction.atomic():
+        top_level = sidebar_siblings(user, None)
+        top_level.lock()
         # Trashed Projects are ungrouped too, so a restore never points at a missing Folder.
         projects = list(found.projects.order_by("position", "id"))
-        top_level = sidebar_siblings(user, None)
         keys = top_level.keys_after(SiblingRef("folder", found.pk), len(projects))
         for project, key in zip(projects, keys, strict=True):
             project.folder = None

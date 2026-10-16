@@ -33,7 +33,7 @@ describe("CalendarView future Occurrences", () => {
       name: "Gym, Thursday 22 October, 07:00, in Inbox, future Occurrence",
     });
 
-    expect(occurrence.closest("li")).toHaveClass("opacity-50");
+    expect(occurrence.parentElement).toHaveClass("opacity-50");
     expect(within(day("Thursday 29 October")).getByText("Gym")).toBeInTheDocument();
     expect(screen.queryByRole("checkbox", { name: "Complete “Gym”" })).not.toBeInTheDocument();
   });

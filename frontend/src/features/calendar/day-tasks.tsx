@@ -31,7 +31,7 @@ export function DayTasks({
         <p className="text-sm text-muted-foreground">Nothing planned.</p>
       ) : (
         // Roomier chips than in the grid, to be easy to tap.
-        <ul className="flex flex-col gap-1 [&>li]:py-1.5 [&>li]:text-sm">
+        <ul className="flex flex-col gap-1 [&>li>div]:py-1.5 [&>li>div]:text-sm">
           {tasks.map((task) => (
             <DraggableTask
               key={task.id}

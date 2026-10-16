@@ -4,10 +4,7 @@ import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 
-import { useCreateSection } from "./sections";
-
-/** As long as the server allows, so the field stops where the server would refuse. */
-const NAME_MAX_LENGTH = 64;
+import { SECTION_NAME_MAX_LENGTH, useCreateSection } from "./sections";
 
 // A stable ref callback runs once when the field appears, not on every keystroke.
 function focusOnMount(element: HTMLElement | null) {
@@ -57,7 +54,7 @@ export function AddSection({ projectId }: { projectId: number }) {
             ref={focusOnMount}
             aria-label="Section name"
             placeholder="Section name"
-            maxLength={NAME_MAX_LENGTH}
+            maxLength={SECTION_NAME_MAX_LENGTH}
             value={name}
             onChange={(event) => {
               setName(event.target.value);

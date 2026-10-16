@@ -12,9 +12,10 @@ import { CALENDAR_KEY } from "@/features/tasks/tasks";
 export type CalendarRange = components["schemas"]["CalendarOut"];
 
 /** How much the Calendar shows at once. */
-export type CalendarMode = "month";
+export type CalendarMode = "month" | "week" | "day";
 
-const MODES: readonly CalendarMode[] = ["month"];
+/** The modes in the order the switcher offers them. */
+export const MODES: readonly CalendarMode[] = ["month", "week", "day"];
 
 /**
  * The Calendar's search parameters: the mode, the day it is looking at (which picks the month),
@@ -56,18 +57,20 @@ export function calendarQuery({ start, end }: { start: string; end: string }) {
   });
 }
 
+type GoOptions = { mode?: CalendarMode; replace?: boolean };
+
 /**
  * Where the Calendar is looking, kept in the address: its mode and the day it is on, today when
- * the address names none. Returns them and a function to move to another day, which adds to the
- * browser history unless `replace` is set.
+ * the address names none. Returns them and a function to move to another day, or to another mode
+ * on the same day, which adds to the browser history unless `replace` is set.
  */
 export function useCalendarPlace(today: string) {
   // Without a route to tie it to, the search comes unvalidated, so validate it here too.
   const { mode = "month", date = today } = validateCalendarSearch(useSearch({ strict: false }));
   const navigate = useNavigate();
   const go = useCallback(
-    (to: string, { replace = false } = {}) => {
-      void navigate({ to: ".", search: (prev) => ({ ...prev, mode, date: to }), replace });
+    (to: string, { mode: toMode = mode, replace = false }: GoOptions = {}) => {
+      void navigate({ to: ".", search: (prev) => ({ ...prev, mode: toMode, date: to }), replace });
     },
     [navigate, mode],
   );

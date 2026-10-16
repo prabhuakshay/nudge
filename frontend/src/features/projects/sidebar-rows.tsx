@@ -40,7 +40,7 @@ import type { Placement } from "./sidebar-order";
 
 /** A sidebar row: the classes every Project, Folder and Person row shares. */
 export const ROW =
-  "group flex h-10 items-center gap-2.5 rounded-md pr-1 pl-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground lg:h-9";
+  "group flex h-10 items-center gap-2.5 rounded-md pr-1 pl-2.5 text-sm text-foreground transition-colors hover:bg-surface-muted lg:h-9";
 
 /** Keeps a press on a row's own controls from starting a drag of the row. */
 function keepFromDragging(event: SyntheticEvent) {

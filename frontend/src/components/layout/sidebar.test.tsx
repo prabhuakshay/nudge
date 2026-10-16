@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { Sidebar } from "./sidebar";
@@ -39,7 +40,7 @@ describe("Sidebar", () => {
 
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <Sidebar user={ada} />
+        <Sidebar user={ada} onSearch={vi.fn()} />
       </QueryClientProvider>,
     );
 
@@ -68,11 +69,36 @@ describe("Sidebar", () => {
 
     render(
       <QueryClientProvider client={new QueryClient()}>
-        <Sidebar user={ada} />
+        <Sidebar user={ada} onSearch={vi.fn()} />
       </QueryClientProvider>,
     );
 
     expect(await screen.findByRole("link", { name: "Today, 4 open" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Upcoming, 2 open" })).toBeInTheDocument();
+  });
+
+  it("opens the command bar from the Search row, by click or keyboard", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(
+        JSON.stringify({ inbox: { id: 7, name: "Inbox", open_count: 0 }, items: [], archived: [] }),
+        { headers: { "Content-Type": "application/json" } },
+      ),
+    );
+    const onSearch = vi.fn();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <Sidebar user={ada} onSearch={onSearch} />
+      </QueryClientProvider>,
+    );
+    const user = userEvent.setup();
+
+    const search = screen.getByRole("button", { name: "Search" });
+    expect(search).toHaveAttribute("aria-keyshortcuts", "Control+K /");
+    await user.click(search);
+    expect(onSearch).toHaveBeenCalledOnce();
+
+    search.focus();
+    await user.keyboard("{Enter}");
+    expect(onSearch).toHaveBeenCalledTimes(2);
   });
 });

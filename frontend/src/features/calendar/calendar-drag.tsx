@@ -4,7 +4,6 @@ import {
   MouseSensor,
   pointerWithin,
   TouchSensor,
-  useDraggable,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -13,12 +12,11 @@ import {
 import { useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import type { Task } from "@/features/tasks/tasks";
-
 import { CalendarBlock } from "./calendar-block";
 import { CalendarTask } from "./calendar-task";
+import { handleOf, targetOf, useGrip, type Grip, type Handle, type Target } from "./drag-data";
 import type { CalendarItem } from "./occurrences";
-import { timeSpan, type Block, type Row } from "./layout";
+import { timeSpan, type Block } from "./layout";
 import {
   moveDates,
   moveToAllDay,
@@ -37,28 +35,8 @@ import type { CardProps } from "./task-card";
 const MOUSE = { activationConstraint: { distance: 5 } };
 const TOUCH = { activationConstraint: { delay: 220, tolerance: 6 } };
 
-/** What is dragged: a Month or all-day chip, a Week or Day block, or a block's bottom edge. */
-type Grip = "chip" | "block" | "end";
-
-/** A Task's grip on the Calendar: one per day it covers, so the day is in it. */
-type Handle = { task: Task; day: string; grip: Grip };
-
 /** A Task while it is dragged, with the y of its dragged edge when it was picked up. */
 type Dragged = Handle & { edge: number };
-
-function dragId({ task, day, grip }: Handle) {
-  return `${day}/${String(task.id)}/${grip}`;
-}
-
-/** Where a drop lands: a Month day, or a Week or Day slot. */
-type Target = { day: string; row?: Row };
-
-/** The slot or day a drop target id from `slotTarget`, or a Month day's ISO date, stands for. */
-function targetOf(id: string): Target {
-  const [day = "", row] = id.split("@");
-  if (row === undefined) return { day };
-  return { day, row: row === "all-day" ? row : Number(row) };
-}
 
 /**
  * The dates a drop gives a Task. `at` reads the time at the dragged edge for an hour slot: the
@@ -75,14 +53,6 @@ function droppedDates(
   if (row === undefined) return moveDates(dates, day, target.day);
   if (row === "all-day") return moveToAllDay(dates, day, target.day);
   return moveToTime(dates, day, target.day, at(row));
-}
-
-/** The Task and grip a draggable id from `dragId` stands for. */
-function handleOf(id: string, tasks: readonly Task[]): Handle | null {
-  const [day = "", taskId, part] = id.split("/");
-  const grip: Grip = part === "block" || part === "end" ? part : "chip";
-  const task = tasks.find((each) => each.id === Number(taskId));
-  return task ? { task, day, grip } : null;
 }
 
 /**
@@ -105,19 +75,18 @@ function sameDates(a: DueDates, b: DueDates) {
 }
 
 /**
- * Lets the Tasks inside be dragged: `DraggableTask` chips onto Month days, whose drop target id
- * is the ISO day, and chips and `DraggableBlock`s onto Week and Day slots, whose id comes from
- * `slotTarget`. A drop works out the Task's new dates and saves them, and a failed save puts
- * them back.
+ * Lets the Tasks inside be dragged: `DraggableTask` chips and `DraggableBlock`s onto the days and
+ * slots that `useDropTarget` marks. A drop works out the Task's new dates and saves them, and a
+ * failed save puts them back.
  */
-export function CalendarDrag({ tasks, children }: { tasks: readonly Task[]; children: ReactNode }) {
+export function CalendarDrag({ children }: { children: ReactNode }) {
   const sensors = useSensors(useSensor(MouseSensor, MOUSE), useSensor(TouchSensor, TOUCH));
   const [dragged, setDragged] = useState<Dragged | null>(null);
   const { mutate: reschedule } = useReschedule();
 
   const onDragStart = ({ active, activatorEvent }: DragStartEvent) => {
-    const handle = handleOf(String(active.id), tasks);
-    setDragged(handle && { ...handle, edge: pickedUpEdge(activatorEvent, handle.grip) });
+    const handle = handleOf(active);
+    setDragged({ ...handle, edge: pickedUpEdge(activatorEvent, handle.grip) });
   };
   const onDragEnd = ({ over, delta }: DragEndEvent) => {
     setDragged(null);
@@ -127,7 +96,7 @@ export function CalendarDrag({ tasks, children }: { tasks: readonly Task[]; chil
     const dates = { ...task, due_date: task.due_date };
     const edge = dragged.edge + delta.y;
     const at = (hour: number) => slotMinutes(hour, (edge - over.rect.top) / over.rect.height);
-    const next = droppedDates(dates, dragged, targetOf(String(over.id)), at);
+    const next = droppedDates(dates, dragged, targetOf(over), at);
     if (next && !sameDates(next, dates)) reschedule({ id: task.id, dates: next });
   };
 
@@ -187,10 +156,10 @@ export function DraggableTask({
   day: string;
   card: CardProps;
 }) {
-  const { setNodeRef, listeners, isDragging } = useDraggable({
-    id: dragId({ task, day, grip: "chip" }),
-    disabled: task.occurrence,
-  });
+  const { setNodeRef, listeners, isDragging } = useGrip(
+    { task, day, grip: "chip" },
+    task.occurrence,
+  );
   const drag = { setNode: setNodeRef, listeners, dragging: isDragging };
   return <CalendarTask task={task} card={card} drag={task.occurrence ? undefined : drag} />;
 }
@@ -210,12 +179,12 @@ export function DraggableBlock({
 }) {
   const { task } = block;
   const disabled = task.occurrence;
-  const move = useDraggable({ id: dragId({ task, day, grip: "block" }), disabled });
+  const move = useGrip({ task, day, grip: "block" }, disabled);
   const {
     setNodeRef: setEdge,
     listeners: edgeListeners,
     transform,
-  } = useDraggable({ id: dragId({ task, day, grip: "end" }), disabled });
+  } = useGrip({ task, day, grip: "end" }, disabled);
   if (disabled) return <CalendarBlock block={block} card={card} />;
   return (
     <CalendarBlock

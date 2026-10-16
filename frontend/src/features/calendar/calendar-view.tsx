@@ -187,7 +187,7 @@ export function CalendarView({
         </div>
       </header>
 
-      <CalendarDrag tasks={shown}>
+      <CalendarDrag>
         {mode === "month" ? (
           <>
             <MonthGrid

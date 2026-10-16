@@ -1,4 +1,3 @@
-import { useDroppable } from "@dnd-kit/core";
 import { format, parseISO } from "date-fns";
 import type { KeyboardEvent } from "react";
 
@@ -6,6 +5,7 @@ import { plural } from "@/features/trash/trash";
 import { cn } from "@/lib/utils";
 
 import { DraggableTask } from "./calendar-drag";
+import { useDropTarget } from "./drag-data";
 import { dayLabel } from "./day-label";
 import { useFocusLater } from "./grid-focus";
 import { monthWeeks, shiftDays, tasksOn } from "./layout";
@@ -138,7 +138,7 @@ function DayCell({
   onAdd: (slot: Slot) => void;
   actions: TaskActions;
 }) {
-  const { setNodeRef, isOver } = useDroppable({ id: day });
+  const { setNodeRef, isOver } = useDropTarget({ day });
   return (
     <div
       ref={setNodeRef}

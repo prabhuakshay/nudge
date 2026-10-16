@@ -1,4 +1,3 @@
-import { useDroppable } from "@dnd-kit/core";
 import { format, parseISO } from "date-fns";
 import {
   useEffect,
@@ -12,6 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 
 import { DraggableBlock, DraggableTask } from "./calendar-drag";
+import { useDropTarget } from "./drag-data";
 import { dayLabel } from "./day-label";
 import { useFocusLater } from "./grid-focus";
 import {
@@ -20,7 +20,6 @@ import {
   dayBlocks,
   percent,
   shiftDays,
-  slotTarget,
   type Block,
   type Row,
 } from "./layout";
@@ -223,7 +222,7 @@ function DropSlot({
   className,
   ...props
 }: ComponentProps<"div"> & { day: string; row: Row }) {
-  const { setNodeRef, isOver } = useDroppable({ id: slotTarget(day, row) });
+  const { setNodeRef, isOver } = useDropTarget({ day, row });
   return (
     <div
       ref={setNodeRef}

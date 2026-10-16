@@ -68,11 +68,6 @@ export function tasksOn<T extends Dates>(tasks: readonly T[], day: string): T[] 
 /** A row of Week and Day mode's grid: the all-day strip or an hour of the day, 0 to 23. */
 export type Row = "all-day" | number;
 
-/** The drop target id of a Week or Day slot. A Month day's id is the day itself. */
-export function slotTarget(day: string, row: Row): string {
-  return `${day}@${String(row)}`;
-}
-
 /** The minutes in a day, which is the height of a Week or Day column. */
 export const DAY_MINUTES = 24 * 60;
 

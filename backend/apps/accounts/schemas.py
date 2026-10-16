@@ -18,6 +18,11 @@ class UserOut(Schema):
     single_key_shortcuts: bool = Field(
         description="Whether shortcuts of one unmodified key, such as C, are on."
     )
+    projects_collapsed: bool = Field(
+        description="Whether the sidebar's Projects section is collapsed."
+    )
+    tags_collapsed: bool = Field(description="Whether the sidebar's Tags section is collapsed.")
+    people_collapsed: bool = Field(description="Whether the sidebar's People section is collapsed.")
 
 
 class SessionOut(Schema):
@@ -64,3 +69,11 @@ class ShortcutsIn(Schema):
     """Whether the user wants single-key shortcuts on."""
 
     single_key: bool
+
+
+class SidebarSectionsIn(Schema):
+    """Sidebar sections to collapse or expand; a section left out keeps its state."""
+
+    projects_collapsed: bool | None = None
+    tags_collapsed: bool | None = None
+    people_collapsed: bool | None = None

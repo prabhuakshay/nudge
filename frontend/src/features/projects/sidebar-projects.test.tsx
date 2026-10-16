@@ -1,10 +1,11 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import { requestOf } from "@/test/fetch";
+import { signedInClient } from "@/test/session";
 
 import type { Sidebar, SidebarFolder, SidebarProject } from "./projects";
 import { SidebarProjects } from "./sidebar-projects";
@@ -75,8 +76,8 @@ function withoutDeletedProject(sidebar: Sidebar, request: Request): Sidebar {
 }
 
 /** A stand-in server: the sidebar for reads, and an echo of every write. */
-function mockApi() {
-  let sidebar = SIDEBAR;
+function mockApi(initial = SIDEBAR) {
+  let sidebar = initial;
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
     if (request.method === "GET") return json(sidebar);
@@ -103,7 +104,7 @@ async function writes(fetchSpy: ReturnType<typeof mockApi>) {
     .filter((request) => request.method !== "GET");
   return Promise.all(
     requests.map(async (request) => {
-      const text = await request.text();
+      const text = await request.clone().text();
       const body = text ? (JSON.parse(text) as unknown) : null;
       return [`${request.method} ${new URL(request.url).pathname}`, body];
     }),
@@ -112,7 +113,7 @@ async function writes(fetchSpy: ReturnType<typeof mockApi>) {
 
 function renderSidebar() {
   render(
-    <QueryClientProvider client={new QueryClient()}>
+    <QueryClientProvider client={signedInClient()}>
       <SidebarProjects />
       <Toaster />
     </QueryClientProvider>,
@@ -149,6 +150,48 @@ describe("SidebarProjects", () => {
     await waitFor(async () => {
       expect(await writes(fetchSpy)).toEqual([["PATCH /api/v1/folders/10", { collapsed: true }]]);
     });
+  });
+
+  it("toggles a Folder from the keyboard with Enter", async () => {
+    const fetchSpy = mockApi();
+    const user = renderSidebar();
+
+    (await screen.findByRole("button", { name: "Personal", expanded: true })).focus();
+    await user.keyboard("{Enter}");
+    expect(await screen.findByRole("button", { name: "Personal", expanded: false })).toHaveFocus();
+    await user.keyboard("{Enter}");
+
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([
+        ["PATCH /api/v1/folders/10", { collapsed: true }],
+        ["PATCH /api/v1/folders/10", { collapsed: false }],
+      ]);
+    });
+  });
+
+  it("lists Archived as the last row of Projects, closed until opened", async () => {
+    const garden = project(3, "Garden", { is_archived: true });
+    mockApi({ ...SIDEBAR, archived: [garden] });
+    const user = renderSidebar();
+
+    const archived = await screen.findByRole("button", { name: "Archived", expanded: false });
+    const rows = within(screen.getByRole("region", { name: "Projects" })).getAllByRole("button", {
+      name: /^(Personal|Archived)$/,
+    });
+    expect(rows.at(-1)).toBe(archived);
+    expect(screen.queryByRole("link", { name: "Garden" })).not.toBeInTheDocument();
+
+    await user.click(archived);
+
+    expect(screen.getByRole("link", { name: "Garden" })).toHaveAttribute("href", "/projects/3");
+  });
+
+  it("has no Archived row while nothing is archived", async () => {
+    mockApi();
+    renderSidebar();
+
+    await screen.findByRole("link", { name: "Work, 2 open" });
+    expect(screen.queryByRole("button", { name: "Archived" })).not.toBeInTheDocument();
   });
 
   it("creates a Project with the chosen name, colour and icon", async () => {
@@ -203,6 +246,36 @@ describe("SidebarProjects", () => {
     await waitFor(async () => {
       expect(await writes(fetchSpy)).toEqual([
         ["POST /api/v1/projects/1/move", { folder_id: 10, after: { kind: "project", id: 2 } }],
+      ]);
+    });
+  });
+
+  it("moves a Project out of its Folder with a short drag to the left", async () => {
+    // jsdom lays nothing out, so stack the rows 32 px apart for dnd-kit to measure.
+    const rowNames = ["Work", "Personal", "Health"];
+    vi.spyOn(Element.prototype, "getBoundingClientRect").mockImplementation(function (
+      this: Element,
+    ) {
+      const row = Math.max(
+        rowNames.findIndex((name) => this.textContent.includes(name)),
+        0,
+      );
+      return new DOMRect(0, row * 32, 200, 32);
+    });
+    const fetchSpy = mockApi();
+    renderSidebar();
+
+    const health = (await screen.findByRole("link", { name: "Health" })).closest("li");
+    if (!health) throw new Error("Health has no row.");
+    // The first move only starts the drag; the second leaves the row 11 px left of where it was.
+    fireEvent.mouseDown(health, { button: 0, clientX: 100, clientY: 80 });
+    fireEvent.mouseMove(document, { clientX: 94, clientY: 80 });
+    fireEvent.mouseMove(document, { clientX: 89, clientY: 80 });
+    fireEvent.mouseUp(document, { clientX: 89, clientY: 80 });
+
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([
+        ["POST /api/v1/projects/2/move", { folder_id: null, after: { kind: "folder", id: 10 } }],
       ]);
     });
   });

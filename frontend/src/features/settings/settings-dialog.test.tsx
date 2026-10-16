@@ -14,6 +14,9 @@ const ada = {
   full_name: "Ada Lovelace",
   time_zone: "Europe/London",
   single_key_shortcuts: true,
+  projects_collapsed: true,
+  tags_collapsed: true,
+  people_collapsed: true,
 };
 
 async function openDialog() {

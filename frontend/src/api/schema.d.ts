@@ -164,6 +164,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/auth/sidebar-sections": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Collapse or expand sidebar sections
+     * @description Collapse or expand the signed-in user's sidebar sections and return the updated user.
+     */
+    patch: operations["apps_accounts_api_sidebar_sections"];
+    trace?: never;
+  };
   "/api/v1/notifications": {
     parameters: {
       query?: never;
@@ -1156,6 +1176,21 @@ export interface components {
        * @description Whether shortcuts of one unmodified key, such as C, are on.
        */
       single_key_shortcuts: boolean;
+      /**
+       * Projects Collapsed
+       * @description Whether the sidebar's Projects section is collapsed.
+       */
+      projects_collapsed: boolean;
+      /**
+       * Tags Collapsed
+       * @description Whether the sidebar's Tags section is collapsed.
+       */
+      tags_collapsed: boolean;
+      /**
+       * People Collapsed
+       * @description Whether the sidebar's People section is collapsed.
+       */
+      people_collapsed: boolean;
     };
     /**
      * ErrorOut
@@ -1211,6 +1246,18 @@ export interface components {
     ShortcutsIn: {
       /** Single Key */
       single_key: boolean;
+    };
+    /**
+     * SidebarSectionsIn
+     * @description Sidebar sections to collapse or expand; a section left out keeps its state.
+     */
+    SidebarSectionsIn: {
+      /** Projects Collapsed */
+      projects_collapsed?: boolean | null;
+      /** Tags Collapsed */
+      tags_collapsed?: boolean | null;
+      /** People Collapsed */
+      people_collapsed?: boolean | null;
     };
     /**
      * NotificationListOut
@@ -3427,6 +3474,30 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ShortcutsIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserOut"];
+        };
+      };
+    };
+  };
+  apps_accounts_api_sidebar_sections: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SidebarSectionsIn"];
       };
     };
     responses: {

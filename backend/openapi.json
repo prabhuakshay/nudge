@@ -281,6 +281,44 @@
         ]
       }
     },
+    "/api/v1/auth/sidebar-sections": {
+      "patch": {
+        "operationId": "apps_accounts_api_sidebar_sections",
+        "summary": "Collapse or expand sidebar sections",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Collapse or expand the signed-in user's sidebar sections and return the updated user.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SidebarSectionsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "apps_notifications_api_notifications",
@@ -3241,6 +3279,21 @@
             "description": "Whether shortcuts of one unmodified key, such as C, are on.",
             "title": "Single Key Shortcuts",
             "type": "boolean"
+          },
+          "projects_collapsed": {
+            "description": "Whether the sidebar's Projects section is collapsed.",
+            "title": "Projects Collapsed",
+            "type": "boolean"
+          },
+          "tags_collapsed": {
+            "description": "Whether the sidebar's Tags section is collapsed.",
+            "title": "Tags Collapsed",
+            "type": "boolean"
+          },
+          "people_collapsed": {
+            "description": "Whether the sidebar's People section is collapsed.",
+            "title": "People Collapsed",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3248,7 +3301,10 @@
           "email",
           "full_name",
           "time_zone",
-          "single_key_shortcuts"
+          "single_key_shortcuts",
+          "projects_collapsed",
+          "tags_collapsed",
+          "people_collapsed"
         ],
         "title": "UserOut",
         "type": "object"
@@ -3347,6 +3403,46 @@
           "single_key"
         ],
         "title": "ShortcutsIn",
+        "type": "object"
+      },
+      "SidebarSectionsIn": {
+        "description": "Sidebar sections to collapse or expand; a section left out keeps its state.",
+        "properties": {
+          "projects_collapsed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Projects Collapsed"
+          },
+          "tags_collapsed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tags Collapsed"
+          },
+          "people_collapsed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "People Collapsed"
+          }
+        },
+        "title": "SidebarSectionsIn",
         "type": "object"
       },
       "NotificationListOut": {

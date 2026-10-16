@@ -13,6 +13,9 @@ const ada = {
   full_name: "Ada Lovelace",
   time_zone: "Asia/Kolkata",
   single_key_shortcuts: true,
+  projects_collapsed: true,
+  tags_collapsed: true,
+  people_collapsed: true,
 };
 
 function renderSettings() {

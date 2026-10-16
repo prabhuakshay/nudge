@@ -69,6 +69,9 @@ def test_login_starts_a_session(browser: Client, ada: User) -> None:
         "full_name": "Ada Lovelace",
         "time_zone": "",
         "single_key_shortcuts": True,
+        "projects_collapsed": True,
+        "tags_collapsed": True,
+        "people_collapsed": True,
     }
     session = browser.get("/api/v1/auth/session").json()
     assert session["user"]["email"] == "ada@example.com"
@@ -247,6 +250,9 @@ def test_update_profile_changes_the_name(browser: Client, ada: User) -> None:
         "full_name": "Augusta Ada King",
         "time_zone": "",
         "single_key_shortcuts": True,
+        "projects_collapsed": True,
+        "tags_collapsed": True,
+        "people_collapsed": True,
     }
 
 

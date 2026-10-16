@@ -22,14 +22,20 @@ import { UserAvatar } from "./user-avatar";
  * command bar's button on phones. Mobile adds the menu, logo and account there plus bottom
  * navigation; from the `lg` breakpoint those move into a permanent sidebar. It also hosts the
  * toasts and tooltips every page can use, and the Quick add dialog that `C` and the command bar
- * open.
+ * open. It holds whether the command bar is open, so the sidebar's Search row can open it.
  */
 export function AppShell({ user, children }: { user: User; children: ReactNode }) {
   const [quickAddDraft, setQuickAddDraft] = useState<string | null>(null);
+  const [commandBar, setCommandBar] = useState(false);
   return (
     <TooltipProvider delayDuration={400}>
       <div className="flex min-h-dvh">
-        <Sidebar user={user} />
+        <Sidebar
+          user={user}
+          onSearch={() => {
+            setCommandBar(true);
+          }}
+        />
 
         <div className="flex min-w-0 flex-1 flex-col">
           <header className="sticky top-0 z-20 flex h-14 items-center justify-between border-b border-border bg-surface px-4 pt-[env(safe-area-inset-top)] lg:px-8">
@@ -41,7 +47,12 @@ export function AppShell({ user, children }: { user: User; children: ReactNode }
               a backdrop filter would trap fixed children inside the bar. */}
             <Clock />
             <div className="flex items-center gap-1">
-              <GlobalShortcuts user={user} onAddTask={setQuickAddDraft} />
+              <GlobalShortcuts
+                user={user}
+                commandBar={commandBar}
+                onCommandBarChange={setCommandBar}
+                onAddTask={setQuickAddDraft}
+              />
               <NotificationCenter />
               <ThemeToggle />
               <SettingsDialog user={user}>

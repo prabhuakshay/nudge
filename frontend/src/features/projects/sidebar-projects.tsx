@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FolderPlus, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { EMPTY_ACTION, HEADING_ACTION, SidebarSection } from "@/components/layout/sidebar-section";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +13,7 @@ import { sidebarQuery } from "@/features/tasks/tasks";
 
 import { FolderDialog, ProjectDialog } from "./project-dialog";
 import { useMoveFolder, useMoveProject, type SidebarFolder, type SidebarProject } from "./projects";
+import { SidebarArchived } from "./sidebar-archived";
 import { FolderRow, ProjectRow } from "./sidebar-rows";
 import { SidebarTree } from "./sidebar-tree";
 
@@ -22,7 +24,8 @@ type OpenDialog =
 
 /**
  * The sidebar's Projects section: Folders and ungrouped Projects in the user's order, each
- * Project with its open Task count. Rows drag to reorder, and menus create, edit and file them.
+ * Project with its open Task count, then the Archived row. Rows drag to reorder, and menus
+ * create, edit and file them.
  */
 export function SidebarProjects({ onNavigate }: { onNavigate?: () => void }) {
   const { data: sidebar } = useQuery(sidebarQuery);
@@ -33,96 +36,91 @@ export function SidebarProjects({ onNavigate }: { onNavigate?: () => void }) {
   const folders = items.filter((item) => item.kind === "folder");
 
   return (
-    <section aria-labelledby="projects-heading" className="px-2">
-      <div className="flex h-8 items-center justify-between pr-1 pl-2.5">
-        <h2
-          id="projects-heading"
-          className="text-xs font-bold tracking-wider text-muted-foreground uppercase"
-        >
-          Projects
-        </h2>
-        <DropdownMenu>
-          <DropdownMenuTrigger
-            aria-label="Add a project or folder"
-            className="flex size-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground lg:size-7"
-          >
-            <Plus className="size-4" aria-hidden />
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onSelect={() => {
-                setDialog({ kind: "project" });
-              }}
-            >
-              <Plus aria-hidden /> New project
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onSelect={() => {
-                setDialog({ kind: "folder" });
-              }}
-            >
-              <FolderPlus aria-hidden /> New folder
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      {items.length === 0 ? (
-        <button
-          type="button"
-          onClick={() => {
-            setDialog({ kind: "project" });
-          }}
-          className="w-full rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted"
-        >
-          Group your tasks into projects. <span className="text-primary">Add one</span>
-        </button>
-      ) : (
-        <SidebarTree
-          items={items}
-          onMove={(moving, placement) => {
-            if (moving.kind === "project") {
-              moveProject.mutate({ id: moving.id, placement });
-            } else {
-              moveFolder.mutate({ id: moving.id, after: placement.after });
-            }
-          }}
-          renderRow={({ item }) =>
-            item.kind === "folder" ? (
-              <FolderRow
-                folder={item}
-                onNewProject={() => {
-                  setDialog({ kind: "project", folderId: item.id });
-                }}
-                onRename={() => {
-                  setDialog({ kind: "folder", folder: item });
-                }}
-              />
-            ) : (
-              <ProjectRow
-                project={item}
-                items={items}
-                folders={folders}
-                onNavigate={onNavigate}
-                onEdit={() => {
-                  setDialog({ kind: "project", project: item });
-                }}
-                onMove={(placement) => {
-                  moveProject.mutate({ id: item.id, placement });
-                }}
-              />
-            )
-          }
-        />
-      )}
-
+    <>
       <SidebarDialogs
         dialog={dialog}
         onClose={() => {
           setDialog(null);
         }}
       />
-    </section>
+      <SidebarSection
+        section="projects"
+        title="Projects"
+        add={
+          <DropdownMenu>
+            <DropdownMenuTrigger aria-label="Add a project or folder" className={HEADING_ACTION}>
+              <Plus className="size-4" aria-hidden />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onSelect={() => {
+                  setDialog({ kind: "project" });
+                }}
+              >
+                <Plus aria-hidden /> New project
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onSelect={() => {
+                  setDialog({ kind: "folder" });
+                }}
+              >
+                <FolderPlus aria-hidden /> New folder
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        }
+      >
+        {items.length === 0 ? (
+          <button
+            type="button"
+            onClick={() => {
+              setDialog({ kind: "project" });
+            }}
+            className={EMPTY_ACTION}
+          >
+            Group your tasks into projects. <span className="text-primary">Add one</span>
+          </button>
+        ) : (
+          <SidebarTree
+            items={items}
+            onMove={(moving, placement) => {
+              if (moving.kind === "project") {
+                moveProject.mutate({ id: moving.id, placement });
+              } else {
+                moveFolder.mutate({ id: moving.id, after: placement.after });
+              }
+            }}
+            renderRow={({ item }) =>
+              item.kind === "folder" ? (
+                <FolderRow
+                  folder={item}
+                  onNewProject={() => {
+                    setDialog({ kind: "project", folderId: item.id });
+                  }}
+                  onRename={() => {
+                    setDialog({ kind: "folder", folder: item });
+                  }}
+                />
+              ) : (
+                <ProjectRow
+                  project={item}
+                  items={items}
+                  folders={folders}
+                  onNavigate={onNavigate}
+                  onEdit={() => {
+                    setDialog({ kind: "project", project: item });
+                  }}
+                  onMove={(placement) => {
+                    moveProject.mutate({ id: item.id, placement });
+                  }}
+                />
+              )
+            }
+          />
+        )}
+        <SidebarArchived onNavigate={onNavigate} />
+      </SidebarSection>
+    </>
   );
 }
 

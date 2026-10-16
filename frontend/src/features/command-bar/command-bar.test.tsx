@@ -16,9 +16,10 @@ import { validateTaskSearch } from "@/features/tasks/open-task";
 import { rememberTask } from "@/features/tasks/recent-tasks";
 import { GARDEN, INBOX, json, TAGS, WORK } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
+import { OpenableCommandBar } from "@/test/command-bar";
 import { requestOf } from "@/test/fetch";
 
-import { CommandBar, type CommandActions } from "./command-bar";
+import type { CommandActions } from "./command-bar";
 
 const TOOLS = { ...GARDEN, name: "Tools" };
 const TODO_TAG = { ...TAGS[1], name: "todo" };
@@ -78,7 +79,7 @@ function renderBar({
     },
     component: () => (
       <TooltipProvider>
-        <CommandBar actions={actions} onCreateTask={onCreateTask} />
+        <OpenableCommandBar actions={actions} onCreateTask={onCreateTask} />
         <Outlet />
       </TooltipProvider>
     ),

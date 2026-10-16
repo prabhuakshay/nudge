@@ -1,21 +1,25 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Trash2 } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
+import { Kbd } from "@/components/ui/kbd";
 import type { User } from "@/features/auth/session";
-import { SidebarArchived } from "@/features/projects/sidebar-archived";
 import { SidebarPeople } from "@/features/people/sidebar-people";
 import { SidebarProjects } from "@/features/projects/sidebar-projects";
 import { SettingsDialog } from "@/features/settings/settings-dialog";
+import { ariaKeyShortcuts, keyCaps, SHORTCUTS } from "@/features/shortcuts/registry";
 import { SidebarTags } from "@/features/tags/sidebar-tags";
 import { sidebarQuery, type Sidebar as SidebarData } from "@/features/tasks/tasks";
 
 import { NAV_ITEMS, type NavItem } from "./nav-items";
 import { UserAvatar } from "./user-avatar";
 
-/** Desktop navigation: smart views, Projects and the account, always visible. */
-export function Sidebar({ user }: { user: User }) {
+/**
+ * Desktop navigation: Search, smart views, Projects and the account, always visible.
+ * `onSearch` opens the command bar.
+ */
+export function Sidebar({ user, onSearch }: { user: User; onSearch: () => void }) {
   return (
     <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-border bg-surface lg:flex">
       <div className="flex h-14 shrink-0 items-center border-b border-border px-4">
@@ -23,7 +27,7 @@ export function Sidebar({ user }: { user: User }) {
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto pb-3">
-        <SidebarNav />
+        <SidebarNav onSearch={onSearch} />
       </div>
 
       <div className="border-t border-border p-2">
@@ -58,18 +62,43 @@ function navCount(sidebar: SidebarData, to: NavItem["to"]) {
 }
 
 const LINK =
-  "flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm font-semibold text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground data-[status=active]:bg-primary-soft data-[status=active]:text-primary lg:h-9";
+  "flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm text-foreground transition-colors hover:bg-surface-muted data-[status=active]:bg-primary-soft data-[status=active]:text-primary lg:h-9";
 
 /**
  * The views, then the user's Projects, Tags and People, then Trash: the body of the desktop
  * sidebar and of the phone menu, which holds what the bottom bar has no room for.
- * `onNavigate` runs when a link is followed, so the phone menu can close.
+ * `onNavigate` runs when a link is followed, so the phone menu can close. `onSearch` adds a
+ * Search row that opens the command bar; the phone menu leaves it out, as its top bar has one.
  */
-export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
+export function SidebarNav({
+  onNavigate,
+  onSearch,
+}: {
+  onNavigate?: () => void;
+  onSearch?: () => void;
+}) {
   const { data: sidebar } = useQuery(sidebarQuery);
   return (
     <>
       <nav aria-label="Views" className="flex flex-col gap-0.5 px-2 pt-3">
+        {onSearch && (
+          <button
+            type="button"
+            onClick={onSearch}
+            aria-keyshortcuts={ariaKeyShortcuts("openCommandBar")}
+            className={LINK}
+          >
+            <Search className="size-4" aria-hidden />
+            Search
+            <span aria-hidden className="ml-auto flex gap-1">
+              {keyCaps(SHORTCUTS.openCommandBar.keys[0])
+                .flat()
+                .map((cap) => (
+                  <Kbd key={cap}>{cap}</Kbd>
+                ))}
+            </span>
+          </button>
+        )}
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
           const count = sidebar && navCount(sidebar, to);
           return (
@@ -95,22 +124,13 @@ export function SidebarNav({ onNavigate }: { onNavigate?: () => void }) {
         })}
       </nav>
 
-      <div className="mt-5">
+      <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
         <SidebarProjects onNavigate={onNavigate} />
-      </div>
-      <div className="mt-3">
-        <SidebarArchived onNavigate={onNavigate} />
-      </div>
-
-      <div className="mt-5">
         <SidebarTags onNavigate={onNavigate} />
-      </div>
-
-      <div className="mt-5">
         <SidebarPeople onNavigate={onNavigate} />
       </div>
 
-      <div className="mt-5 px-2">
+      <div className="mt-3 border-t border-border px-2 pt-3">
         <Link to="/trash" onClick={onNavigate} className={LINK}>
           <Trash2 className="size-4" aria-hidden />
           Trash

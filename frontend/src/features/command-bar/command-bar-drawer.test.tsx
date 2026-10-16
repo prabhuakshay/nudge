@@ -1,9 +1,8 @@
 import { screen } from "@testing-library/react";
 
 import { TaskList } from "@/features/tasks/task-list";
+import { OpenableCommandBar } from "@/test/command-bar";
 import { INBOX, mockApi, openTask, renderListRoute, task } from "@/test/drawer";
-
-import { CommandBar } from "./command-bar";
 
 /** The Inbox with the command bar over it, on a wide screen. */
 function renderInbox() {
@@ -16,7 +15,7 @@ function renderInbox() {
   return renderListRoute(
     <>
       <TaskList project={INBOX} />
-      <CommandBar actions={{}} onCreateTask={vi.fn()} />
+      <OpenableCommandBar actions={{}} onCreateTask={vi.fn()} />
     </>,
   ).user;
 }

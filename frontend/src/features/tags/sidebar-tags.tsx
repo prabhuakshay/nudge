@@ -17,7 +17,7 @@ import {
 import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog";
 import { useSidebarSensors } from "@/features/projects/sidebar-drag";
 import { ROW, RowMenu } from "@/features/projects/sidebar-rows";
-import { HEADING_ACTION, SidebarSection } from "@/components/layout/sidebar-section";
+import { EMPTY_ACTION, HEADING_ACTION, SidebarSection } from "@/components/layout/sidebar-section";
 import { sidebarQuery } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
@@ -69,7 +69,7 @@ export function SidebarTags({ onNavigate }: { onNavigate?: () => void }) {
             onClick={() => {
               setDialog({ kind: "edit" });
             }}
-            className="w-full rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted"
+            className={EMPTY_ACTION}
           >
             Label tasks across projects. <span className="text-primary">Add a tag</span>
           </button>

@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FolderPlus, Plus } from "lucide-react";
 import { useState } from "react";
 
-import { HEADING_ACTION, SidebarSection } from "@/components/layout/sidebar-section";
+import { EMPTY_ACTION, HEADING_ACTION, SidebarSection } from "@/components/layout/sidebar-section";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,7 +76,7 @@ export function SidebarProjects({ onNavigate }: { onNavigate?: () => void }) {
             onClick={() => {
               setDialog({ kind: "project" });
             }}
-            className="w-full rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted"
+            className={EMPTY_ACTION}
           >
             Group your tasks into projects. <span className="text-primary">Add one</span>
           </button>

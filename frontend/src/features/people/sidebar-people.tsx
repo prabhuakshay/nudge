@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ROW, RowMenu } from "@/features/projects/sidebar-rows";
-import { HEADING_ACTION, SidebarSection } from "@/components/layout/sidebar-section";
+import { EMPTY_ACTION, HEADING_ACTION, SidebarSection } from "@/components/layout/sidebar-section";
 import { cn } from "@/lib/utils";
 
 import { PersonAvatar } from "./person-avatar";
@@ -43,11 +43,7 @@ export function SidebarPeople({ onNavigate }: { onNavigate?: () => void }) {
         }
       >
         {people.length === 0 ? (
-          <button
-            type="button"
-            onClick={add}
-            className="w-full rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted"
-          >
+          <button type="button" onClick={add} className={EMPTY_ACTION}>
             Mention people in tasks to track what you're waiting on.{" "}
             <span className="text-primary">Add someone</span>
           </button>

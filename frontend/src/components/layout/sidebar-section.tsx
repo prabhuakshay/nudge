@@ -9,6 +9,10 @@ import { useSidebarSection, type SidebarSectionName } from "./use-sidebar-sectio
 export const HEADING_ACTION =
   "flex size-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-surface hover:text-foreground focus-visible:opacity-100 data-[state=open]:opacity-100 lg:size-7 pointer-fine:opacity-0";
 
+/** The button an empty section shows in place of its rows, inviting the user to add the first. */
+export const EMPTY_ACTION =
+  "w-full rounded-md px-2.5 py-2 text-left text-sm text-muted-foreground hover:bg-surface-muted";
+
 /**
  * A collapsible sidebar section: a heading on a grey band that toggles the rows below it, with
  * the section's `add` control on the right. The collapsed state is saved on the user's account.

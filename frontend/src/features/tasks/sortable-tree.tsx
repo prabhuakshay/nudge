@@ -2,11 +2,6 @@ import {
   closestCenter,
   DndContext,
   DragOverlay,
-  KeyboardSensor,
-  PointerSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
   type DragEndEvent,
   type DragMoveEvent,
   type DragOverEvent,
@@ -15,12 +10,7 @@ import {
   type DraggableSyntheticListeners,
   type UniqueIdentifier,
 } from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
+import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical } from "lucide-react";
 import {
@@ -31,7 +21,6 @@ import {
   type CSSProperties,
   type PointerEventHandler,
   type ReactNode,
-  type SyntheticEvent,
   type TouchEventHandler,
 } from "react";
 import { createPortal } from "react-dom";
@@ -39,6 +28,7 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 
+import { useDragSensors, useSortableHandle } from "./sortable-handle";
 import {
   currentPlacement,
   groupedDrop,
@@ -68,12 +58,6 @@ export type SortableRowProps = {
   level: number;
   handle: DragHandle;
 };
-
-// Module constants, not inline objects: dnd-kit memoizes sensors on these options, and new objects
-// every render would rebuild every row's listeners and defeat the row memo while dragging.
-const POINTER = { activationConstraint: { distance: 5 } };
-const TOUCH = { activationConstraint: { delay: 220, tolerance: 6 } };
-const KEYBOARD = { coordinateGetter: sortableKeyboardCoordinates };
 
 /** What a group's header takes so dragged rows can pass it, and so it makes way for them. */
 export type GroupHeader = {
@@ -128,11 +112,7 @@ export function SortableTree({
   // Sideways drag in whole indent steps, not pixels, so the tree re-renders only when the level
   // it would drop at can change.
   const [step, setStep] = useState(0);
-  const sensors = useSensors(
-    useSensor(PointerSensor, POINTER),
-    useSensor(TouchSensor, TOUCH),
-    useSensor(KeyboardSensor, KEYBOARD),
-  );
+  const sensors = useDragSensors();
   const groups = useMemo(
     () => outline.map((group) => ({ ...group, rows: withoutSubtasksOf(group.rows, activeId) })),
     [outline, activeId],
@@ -236,21 +216,6 @@ function SortableHeader({
   });
 }
 
-/**
- * Only presses on the row itself start a drag: React also bubbles presses up from the menus and
- * pickers a row opens in portals.
- */
-function ownPresses<E extends SyntheticEvent>(handler: ((event: E) => void) | undefined) {
-  return (
-    handler &&
-    ((event: E) => {
-      if (event.target instanceof Node && event.currentTarget.contains(event.target)) {
-        handler(event);
-      }
-    })
-  );
-}
-
 /** Moves with the drag on every sort step; the row inside renders only when its props change. */
 function SortableRow({
   row,
@@ -263,33 +228,9 @@ function SortableRow({
   renderRow: (props: SortableRowProps) => ReactNode;
   disabled: boolean;
 }) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    setActivatorNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: row.task.id, disabled });
-  const handle = useMemo<DragHandle>(
-    () => ({
-      listeners,
-      attributes,
-      setNode: setActivatorNodeRef,
-      // dnd-kit types listeners as bare Functions keyed by event; these are the pointer and touch
-      // sensors' React handlers.
-      onPointerDown: ownPresses(listeners?.["onPointerDown"] as PointerEventHandler | undefined),
-      onTouchStart: ownPresses(listeners?.["onTouchStart"] as TouchEventHandler | undefined),
-    }),
-    [listeners, attributes, setActivatorNodeRef],
-  );
+  const { handle, setNode, style, isDragging } = useSortableHandle(row.task.id, disabled);
   return (
-    <div
-      ref={setNodeRef}
-      style={{ transform: CSS.Translate.toString(transform), transition }}
-      className={cn(isDragging && "opacity-40")}
-    >
+    <div ref={setNode} style={style} className={cn(isDragging && "opacity-40")}>
       <RowContent renderRow={renderRow} row={row} level={level} handle={handle} />
     </div>
   );

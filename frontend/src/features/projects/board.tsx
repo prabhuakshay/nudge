@@ -13,6 +13,7 @@ import { openTasksQuery, type Task } from "@/features/tasks/tasks";
 
 import { ArchivedNotice } from "./archived-notice";
 import { BoardColumn, type BoardColumnCards } from "./board-column";
+import { BoardDrag } from "./board-drag";
 import { ProjectHeader } from "./project-header";
 import type { SidebarProject } from "./projects";
 
@@ -59,18 +60,22 @@ export function ProjectBoard({ project }: { project: SidebarProject }) {
           aria-label={`${project.name} board`}
           className="flex snap-x snap-mandatory items-start gap-3 overflow-x-auto overscroll-x-contain pb-4"
         >
-          {columns.map((column, index) => (
-            <BoardColumn
-              key={column.section?.id ?? "none"}
-              column={column}
-              position={index + 1}
-              count={columns.length}
-              openId={openTaskId}
-              readOnly={project.is_archived}
-              onOpen={setOpenTask}
-              onToggle={toggle}
-            />
-          ))}
+          <BoardDrag columns={columns}>
+            {(shown) =>
+              shown.map((column, index) => (
+                <BoardColumn
+                  key={column.section?.id ?? "none"}
+                  column={column}
+                  position={index + 1}
+                  count={shown.length}
+                  openId={openTaskId}
+                  readOnly={project.is_archived}
+                  onOpen={setOpenTask}
+                  onToggle={toggle}
+                />
+              ))
+            }
+          </BoardDrag>
         </div>
       )}
 

@@ -16,6 +16,7 @@ import { createPortal } from "react-dom";
 import type { Task } from "@/features/tasks/tasks";
 
 import { CalendarTask } from "./calendar-task";
+import type { CalendarItem } from "./occurrences";
 import { moveDates, useReschedule } from "./reschedule";
 
 // Module constants, not inline objects: dnd-kit memoizes sensors on these options. A mouse drag
@@ -86,24 +87,25 @@ function noop() {
   // The picture under the pointer can't be clicked.
 }
 
-/** A Task's chip on one of its days that can be dragged to another day inside `CalendarDrag`. */
+/**
+ * A Task's chip on one of its days that can be dragged to another day inside `CalendarDrag`. A
+ * future Occurrence stays put: its date doesn't exist yet.
+ */
 export function DraggableTask({
   task,
   day,
   ...props
 }: {
-  task: Task;
+  task: CalendarItem;
   day: string;
   tabbable: boolean;
   onOpen: (taskId: number) => void;
   onToggle: (task: Task) => void;
 }) {
-  const { setNodeRef, listeners, isDragging } = useDraggable({ id: dragId({ task, day }) });
-  return (
-    <CalendarTask
-      task={task}
-      drag={{ setNode: setNodeRef, listeners, dragging: isDragging }}
-      {...props}
-    />
-  );
+  const { setNodeRef, listeners, isDragging } = useDraggable({
+    id: dragId({ task, day }),
+    disabled: task.occurrence,
+  });
+  const drag = { setNode: setNodeRef, listeners, dragging: isDragging };
+  return <CalendarTask task={task} drag={task.occurrence ? undefined : drag} {...props} />;
 }

@@ -3,7 +3,8 @@ import { format, parseISO } from "date-fns";
 import { plainMentions } from "@/features/people/mentions";
 import { shortTime } from "@/features/tasks/due";
 import { STATUS } from "@/features/tasks/task-properties";
-import type { Task } from "@/features/tasks/tasks";
+
+import type { CalendarItem } from "./occurrences";
 
 function when(date: string, time: string | null) {
   const day = format(parseISO(date), "EEEE d MMMM");
@@ -11,7 +12,7 @@ function when(date: string, time: string | null) {
 }
 
 /** A Task's dates read aloud; a range within one day names the day once. */
-function datesLabel({ due_date, due_time, start_date, start_time }: Task) {
+function datesLabel({ due_date, due_time, start_date, start_time }: CalendarItem) {
   const due = due_date ?? "";
   if (start_date === null || (start_date === due && start_time === null)) {
     return when(due, due_time);
@@ -23,7 +24,7 @@ function datesLabel({ due_date, due_time, start_date, start_time }: Task) {
 }
 
 /** What a screen reader hears for a Task on the Calendar: its title, dates, Project and state. */
-export function taskLabel(task: Task, projectName: string | undefined) {
+export function taskLabel(task: CalendarItem, projectName: string | undefined) {
   return [
     plainMentions(task.title),
     task.parent_title !== null && `Subtask of ${plainMentions(task.parent_title)}`,
@@ -31,6 +32,7 @@ export function taskLabel(task: Task, projectName: string | undefined) {
     projectName !== undefined && `in ${projectName}`,
     task.status !== "open" && STATUS[task.status].label.toLowerCase(),
     task.is_overdue && "overdue",
+    task.occurrence && "future Occurrence",
   ]
     .filter(Boolean)
     .join(", ");

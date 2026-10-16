@@ -138,6 +138,24 @@ describe("MatrixView", () => {
     expect(titlesIn("Neither")).toEqual([]);
   });
 
+  it("moves a Task to its new Quadrant when its date changes in the drawer", async () => {
+    mockApi([task({ id: 1, title: "Plan the trip", priority: 2 })]);
+    const { user } = renderMatrix();
+
+    await user.click(await screen.findByRole("button", { name: /^Plan the trip/ }));
+    const drawer = await screen.findByRole("dialog", { name: "Task details" });
+    await user.click(within(drawer).getByRole("button", { name: /^Date: / }));
+    const picker = await screen.findByRole("dialog", { name: "Date" });
+    await user.click(within(picker).getByRole("button", { name: "Tomorrow" }));
+    await user.click(within(picker).getByRole("button", { name: "Close" }));
+    await user.click(within(drawer).getByRole("button", { name: "Close" }));
+
+    await waitFor(() => {
+      expect(titlesIn("Urgent & Important")).toEqual(["Plan the trip"]);
+    });
+    expect(titlesIn("Important not urgent")).toEqual([]);
+  });
+
   it("stacks the Quadrants on a phone as sections that fold away, remembered", async () => {
     mockApi([task({ id: 1, title: "Pay rent", priority: 1, due_date: "2026-10-15" })]);
     const { user } = renderMatrix({ wide: false });

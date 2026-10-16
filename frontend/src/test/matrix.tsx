@@ -48,9 +48,11 @@ export function mockApi(tasks: TaskDetail[] = []) {
     const found = tasks.find((each) => each.id === Number(url.pathname.split("/").at(-1)));
     if (!found) return json({ detail: "Not found." }, 404);
     if (request.method === "PATCH") {
-      const change = (await request.clone().json()) as Partial<TaskDetail>;
+      const { dates, ...change } = (await request.clone().json()) as Partial<TaskDetail> & {
+        dates?: Partial<TaskDetail> | null;
+      };
       const affected = [{ id: found.id, prior_status: found.status, prior_blocked_reason: "" }];
-      Object.assign(found, change);
+      Object.assign(found, change, dates);
       return json({ task: found, affected });
     }
     return json(found);

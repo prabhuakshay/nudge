@@ -19,6 +19,7 @@ import { useDragSensors, useSortableHandle } from "@/features/tasks/sortable-han
 import { useMoveTask } from "@/features/tasks/task-placement";
 import type { TreeRow } from "@/features/tasks/task-tree";
 import { useMediaQuery } from "@/lib/use-media-query";
+import { cn } from "@/lib/utils";
 
 import { BoardCard, type BoardCardProps } from "./board-card";
 import type { BoardColumnCards } from "./board-column";
@@ -119,8 +120,8 @@ export function BoardDrag({
       </SortableContext>
       {createPortal(
         <DragOverlay dropAnimation={null}>
-          {dragging && <CardPreview card={dragging.card} />}
-          {draggedSection && <ColumnPreview section={draggedSection} />}
+          {dragging && <DragPreview title={plainMentions(dragging.card.task.title)} />}
+          {draggedSection && <DragPreview title={draggedSection.name} column />}
         </DragOverlay>,
         document.body,
       )}
@@ -138,24 +139,19 @@ export function SortableBoardCard(props: Omit<BoardCardProps, "drag">) {
   return <BoardCard {...props} drag={props.readOnly ? undefined : { ...drag, touch }} />;
 }
 
-/** The column header under the pointer while dragging a column. */
-function ColumnPreview({ section }: { section: Section }) {
+/** What is under the pointer while dragging: a card's title, or a column header's name. */
+function DragPreview({ title, column = false }: { title: string; column?: boolean }) {
   return (
-    <div className="flex w-72 items-center gap-2 rounded-xl border border-primary/40 bg-surface-muted px-3 py-2.5 shadow-xl ring-2 ring-primary/15">
+    <div
+      className={cn(
+        "flex w-72 items-center border border-primary/40 shadow-xl ring-2 ring-primary/15",
+        column
+          ? "gap-2 rounded-xl bg-surface-muted px-3 py-2.5"
+          : "gap-2.5 rounded-lg bg-surface p-3",
+      )}
+    >
       <GripVertical className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{section.name}</span>
-    </div>
-  );
-}
-
-/** The card under the pointer while dragging. */
-function CardPreview({ card: { task } }: { card: TreeRow }) {
-  return (
-    <div className="flex w-72 items-center gap-2.5 rounded-lg border border-primary/40 bg-surface p-3 shadow-xl ring-2 ring-primary/15">
-      <GripVertical className="size-4 shrink-0 text-muted-foreground" aria-hidden />
-      <span className="min-w-0 flex-1 truncate text-sm font-semibold">
-        {plainMentions(task.title)}
-      </span>
+      <span className="min-w-0 flex-1 truncate text-sm font-semibold">{title}</span>
     </div>
   );
 }

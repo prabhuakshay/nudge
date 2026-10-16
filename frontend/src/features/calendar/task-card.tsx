@@ -12,12 +12,16 @@ import { cn } from "@/lib/utils";
 import type { CalendarItem } from "./occurrences";
 import { taskLabel } from "./task-label";
 
-/** What a card needs besides its Task: whether Tab reaches it, and what opening and ticking do. */
-export type CardProps = {
-  /** Whether Tab reaches it; only the focused day's Tasks are in the Tab order. */
-  tabbable: boolean;
+/** What can be done to a Task on the Calendar: open its detail, or tick it in place. */
+export type TaskActions = {
   onOpen: (taskId: number) => void;
   onToggle: (task: Task) => void;
+};
+
+/** What a card needs besides its Task: its actions, and whether Tab reaches it. */
+export type CardProps = TaskActions & {
+  /** Only the focused day's Tasks are in the Tab order. */
+  tabbable: boolean;
 };
 
 /**
@@ -44,10 +48,13 @@ export function TaskCard({
   task,
   shape,
   time,
-  tabbable,
-  onOpen,
-  onToggle,
-}: CardProps & { task: CalendarItem; shape: keyof typeof SHAPES; time: string | null }) {
+  card: { tabbable, onOpen, onToggle },
+}: {
+  task: CalendarItem;
+  shape: keyof typeof SHAPES;
+  time: string | null;
+  card: CardProps;
+}) {
   const { data: sidebar } = useQuery(sidebarQuery);
   const project = sidebar && findProject(sidebar, task.project_id);
   const closed = isClosed(task.status);

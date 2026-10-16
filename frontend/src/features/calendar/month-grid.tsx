@@ -12,6 +12,7 @@ import { useFocusLater } from "./grid-focus";
 import { monthWeeks, shiftDays, tasksOn } from "./layout";
 import { MoreTasks } from "./more-tasks";
 import { addsToSlot, type Slot } from "./slot";
+import type { CardProps, TaskActions } from "./task-card";
 
 /** The most Tasks a Month cell lists before the rest go behind "+N more". */
 const CELL_TASKS = 3;
@@ -42,8 +43,7 @@ export function MonthGrid({
   compact,
   onDateChange,
   onAdd,
-  onOpen,
-  onToggle,
+  actions,
 }: {
   date: string;
   today: string;
@@ -51,8 +51,7 @@ export function MonthGrid({
   compact: boolean;
   onDateChange: (date: string) => void;
   onAdd: (slot: Slot) => void;
-  onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
+  actions: TaskActions;
 }) {
   const weeks = monthWeeks(date);
   const month = date.slice(0, 7);
@@ -105,8 +104,7 @@ export function MonthGrid({
               onKeyDown={onKeyDown}
               onSelect={onDateChange}
               onAdd={onAdd}
-              onOpen={onOpen}
-              onToggle={onToggle}
+              actions={actions}
             />
           ))}
         </div>
@@ -125,8 +123,7 @@ function DayCell({
   onKeyDown,
   onSelect,
   onAdd,
-  onOpen,
-  onToggle,
+  actions,
 }: {
   day: string;
   isToday: boolean;
@@ -139,8 +136,7 @@ function DayCell({
   onKeyDown: (event: KeyboardEvent<HTMLElement>, day: string) => void;
   onSelect: (day: string) => void;
   onAdd: (slot: Slot) => void;
-  onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
+  actions: TaskActions;
 }) {
   const { setNodeRef, isOver } = useDroppable({ id: day });
   return (
@@ -180,7 +176,7 @@ function DayCell({
       {compact ? (
         <TaskDots count={tasks.length} />
       ) : (
-        <CellTasks day={day} tasks={tasks} tabbable={focused} onOpen={onOpen} onToggle={onToggle} />
+        <CellTasks day={day} tasks={tasks} card={{ ...actions, tabbable: focused }} />
       )}
     </div>
   );
@@ -223,44 +219,18 @@ function cellLabel(day: string, isToday: boolean, taskCount: number): string {
 }
 
 /** A full-size cell's Tasks: the first `CELL_TASKS` as chips, then "+N more" for the rest. */
-function CellTasks({
-  day,
-  tasks,
-  tabbable,
-  onOpen,
-  onToggle,
-}: {
-  day: string;
-  tasks: Task[];
-  tabbable: boolean;
-  onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
-}) {
+function CellTasks({ day, tasks, card }: { day: string; tasks: Task[]; card: CardProps }) {
   return (
     <>
       {tasks.length > 0 && (
         <ul className="flex min-w-0 flex-col gap-0.5">
           {tasks.slice(0, CELL_TASKS).map((task) => (
-            <DraggableTask
-              key={task.id}
-              task={task}
-              day={day}
-              tabbable={tabbable}
-              onOpen={onOpen}
-              onToggle={onToggle}
-            />
+            <DraggableTask key={task.id} task={task} day={day} card={card} />
           ))}
         </ul>
       )}
       {tasks.length > CELL_TASKS && (
-        <MoreTasks
-          day={day}
-          tasks={tasks}
-          hidden={tasks.length - CELL_TASKS}
-          tabbable={tabbable}
-          onOpen={onOpen}
-          onToggle={onToggle}
-        />
+        <MoreTasks day={day} tasks={tasks} hidden={tasks.length - CELL_TASKS} card={card} />
       )}
     </>
   );

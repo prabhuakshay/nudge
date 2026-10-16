@@ -33,10 +33,11 @@ export function CalendarBlock({
   drag,
   stretch = 0,
   edge,
+  card,
   filling = false,
-  ...card
-}: CardProps & {
+}: {
   block: Block<CalendarItem>;
+  card: CardProps;
   /** What lets the block be dragged to another time, from `DraggableBlock`. */
   drag?: ChipDrag;
   /** The pixels its end is pulled down (or up, below zero) while it is dragged. */
@@ -53,7 +54,7 @@ export function CalendarBlock({
       className={cn("absolute z-10 p-px", filling && "inset-0", drag?.dragging && "opacity-40")}
       style={filling ? undefined : placement(block, stretch)}
     >
-      <TaskCard task={block.task} shape="block" time={spanLabel(block.span)} {...card} />
+      <TaskCard task={block.task} shape="block" time={spanLabel(block.span)} card={card} />
       {edge}
     </li>
   );

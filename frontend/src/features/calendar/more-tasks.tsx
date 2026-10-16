@@ -5,6 +5,7 @@ import type { Task } from "@/features/tasks/tasks";
 
 import { CalendarTask } from "./calendar-task";
 import { dayLabel, dayName } from "./day-label";
+import type { CardProps } from "./task-card";
 
 /**
  * The "+N more" button under a Month cell too full to list every Task, and the panel it opens
@@ -14,25 +15,21 @@ export function MoreTasks({
   day,
   tasks,
   hidden,
-  tabbable,
-  onOpen,
-  onToggle,
+  card,
 }: {
   day: string;
   /** Every Task of the day, the ones the cell shows included. */
   tasks: readonly Task[];
   /** How many of them the cell leaves out. */
   hidden: number;
-  /** Whether Tab reaches the button; only the focused day's controls are in the Tab order. */
-  tabbable: boolean;
-  onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
+  /** The day's chips' actions, and whether Tab reaches the button. */
+  card: CardProps;
 }) {
   const [open, setOpen] = useState(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
-        tabIndex={tabbable ? 0 : -1}
+        tabIndex={card.tabbable ? 0 : -1}
         aria-label={`+${String(hidden)} more on ${dayName(day)}`}
         className="self-start rounded-sm px-1 text-xs font-medium text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
       >
@@ -47,12 +44,14 @@ export function MoreTasks({
             <CalendarTask
               key={task.id}
               task={task}
-              tabbable
-              onOpen={(taskId) => {
-                setOpen(false);
-                onOpen(taskId);
+              card={{
+                tabbable: true,
+                onOpen: (taskId) => {
+                  setOpen(false);
+                  card.onOpen(taskId);
+                },
+                onToggle: card.onToggle,
               }}
-              onToggle={onToggle}
             />
           ))}
         </ul>

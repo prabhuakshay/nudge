@@ -28,6 +28,7 @@ import {
   useReschedule,
   type DueDates,
 } from "./reschedule";
+import type { CardProps } from "./task-card";
 
 // Module constants, not inline objects: dnd-kit memoizes sensors on these options. A mouse drag
 // starts after 5 px so a click still opens the Task; touch needs a press and hold so the page
@@ -159,26 +160,19 @@ function Picture({ dragged: { task, grip } }: { dragged: Dragged }) {
   if (grip === "block" && span) {
     return (
       <ul aria-hidden inert className="relative h-full">
-        <CalendarBlock
-          block={{ task, span, column: 0, columns: 1 }}
-          filling
-          tabbable={false}
-          onOpen={noop}
-          onToggle={noop}
-        />
+        <CalendarBlock block={{ task, span, column: 0, columns: 1 }} filling card={PICTURE} />
       </ul>
     );
   }
   return (
     <ul aria-hidden inert>
-      <CalendarTask task={task} tabbable={false} onOpen={noop} onToggle={noop} />
+      <CalendarTask task={task} card={PICTURE} />
     </ul>
   );
 }
 
-function noop() {
-  // The picture under the pointer can't be clicked.
-}
+/** The picture under the pointer is inert, so nothing can open or tick it. */
+const PICTURE: CardProps = { tabbable: false, onOpen: () => undefined, onToggle: () => undefined };
 
 /**
  * A Task's chip on one of its days that can be dragged to another day inside `CalendarDrag`. A
@@ -187,20 +181,18 @@ function noop() {
 export function DraggableTask({
   task,
   day,
-  ...props
+  card,
 }: {
   task: CalendarItem;
   day: string;
-  tabbable: boolean;
-  onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
+  card: CardProps;
 }) {
   const { setNodeRef, listeners, isDragging } = useDraggable({
     id: dragId({ task, day, grip: "chip" }),
     disabled: task.occurrence,
   });
   const drag = { setNode: setNodeRef, listeners, dragging: isDragging };
-  return <CalendarTask task={task} drag={task.occurrence ? undefined : drag} {...props} />;
+  return <CalendarTask task={task} card={card} drag={task.occurrence ? undefined : drag} />;
 }
 
 /**
@@ -210,13 +202,11 @@ export function DraggableTask({
 export function DraggableBlock({
   block,
   day,
-  ...props
+  card,
 }: {
   block: Block<CalendarItem>;
   day: string;
-  tabbable: boolean;
-  onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
+  card: CardProps;
 }) {
   const { task } = block;
   const disabled = task.occurrence;
@@ -226,10 +216,11 @@ export function DraggableBlock({
     listeners: edgeListeners,
     transform,
   } = useDraggable({ id: dragId({ task, day, grip: "end" }), disabled });
-  if (disabled) return <CalendarBlock block={block} {...props} />;
+  if (disabled) return <CalendarBlock block={block} card={card} />;
   return (
     <CalendarBlock
       block={block}
+      card={card}
       drag={{ setNode: move.setNodeRef, listeners: move.listeners, dragging: move.isDragging }}
       stretch={transform?.y ?? 0}
       edge={
@@ -243,7 +234,6 @@ export function DraggableBlock({
           className="absolute inset-x-1 bottom-0 h-1.5 cursor-ns-resize touch-none"
         />
       }
-      {...props}
     />
   );
 }

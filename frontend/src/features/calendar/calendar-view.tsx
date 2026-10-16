@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { CalendarRange, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
-import { useCallback, useEffect, useReducer, useState } from "react";
+import { useEffect, useReducer, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { QuickAddDialog } from "@/features/tasks/global-quick-add";
@@ -10,7 +10,7 @@ import { wallClock } from "@/features/tasks/schedule";
 import { useSetTaskStatus } from "@/features/tasks/set-status";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { isClosed } from "@/features/tasks/task-properties";
-import type { SidebarProject, Task } from "@/features/tasks/tasks";
+import type { SidebarProject } from "@/features/tasks/tasks";
 
 import { calendarQuery, useCalendarPlace, usePhone, type CalendarMode } from "./calendar";
 import { CalendarDrag } from "./calendar-drag";
@@ -20,6 +20,7 @@ import { MonthGrid } from "./month-grid";
 import { futureOccurrences } from "./occurrences";
 import { useShowClosed } from "./show-closed";
 import { slotView, type Slot } from "./slot";
+import type { TaskActions } from "./task-card";
 import { TimeGrid } from "./time-grid";
 
 const MODE_NAMES: Record<CalendarMode, string> = { month: "Month", week: "Week", day: "Day" };
@@ -100,12 +101,12 @@ export function CalendarView({
   const { openTaskId, setOpenTask } = useOpenTask();
   const [adding, setAdding] = useState<Slot | null>(null);
   const { mutate: setStatus } = useSetTaskStatus();
-  const toggle = useCallback(
-    (task: Task) => {
+  const actions: TaskActions = {
+    onOpen: setOpenTask,
+    onToggle: (task) => {
       setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
     },
-    [setStatus],
-  );
+  };
   const moveFocus = (day: string) => {
     go(day, { replace: true });
   };
@@ -195,17 +196,9 @@ export function CalendarView({
               compact={phone}
               onDateChange={moveFocus}
               onAdd={setAdding}
-              onOpen={setOpenTask}
-              onToggle={toggle}
+              actions={actions}
             />
-            {phone && (
-              <DayTasks
-                day={date}
-                tasks={tasksOn(tasks, date)}
-                onOpen={setOpenTask}
-                onToggle={toggle}
-              />
-            )}
+            {phone && <DayTasks day={date} tasks={tasksOn(tasks, date)} actions={actions} />}
           </>
         ) : (
           <TimeGrid
@@ -216,8 +209,7 @@ export function CalendarView({
             tasks={tasks}
             onDateChange={moveFocus}
             onAdd={setAdding}
-            onOpen={setOpenTask}
-            onToggle={toggle}
+            actions={actions}
           />
         )}
       </CalendarDrag>

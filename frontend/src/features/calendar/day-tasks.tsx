@@ -4,6 +4,7 @@ import type { Task } from "@/features/tasks/tasks";
 
 import { DraggableTask } from "./calendar-drag";
 import { dayName } from "./day-label";
+import type { TaskActions } from "./task-card";
 
 /**
  * The selected day's Tasks, listed below the compact Month on a phone, where the grid has no room
@@ -12,14 +13,12 @@ import { dayName } from "./day-label";
 export function DayTasks({
   day,
   tasks,
-  onOpen,
-  onToggle,
+  actions,
 }: {
   day: string;
   /** The day's Tasks, in the order the Calendar draws them. */
   tasks: readonly Task[];
-  onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
+  actions: TaskActions;
 }) {
   const heading = useId();
   return (
@@ -37,9 +36,7 @@ export function DayTasks({
               key={task.id}
               task={task}
               day={day}
-              tabbable
-              onOpen={onOpen}
-              onToggle={onToggle}
+              card={{ ...actions, tabbable: true }}
             />
           ))}
         </ul>

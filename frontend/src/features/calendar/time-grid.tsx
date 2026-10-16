@@ -26,6 +26,7 @@ import {
   type Row,
 } from "./layout";
 import { addsToSlot, type Slot } from "./slot";
+import type { CardProps, TaskActions } from "./task-card";
 
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour);
 
@@ -55,8 +56,7 @@ export function TimeGrid({
   tasks,
   onDateChange,
   onAdd,
-  onOpen,
-  onToggle,
+  actions,
 }: {
   /** The days shown, one column each. */
   days: readonly string[];
@@ -67,8 +67,7 @@ export function TimeGrid({
   tasks: readonly Task[];
   onDateChange: (date: string) => void;
   onAdd: (slot: Slot) => void;
-  onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
+  actions: TaskActions;
 }) {
   const [row, setRow] = useState<Row>(FIRST_HOUR);
   const { grid, focusLater } = useFocusLater();
@@ -170,9 +169,7 @@ export function TimeGrid({
                         key={task.id}
                         task={task}
                         day={day}
-                        tabbable={day === date}
-                        onOpen={onOpen}
-                        onToggle={onToggle}
+                        card={{ ...actions, tabbable: day === date }}
                       />
                     ))}
                   </ul>
@@ -208,9 +205,7 @@ export function TimeGrid({
                 <SlotBlocks
                   day={day}
                   blocks={blocksAt(day, hour)}
-                  tabbable={day === date}
-                  onOpen={onOpen}
-                  onToggle={onToggle}
+                  card={{ ...actions, tabbable: day === date }}
                 />
               </DropSlot>
             ))}
@@ -255,28 +250,17 @@ function NowLine({ now }: { now: number }) {
 function SlotBlocks({
   day,
   blocks,
-  tabbable,
-  onOpen,
-  onToggle,
+  card,
 }: {
   day: string;
   blocks: Block<Task>[];
-  tabbable: boolean;
-  onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
+  card: CardProps;
 }) {
   if (blocks.length === 0) return null;
   return (
     <ul>
       {blocks.map((block) => (
-        <DraggableBlock
-          key={block.task.id}
-          block={block}
-          day={day}
-          tabbable={tabbable}
-          onOpen={onOpen}
-          onToggle={onToggle}
-        />
+        <DraggableBlock key={block.task.id} block={block} day={day} card={card} />
       ))}
     </ul>
   );

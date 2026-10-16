@@ -25,16 +25,17 @@ function chipTime(task: CalendarItem) {
 /** A Task as a chip on a day, in Month mode and the all-day strip: one line, its time first. */
 export function CalendarTask({
   task,
+  card,
   drag: { setNode, listeners, dragging } = STILL,
-  ...card
-}: CardProps & {
+}: {
   task: CalendarItem;
+  card: CardProps;
   /** What lets the chip be dragged, from `DraggableTask`; without it the chip stays put. */
   drag?: ChipDrag;
 }) {
   return (
     <li ref={setNode} {...listeners} className={cn("min-w-0", dragging && "opacity-40")}>
-      <TaskCard task={task} shape="chip" time={chipTime(task)} {...card} />
+      <TaskCard task={task} shape="chip" time={chipTime(task)} card={card} />
     </li>
   );
 }

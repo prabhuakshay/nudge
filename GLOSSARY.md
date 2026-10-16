@@ -22,6 +22,11 @@ _Avoid_: Hidden, closed
 A named group of Projects in the sidebar.
 _Avoid_: Group, space
 
+**Section**:
+A named, ordered group of Tasks inside one Project (never the Inbox); a Task belongs to at most
+one Section, and leaves it when the Task moves to another Project.
+_Avoid_: Column, heading, group
+
 **Tag**:
 A label attached to any number of tasks across Projects. Tags are flat: a Tag never contains
 another Tag.
@@ -113,6 +118,19 @@ _Avoid_: Everything, all tasks list
 An open Task whose date has passed: a timed Task once its time passes, an all-day Task once its
 day ends, a range once its end passes.
 _Avoid_: Late, missed
+
+**Layout**:
+How a View or Project arranges its Tasks: List, Board or Calendar. A View decides which Tasks
+show; a Layout decides how they are drawn.
+_Avoid_: View mode, display
+
+**Board**:
+The Layout that shows a Project's Sections as columns of Task cards.
+_Avoid_: Kanban, columns view
+
+**Calendar**:
+The View of every dated Task drawn on a calendar, a month, week or day at a time.
+_Avoid_: Schedule, planner
 
 **Calendar feed**:
 A private, read-only address a calendar app subscribes to, showing each open dated Task as an

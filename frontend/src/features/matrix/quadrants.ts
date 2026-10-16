@@ -92,14 +92,25 @@ function priorityRank(task: Task): number {
 }
 
 /**
- * Pinned Tasks first, then by date (a range by its start), undated last, then by Priority. Ties
- * keep the server's order.
+ * When a Task begins, a range by its start, as text that sorts by date, then a day's all-day Tasks
+ * before its timed ones, as the Calendar orders them, then by time. Null when undated.
+ */
+function startKey(task: Task): string | null {
+  const date = startsOn(task);
+  if (date === null) return null;
+  const time = task.start_date === null ? task.due_time : task.start_time;
+  return `${date}T${time ?? ""}`;
+}
+
+/**
+ * Pinned Tasks first, then by date and time (a range by its start), undated last, then by
+ * Priority. Ties keep the server's order.
  */
 function byPinThenDateThenPriority(a: Task, b: Task): number {
   const pinned = Number(b.pinned_at !== null) - Number(a.pinned_at !== null);
   if (pinned !== 0) return pinned;
-  const aDate = startsOn(a);
-  const bDate = startsOn(b);
+  const aDate = startKey(a);
+  const bDate = startKey(b);
   if (aDate !== bDate) {
     if (aDate === null) return 1;
     if (bDate === null) return -1;

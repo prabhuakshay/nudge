@@ -62,6 +62,45 @@ describe("MatrixView", () => {
     ]);
   });
 
+  it("lists a day's all-day Tasks first, then its timed ones by time, before Priority", async () => {
+    mockApi([
+      task({
+        id: 1,
+        title: "Water plants",
+        priority: 3,
+        due_date: "2026-10-20",
+        due_time: "17:00:00",
+      }),
+      task({
+        id: 2,
+        title: "Call the bank",
+        priority: 4,
+        due_date: "2026-10-20",
+        due_time: "09:00:00",
+      }),
+      task({ id: 3, title: "Fix the bike", priority: 4, due_date: "2026-10-20" }),
+      task({
+        id: 4,
+        title: "Paint the fence",
+        priority: 3,
+        start_date: "2026-10-20",
+        start_time: "12:00:00",
+        due_date: "2026-10-22",
+        due_time: "08:00:00",
+      }),
+    ]);
+
+    renderMatrix();
+
+    expect(await screen.findByText("Water plants")).toBeInTheDocument();
+    expect(titlesIn("Neither")).toEqual([
+      "Fix the bike",
+      "Call the bank",
+      "Paint the fence",
+      "Water plants",
+    ]);
+  });
+
   it("counts each Quadrant's Tasks and says when one is empty", async () => {
     mockApi([
       task({ id: 1, title: "Pay rent", priority: 1, due_date: "2026-10-15" }),

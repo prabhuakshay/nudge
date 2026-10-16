@@ -40,14 +40,16 @@ const SIDEBAR: SidebarData = {
 };
 
 /** A stand-in server: the sidebar for reads, and the updated user for section changes. */
+async function serve(input: RequestInfo | URL, sidebar: SidebarData = SIDEBAR) {
+  const request = requestOf(input);
+  if (request.method === "GET") return json(sidebar);
+  // `json()` is untyped; the only write the sidebar sends is a sidebar sections change.
+  const changes = (await request.clone().json()) as SidebarSectionsIn;
+  return json({ ...ada, ...changes });
+}
+
 function mockApi(sidebar: SidebarData = SIDEBAR) {
-  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = requestOf(input);
-    if (request.method === "GET") return json(sidebar);
-    // `json()` is untyped; the only write the sidebar sends is a sidebar sections change.
-    const changes = (await request.clone().json()) as SidebarSectionsIn;
-    return json({ ...ada, ...changes });
-  });
+  return vi.spyOn(globalThis, "fetch").mockImplementation((input) => serve(input, sidebar));
 }
 
 async function writes(fetchSpy: ReturnType<typeof mockApi>) {
@@ -63,12 +65,13 @@ async function writes(fetchSpy: ReturnType<typeof mockApi>) {
 }
 
 function renderSidebar(onSearch = vi.fn()) {
+  const queryClient = signedInClient(ada);
   render(
-    <QueryClientProvider client={signedInClient(ada)}>
+    <QueryClientProvider client={queryClient}>
       <Sidebar user={ada} onSearch={onSearch} />
     </QueryClientProvider>,
   );
-  return userEvent.setup();
+  return { user: userEvent.setup(), queryClient };
 }
 
 describe("Sidebar", () => {
@@ -96,7 +99,7 @@ describe("Sidebar", () => {
   it("opens the command bar from the Search row, by click or keyboard", async () => {
     mockApi();
     const onSearch = vi.fn();
-    const user = renderSidebar(onSearch);
+    const { user } = renderSidebar(onSearch);
 
     const search = screen.getByRole("button", { name: "Search" });
     expect(search).toHaveAttribute("aria-keyshortcuts", "Control+K /");
@@ -110,7 +113,7 @@ describe("Sidebar", () => {
 
   it("starts every section collapsed, and expanding one shows its rows and saves it", async () => {
     const fetchSpy = mockApi();
-    const user = renderSidebar();
+    const { user } = renderSidebar();
 
     for (const name of ["Projects", "Tags", "People"]) {
       expect(screen.getByRole("button", { name, expanded: false })).toBeInTheDocument();
@@ -130,7 +133,7 @@ describe("Sidebar", () => {
 
   it("toggles a section from the keyboard with Enter or Space", async () => {
     const fetchSpy = mockApi();
-    const user = renderSidebar();
+    const { user } = renderSidebar();
 
     screen.getByRole("button", { name: "People" }).focus();
     await user.keyboard("{Enter}");
@@ -147,9 +150,35 @@ describe("Sidebar", () => {
     });
   });
 
+  it("keeps the last of two quick toggles when the first save answers", async () => {
+    const heldReplies: (() => void)[] = [];
+    vi.spyOn(globalThis, "fetch").mockImplementation((input) =>
+      requestOf(input).method === "GET"
+        ? serve(input)
+        : new Promise((resolve) => {
+            heldReplies.push(() => {
+              resolve(serve(input));
+            });
+          }),
+    );
+    const { user, queryClient } = renderSidebar();
+
+    await user.click(screen.getByRole("button", { name: "Tags" }));
+    await user.click(screen.getByRole("button", { name: "Tags" }));
+    await waitFor(() => {
+      expect(heldReplies).toHaveLength(2);
+    });
+    heldReplies[0]?.();
+    await waitFor(() => {
+      expect(queryClient.isMutating()).toBe(1);
+    });
+
+    expect(screen.getByRole("button", { name: "Tags", expanded: false })).toBeInTheDocument();
+  });
+
   it("adds to a collapsed section from its heading", async () => {
     mockApi();
-    const user = renderSidebar();
+    const { user } = renderSidebar();
 
     await user.click(screen.getByRole("button", { name: "Add a project or folder" }));
     expect(screen.getByRole("menuitem", { name: "New project" })).toBeInTheDocument();

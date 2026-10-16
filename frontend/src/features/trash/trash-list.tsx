@@ -10,9 +10,9 @@ import { Button } from "@/components/ui/button";
 import { plainMentions } from "@/features/people/mentions";
 import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog";
 import { ProjectIcon } from "@/features/projects/project-icon";
+import { plural } from "@/lib/plural";
 
 import {
-  plural,
   rowKey,
   trashQuery,
   useDeleteForever,

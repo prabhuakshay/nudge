@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import { BoardCard } from "@/features/projects/board-card";
 import { flatRows } from "@/features/tasks/task-tree";
 import type { Task } from "@/features/tasks/tasks";
-import { plural } from "@/features/trash/trash";
+import { plural } from "@/lib/plural";
 import { cn } from "@/lib/utils";
 
 import { DraggableMatrixCard } from "./matrix-drag";

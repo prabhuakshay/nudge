@@ -11,6 +11,7 @@ import {
   type Task,
   type TaskDetail,
 } from "@/features/tasks/tasks";
+import { plural } from "@/lib/plural";
 import { toastWithUndo } from "@/lib/undo-toast";
 
 export type TrashedTask = components["schemas"]["TrashedTaskOut"];
@@ -74,11 +75,6 @@ export function useRestoreTask() {
     onSettled: () =>
       Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),
   });
-}
-
-/** "1 item" or "3 items". */
-export function plural(count: number, noun: string) {
-  return `${String(count)} ${noun}${count === 1 ? "" : "s"}`;
 }
 
 /** A Trash row's key, unique across Tasks and Projects, which have separate ids. */

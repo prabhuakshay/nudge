@@ -1,7 +1,7 @@
 import { format, parseISO } from "date-fns";
 import type { KeyboardEvent } from "react";
 
-import { plural } from "@/features/trash/trash";
+import { plural } from "@/lib/plural";
 import { cn } from "@/lib/utils";
 
 import { DraggableTask } from "./calendar-drag";

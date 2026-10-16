@@ -1,16 +1,8 @@
 import { screen } from "@testing-library/react";
-import { useState, type ComponentProps } from "react";
 
 import { TaskList } from "@/features/tasks/task-list";
+import { OpenableCommandBar } from "@/test/command-bar";
 import { INBOX, mockApi, openTask, renderListRoute, task } from "@/test/drawer";
-
-import { CommandBar } from "./command-bar";
-
-/** The command bar holding its own open state, as the app shell holds it. */
-function Bar(props: Omit<ComponentProps<typeof CommandBar>, "open" | "onOpenChange">) {
-  const [open, setOpen] = useState(false);
-  return <CommandBar open={open} onOpenChange={setOpen} {...props} />;
-}
 
 /** The Inbox with the command bar over it, on a wide screen. */
 function renderInbox() {
@@ -23,7 +15,7 @@ function renderInbox() {
   return renderListRoute(
     <>
       <TaskList project={INBOX} />
-      <Bar actions={{}} onCreateTask={vi.fn()} />
+      <OpenableCommandBar actions={{}} onCreateTask={vi.fn()} />
     </>,
   ).user;
 }

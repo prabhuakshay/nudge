@@ -31,6 +31,7 @@ def _project_out(project: Project, sidebar: projects.Sidebar) -> SidebarProjectO
         folder_id=project.folder_id,
         is_inbox=project.is_inbox,
         is_archived=project.is_archived,
+        layout=Project.Layout(project.layout),
         open_count=sidebar.open_counts.get(project.pk, 0),
     )
 

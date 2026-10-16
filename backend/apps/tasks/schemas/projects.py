@@ -25,6 +25,7 @@ class ProjectOut(Schema):
     folder_id: int | None
     is_inbox: bool
     is_archived: bool = Field(description="Archived Projects are read-only.")
+    layout: Project.Layout
 
 
 class ProjectIn(Schema):
@@ -42,6 +43,7 @@ class ProjectPatchIn(Schema):
     name: Name | None = None
     color: PaletteColor | None = None
     icon: Project.Icon | None = None
+    layout: Project.Layout | None = Field(default=None, description="The Inbox can't be a Board.")
 
 
 class FolderOut(Schema):

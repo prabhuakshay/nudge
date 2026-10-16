@@ -104,6 +104,12 @@ class Project(models.Model):
         MAIL = "mail", "Mail"
         PHONE = "phone", "Phone"
 
+    class Layout(models.TextChoices):
+        """How the Project page draws its Tasks."""
+
+        LIST = "list", "List"
+        BOARD = "board", "Board"
+
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -121,6 +127,7 @@ class Project(models.Model):
     )
     position = models.CharField(max_length=255, db_collation="C", blank=True)
     is_inbox = models.BooleanField(default=False)
+    layout = models.CharField(max_length=16, choices=Layout, default=Layout.LIST)
     archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)

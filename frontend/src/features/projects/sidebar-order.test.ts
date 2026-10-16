@@ -11,6 +11,7 @@ function project(id: number, name: string, folderId: number | null = null): Side
     folder_id: folderId,
     is_inbox: false,
     is_archived: false,
+    layout: "list",
     open_count: 0,
   };
 }

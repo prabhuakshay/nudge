@@ -36,6 +36,7 @@ class ProjectRuleError(DomainRuleError):
 
 
 INBOX_IS_FIXED = "The Inbox can't be renamed, recoloured or moved."
+INBOX_HAS_NO_BOARD = "The Inbox has no Sections, so it can't be a Board."
 INBOX_CANT_BE_ARCHIVED = "The Inbox can't be archived."
 
 
@@ -45,6 +46,16 @@ class SiblingRef:
 
     kind: Literal["folder", "project"]
     id: int
+
+
+@dataclass(frozen=True)
+class ProjectEdit:
+    """The fields of a Project to change; a field left as None stays as it is."""
+
+    name: str | None = None
+    color: PaletteColor | None = None
+    icon: Project.Icon | None = None
+    layout: Project.Layout | None = None
 
 
 @dataclass(frozen=True)
@@ -201,14 +212,7 @@ def create_project(
     return project
 
 
-def update_project(
-    user: User,
-    project_id: int,
-    *,
-    name: str | None = None,
-    color: PaletteColor | None = None,
-    icon: Project.Icon | None = None,
-) -> Project | None:
+def update_project(user: User, project_id: int, edit: ProjectEdit) -> Project | None:
     """Change the given fields of one of the user's live Projects; None if it isn't theirs.
 
     Raises:
@@ -218,11 +222,13 @@ def update_project(
     if project is None:
         return None
     if project.is_inbox:
-        raise ProjectRuleError(INBOX_IS_FIXED)
-    _check_icon(icon)
-    project.name = name if name is not None else project.name
-    project.color = color or project.color
-    project.icon = icon or project.icon
+        board = edit.layout == Project.Layout.BOARD
+        raise ProjectRuleError(INBOX_HAS_NO_BOARD if board else INBOX_IS_FIXED)
+    _check_icon(edit.icon)
+    project.name = edit.name if edit.name is not None else project.name
+    project.color = edit.color or project.color
+    project.icon = edit.icon or project.icon
+    project.layout = edit.layout or project.layout
     _save_project(project, name=project.name)
     return project
 

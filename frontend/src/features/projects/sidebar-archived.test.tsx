@@ -22,6 +22,7 @@ const GARDEN: SidebarProject = {
   folder_id: null,
   is_inbox: false,
   is_archived: true,
+  layout: "list",
   open_count: 0,
 };
 

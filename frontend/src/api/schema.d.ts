@@ -471,7 +471,9 @@ export interface paths {
     head?: never;
     /**
      * Change a Project
-     * @description Rename, recolour or change the icon of a Project. The Inbox can't be changed.
+     * @description Rename, recolour, change the icon or switch the Layout of a Project.
+     *
+     *     The Inbox can't be changed.
      */
     patch: operations["apps_tasks_api_projects_update_project"];
     trace?: never;
@@ -1859,6 +1861,12 @@ export interface components {
       | "mail"
       | "phone";
     /**
+     * Layout
+     * @description How the Project page draws its Tasks.
+     * @enum {string}
+     */
+    Layout: "list" | "board";
+    /**
      * ProjectOut
      * @description A Project's own fields.
      */
@@ -1878,6 +1886,7 @@ export interface components {
        * @description Archived Projects are read-only.
        */
       is_archived: boolean;
+      layout: components["schemas"]["Layout"];
     };
     /**
      * ProjectIn
@@ -1905,6 +1914,8 @@ export interface components {
       name?: string | null;
       color?: components["schemas"]["PaletteColor"] | null;
       icon?: components["schemas"]["Icon"] | null;
+      /** @description The Inbox can't be a Board. */
+      layout?: components["schemas"]["Layout"] | null;
     };
     /**
      * ProjectMoveIn
@@ -2100,6 +2111,7 @@ export interface components {
        * @description Archived Projects are read-only.
        */
       is_archived: boolean;
+      layout: components["schemas"]["Layout"];
       /**
        * @description discriminator enum property added by openapi-typescript
        * @enum {string}

@@ -62,6 +62,7 @@ def test_create_makes_a_project_with_a_palette_colour_and_the_list_icon(
         "folder_id": None,
         "is_inbox": False,
         "is_archived": False,
+        "layout": "list",
     }
     assert body["color"] in PaletteColor.values
     assert ada.projects.get(pk=body["id"]).name == "Home"
@@ -169,6 +170,7 @@ def test_patch_renames_recolours_and_changes_the_icon(client: Client, ada: User)
         "folder_id": None,
         "is_inbox": False,
         "is_archived": False,
+        "layout": "list",
     }
 
 
@@ -201,6 +203,37 @@ def test_patch_refuses_to_change_the_inbox(client: Client, ada: User, fields: ob
 
     assert response.status_code == 422
     assert response.json() == {"detail": "The Inbox can't be renamed, recoloured or moved."}
+
+
+@pytest.mark.django_db
+def test_patch_switches_the_layout_and_back(client: Client, ada: User) -> None:
+    project = projects.create_project(ada, "Work")
+    path = f"/api/v1/projects/{project.pk}"
+
+    to_board = _patch(client, path, {"layout": "board"})
+    to_list = _patch(client, path, {"layout": "list"})
+
+    assert to_board.json()["layout"] == "board"
+    assert to_list.json()["layout"] == "list"
+
+
+@pytest.mark.django_db
+def test_patch_refuses_the_board_layout_for_the_inbox(client: Client, ada: User) -> None:
+    response = _patch(client, f"/api/v1/projects/{services.inbox(ada).pk}", {"layout": "board"})
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "The Inbox has no Sections, so it can't be a Board."}
+
+
+@pytest.mark.django_db
+def test_patch_another_users_layout_is_not_found(client: Client, grace: User) -> None:
+    project = projects.create_project(grace, "Theirs")
+
+    response = _patch(client, f"/api/v1/projects/{project.pk}", {"layout": "board"})
+
+    assert response.status_code == 404
+    project.refresh_from_db()
+    assert project.layout == Project.Layout.LIST
 
 
 @pytest.mark.django_db

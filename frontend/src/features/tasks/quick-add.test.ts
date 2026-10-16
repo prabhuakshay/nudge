@@ -13,6 +13,7 @@ function project(id: number, name: string): SidebarProject {
     folder_id: null,
     is_inbox: id === 7,
     is_archived: false,
+    layout: "list",
     open_count: 0,
   };
 }

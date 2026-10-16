@@ -32,6 +32,7 @@ export const INBOX: SidebarProject = {
   folder_id: null,
   is_inbox: true,
   is_archived: false,
+  layout: "list",
   open_count: 3,
 };
 export const WORK: SidebarProject = {

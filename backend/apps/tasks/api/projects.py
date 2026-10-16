@@ -11,7 +11,7 @@ from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import project_trash, projects
 from apps.tasks.api.errors import FOLDER_NOT_FOUND, PROJECT_NOT_FOUND
-from apps.tasks.projects import SiblingRef
+from apps.tasks.projects import ProjectEdit, SiblingRef
 from apps.tasks.schemas.projects import ProjectIn, ProjectMoveIn, ProjectOut, ProjectPatchIn
 
 if TYPE_CHECKING:
@@ -63,14 +63,12 @@ def update_project(
     project_id: int,
     patch: ProjectPatchIn,
 ) -> Status[ProjectOut] | Status[ErrorOut]:
-    """Rename, recolour or change the icon of a Project. The Inbox can't be changed."""
-    project = projects.update_project(
-        signed_in_user(request),
-        project_id,
-        name=patch.name,
-        color=patch.color,
-        icon=patch.icon,
-    )
+    """Rename, recolour, change the icon or switch the Layout of a Project.
+
+    The Inbox can't be changed.
+    """
+    edit = ProjectEdit(name=patch.name, color=patch.color, icon=patch.icon, layout=patch.layout)
+    project = projects.update_project(signed_in_user(request), project_id, edit)
     if project is None:
         return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
     return Status(HTTPStatus.OK, ProjectOut.from_orm(project))

@@ -132,6 +132,11 @@ _Avoid_: Kanban, columns view
 The View of every dated Task drawn on a calendar, a month, week or day at a time.
 _Avoid_: Schedule, planner
 
+**Mode**:
+How much of the Calendar shows at a time: Month, Week or Day. Switching Mode zooms the same
+Calendar in or out; it is not a Layout, which decides how a View's Tasks are drawn.
+_Avoid_: Calendar view, zoom, period
+
 **Calendar feed**:
 A private, read-only address a calendar app subscribes to, showing each open dated Task as an
 event on its current date.

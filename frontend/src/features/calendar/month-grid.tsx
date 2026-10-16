@@ -2,7 +2,6 @@ import { useDroppable } from "@dnd-kit/core";
 import { format, parseISO } from "date-fns";
 import type { KeyboardEvent } from "react";
 
-import type { Task } from "@/features/tasks/tasks";
 import { plural } from "@/features/trash/trash";
 import { cn } from "@/lib/utils";
 
@@ -11,6 +10,7 @@ import { dayLabel } from "./day-label";
 import { useFocusLater } from "./grid-focus";
 import { monthWeeks, shiftDays, tasksOn } from "./layout";
 import { MoreTasks } from "./more-tasks";
+import type { CalendarItem } from "./occurrences";
 import { addsToSlot, type Slot } from "./slot";
 import type { CardProps, TaskActions } from "./task-card";
 
@@ -47,7 +47,7 @@ export function MonthGrid({
 }: {
   date: string;
   today: string;
-  tasks: readonly Task[];
+  tasks: readonly CalendarItem[];
   compact: boolean;
   onDateChange: (date: string) => void;
   onAdd: (slot: Slot) => void;
@@ -132,7 +132,7 @@ function DayCell({
    * also the selected day. */
   focused: boolean;
   compact: boolean;
-  tasks: Task[];
+  tasks: CalendarItem[];
   onKeyDown: (event: KeyboardEvent<HTMLElement>, day: string) => void;
   onSelect: (day: string) => void;
   onAdd: (slot: Slot) => void;
@@ -219,7 +219,7 @@ function cellLabel(day: string, isToday: boolean, taskCount: number): string {
 }
 
 /** A full-size cell's Tasks: the first `CELL_TASKS` as chips, then "+N more" for the rest. */
-function CellTasks({ day, tasks, card }: { day: string; tasks: Task[]; card: CardProps }) {
+function CellTasks({ day, tasks, card }: { day: string; tasks: CalendarItem[]; card: CardProps }) {
   return (
     <>
       {tasks.length > 0 && (

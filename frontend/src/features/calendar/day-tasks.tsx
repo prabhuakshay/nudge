@@ -1,9 +1,8 @@
 import { useId } from "react";
 
-import type { Task } from "@/features/tasks/tasks";
-
 import { DraggableTask } from "./calendar-drag";
 import { dayName } from "./day-label";
+import type { CalendarItem } from "./occurrences";
 import type { TaskActions } from "./task-card";
 
 /**
@@ -17,7 +16,7 @@ export function DayTasks({
 }: {
   day: string;
   /** The day's Tasks, in the order the Calendar draws them. */
-  tasks: readonly Task[];
+  tasks: readonly CalendarItem[];
   actions: TaskActions;
 }) {
   const heading = useId();

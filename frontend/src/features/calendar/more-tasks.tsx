@@ -1,10 +1,10 @@
 import { useState } from "react";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import type { Task } from "@/features/tasks/tasks";
 
 import { CalendarTask } from "./calendar-task";
 import { dayLabel, dayName } from "./day-label";
+import type { CalendarItem } from "./occurrences";
 import type { CardProps } from "./task-card";
 
 /**
@@ -19,7 +19,7 @@ export function MoreTasks({
 }: {
   day: string;
   /** Every Task of the day, the ones the cell shows included. */
-  tasks: readonly Task[];
+  tasks: readonly CalendarItem[];
   /** How many of them the cell leaves out. */
   hidden: number;
   /** The day's chips' actions, and whether Tab reaches the button. */

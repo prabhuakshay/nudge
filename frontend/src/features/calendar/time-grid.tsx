@@ -9,7 +9,6 @@ import {
   type MouseEvent,
 } from "react";
 
-import type { Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
 import { DraggableBlock, DraggableTask } from "./calendar-drag";
@@ -25,6 +24,7 @@ import {
   type Block,
   type Row,
 } from "./layout";
+import type { CalendarItem } from "./occurrences";
 import { addsToSlot, type Slot } from "./slot";
 import type { CardProps, TaskActions } from "./task-card";
 
@@ -64,7 +64,7 @@ export function TimeGrid({
   today: string;
   /** The minutes since midnight on the user's clock, where today's current-time line goes. */
   now: number;
-  tasks: readonly Task[];
+  tasks: readonly CalendarItem[];
   onDateChange: (date: string) => void;
   onAdd: (slot: Slot) => void;
   actions: TaskActions;
@@ -253,7 +253,7 @@ function SlotBlocks({
   card,
 }: {
   day: string;
-  blocks: Block<Task>[];
+  blocks: Block<CalendarItem>[];
   card: CardProps;
 }) {
   if (blocks.length === 0) return null;

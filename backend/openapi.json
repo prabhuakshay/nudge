@@ -5506,7 +5506,7 @@
         "type": "object"
       },
       "TaskPlace": {
-        "description": "Where a Task sits: its Project, its parent and the sibling before it.",
+        "description": "Where a Task sits: its Project, its parent, the sibling before it and its Section.",
         "properties": {
           "id": {
             "title": "Id",
@@ -5539,13 +5539,26 @@
             ],
             "description": "None when it's first among its siblings.",
             "title": "After Id"
+          },
+          "section_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None in No section and for a Subtask.",
+            "title": "Section Id"
           }
         },
         "required": [
           "id",
           "project_id",
           "parent_id",
-          "after_id"
+          "after_id",
+          "section_id"
         ],
         "title": "TaskPlace",
         "type": "object"

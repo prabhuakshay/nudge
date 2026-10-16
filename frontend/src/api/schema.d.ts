@@ -2187,7 +2187,7 @@ export interface components {
     };
     /**
      * TaskPlace
-     * @description Where a Task sits: its Project, its parent and the sibling before it.
+     * @description Where a Task sits: its Project, its parent, the sibling before it and its Section.
      */
     TaskPlace: {
       /** Id */
@@ -2204,6 +2204,11 @@ export interface components {
        * @description None when it's first among its siblings.
        */
       after_id: number | null;
+      /**
+       * Section Id
+       * @description None in No section and for a Subtask.
+       */
+      section_id: number | null;
     };
     /**
      * BulkDatesIn

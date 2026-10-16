@@ -195,9 +195,9 @@ describe("the N selected bar", () => {
 
   it("moves every Task to another Project, and Undo puts each back in its place", async () => {
     const places = [
-      { id: 1, project_id: 7, parent_id: null, after_id: null },
-      { id: 2, project_id: 7, parent_id: null, after_id: 1 },
-      { id: 3, project_id: 7, parent_id: null, after_id: 2 },
+      { id: 1, project_id: 7, parent_id: null, after_id: null, section_id: 4 },
+      { id: 2, project_id: 7, parent_id: null, after_id: 1, section_id: null },
+      { id: 3, project_id: 7, parent_id: null, after_id: 2, section_id: null },
     ];
     const fetchSpy = mockBulk([], places);
     const user = renderList();

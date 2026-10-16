@@ -46,12 +46,13 @@ class BulkStatusesIn(Schema):
 
 
 class TaskPlace(Schema):
-    """Where a Task sits: its Project, its parent and the sibling before it."""
+    """Where a Task sits: its Project, its parent, the sibling before it and its Section."""
 
     id: int
     project_id: int
     parent_id: int | None = Field(description="None at the top level.")
     after_id: int | None = Field(description="None when it's first among its siblings.")
+    section_id: int | None = Field(description="None in No section and for a Subtask.")
 
 
 class BulkPlaceIn(Schema):

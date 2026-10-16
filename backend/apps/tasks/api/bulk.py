@@ -118,7 +118,7 @@ def _per_task(user: User, action: BulkStatusesIn | BulkPlaceIn) -> list[Affected
         ]
         return bulk.set_statuses(user, statuses)
     places = [
-        bulk.Place(entry.id, entry.project_id, entry.parent_id, entry.after_id)
+        bulk.Place(entry.id, entry.project_id, entry.parent_id, entry.after_id, entry.section_id)
         for entry in action.places
     ]
     return bulk.place_tasks(user, places)

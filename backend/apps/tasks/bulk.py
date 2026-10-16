@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 from django.db.models import Q
 
-from apps.tasks import moves, services, trash
+from apps.tasks import moves, sections, services, trash
 from apps.tasks.models import Task
 from apps.tasks.tree import ancestors
 
@@ -37,12 +37,17 @@ class TaskStatus:
 
 @dataclass(frozen=True)
 class Place:
-    """Where a Task sits: its Project, its parent (None at the top) and the sibling before it."""
+    """Where a Task sits: its Project, parent, the sibling before it and Section.
+
+    `parent_id` is None at the top level, `after_id` when it's first among its siblings, and
+    `section_id` in No section and for a Subtask.
+    """
 
     id: int
     project_id: int
     parent_id: int | None
     after_id: int | None
+    section_id: int | None
 
 
 @dataclass(frozen=True)
@@ -79,6 +84,7 @@ def _place_of(task: Task) -> Place:
         task.project_id,
         task.parent_id,
         before.values_list("pk", flat=True).first(),
+        task.section_id,
     )
 
 
@@ -135,7 +141,8 @@ def place_tasks(user: User, places: list[Place]) -> list[AffectedTask] | None:
         Every Task whose Status changed, with its Status from before.
 
     Raises:
-        TaskRuleError, ArchivedProjectError: as `moves.move_task` does for any one of the Tasks.
+        TaskRuleError, SectionRuleError, ArchivedProjectError: as `moves.move_task` does for any
+            one of the Tasks.
     """
     with transaction.atomic():
         found = [_destination(user, place) for place in places]
@@ -151,12 +158,17 @@ def place_tasks(user: User, places: list[Place]) -> list[AffectedTask] | None:
 
 
 def _destination(user: User, place: Place) -> moves.Destination | None:
-    """Resolve a place to the user's Project and parent; None if either isn't theirs."""
+    """Resolve a place to the user's Project, parent and Section; None if any isn't theirs."""
     project = services.live_project(user, place.project_id)
     parent = None if place.parent_id is None else services.live_task(user, place.parent_id)
-    if project is None or (place.parent_id is not None and parent is None):
+    section = None if place.section_id is None else sections.section(user, place.section_id)
+    if (
+        project is None
+        or (place.parent_id is not None and parent is None)
+        or (place.section_id is not None and section is None)
+    ):
         return None
-    return moves.Destination(project, parent, place.after_id)
+    return moves.Destination(project, parent, place.after_id, section, section_given=True)
 
 
 def set_statuses(user: User, statuses: list[TaskStatus]) -> list[AffectedTask] | None:

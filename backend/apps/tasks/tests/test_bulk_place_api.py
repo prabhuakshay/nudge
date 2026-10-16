@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import creation, projects, services
+from apps.tasks import creation, projects, sections, services
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
@@ -49,8 +49,20 @@ def test_a_bulk_move_says_where_each_task_was(client: Client, ada: User) -> None
     response = _bulk(client, [middle.pk, first.pk], {"kind": "move", "project_id": work.pk})
 
     assert response.json()["moved_from"] == [
-        {"id": first.pk, "project_id": inbox.pk, "parent_id": None, "after_id": None},
-        {"id": middle.pk, "project_id": inbox.pk, "parent_id": None, "after_id": first.pk},
+        {
+            "id": first.pk,
+            "project_id": inbox.pk,
+            "parent_id": None,
+            "after_id": None,
+            "section_id": None,
+        },
+        {
+            "id": middle.pk,
+            "project_id": inbox.pk,
+            "parent_id": None,
+            "after_id": first.pk,
+            "section_id": None,
+        },
     ]
 
 
@@ -76,6 +88,44 @@ def test_placing_puts_moved_tasks_back_in_their_old_places(client: Client, ada: 
 
 
 @pytest.mark.django_db
+def test_placing_puts_moved_tasks_back_in_their_old_sections(client: Client, ada: User) -> None:
+    work = projects.create_project(ada, "Work")
+    home = projects.create_project(ada, "Home")
+    to_do = sections.create_section(work, "To do")
+    loose = creation.create_task(work, "Loose")
+    grouped = creation.create_task(work, "Grouped", creation.NewTask(section=to_do))
+    moved = _bulk(client, [grouped.pk, loose.pk], {"kind": "move", "project_id": home.pk})
+
+    response = _place(client, moved.json()["moved_from"])
+
+    assert response.status_code == 200
+    rows = Task.objects.filter(project=work).order_by("position", "id")
+    assert list(rows.values_list("title", "section_id")) == [
+        ("Grouped", to_do.pk),
+        ("Loose", None),
+    ]
+
+
+@pytest.mark.django_db
+def test_placing_into_another_users_section_is_404(client: Client, ada: User, grace: User) -> None:
+    inbox = services.inbox(ada)
+    task = creation.create_task(inbox, "Pay rent")
+    theirs = sections.create_section(projects.create_project(grace, "Theirs"), "To do")
+    place = {
+        "id": task.pk,
+        "project_id": inbox.pk,
+        "parent_id": None,
+        "after_id": None,
+        "section_id": None,
+    }
+
+    response = _place(client, [{**place, "section_id": theirs.pk}])
+
+    assert response.status_code == 404
+    assert Task.objects.get(pk=task.pk).section_id is None
+
+
+@pytest.mark.django_db
 def test_placing_into_another_users_project_is_404(
     client: Client,
     ada: User,
@@ -86,7 +136,15 @@ def test_placing_into_another_users_project_is_404(
 
     response = _place(
         client,
-        [{"id": task.pk, "project_id": theirs.pk, "parent_id": None, "after_id": None}],
+        [
+            {
+                "id": task.pk,
+                "project_id": theirs.pk,
+                "parent_id": None,
+                "after_id": None,
+                "section_id": None,
+            }
+        ],
     )
 
     assert response.status_code == 404
@@ -101,7 +159,15 @@ def test_placing_under_another_users_task_is_404(client: Client, ada: User, grac
 
     response = _place(
         client,
-        [{"id": task.pk, "project_id": inbox.pk, "parent_id": theirs.pk, "after_id": None}],
+        [
+            {
+                "id": task.pk,
+                "project_id": inbox.pk,
+                "parent_id": theirs.pk,
+                "after_id": None,
+                "section_id": None,
+            }
+        ],
     )
 
     assert response.status_code == 404
@@ -113,7 +179,13 @@ def test_places_must_name_the_tasks_given(client: Client, ada: User) -> None:
     inbox = services.inbox(ada)
     task = creation.create_task(inbox, "Pay rent")
     other = creation.create_task(inbox, "Buy milk")
-    place = {"id": task.pk, "project_id": inbox.pk, "parent_id": None, "after_id": None}
+    place = {
+        "id": task.pk,
+        "project_id": inbox.pk,
+        "parent_id": None,
+        "after_id": None,
+        "section_id": None,
+    }
 
     response = _bulk(client, [other.pk], {"kind": "place", "places": [place]})
 

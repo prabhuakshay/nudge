@@ -1,12 +1,13 @@
 import { useDroppable } from "@dnd-kit/core";
 import { format, parseISO } from "date-fns";
-import { useEffect, useRef, type KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 
 import type { Task } from "@/features/tasks/tasks";
 import { plural } from "@/features/trash/trash";
 import { cn } from "@/lib/utils";
 
 import { DraggableTask } from "./calendar-drag";
+import { useFocusLater } from "./grid-focus";
 import { monthWeeks, shiftDays, tasksOn } from "./layout";
 import { MoreTasks } from "./more-tasks";
 import { addsToSlot, type Slot } from "./slot";
@@ -54,18 +55,7 @@ export function MonthGrid({
 }) {
   const weeks = monthWeeks(date);
   const month = date.slice(0, 7);
-  const grid = useRef<HTMLDivElement>(null);
-  // The day the keyboard moved to, focused once it is drawn: a day in another month needs the
-  // address to change first.
-  const pendingFocus = useRef<string | null>(null);
-
-  useEffect(() => {
-    if (pendingFocus.current === null) return;
-    const cell = grid.current?.querySelector<HTMLElement>(`[data-day="${pendingFocus.current}"]`);
-    if (!cell) return;
-    cell.focus();
-    pendingFocus.current = null;
-  });
+  const { grid, focusLater } = useFocusLater();
 
   const onKeyDown = (event: KeyboardEvent<HTMLElement>, day: string) => {
     const days = ARROW_DAYS[event.key];
@@ -73,7 +63,7 @@ export function MonthGrid({
     if (days === undefined || event.target !== event.currentTarget) return;
     event.preventDefault();
     const next = shiftDays(day, days);
-    pendingFocus.current = next;
+    focusLater(`[data-day="${next}"]`);
     onDateChange(next);
   };
 

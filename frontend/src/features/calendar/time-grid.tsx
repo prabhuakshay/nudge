@@ -13,6 +13,7 @@ import type { Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
 import { DraggableBlock, DraggableTask } from "./calendar-drag";
+import { useFocusLater } from "./grid-focus";
 import {
   allDayTasks,
   clockTime,
@@ -74,11 +75,8 @@ export function TimeGrid({
   onToggle: (task: Task) => void;
 }) {
   const [row, setRow] = useState<Row>(FIRST_HOUR);
-  const grid = useRef<HTMLDivElement>(null);
+  const { grid, focusLater } = useFocusLater();
   const timeline = useRef<HTMLDivElement>(null);
-  // The slot the keyboard moved to, focused once it is drawn: another week needs the address to
-  // change first.
-  const pendingFocus = useRef<string | null>(null);
   const blocks = new Map(days.map((day) => [day, dayBlocks(tasks, day)]));
   const blocksAt = (day: string, hour: number) =>
     (blocks.get(day) ?? []).filter((block) => Math.floor(block.span.start / 60) === hour);
@@ -89,21 +87,13 @@ export function TimeGrid({
     if (timeline.current && first) timeline.current.scrollTop = first.offsetTop;
   }, []);
 
-  useEffect(() => {
-    if (pendingFocus.current === null) return;
-    const slot = grid.current?.querySelector<HTMLElement>(pendingFocus.current);
-    if (!slot) return;
-    slot.focus();
-    pendingFocus.current = null;
-  });
-
   const onKeyDown = (event: KeyboardEvent<HTMLElement>, day: string) => {
     // Keys pressed on a Task inside the slot belong to the Task.
     if (event.target !== event.currentTarget) return;
     const next = nextSlot(event.key, day, row);
     if (next === null) return;
     event.preventDefault();
-    pendingFocus.current = `[data-day="${next.day}"][data-hour="${String(next.row)}"]`;
+    focusLater(`[data-day="${next.day}"][data-hour="${String(next.row)}"]`);
     setRow(next.row);
     if (next.day !== day) onDateChange(next.day);
   };

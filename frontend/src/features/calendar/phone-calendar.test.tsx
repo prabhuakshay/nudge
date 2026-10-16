@@ -100,6 +100,19 @@ describe("The compact Month on a phone", () => {
     ).toBeInTheDocument();
   });
 
+  it("opens Quick add when the selected day is tapped again", async () => {
+    mockApi(tasks());
+    const { user } = renderCalendar("/", { wide: false });
+    await screen.findByText("Pay rent");
+
+    await user.click(day("Tuesday 20 October"));
+    expect(screen.queryByRole("dialog", { name: "Add a task" })).not.toBeInTheDocument();
+    await user.click(day("Tuesday 20 October"));
+
+    const dialog = await screen.findByRole("dialog", { name: "Add a task" });
+    expect(within(dialog).getByText("Tue 20 Oct")).toBeInTheDocument();
+  });
+
   it("opens a listed Task's detail", async () => {
     mockApi(tasks());
     const { user, router } = renderCalendar("/", { wide: false });

@@ -16,7 +16,7 @@ import { NAV_ITEMS, type NavItem } from "./nav-items";
 import { UserAvatar } from "./user-avatar";
 
 /**
- * Desktop navigation: Search, smart views, Projects and the account, always visible.
+ * Desktop navigation: the Search field, smart views, Projects and the account, always visible.
  * `onSearch` opens the command bar.
  */
 export function Sidebar({ user, onSearch }: { user: User; onSearch: () => void }) {
@@ -68,7 +68,7 @@ const LINK =
  * The views, then the user's Projects, Tags and People, then Trash: the body of the desktop
  * sidebar and of the phone menu, which holds what the bottom bar has no room for.
  * `onNavigate` runs when a link is followed, so the phone menu can close. `onSearch` adds a
- * Search row that opens the command bar; the phone menu leaves it out, as its top bar has one.
+ * Search field that opens the command bar; the phone menu leaves it out, as its top bar has one.
  */
 export function SidebarNav({
   onNavigate,
@@ -80,25 +80,8 @@ export function SidebarNav({
   const { data: sidebar } = useQuery(sidebarQuery);
   return (
     <>
+      {onSearch && <SearchField onSearch={onSearch} />}
       <nav aria-label="Views" className="flex flex-col gap-0.5 px-2 pt-3">
-        {onSearch && (
-          <button
-            type="button"
-            onClick={onSearch}
-            aria-keyshortcuts={ariaKeyShortcuts("openCommandBar")}
-            className={LINK}
-          >
-            <Search className="size-4" aria-hidden />
-            Search
-            <span aria-hidden className="ml-auto flex gap-1">
-              {keyCaps(SHORTCUTS.openCommandBar.keys[0])
-                .flat()
-                .map((cap) => (
-                  <Kbd key={cap}>{cap}</Kbd>
-                ))}
-            </span>
-          </button>
-        )}
         {NAV_ITEMS.map(({ to, label, icon: Icon }) => {
           const count = sidebar && navCount(sidebar, to);
           return (
@@ -137,5 +120,33 @@ export function SidebarNav({
         </Link>
       </div>
     </>
+  );
+}
+
+/**
+ * What looks like a search box at the top of the sidebar, as in TickTick. It's a button: typing
+ * happens in the command bar it opens, which searches Tasks and offers every action.
+ */
+function SearchField({ onSearch }: { onSearch: () => void }) {
+  return (
+    <div className="px-2 pt-3">
+      <button
+        type="button"
+        onClick={onSearch}
+        aria-haspopup="dialog"
+        aria-keyshortcuts={ariaKeyShortcuts("openCommandBar")}
+        className="flex h-9 w-full items-center gap-2 rounded-lg border border-border bg-surface-muted px-2.5 text-sm text-muted-foreground shadow-xs transition-colors hover:border-ring/50 hover:bg-surface focus-visible:border-ring focus-visible:ring-2 focus-visible:ring-ring/30 focus-visible:outline-none"
+      >
+        <Search className="size-4 shrink-0" aria-hidden />
+        Search
+        <span aria-hidden className="ml-auto flex gap-1">
+          {keyCaps(SHORTCUTS.openCommandBar.keys[0])
+            .flat()
+            .map((cap) => (
+              <Kbd key={cap}>{cap}</Kbd>
+            ))}
+        </span>
+      </button>
+    </div>
   );
 }

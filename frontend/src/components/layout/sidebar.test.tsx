@@ -1,5 +1,5 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
@@ -99,13 +99,19 @@ describe("Sidebar", () => {
     expect(screen.getByRole("link", { name: "All, 9 open" })).toBeInTheDocument();
   });
 
-  it("opens the command bar from the Search row, by click or keyboard", async () => {
+  it("opens the command bar from the Search field, by click or keyboard", async () => {
     mockApi();
     const onSearch = vi.fn();
     const { user } = renderSidebar(onSearch);
 
     const search = screen.getByRole("button", { name: "Search" });
     expect(search).toHaveAttribute("aria-keyshortcuts", "Control+K /");
+    expect(search).toHaveAttribute("aria-haspopup", "dialog");
+    expect(
+      within(screen.getByRole("navigation", { name: "Views" })).queryByRole("button", {
+        name: "Search",
+      }),
+    ).not.toBeInTheDocument();
     await user.click(search);
     expect(onSearch).toHaveBeenCalledOnce();
 

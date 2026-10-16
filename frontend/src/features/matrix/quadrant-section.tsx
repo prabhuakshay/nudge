@@ -10,15 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { DraggableMatrixCard } from "./matrix-drag";
 import { QuadrantAddTask } from "./quadrant-add-task";
-import { QUADRANT_LABEL, type Quadrant } from "./quadrants";
-
-/** Each Quadrant's accent, as TickTick colours them: red, amber, blue and green. */
-const ACCENT: Record<Quadrant, string> = {
-  "urgent-important": "bg-hue-red",
-  important: "bg-hue-amber",
-  urgent: "bg-hue-blue",
-  neither: "bg-hue-green",
-};
+import { QUADRANT, type Quadrant } from "./quadrants";
 
 /** Whether a phone's Quadrant is folded away, and what folds or opens it. */
 export type QuadrantFold = { collapsed: boolean; onToggle: () => void };
@@ -56,11 +48,14 @@ export function QuadrantSection({
 }) {
   const { setNodeRef } = useDroppable({ id: quadrant, disabled: !drop });
   const Card = drop ? DraggableMatrixCard : BoardCard;
-  const label = QUADRANT_LABEL[quadrant];
+  const label = QUADRANT[quadrant].label;
   const labelId = `quadrant-${quadrant}`;
   const heading = (
     <>
-      <span className={cn("size-2.5 shrink-0 rounded-full", ACCENT[quadrant])} aria-hidden />
+      <span
+        className={cn("size-2.5 shrink-0 rounded-full", QUADRANT[quadrant].accent)}
+        aria-hidden
+      />
       <span id={labelId}>{label}</span>
       <span aria-hidden className="ml-auto text-xs font-medium text-muted-foreground tabular-nums">
         {tasks.length}

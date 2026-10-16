@@ -1,10 +1,62 @@
 import { addDays, startsOn } from "@/features/tasks/schedule";
-import type { Task } from "@/features/tasks/tasks";
+import type { Task, TaskPriority } from "@/features/tasks/tasks";
 
 /** The Matrix's four Quadrants, Important on top and Urgent on the left, in reading order. */
 export const QUADRANTS = ["urgent-important", "important", "urgent", "neither"] as const;
 
 export type Quadrant = (typeof QUADRANTS)[number];
+
+/** Where a Quadrant sits, what it is called and coloured, and the Priority it gives Tasks. */
+type QuadrantInfo = {
+  /** What the Quadrant is called on screen. */
+  label: string;
+  /** Whether its row holds Important Tasks: P1 or P2. */
+  important: boolean;
+  /** Whether its column holds Urgent Tasks: Overdue, or dated on or before tomorrow. */
+  urgent: boolean;
+  /** Its colour, as TickTick colours them: red, amber, blue and green. */
+  accent: string;
+  /** The Priority Quick add gives a Task added here; an Urgent Quadrant also gives it today. */
+  addedPriority: Exclude<TaskPriority, 0> | null;
+  /** The Priority a Task dragged in from the other row takes: the smallest change that moves it. */
+  droppedPriority: Exclude<TaskPriority, 0>;
+};
+
+/** Each Quadrant's place, label, accent and Priorities. */
+export const QUADRANT: Record<Quadrant, QuadrantInfo> = {
+  "urgent-important": {
+    label: "Urgent & Important",
+    important: true,
+    urgent: true,
+    accent: "bg-hue-red",
+    addedPriority: 1,
+    droppedPriority: 2,
+  },
+  important: {
+    label: "Important not urgent",
+    important: true,
+    urgent: false,
+    accent: "bg-hue-amber",
+    addedPriority: 2,
+    droppedPriority: 2,
+  },
+  urgent: {
+    label: "Urgent not important",
+    important: false,
+    urgent: true,
+    accent: "bg-hue-blue",
+    addedPriority: null,
+    droppedPriority: 3,
+  },
+  neither: {
+    label: "Neither",
+    important: false,
+    urgent: false,
+    accent: "bg-hue-green",
+    addedPriority: null,
+    droppedPriority: 3,
+  },
+};
 
 /** Whether the Task matters: P1 or P2. */
 function isImportant(task: Task): boolean {
@@ -22,17 +74,14 @@ function isUrgent(task: Task, today: string): boolean {
 
 /** The Quadrant a Task falls in on `today`, the user's ISO date. */
 export function quadrantOf(task: Task, today: string): Quadrant {
-  if (isImportant(task)) return isUrgent(task, today) ? "urgent-important" : "important";
-  return isUrgent(task, today) ? "urgent" : "neither";
+  const important = isImportant(task);
+  const urgent = isUrgent(task, today);
+  const found = QUADRANTS.find(
+    (id) => QUADRANT[id].important === important && QUADRANT[id].urgent === urgent,
+  );
+  // The four Quadrants cover every pairing, so nothing reaches the fallback.
+  return found ?? "neither";
 }
-
-/** What each Quadrant is called on screen. */
-export const QUADRANT_LABEL: Record<Quadrant, string> = {
-  "urgent-important": "Urgent & Important",
-  important: "Important not urgent",
-  urgent: "Urgent not important",
-  neither: "Neither",
-};
 
 /** The Matrix's Tasks by Quadrant. */
 export type MatrixQuadrants = Record<Quadrant, Task[]>;

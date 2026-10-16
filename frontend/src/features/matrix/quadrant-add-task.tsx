@@ -4,20 +4,12 @@ import { useState } from "react";
 import { QuickAddCard } from "@/features/tasks/quick-add-card";
 import type { QuickAddView } from "@/features/tasks/quick-add-view";
 
-import { QUADRANT_LABEL, type Quadrant } from "./quadrants";
+import { QUADRANT, type Quadrant } from "./quadrants";
 
 /** What Quick add gives a new Task so that it lands in the Quadrant: its Priority and today. */
 function quadrantView(quadrant: Quadrant, today: string): QuickAddView {
-  switch (quadrant) {
-    case "urgent-important":
-      return { kind: "quadrant", priority: 1, today };
-    case "important":
-      return { kind: "quadrant", priority: 2, today: null };
-    case "urgent":
-      return { kind: "quadrant", priority: null, today };
-    case "neither":
-      return { kind: "quadrant", priority: null, today: null };
-  }
+  const { addedPriority, urgent } = QUADRANT[quadrant];
+  return { kind: "quadrant", priority: addedPriority, today: urgent ? today : null };
 }
 
 /**
@@ -41,7 +33,7 @@ export function QuadrantAddTask({ quadrant, today }: { quadrant: Quadrant; today
   return (
     <button
       type="button"
-      aria-label={`Add a task to ${QUADRANT_LABEL[quadrant]}`}
+      aria-label={`Add a task to ${QUADRANT[quadrant].label}`}
       onClick={() => {
         setAdding(true);
       }}

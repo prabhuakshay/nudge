@@ -17,15 +17,7 @@ import { PRIORITY } from "@/features/tasks/task-properties";
 import { useUpdateTask, type Task, type TaskPriority } from "@/features/tasks/tasks";
 import { useMediaQuery } from "@/lib/use-media-query";
 
-import { QUADRANT_LABEL, QUADRANTS, type MatrixQuadrants, type Quadrant } from "./quadrants";
-
-/** Where each Quadrant sits: whether its row is Important and its column Urgent. */
-const PLACE: Record<Quadrant, { important: boolean; urgent: boolean }> = {
-  "urgent-important": { important: true, urgent: true },
-  important: { important: true, urgent: false },
-  urgent: { important: false, urgent: true },
-  neither: { important: false, urgent: false },
-};
+import { QUADRANT, QUADRANTS, type MatrixQuadrants, type Quadrant } from "./quadrants";
 
 /**
  * The Priority a Task dropped from one Quadrant into another takes: the smallest change that
@@ -33,10 +25,9 @@ const PLACE: Record<Quadrant, { important: boolean; urgent: boolean }> = {
  * into the other urgency column, or into the same row, changes nothing.
  */
 function droppedPriority(from: Quadrant, to: Quadrant): TaskPriority | null {
-  if (PLACE[from].urgent !== PLACE[to].urgent || PLACE[from].important === PLACE[to].important) {
-    return null;
-  }
-  return PLACE[to].important ? 2 : 3;
+  const [source, target] = [QUADRANT[from], QUADRANT[to]];
+  if (source.urgent !== target.urgent || source.important === target.important) return null;
+  return target.droppedPriority;
 }
 
 /** Which way each arrow key steps between Quadrants. */
@@ -101,7 +92,7 @@ function announcements(quadrants: MatrixQuadrants): Announcements {
   };
   return {
     onDragStart: ({ active }) =>
-      said(active.id, (title, { from }) => `Picked up ${title} from ${QUADRANT_LABEL[from]}.`),
+      said(active.id, (title, { from }) => `Picked up ${title} from ${QUADRANT[from].label}.`),
     // Silent over its own Quadrant: a drag starts there, and "Picked up" has already said so.
     onDragOver: ({ active, over }) => {
       const to = quadrantOfId(over?.id);
@@ -109,20 +100,20 @@ function announcements(quadrants: MatrixQuadrants): Announcements {
         if (!to) return `${title} is over no Quadrant.`;
         if (to === from) return undefined;
         if (droppedPriority(from, to) === null) {
-          return `${title} is over ${QUADRANT_LABEL[to]}, which only takes Tasks from above or below it.`;
+          return `${title} is over ${QUADRANT[to].label}, which only takes Tasks from above or below it.`;
         }
-        return `${title} is over ${QUADRANT_LABEL[to]}.`;
+        return `${title} is over ${QUADRANT[to].label}.`;
       });
     },
     onDragEnd: ({ active, over }) =>
       said(active.id, (title, { from }) => {
         const to = quadrantOfId(over?.id);
         const priority = to && droppedPriority(from, to);
-        if (!to || !priority) return `${title} stays in ${QUADRANT_LABEL[from]}.`;
-        return `${title} moved to ${QUADRANT_LABEL[to]}, now ${PRIORITY[priority].long}.`;
+        if (!to || !priority) return `${title} stays in ${QUADRANT[from].label}.`;
+        return `${title} moved to ${QUADRANT[to].label}, now ${PRIORITY[priority].long}.`;
       }),
     onDragCancel: ({ active }) =>
-      said(active.id, (title, { from }) => `${title} stays in ${QUADRANT_LABEL[from]}.`),
+      said(active.id, (title, { from }) => `${title} stays in ${QUADRANT[from].label}.`),
   };
 }
 

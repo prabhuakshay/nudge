@@ -1,4 +1,4 @@
-import { screen, waitFor } from "@testing-library/react";
+import { screen, waitFor, within } from "@testing-library/react";
 
 import { INBOX, WORK, renderTaskList } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
@@ -77,6 +77,40 @@ describe("Sections in a Project", () => {
     await user.keyboard("Review{Escape}");
 
     expect(screen.getByRole("button", { name: "Add section" })).toHaveFocus();
+    expect(await writes(fetchSpy)).toEqual([]);
+  });
+
+  it("deletes a Section after a confirm, moving its Tasks to No section", async () => {
+    const fetchSpy = mockApi({
+      open: [makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id })],
+    });
+    const { user } = renderTaskList({ project: WORK });
+    await screen.findByText("Write brief");
+
+    await user.click(screen.getByRole("button", { name: "To do actions" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    const dialog = screen.getByRole("dialog", { name: "Delete “To do”?" });
+    expect(dialog).toHaveTextContent("Its tasks move to No section.");
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole("region", { name: "To do" })).not.toBeInTheDocument();
+    });
+    expect(await screen.findByRole("region", { name: "No section" })).toBeInTheDocument();
+    expect(titlesIn("No section")).toEqual(["Write brief"]);
+    expect(await writes(fetchSpy)).toEqual([[`DELETE /api/v1/sections/${String(TO_DO.id)}`, null]]);
+  });
+
+  it("keeps a Section when its delete is cancelled", async () => {
+    const fetchSpy = mockApi({});
+    const { user } = renderTaskList({ project: WORK });
+    await screen.findByRole("region", { name: "To do" });
+
+    await user.click(screen.getByRole("button", { name: "To do actions" }));
+    await user.click(screen.getByRole("menuitem", { name: "Delete" }));
+    await user.click(screen.getByRole("button", { name: "Cancel" }));
+
+    expect(screen.getByRole("region", { name: "To do" })).toBeInTheDocument();
     expect(await writes(fetchSpy)).toEqual([]);
   });
 

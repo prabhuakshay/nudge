@@ -3,6 +3,7 @@ import { toast } from "sonner";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
+import { refreshTasks } from "@/features/tasks/tasks";
 
 export type Section = components["schemas"]["SectionOut"];
 export type SectionFields = components["schemas"]["SectionIn"];
@@ -103,5 +104,24 @@ export function useMoveSection(projectId: number) {
       body: { after_id },
     });
     if (error) throw new Error(error.detail);
+  });
+}
+
+/** Delete a Section for good. Its Tasks stay in the Project, in No section. */
+export function useDeleteSection(projectId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (sectionId: number) => {
+      const { error } = await api.DELETE("/api/v1/sections/{section_id}", {
+        params: { path: { section_id: sectionId } },
+      });
+      if (error) throw new Error(error.detail);
+    },
+    onError: (error) => toast.error(error.message),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries(sectionsQuery(projectId)),
+        refreshTasks(queryClient),
+      ]),
   });
 }

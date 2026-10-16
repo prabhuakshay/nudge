@@ -59,6 +59,7 @@ def test_create_adds_an_expanded_section_to_the_project(client: Client, ada: Use
         ("get", "/api/v1/projects/1/sections"),
         ("post", "/api/v1/projects/1/sections"),
         ("patch", "/api/v1/sections/1"),
+        ("delete", "/api/v1/sections/1"),
         ("post", "/api/v1/sections/1/move"),
     ],
 )
@@ -273,6 +274,33 @@ def test_patch_of_another_users_section_is_not_found(client: Client, grace: User
     assert response.json() == {"detail": "Section not found."}
     theirs.refresh_from_db()
     assert (theirs.name, theirs.collapsed) == ("To do", False)
+
+
+@pytest.mark.django_db
+def test_delete_removes_the_section_and_keeps_its_tasks_in_no_section(
+    client: Client, ada: User
+) -> None:
+    work = projects.create_project(ada, "Work")
+    to_do = sections.create_section(work, "To do")
+    creation.create_task(work, "Grouped", creation.NewTask(section=to_do))
+
+    response = client.delete(f"/api/v1/sections/{to_do.pk}")
+
+    assert response.status_code == 204
+    assert _names(client, work) == []
+    rows = client.get("/api/v1/tasks", {"project": work.pk}).json()["items"]
+    assert [(row["title"], row["section_id"]) for row in rows] == [("Grouped", None)]
+
+
+@pytest.mark.django_db
+def test_deleting_another_users_section_is_not_found(client: Client, grace: User) -> None:
+    theirs = sections.create_section(projects.create_project(grace, "Theirs"), "To do")
+
+    response = client.delete(f"/api/v1/sections/{theirs.pk}")
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Section not found."}
+    assert grace.sections.filter(pk=theirs.pk).exists()
 
 
 def _move(client: Client, section_id: int, after_id: int | None) -> int:

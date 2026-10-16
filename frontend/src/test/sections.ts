@@ -27,29 +27,9 @@ function placedAfter(sections: Section[], movedId: number, afterId: number | nul
   return section ? [...rest.slice(0, at), section, ...rest.slice(at)] : rest;
 }
 
-/** The Sections after a change to or move of one, and the answer; null for other requests. */
-async function sectionWrite(sections: Section[], request: Request) {
-  const { pathname } = new URL(request.url);
-  const one = /^\/api\/v1\/sections\/(\d+)$/.exec(pathname);
-  if (one && request.method === "PATCH") {
-    const id = Number(one[1]);
-    const after = changed(sections, id, (await request.clone().json()) as Partial<Section>);
-    return { sections: after, response: json(after.find((section) => section.id === id)) };
-  }
-  const moved = /^\/api\/v1\/sections\/(\d+)\/move$/.exec(pathname);
-  if (moved) {
-    const { after_id } = (await request.clone().json()) as { after_id: number | null };
-    return {
-      sections: placedAfter(sections, Number(moved[1]), after_id),
-      response: new Response(null, { status: 204 }),
-    };
-  }
-  return null;
-}
-
 /**
- * A stand-in server holding one Project's Sections and open Tasks, which adds, changes and moves
- * Sections and adds Tasks.
+ * A stand-in server holding a Project's Sections and open Tasks; it adds, changes, moves and
+ * deletes Sections, and adds Tasks.
  */
 export function mockApi({
   sections = [TO_DO, DOING],
@@ -59,6 +39,22 @@ export function mockApi({
   open?: Task[];
 }) {
   let nextId = 100;
+  /** Changes, moves or deletes the Section a `/sections/{id}` request names; its answer. */
+  const changeSection = async (request: Request, path: string) => {
+    const id = Number(/\/sections\/(\d+)/.exec(path)?.[1]);
+    if (request.method === "DELETE") {
+      sections = sections.filter((section) => section.id !== id);
+      open = open.map((task) => (task.section_id === id ? { ...task, section_id: null } : task));
+      return new Response(null, { status: 204 });
+    }
+    if (request.method === "PATCH") {
+      sections = changed(sections, id, (await request.clone().json()) as Partial<Section>);
+      return json(sections.find((section) => section.id === id));
+    }
+    const { after_id } = (await request.clone().json()) as { after_id: number | null };
+    sections = placedAfter(sections, id, after_id);
+    return new Response(null, { status: 204 });
+  };
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
     const url = new URL(request.url);
@@ -68,17 +64,13 @@ export function mockApi({
       sections = [...sections, created];
       return json(created, 201);
     }
-    const written = await sectionWrite(sections, request);
-    if (written) {
-      sections = written.sections;
-      return written.response;
-    }
     if (url.pathname === "/api/v1/tasks" && request.method === "POST") {
       const body = (await request.clone().json()) as Pick<Task, "title" | "section_id">;
       const created = makeTask({ id: nextId++, project_id: WORK.id, ...body });
       open = [created, ...open];
       return json(created, 201);
     }
+    if (url.pathname.startsWith("/api/v1/sections/")) return changeSection(request, url.pathname);
     if (url.pathname.endsWith("/sections")) return json(sections);
     if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX, items: [WORK] });
     if (url.searchParams.get("closed") === "true") return json({ items: [], next_cursor: null });
@@ -86,16 +78,19 @@ export function mockApi({
   });
 }
 
-/** The requests that changed something, as `METHOD /path` and body. */
+/** The requests that changed something, as `METHOD /path` and body, null when there is none. */
 export async function writes(fetchSpy: ReturnType<typeof mockApi>) {
   const requests = fetchSpy.mock.calls
     .map(([input]) => requestOf(input))
     .filter((request) => request.method !== "GET");
   return Promise.all(
-    requests.map(async (request) => [
-      `${request.method} ${new URL(request.url).pathname}`,
-      (await request.json()) as unknown,
-    ]),
+    requests.map(async (request) => {
+      const body = await request.text();
+      return [
+        `${request.method} ${new URL(request.url).pathname}`,
+        body ? (JSON.parse(body) as unknown) : null,
+      ];
+    }),
   );
 }
 

@@ -6,6 +6,7 @@ import { SortableTaskRows, type SortableRowContext } from "@/features/tasks/task
 import { rootCount } from "@/features/tasks/task-tree";
 
 import { AddSectionTask, AddSectionTaskButton } from "./add-section-task";
+import { DeleteSectionDialog, DeleteSectionItem } from "./delete-section";
 import { MoveSectionItems } from "./move-section-items";
 import { SectionGroup } from "./section-group";
 import type { SectionTrees } from "./section-trees";
@@ -47,7 +48,10 @@ export function SectionedTasks({
   );
 }
 
-/** One Section's header and its Tasks, with the field for adding one when it's open. */
+/**
+ * One Section's header and its Tasks, with the field for adding one when it's open. The dialogs
+ * its menu opens sit beside the menu, so they outlive it closing.
+ */
 function SectionTasks({
   section,
   tasks,
@@ -60,6 +64,7 @@ function SectionTasks({
   context: SortableRowContext;
 }) {
   const [adding, setAdding] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   return (
     <SectionGroup
       section={section}
@@ -67,16 +72,32 @@ function SectionTasks({
       readOnly={!context.sortable}
       actions={
         context.sortable && (
-          <AddSectionTaskButton
-            section={section}
-            open={adding}
-            onOpen={() => {
-              setAdding(true);
-            }}
-          />
+          <>
+            <AddSectionTaskButton
+              section={section}
+              open={adding}
+              onOpen={() => {
+                setAdding(true);
+              }}
+            />
+            <DeleteSectionDialog
+              section={section}
+              open={confirmingDelete}
+              onOpenChange={setConfirmingDelete}
+            />
+          </>
         )
       }
-      menuItems={<MoveSectionItems section={section} order={order} />}
+      menuItems={
+        <>
+          <MoveSectionItems section={section} order={order} />
+          <DeleteSectionItem
+            onSelect={() => {
+              setConfirmingDelete(true);
+            }}
+          />
+        </>
+      }
     >
       {adding && (
         <AddSectionTask

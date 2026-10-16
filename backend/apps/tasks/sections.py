@@ -119,3 +119,12 @@ def move_section(moved: Section, after: Section | None) -> None:
         siblings = [sibling for sibling in _sibling_keys(moved.project) if sibling[0] != moved.pk]
         moved.position = key_after(siblings, None if after is None else after.pk)
         moved.save(update_fields=["position", "updated_at"])
+
+
+def delete_section(user: User, section_id: int) -> bool:
+    """Delete one of the user's Sections; False if there's none.
+
+    Its Tasks stay in the Project, in No section.
+    """
+    deleted, _ = user.sections.filter(pk=section_id).delete()
+    return deleted > 0

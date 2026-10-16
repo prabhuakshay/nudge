@@ -1,4 +1,4 @@
-"""Section endpoints: list and add a Project's Sections, change one and reorder them.
+"""Section endpoints: list and add a Project's Sections, change, reorder and delete them.
 
 Mounted at the API root because a Project's Sections live under `/projects/{id}/sections` while
 a single Section lives under `/sections/{id}`.
@@ -108,4 +108,16 @@ def move_section(
         if after is None:
             return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
     sections.move_section(moved, after)
+    return Status(HTTPStatus.NO_CONTENT, None)
+
+
+@router.delete(
+    "/sections/{int:section_id}",
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
+    summary="Delete a Section",
+)
+def delete_section(request: HttpRequest, section_id: int) -> Status[None] | Status[ErrorOut]:
+    """Delete a Section for good. Its Tasks stay in the Project, in No section."""
+    if not sections.delete_section(signed_in_user(request), section_id):
+        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
     return Status(HTTPStatus.NO_CONTENT, None)

@@ -13,6 +13,7 @@ from django.db import transaction
 from fractional_indexing import generate_key_between
 
 from apps.core.errors import DomainRuleError
+from apps.tasks.archive import ensure_writable
 from apps.tasks.models import SECTION_NAME_MAX_LENGTH, Project, Section
 from apps.tasks.positions import key_after, lock_project
 
@@ -68,11 +69,13 @@ def create_section(project: Project, name: str, after: Section | None = None) ->
     """Create an expanded Section right after `after`, or last when there is none.
 
     Raises:
+        ArchivedProjectError: The Project is archived.
         SectionRuleError: The Project is the Inbox, the name is blank or too long, or `after`
             is in another Project.
     """
     if project.is_inbox:
         raise SectionRuleError(INBOX_HAS_NO_SECTIONS)
+    ensure_writable(project)
     cleaned = clean_name(name)
     if after is not None and after.project_id != project.pk:
         raise SectionRuleError(NOT_IN_THIS_PROJECT)
@@ -100,8 +103,10 @@ def update_section(
     """Rename a Section, or collapse or expand it; fields left as None stay as they are.
 
     Raises:
+        ArchivedProjectError: The Section's Project is archived.
         SectionRuleError: The new name is blank or too long.
     """
+    ensure_writable(found.project)
     if name is not None:
         found.name = clean_name(name)
     if collapsed is not None:
@@ -114,8 +119,10 @@ def move_section(moved: Section, after: Section | None) -> None:
     """Put a Section right after `after`, or first when there is none.
 
     Raises:
+        ArchivedProjectError: The Section's Project is archived.
         SectionRuleError: `after` is in another Project.
     """
+    ensure_writable(moved.project)
     if after is not None and after.project_id != moved.project_id:
         raise SectionRuleError(NOT_IN_THIS_PROJECT)
     with transaction.atomic():
@@ -125,10 +132,11 @@ def move_section(moved: Section, after: Section | None) -> None:
         moved.save(update_fields=["position", "updated_at"])
 
 
-def delete_section(user: User, section_id: int) -> bool:
-    """Delete one of the user's Sections whose Project isn't in Trash; False if there's none.
+def delete_section(found: Section) -> None:
+    """Delete a Section for good. Its Tasks stay in the Project, in No section.
 
-    Its Tasks stay in the Project, in No section.
+    Raises:
+        ArchivedProjectError: The Section's Project is archived.
     """
-    deleted, _ = _live_sections(user).filter(pk=section_id).delete()
-    return deleted > 0
+    ensure_writable(found.project)
+    found.delete()

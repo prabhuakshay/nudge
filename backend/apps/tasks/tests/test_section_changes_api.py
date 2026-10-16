@@ -223,3 +223,34 @@ def test_a_section_in_a_trashed_project_is_not_found(
     assert response.json() == {"detail": "Section not found."}
     to_do.refresh_from_db()
     assert to_do.name == "To do"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("method", "suffix", "body"),
+    [
+        ("patch", "", {"name": "Next"}),
+        ("patch", "", {"collapsed": True}),
+        ("post", "/move", {"after_id": None}),
+        ("delete", "", None),
+    ],
+)
+def test_a_section_in_an_archived_project_is_read_only(
+    client: Client, ada: User, method: str, suffix: str, body: dict[str, object] | None
+) -> None:
+    garden = projects.create_project(ada, "Garden")
+    sections.create_section(garden, "First")
+    to_do = sections.create_section(garden, "To do")
+    projects.archive_project(ada, garden.pk)
+
+    response = getattr(client, method)(
+        f"/api/v1/sections/{to_do.pk}{suffix}", body, content_type="application/json"
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "“Garden” is archived. Unarchive it to change its tasks."}
+    listed = client.get(f"/api/v1/projects/{garden.pk}/sections").json()
+    assert [(section["name"], section["collapsed"]) for section in listed] == [
+        ("First", False),
+        ("To do", False),
+    ]

@@ -113,11 +113,17 @@ def move_section(
 
 @router.delete(
     "/sections/{int:section_id}",
-    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
+    response={
+        HTTPStatus.NO_CONTENT: None,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
     summary="Delete a Section",
 )
 def delete_section(request: HttpRequest, section_id: int) -> Status[None] | Status[ErrorOut]:
     """Delete a Section for good. Its Tasks stay in the Project, in No section."""
-    if not sections.delete_section(signed_in_user(request), section_id):
+    found = sections.section(signed_in_user(request), section_id)
+    if found is None:
         return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    sections.delete_section(found)
     return Status(HTTPStatus.NO_CONTENT, None)

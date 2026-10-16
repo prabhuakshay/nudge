@@ -17,11 +17,11 @@ if TYPE_CHECKING:
 
 
 class ArchivedProjectError(DomainRuleError):
-    """A write to a Task in an archived Project, or a move of a Task into one."""
+    """A write to a Task or Section in an archived Project, or a move of a Task into one."""
 
 
 def ensure_writable(project: Project) -> None:
-    """Refuse a change to the Project's Tasks while it is archived.
+    """Refuse a change to the Project's Tasks or Sections while it is archived.
 
     Raises:
         ArchivedProjectError: The Project is archived.

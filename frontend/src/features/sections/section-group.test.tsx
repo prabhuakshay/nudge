@@ -1,8 +1,12 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { render, screen, waitFor, within } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 
 import { WORK, renderTaskList } from "@/test/drawer";
 import { DOING, TO_DO, mockApi, titlesIn, writes } from "@/test/sections";
 import { makeTask } from "@/test/tasks";
+
+import { SectionGroup } from "./section-group";
 
 describe("A Section's header", () => {
   it("collapses and expands a Section from its header, keeping its open-Task count", async () => {
@@ -33,6 +37,23 @@ describe("A Section's header", () => {
         [`PATCH /api/v1/sections/${String(TO_DO.id)}`, { collapsed: false }],
       ]);
     });
+  });
+
+  it("can't collapse a read-only Section, so it never changes it on the server", async () => {
+    const fetchSpy = mockApi({});
+    const user = userEvent.setup();
+    render(
+      <QueryClientProvider client={new QueryClient()}>
+        <SectionGroup section={TO_DO} count={0} readOnly />
+      </QueryClientProvider>,
+    );
+    const toggle = screen.getByRole("button", { name: "To do", expanded: true });
+
+    await user.click(toggle);
+
+    expect(toggle).toBeDisabled();
+    expect(toggle).toHaveAttribute("aria-expanded", "true");
+    expect(await writes(fetchSpy)).toEqual([]);
   });
 
   it("shows a Section collapsed when the server remembers it so", async () => {

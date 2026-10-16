@@ -25,7 +25,7 @@ export function SectionGroup({
 }: {
   section: Section;
   count: number;
-  /** An archived Project's Sections have no menu. */
+  /** An archived Project's Sections have no menu and can't be collapsed or expanded. */
   readOnly?: boolean;
   /** Controls at the header's end, before the menu, such as adding a Task. */
   actions?: ReactNode;
@@ -64,6 +64,7 @@ export function SectionGroup({
             <button
               type="button"
               aria-expanded={expanded}
+              disabled={readOnly}
               onClick={() => {
                 update({ id: section.id, collapsed: expanded });
               }}

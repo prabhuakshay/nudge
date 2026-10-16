@@ -177,6 +177,22 @@ def test_a_trashed_project_is_not_found(client: Client, ada: User) -> None:
 
 
 @pytest.mark.django_db
+def test_an_archived_project_takes_no_new_section(client: Client, ada: User) -> None:
+    garden = projects.create_project(ada, "Garden")
+    projects.archive_project(ada, garden.pk)
+
+    response = client.post(
+        f"/api/v1/projects/{garden.pk}/sections",
+        {"name": "To do"},
+        content_type="application/json",
+    )
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": "“Garden” is archived. Unarchive it to change its tasks."}
+    assert _names(client, garden) == []
+
+
+@pytest.mark.django_db
 def test_create_after_another_users_section_is_not_found(
     client: Client, ada: User, grace: User
 ) -> None:

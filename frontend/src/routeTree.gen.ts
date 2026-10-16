@@ -15,6 +15,7 @@ import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAllRouteImport } from './routes/_app/all'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
+import { Route as AppMatrixRouteImport } from './routes/_app/matrix'
 import { Route as AppSearchRouteImport } from './routes/_app/search'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as AppUpcomingRouteImport } from './routes/_app/upcoming'
@@ -49,6 +50,11 @@ const AppCalendarRoute = AppCalendarRouteImport.update({
 const AppInboxRoute = AppInboxRouteImport.update({
   id: '/inbox',
   path: '/inbox',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppMatrixRoute = AppMatrixRouteImport.update({
+  id: '/matrix',
+  path: '/matrix',
   getParentRoute: () => AppRoute,
 } as any)
 const AppSearchRoute = AppSearchRouteImport.update({
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/all': typeof AppAllRoute
   '/calendar': typeof AppCalendarRoute
   '/inbox': typeof AppInboxRoute
+  '/matrix': typeof AppMatrixRoute
   '/search': typeof AppSearchRoute
   '/trash': typeof AppTrashRoute
   '/upcoming': typeof AppUpcomingRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/all': typeof AppAllRoute
   '/calendar': typeof AppCalendarRoute
   '/inbox': typeof AppInboxRoute
+  '/matrix': typeof AppMatrixRoute
   '/search': typeof AppSearchRoute
   '/trash': typeof AppTrashRoute
   '/upcoming': typeof AppUpcomingRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/_app/all': typeof AppAllRoute
   '/_app/calendar': typeof AppCalendarRoute
   '/_app/inbox': typeof AppInboxRoute
+  '/_app/matrix': typeof AppMatrixRoute
   '/_app/search': typeof AppSearchRoute
   '/_app/trash': typeof AppTrashRoute
   '/_app/upcoming': typeof AppUpcomingRoute
@@ -131,6 +140,7 @@ export interface FileRouteTypes {
     | '/all'
     | '/calendar'
     | '/inbox'
+    | '/matrix'
     | '/search'
     | '/trash'
     | '/upcoming'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
     | '/all'
     | '/calendar'
     | '/inbox'
+    | '/matrix'
     | '/search'
     | '/trash'
     | '/upcoming'
@@ -157,6 +168,7 @@ export interface FileRouteTypes {
     | '/_app/all'
     | '/_app/calendar'
     | '/_app/inbox'
+    | '/_app/matrix'
     | '/_app/search'
     | '/_app/trash'
     | '/_app/upcoming'
@@ -215,6 +227,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInboxRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/matrix': {
+      id: '/_app/matrix'
+      path: '/matrix'
+      fullPath: '/matrix'
+      preLoaderRoute: typeof AppMatrixRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/search': {
       id: '/_app/search'
       path: '/search'
@@ -264,6 +283,7 @@ interface AppRouteChildren {
   AppAllRoute: typeof AppAllRoute
   AppCalendarRoute: typeof AppCalendarRoute
   AppInboxRoute: typeof AppInboxRoute
+  AppMatrixRoute: typeof AppMatrixRoute
   AppSearchRoute: typeof AppSearchRoute
   AppTrashRoute: typeof AppTrashRoute
   AppUpcomingRoute: typeof AppUpcomingRoute
@@ -277,6 +297,7 @@ const AppRouteChildren: AppRouteChildren = {
   AppAllRoute: AppAllRoute,
   AppCalendarRoute: AppCalendarRoute,
   AppInboxRoute: AppInboxRoute,
+  AppMatrixRoute: AppMatrixRoute,
   AppSearchRoute: AppSearchRoute,
   AppTrashRoute: AppTrashRoute,
   AppUpcomingRoute: AppUpcomingRoute,

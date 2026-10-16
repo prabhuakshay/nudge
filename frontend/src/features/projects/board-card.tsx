@@ -11,6 +11,7 @@ import type { DragHandle } from "@/features/tasks/sortable-tree";
 import { SubtaskCount } from "@/features/tasks/subtask-count";
 import { TaskActionsMenu } from "@/features/tasks/task-actions";
 import { TaskCheckbox } from "@/features/tasks/task-checkbox";
+import { BlockedNote } from "@/features/tasks/task-status";
 import { PriorityFlag } from "@/features/tasks/task-priority";
 import type { TreeRow } from "@/features/tasks/task-tree";
 import type { Task } from "@/features/tasks/tasks";
@@ -63,11 +64,11 @@ function dragProps(drag: CardDrag | undefined) {
 }
 
 /**
- * A root Task on the Board: its checkbox and title, then its Priority, date, Tags and Subtask
- * progress. The title's button stretches over the whole card, so a click anywhere opens the Task
- * while the checkbox and ⋯ menu above it close or move it. Given `drag`, the card drags between
- * and within columns, from its grip with the keyboard. Memoized so a change to one card leaves
- * the others alone.
+ * A root Task on the Board: its checkbox and title, then its Priority, date, Blocked reason, Tags
+ * and Subtask progress. The title's button stretches over the whole card, so a click anywhere opens
+ * the Task while the checkbox and ⋯ menu above it close or move it. Given `drag`, the card drags
+ * between and within columns, from its grip with the keyboard. Memoized so a change to one card
+ * leaves the others alone.
  */
 export const BoardCard = memo(function BoardCard({
   card: { task, subtasks },
@@ -123,6 +124,7 @@ export const BoardCard = memo(function BoardCard({
       <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1 pl-7 empty:hidden">
         <PriorityFlag priority={task.priority} />
         <DueBadge task={task} />
+        {task.status === "blocked" && <BlockedNote task={task} className="max-w-full" />}
         {task.tags.map((tag) => (
           <TagBadge key={tag.id} tag={tag} />
         ))}

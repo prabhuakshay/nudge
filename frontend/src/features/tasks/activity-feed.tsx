@@ -75,7 +75,12 @@ function describeMove(move: ActivityData["moved"]): string {
     const between = `Moved from “${move.from_project}” to “${move.to_project}”`;
     return under ? `${between}, ${under}` : between;
   }
-  return under ? `Moved ${under}` : "Moved to the top level";
+  if (under) return `Moved ${under}`;
+  // Same Project and same top level: only the Section changed.
+  if (!move.from_parent) {
+    return move.to_section ? `Moved to the section “${move.to_section}”` : "Moved to No section";
+  }
+  return "Moved to the top level";
 }
 
 function describeDatesChange({ old, new: next }: DatesChange): string {

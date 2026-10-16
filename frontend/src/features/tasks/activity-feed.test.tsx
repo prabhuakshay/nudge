@@ -276,6 +276,25 @@ describe("ActivityFeed", () => {
     expect(screen.getByText("Moved from “Inbox” to “Work”, under “Launch”")).toBeInTheDocument();
   });
 
+  it("says which Section a Task moved to", async () => {
+    const work = { from_project: "Work", to_project: "Work", from_parent: null, to_parent: null };
+    const events = [
+      { id: 2, kind: "moved", at: NEWER.at, data: { ...work, from_section: "Kitchen" } },
+      {
+        id: 1,
+        kind: "moved",
+        at: OLDER.at,
+        data: { ...work, from_section: null, to_section: "Kitchen" },
+      },
+    ];
+    respondWith(events);
+
+    renderFeed();
+
+    expect(await screen.findByText("Moved to No section")).toBeInTheDocument();
+    expect(screen.getByText("Moved to the section “Kitchen”")).toBeInTheDocument();
+  });
+
   it("writes Mentions as plain names and says which People were merged", async () => {
     const events = [
       {

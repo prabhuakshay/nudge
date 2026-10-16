@@ -15,8 +15,11 @@ import {
   type TaskDetail,
 } from "./tasks";
 
-/** A Task to move, and where it goes in its Project's tree. */
-export type TaskMove = Placement & { taskId: number };
+/**
+ * A Task to move, and where it goes in its Project's tree. A root keeps its Section unless
+ * `sectionId` names another one, or null for No section.
+ */
+export type TaskMove = Placement & { taskId: number; sectionId?: number | null };
 
 /**
  * Move a Task, with its Subtasks, under a new parent or to the top level after a sibling. Lists
@@ -26,22 +29,23 @@ export type TaskMove = Placement & { taskId: number };
 export function useMoveTask() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async ({ taskId, parentId, afterId }: TaskMove) => {
+    mutationFn: async ({ taskId, parentId, afterId, sectionId }: TaskMove) => {
+      const section = sectionId === undefined ? {} : { section_id: sectionId };
       const { data, error } = await api.POST("/api/v1/tasks/{task_id}/move", {
         params: { path: { task_id: taskId } },
-        body: { parent_id: parentId, after_id: afterId },
+        body: { parent_id: parentId, after_id: afterId, ...section },
       });
       if (error) {
         throw new Error("detail" in error ? error.detail : "Could not move the task.");
       }
       return data;
     },
-    onMutate: async ({ taskId, ...placement }) => {
+    onMutate: async ({ taskId, sectionId, ...placement }) => {
       await queryClient.cancelQueries({ queryKey: OPEN_KEY });
       await queryClient.cancelQueries({ queryKey: DETAIL_KEY });
       queryClient.setQueriesData<Task[]>(
         { queryKey: OPEN_KEY },
-        (tasks) => tasks && moveRow(tasks, taskId, placement),
+        (tasks) => tasks && withSection(moveRow(tasks, taskId, placement), taskId, sectionId),
       );
       queryClient.setQueriesData<TaskDetail>(
         { queryKey: DETAIL_KEY },
@@ -51,6 +55,12 @@ export function useMoveTask() {
     onError: (error) => toast.error(error.message),
     onSettled: () => refreshTasks(queryClient),
   });
+}
+
+/** The rows with the Task's Section changed, when the move names one. */
+function withSection(tasks: Task[], taskId: number, sectionId: number | null | undefined) {
+  if (sectionId === undefined) return tasks;
+  return tasks.map((task) => (task.id === taskId ? { ...task, section_id: sectionId } : task));
 }
 
 /** Move a Task to another Project, where it goes first. Both lists and the sidebar refresh. */

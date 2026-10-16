@@ -254,6 +254,9 @@ LOGGING = {
     "formatters": {
         "plain": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"},
     },
+    "filters": {
+        "redact_feed_tokens": {"()": "apps.core.log_redaction.RedactFeedTokens"},
+    },
     "handlers": {
         "console": {"class": "logging.StreamHandler", "formatter": "plain"},
     },
@@ -264,5 +267,8 @@ LOGGING = {
             "level": env.str("NUDGE_DJANGO_LOG_LEVEL", default="WARNING"),
             "propagate": False,
         },
+        # These two log request paths, which for a Calendar feed include its secret token.
+        "django.request": {"filters": ["redact_feed_tokens"]},
+        "django.server": {"filters": ["redact_feed_tokens"]},
     },
 }

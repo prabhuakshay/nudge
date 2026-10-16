@@ -228,7 +228,7 @@ type Editable = "title" | "description" | "status" | "priority" | "blocked_reaso
  */
 export type TaskPatch = { id: number; pinned?: boolean } & Partial<
   Pick<TaskDetail, Editable | "tags" | "repeat_rule" | "repeat_from">
-> & { dates?: DatesIn; reminders?: number[] };
+> & { dates?: DatesIn; reminders?: number[]; move_occurrence?: boolean };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 

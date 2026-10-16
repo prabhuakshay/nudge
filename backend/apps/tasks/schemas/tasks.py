@@ -205,6 +205,12 @@ class TaskPatchIn(Schema):
         default=None,
         description="Replaces all of the Task's dates; null removes them and its Reminders.",
     )
+    move_occurrence: bool | None = Field(
+        default=None,
+        description="With `dates`, moves only a repeating Task's current Occurrence, as a "
+        "Calendar drag does: its later Occurrences stay where they were. Otherwise new dates "
+        "restart the series at the new due date.",
+    )
     reminders: list[ReminderOffset] | None = Field(
         default=None,
         description="Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.",

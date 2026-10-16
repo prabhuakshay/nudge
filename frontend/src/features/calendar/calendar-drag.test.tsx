@@ -73,6 +73,7 @@ describe("CalendarView drag to reschedule in Month mode", () => {
               due_date: "2026-10-20",
               due_time: "09:30:00",
             },
+            move_occurrence: true,
           },
         ],
       ]);
@@ -103,6 +104,7 @@ describe("CalendarView drag to reschedule in Month mode", () => {
               due_date: "2026-10-29",
               due_time: null,
             },
+            move_occurrence: true,
           },
         ],
       ]);
@@ -129,6 +131,7 @@ describe("CalendarView drag to reschedule in Month mode", () => {
               due_date: "2026-10-17",
               due_time: null,
             },
+            move_occurrence: true,
           },
         ],
       ]);

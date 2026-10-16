@@ -100,7 +100,7 @@ async function patchedDates(fetchSpy: ReturnType<typeof mockApi>) {
 
 async function expectPatch(fetchSpy: ReturnType<typeof mockApi>, dates: object) {
   await vi.waitFor(async () => {
-    expect(await patchedDates(fetchSpy)).toEqual([{ dates }]);
+    expect(await patchedDates(fetchSpy)).toEqual([{ dates, move_occurrence: true }]);
   });
 }
 

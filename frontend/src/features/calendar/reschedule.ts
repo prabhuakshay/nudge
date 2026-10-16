@@ -104,13 +104,13 @@ export type Reschedule = { id: number; dates: DueDates };
 /**
  * Save the dates a drag gave a Task. The Calendar and the lists show them straight away, and if
  * the save fails they go back to what they showed before and a toast says why, so the Calendar
- * never shows a date that wasn't saved. Only the dates are sent, so a repeating Task's current
- * Occurrence moves and its Repeat stays.
+ * never shows a date that wasn't saved. A drag moves only a repeating Task's current Occurrence,
+ * so its later Occurrences and its Repeat stay as they were.
  */
 export function useReschedule() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (change: Reschedule) => patchTask(change),
+    mutationFn: (change: Reschedule) => patchTask({ ...change, move_occurrence: true }),
     onMutate: async (change) => {
       const before = queryClient.getQueriesData({ queryKey: TASKS_KEY });
       await showChange(queryClient, change);

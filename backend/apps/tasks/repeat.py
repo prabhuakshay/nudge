@@ -93,11 +93,13 @@ def apply_edit(
     rule: str | None,
     repeat_from: Task.RepeatFrom | None,
     dates_before: TaskDates,
+    *,
+    move_occurrence: bool = False,
 ) -> None:
     """Set or clear the Task's Repeat; the caller saves it. A rule left as None stays as it is.
 
-    The series restarts at the due date whenever the rule or the dates change. A Task that has
-    lost its due date stops repeating.
+    The series restarts at the due date whenever the rule or the dates change, unless the new
+    dates only move the current Occurrence. A Task that has lost its due date stops repeating.
 
     Raises:
         RepeatRuleError: The rule is unreadable, or the Task is a Subtask or undated.
@@ -115,7 +117,7 @@ def apply_edit(
         task.repeat_rule = ""
     if not task.repeat_rule:
         task.repeat_anchor = None
-    elif rule is not None or TaskDates.of(task) != dates_before:
+    elif rule is not None or (TaskDates.of(task) != dates_before and not move_occurrence):
         task.repeat_anchor = task.due_date
 
 

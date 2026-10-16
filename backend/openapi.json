@@ -5720,6 +5720,18 @@
             ],
             "description": "Replaces all of the Task's dates; null removes them and its Reminders."
           },
+          "move_occurrence": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "With `dates`, moves only a repeating Task's current Occurrence, as a Calendar drag does: its later Occurrences stay where they were. Otherwise new dates restart the series at the new due date.",
+            "title": "Move Occurrence"
+          },
           "reminders": {
             "anyOf": [
               {

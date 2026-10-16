@@ -61,6 +61,8 @@ class TaskEdit:
 
     `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them, and the
     Reminders with them. `reminders` replaces the Reminders, as offsets, and `tags` the Tags.
+    New dates restart a repeating Task's series there, unless `move_occurrence` says they move
+    only its current Occurrence.
     """
 
     title: str | None = None
@@ -75,6 +77,7 @@ class TaskEdit:
     repeat_rule: str | None = None
     repeat_from: Task.RepeatFrom | None = None
     tags: list[Tag] | None = None
+    move_occurrence: bool = False
 
 
 @dataclass(frozen=True)
@@ -193,7 +196,13 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     # Closing a repeating Task moves it on instead, and reopening it may undo that.
     step = repeat.plan(task, edit.status)
     _apply(task, replace(edit, status=None, blocked_reason=None) if step else edit)
-    repeat.apply_edit(task, edit.repeat_rule, edit.repeat_from, dates_before)
+    repeat.apply_edit(
+        task,
+        edit.repeat_rule,
+        edit.repeat_from,
+        dates_before,
+        move_occurrence=edit.move_occurrence,
+    )
     changed = [name for name in _EDITABLE_FIELDS if getattr(task, name) != before[name]]
     check_mentions(user, *(getattr(task, name) for name in TEXT_FIELDS if name in changed))
     affected = []

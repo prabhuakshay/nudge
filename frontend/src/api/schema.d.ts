@@ -2335,6 +2335,11 @@ export interface components {
       /** @description Replaces all of the Task's dates; null removes them and its Reminders. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
       /**
+       * Move Occurrence
+       * @description With `dates`, moves only a repeating Task's current Occurrence, as a Calendar drag does: its later Occurrences stay where they were. Otherwise new dates restart the series at the new due date.
+       */
+      move_occurrence?: boolean | null;
+      /**
        * Reminders
        * @description Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.
        */

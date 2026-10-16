@@ -166,6 +166,8 @@ describe("CalendarView drag to reschedule in Month mode", () => {
     await screen.findByText("Pay rent");
 
     drag("Pay rent", "Thursday 15 October", "Thursday 15 October");
+    // A drop saves after a tick, so wait one before checking that nothing was sent.
+    await new Promise((resolve) => setTimeout(resolve, 0));
 
     expect(within(day("Thursday 15 October")).getByText("Pay rent")).toBeInTheDocument();
     expect(await patchesOf(fetchSpy)).toEqual([]);

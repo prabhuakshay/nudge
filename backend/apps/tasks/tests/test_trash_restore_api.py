@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.utils import timezone
 
-from apps.tasks import creation, projects, services
+from apps.tasks import creation, projects, sections, services
 from apps.tasks.models import Project, Task
 
 if TYPE_CHECKING:
@@ -199,3 +199,38 @@ def test_restoring_a_closed_subtask_leaves_its_closed_parent_closed(
     _restore(client, pack)
 
     assert client.get(f"/api/v1/tasks/{task.pk}").json()["status"] == "completed"
+
+
+@pytest.mark.django_db
+def test_a_task_whose_section_was_deleted_comes_back_in_no_section(
+    client: Client, ada: User
+) -> None:
+    project = projects.create_project(ada, "Home")
+    kitchen = sections.create_section(project, "Kitchen")
+    task = creation.create_task(project, "Paint walls")
+    # No endpoint puts a Task in a Section yet, so the test places it directly.
+    Task.objects.filter(pk=task.pk).update(section=kitchen)
+    _delete(client, task)
+    client.delete(f"/api/v1/sections/{kitchen.pk}")
+
+    response = _restore(client, task)
+
+    assert response.status_code == 200
+    assert response.json()["task"]["project_id"] == project.pk
+    assert response.json()["task"]["section_id"] is None
+
+
+@pytest.mark.django_db
+def test_a_task_that_comes_back_to_the_inbox_leaves_its_section(client: Client, ada: User) -> None:
+    project = projects.create_project(ada, "Home")
+    kitchen = sections.create_section(project, "Kitchen")
+    task = creation.create_task(project, "Paint walls")
+    # No endpoint puts a Task in a Section yet, so the test places it directly.
+    Task.objects.filter(pk=task.pk).update(section=kitchen)
+    _delete(client, task)
+    Project.objects.filter(pk=project.pk).update(deleted_at=timezone.now())
+
+    response = _restore(client, task)
+
+    assert response.json()["task"]["project_id"] == services.inbox(ada).pk
+    assert response.json()["task"]["section_id"] is None

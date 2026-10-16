@@ -1836,10 +1836,10 @@
                   "type": "null"
                 }
               ],
-              "description": "Today or Upcoming, picked by date."
+              "description": "Today, Upcoming or All, picked by date."
             },
             "required": false,
-            "description": "Today or Upcoming, picked by date."
+            "description": "Today, Upcoming or All, picked by date."
           },
           {
             "in": "query",
@@ -1904,7 +1904,7 @@
             }
           }
         },
-        "description": "Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.\n\nA Project's Tasks come in manual order. A Person's are the Tasks that mention them and a\nTag's the Tasks it's on, flat, in each Project's manual order. Today and Upcoming list flat\nrows by date, with Overdue first in Today; Today's Closed Tasks are those closed today, and\nUpcoming has none. Closed Tasks come most recently completed first, in pages; open Tasks come\nall at once.",
+        "description": "Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.\n\nA Project's Tasks come in manual order. A Person's are the Tasks that mention them and a\nTag's the Tasks it's on, flat, in each Project's manual order. Today, Upcoming and All list\nflat rows by date, with Overdue first and, in All, undated Tasks last; Today's Closed Tasks\nare those closed today, and Upcoming and All have none. Closed Tasks come most recently\ncompleted first, in pages; open Tasks come all at once.",
         "tags": [
           "tasks"
         ],
@@ -4660,6 +4660,11 @@
             "title": "Upcoming Count",
             "type": "integer"
           },
+          "all_count": {
+            "description": "Open Tasks in All.",
+            "title": "All Count",
+            "type": "integer"
+          },
           "tags": {
             "description": "In the user's order.",
             "items": {
@@ -4683,6 +4688,7 @@
           "archived",
           "today_count",
           "upcoming_count",
+          "all_count",
           "tags",
           "people"
         ],
@@ -5301,7 +5307,7 @@
                 "type": "null"
               }
             ],
-            "description": "Today or Upcoming, picked by date."
+            "description": "Today, Upcoming or All, picked by date."
           },
           "closed": {
             "default": false,
@@ -5329,7 +5335,8 @@
         "description": "A list of Tasks picked by their dates rather than by Project.",
         "enum": [
           "today",
-          "upcoming"
+          "upcoming",
+          "all"
         ],
         "title": "View",
         "type": "string"

@@ -64,7 +64,11 @@ export function FlatTaskTable({
     (task) => task.id,
   );
   const { openTaskId, setOpenTask } = useOpenTask();
-  const context = useRowContext({ collapsed: NONE_FOLDED, onToggleCollapsed: ignoreFold });
+  const context = useRowContext({
+    collapsed: NONE_FOLDED,
+    onToggleCollapsed: ignoreFold,
+    showProject: true,
+  });
 
   return (
     // `data-wide` lets the app shell drop its reading width for this table.

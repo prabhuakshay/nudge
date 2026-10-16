@@ -1,6 +1,6 @@
 import { makeTask } from "@/test/tasks";
 
-import { addDays, todayIn, upcomingGroups, wallClock } from "./schedule";
+import { addDays, allSections, todayIn, upcomingGroups, wallClock } from "./schedule";
 
 describe("todayIn", () => {
   it("reads the date on the user's clock, not the browser's", () => {
@@ -51,5 +51,16 @@ describe("upcomingGroups", () => {
       ["November", [6]],
       ["January 2027", [7]],
     ]);
+  });
+});
+
+describe("allSections", () => {
+  it("puts a started range in Today and an undated Task in No date", () => {
+    const trip = makeTask({ id: 1, start_date: "2026-10-14", due_date: "2026-10-17" });
+    const someday = makeTask({ id: 2 });
+
+    const sections = allSections([someday, trip], "2026-10-15");
+
+    expect(sections).toEqual({ overdue: [], today: [trip], later: [], undated: [someday] });
   });
 });

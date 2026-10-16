@@ -1,4 +1,4 @@
-"""Tests for the Today and Upcoming views, judged by a frozen clock in the user's time zone."""
+"""Tests for the Today, Upcoming and All views, judged by a frozen clock in the user's time zone."""
 
 from __future__ import annotations
 
@@ -74,9 +74,9 @@ def test_midnight_in_the_users_zone_moves_tasks_between_the_views(
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize("path", ["/api/v1/tasks?view=today", "/api/v1/tasks?view=upcoming"])
-def test_the_views_require_a_session(path: str) -> None:
-    assert Client().get(path).status_code == 401
+@pytest.mark.parametrize("view", ["today", "upcoming", "all"])
+def test_the_views_require_a_session(view: str) -> None:
+    assert Client().get(f"/api/v1/tasks?view={view}").status_code == 401
 
 
 @pytest.mark.django_db
@@ -192,6 +192,7 @@ def test_the_views_leave_out_closed_trashed_and_archived_project_tasks(
 
     assert _view(client, "today") == ["Open"]
     assert _view(client, "upcoming") == ["Blocked"]
+    assert _view(client, "all") == ["Open", "Blocked"]
 
 
 @pytest.mark.django_db
@@ -203,11 +204,59 @@ def test_the_views_never_show_another_users_tasks(
 ) -> None:
     _task(grace, "Theirs today", _due(15))
     _task(grace, "Theirs tomorrow", _due(16))
+    _task(grace, "Theirs undated")
 
     freeze_time(NOON)
 
     assert _view(client, "today") == []
     assert _view(client, "upcoming") == []
+    assert _view(client, "all") == []
+
+
+@pytest.mark.django_db
+def test_all_lists_pinned_then_overdue_then_day_by_day_then_undated(
+    client: Client,
+    kolkata: User,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    _task(kolkata, "Undated")
+    _task(kolkata, "Next week", _due(22))
+    _task(kolkata, "Tomorrow", _due(16))
+    _task(kolkata, "Due today", _due(15))
+    _task(kolkata, "Late", _due(13))
+    pinned = _task(kolkata, "Pinned undated")
+    services.update_task(kolkata, pinned.pk, services.TaskEdit(pinned=True))
+
+    freeze_time(NOON)
+
+    assert _view(client, "all") == [
+        "Pinned undated",
+        "Late",
+        "Due today",
+        "Tomorrow",
+        "Next week",
+        "Undated",
+    ]
+
+
+@pytest.mark.django_db
+def test_all_lists_open_tasks_from_the_inbox_and_every_project(
+    client: Client,
+    kolkata: User,
+) -> None:
+    garden = projects.create_project(kolkata, "Garden")
+    creation.create_task(garden, "Water the roses")
+    _task(kolkata, "Buy milk")
+
+    assert sorted(_view(client, "all")) == ["Buy milk", "Water the roses"]
+
+
+@pytest.mark.django_db
+def test_all_has_no_closed_tasks(client: Client, kolkata: User) -> None:
+    done = _task(kolkata, "Done")
+    services.update_task(kolkata, done.pk, services.TaskEdit(status=Task.Status.COMPLETED))
+
+    assert _view(client, "all", closed=True) == []
 
 
 @pytest.mark.django_db
@@ -261,7 +310,7 @@ def test_a_list_needs_one_project_person_or_known_view(client: Client, query: st
 
 
 @pytest.mark.django_db
-def test_the_sidebar_counts_open_tasks_in_today_with_overdue_and_in_upcoming(
+def test_the_sidebar_counts_open_tasks_in_today_with_overdue_in_upcoming_and_in_all(
     client: Client,
     kolkata: User,
     freeze_time: Callable[[datetime], None],
@@ -269,13 +318,17 @@ def test_the_sidebar_counts_open_tasks_in_today_with_overdue_and_in_upcoming(
     _task(kolkata, "Late", _due(10))
     _task(kolkata, "Due today", _due(15))
     _task(kolkata, "Tomorrow", _due(16))
+    _task(kolkata, "Undated")
     done = _task(kolkata, "Done", _due(15))
     services.update_task(kolkata, done.pk, services.TaskEdit(status=Task.Status.COMPLETED))
+    garden = projects.create_project(kolkata, "Garden")
+    creation.create_task(garden, "Archived")
+    projects.archive_project(kolkata, garden.pk)
 
     freeze_time(NOON)
     sidebar = client.get("/api/v1/sidebar").json()
 
-    assert (sidebar["today_count"], sidebar["upcoming_count"]) == (2, 1)
+    assert (sidebar["today_count"], sidebar["upcoming_count"], sidebar["all_count"]) == (2, 1, 4)
 
 
 @pytest.mark.django_db

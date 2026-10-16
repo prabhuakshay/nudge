@@ -25,7 +25,7 @@ export function GlobalShortcuts({
   const navigate = useNavigate();
   const [help, setHelp] = useState(false);
   const [settings, setSettings] = useState(false);
-  const goTo = (to: "/" | "/inbox" | "/upcoming" | "/search" | "/trash") => () =>
+  const goTo = (to: "/" | "/inbox" | "/upcoming" | "/all" | "/search" | "/trash") => () =>
     void navigate({ to });
 
   const actions = {
@@ -36,6 +36,7 @@ export function GlobalShortcuts({
     goToInbox: goTo("/inbox"),
     goToToday: goTo("/"),
     goToUpcoming: goTo("/upcoming"),
+    goToAll: goTo("/all"),
     goToSearch: goTo("/search"),
     goToTrash: goTo("/trash"),
     goToSettings: () => {

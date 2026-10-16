@@ -60,10 +60,10 @@ def list_tasks(
     """Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.
 
     A Project's Tasks come in manual order. A Person's are the Tasks that mention them and a
-    Tag's the Tasks it's on, flat, in each Project's manual order. Today and Upcoming list flat
-    rows by date, with Overdue first in Today; Today's Closed Tasks are those closed today, and
-    Upcoming has none. Closed Tasks come most recently completed first, in pages; open Tasks come
-    all at once.
+    Tag's the Tasks it's on, flat, in each Project's manual order. Today, Upcoming and All list
+    flat rows by date, with Overdue first and, in All, undated Tasks last; Today's Closed Tasks
+    are those closed today, and Upcoming and All have none. Closed Tasks come most recently
+    completed first, in pages; open Tasks come all at once.
     """
     source = _list_source(signed_in_user(request), query)
     if isinstance(source, Status):

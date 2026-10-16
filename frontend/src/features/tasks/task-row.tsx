@@ -11,6 +11,7 @@ import { DueBadge } from "./due-badge";
 import { rowActivator, type MoveByKey } from "./row-drag";
 import type { RowKeyDown } from "./row-keys";
 import { Grip } from "./row-grip";
+import { RowProject } from "./row-project";
 import type { DragHandle } from "./sortable-tree";
 import { SubtaskCount } from "./subtask-count";
 import { TaskActionsMenu, TaskContextMenu } from "./task-actions";
@@ -45,6 +46,8 @@ export type RowContext = {
   clearSelection: () => void;
   collapsed: ReadonlySet<number>;
   indent: number;
+  /** Whether rows name their Project: in lists that mix Projects, not in a Project's own. */
+  showProject: boolean;
   /**
    * Whether rows have a right-click menu: not on touch screens, where a long press is for
    * scrolling, nor in an archived Project, where its actions would change the Task.
@@ -67,6 +70,7 @@ export function TreeRows({ rows, context }: { rows: TreeRow[]; context: RowConte
       selected={task.id === context.openId || context.selectedIds.has(task.id)}
       collapsed={context.collapsed.has(task.id)}
       indent={context.indent}
+      showProject={context.showProject}
       contextMenu={context.contextMenu}
       onToggle={context.onToggle}
       onOpen={context.onOpen}
@@ -83,7 +87,8 @@ export function TreeRows({ rows, context }: { rows: TreeRow[]; context: RowConte
  * and cell pickers keep their own action. Right-click or the ⋯ button
  * opens its actions. On phones the cells fold into a meta line under the title. Given a drag
  * handle, the whole row drags: after a 5 px move with a mouse, after a press and hold on touch,
- * or from its grip with the keyboard. Memoized so a change to one row leaves the others alone.
+ * or from its grip with the keyboard. In a list that mixes Projects, the row ends with its
+ * Project. Memoized so a change to one row leaves the others alone.
  */
 export const TaskRow = memo(function TaskRow({
   task,
@@ -92,6 +97,7 @@ export const TaskRow = memo(function TaskRow({
   selected,
   collapsed,
   indent,
+  showProject = false,
   contextMenu,
   onToggle,
   onOpen,
@@ -108,6 +114,7 @@ export const TaskRow = memo(function TaskRow({
   selected: boolean;
   collapsed: boolean;
   indent: number;
+  showProject?: boolean;
   contextMenu: boolean;
   onToggle: ToggleStatus;
   onOpen: OpenTask;
@@ -194,10 +201,11 @@ export const TaskRow = memo(function TaskRow({
               onToggle(task);
             }}
           />
-          <div className="flex min-w-0 flex-1 flex-col">
+          <div className={cn("flex min-w-0 flex-col", !showProject && "flex-1")}>
             <RowTitle task={task} level={level} />
             {blocked && <BlockedNote task={task} className="hidden lg:flex" />}
           </div>
+          {showProject && <RowProject projectId={task.project_id} />}
           <TaskActionsMenu task={task} className="-my-2 lg:hidden" />
         </div>
 

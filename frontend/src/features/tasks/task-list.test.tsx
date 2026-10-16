@@ -95,6 +95,16 @@ describe("TaskList", () => {
     expect(screen.getByText("3 open")).toBeInTheDocument();
   });
 
+  it("leaves the Project off rows in the Project's own list", async () => {
+    mockApi({ open: [task({ id: 1, title: "Buy milk", project_id: INBOX.id })] });
+
+    renderList();
+
+    const row = (await screen.findByText("Buy milk")).closest<HTMLElement>("[role=row]");
+    if (!row) throw new Error("No row for the Task.");
+    expect(within(row).queryByText("Inbox")).not.toBeInTheDocument();
+  });
+
   it("counts a Task's Comments and Attachments in its row and shows nothing for none", async () => {
     mockApi({
       open: [

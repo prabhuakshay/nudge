@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 
-import { INBOX, json, renderListRoute } from "@/test/drawer";
+import { INBOX, json, renderListRoute, WORK } from "@/test/drawer";
 import { makeTask } from "@/test/tasks";
 import { requestOf } from "@/test/fetch";
 
@@ -20,7 +20,14 @@ function mockApi({ open = [], closed = [] }: { open?: Task[]; closed?: Task[] } 
       return json(task({ id: 100, title: body.title }), 201);
     }
     if (url.pathname === "/api/v1/sidebar") {
-      return json({ inbox: INBOX, items: [], archived: [], today_count: 0, upcoming_count: 0 });
+      return json({
+        inbox: INBOX,
+        items: [WORK],
+        archived: [],
+        today_count: 0,
+        upcoming_count: 0,
+        all_count: 0,
+      });
     }
     if (url.searchParams.get("closed") === "true") {
       return json({ items: closed, next_cursor: null });
@@ -45,6 +52,12 @@ async function requestsTo(fetchSpy: ReturnType<typeof mockApi>, method: string) 
 
 function renderView(view: ScheduleView) {
   return renderListRoute(<ScheduleList view={view} inbox={INBOX} timeZone="Europe/London" />).user;
+}
+
+function rowOf(title: string) {
+  const row = screen.getByText(title).closest<HTMLElement>("[role=row]");
+  if (!row) throw new Error(`No row for “${title}”.`);
+  return row;
 }
 
 function titlesIn(group: string) {
@@ -122,6 +135,64 @@ describe("ScheduleList", () => {
 
     expect(await screen.findByText("Call mum")).toBeInTheDocument();
     expect(await requestsTo(fetchSpy, "GET")).toContain("/api/v1/tasks?view=today&closed=true");
+  });
+
+  it.each(["today", "upcoming", "all"] as const)(
+    "names each row's Project in %s, the Inbox included",
+    async (view) => {
+      mockApi({
+        open: [
+          task({ id: 1, title: "Report", due_date: "2026-10-16", project_id: WORK.id }),
+          task({ id: 2, title: "Email", due_date: "2026-10-16", project_id: INBOX.id }),
+        ],
+      });
+
+      renderView(view);
+
+      expect(await screen.findByText("Report")).toBeInTheDocument();
+      expect(within(rowOf("Report")).getByText("Work")).toBeInTheDocument();
+      expect(within(rowOf("Email")).getByText("Inbox")).toBeInTheDocument();
+    },
+  );
+
+  it("adds a Task from All's Quick add to the Inbox, undated", async () => {
+    const fetchSpy = mockApi();
+    const user = renderView("all");
+
+    await user.type(
+      await screen.findByRole("combobox", { name: "New task" }),
+      "Water plants{Enter}",
+    );
+
+    await vi.waitFor(async () => {
+      expect(await requestsTo(fetchSpy, "POST")).toEqual([
+        { title: "Water plants", project_id: INBOX.id },
+      ]);
+    });
+  });
+
+  it("groups All by date: Overdue, Today, later days, then No date last", async () => {
+    const fetchSpy = mockApi({
+      open: [
+        task({ id: 1, title: "Pay rent", due_date: "2026-10-12", is_overdue: true }),
+        task({ id: 2, title: "Buy milk", due_date: "2026-10-15" }),
+        task({ id: 3, title: "Dentist", due_date: "2026-10-16" }),
+        task({ id: 4, title: "Renew passport", due_date: "2026-11-20" }),
+        task({ id: 5, title: "Learn Welsh" }),
+      ],
+    });
+
+    renderView("all");
+
+    expect(await screen.findByText("Pay rent")).toBeInTheDocument();
+    expect(await requestsTo(fetchSpy, "GET")).toContain("/api/v1/tasks?view=all");
+    const table = screen.getByRole("treegrid", { name: "All tasks" });
+    const groups = within(table)
+      .getAllByRole("region")
+      .map((region) => region.getAttribute("aria-label"));
+    expect(groups).toEqual(["Overdue", "Today", "Tomorrow", "November", "No date"]);
+    expect(titlesIn("No date")).toEqual(["Learn Welsh"]);
+    expect(screen.queryByRole("button", { name: /Closed/ })).not.toBeInTheDocument();
   });
 
   it.each([

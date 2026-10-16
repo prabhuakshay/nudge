@@ -726,10 +726,10 @@ export interface paths {
      * @description Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.
      *
      *     A Project's Tasks come in manual order. A Person's are the Tasks that mention them and a
-     *     Tag's the Tasks it's on, flat, in each Project's manual order. Today and Upcoming list flat
-     *     rows by date, with Overdue first in Today; Today's Closed Tasks are those closed today, and
-     *     Upcoming has none. Closed Tasks come most recently completed first, in pages; open Tasks come
-     *     all at once.
+     *     Tag's the Tasks it's on, flat, in each Project's manual order. Today, Upcoming and All list
+     *     flat rows by date, with Overdue first and, in All, undated Tasks last; Today's Closed Tasks
+     *     are those closed today, and Upcoming and All have none. Closed Tasks come most recently
+     *     completed first, in pages; open Tasks come all at once.
      */
     get: operations["apps_tasks_api_tasks_list_tasks"];
     put?: never;
@@ -1862,6 +1862,11 @@ export interface components {
        */
       upcoming_count: number;
       /**
+       * All Count
+       * @description Open Tasks in All.
+       */
+      all_count: number;
+      /**
        * Tags
        * @description In the user's order.
        */
@@ -2159,7 +2164,7 @@ export interface components {
       person?: number | null;
       /** Tag */
       tag?: number | null;
-      /** @description Today or Upcoming, picked by date. */
+      /** @description Today, Upcoming or All, picked by date. */
       view?: components["schemas"]["View"] | null;
       /**
        * Closed
@@ -2178,7 +2183,7 @@ export interface components {
      * @description A list of Tasks picked by their dates rather than by Project.
      * @enum {string}
      */
-    View: "today" | "upcoming";
+    View: "today" | "upcoming" | "all";
     /**
      * TaskListOut
      * @description Tasks for a list, and the cursor for the next page when the list is paginated.
@@ -4466,7 +4471,7 @@ export interface operations {
         project?: number | null;
         person?: number | null;
         tag?: number | null;
-        /** @description Today or Upcoming, picked by date. */
+        /** @description Today, Upcoming or All, picked by date. */
         view?: components["schemas"]["View"] | null;
         /** @description List Closed Tasks, a page at a time. */
         closed?: boolean;

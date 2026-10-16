@@ -23,16 +23,19 @@ function rowOrder() {
  * What a list's rows share: the open Task, folding, indent, the selection and the row actions.
  * Stable between renders, so memoized rows don't re-render when the list does. From `lg`,
  * Shift/Mod-click and Shift+↑/↓ select rows; selecting closes the drawer and opening a Task
- * clears the selection, so the two never show at once.
+ * clears the selection, so the two never show at once. Lists that mix Projects pass `showProject`
+ * so each row names its own.
  */
 export function useRowContext({
   collapsed,
   onToggleCollapsed,
   readOnly = false,
+  showProject = false,
 }: {
   collapsed: ReadonlySet<number>;
   onToggleCollapsed: ToggleCollapsed;
   readOnly?: boolean;
+  showProject?: boolean;
 }): RowContext {
   const { openTaskId: openId, setOpenTask } = useOpenTask();
   const wide = useMediaQuery("(min-width: 1024px)");
@@ -86,6 +89,7 @@ export function useRowContext({
       selectedIds: selection.ids,
       collapsed,
       indent: wide ? INDENT : PHONE_INDENT,
+      showProject,
       contextMenu: !touch && !readOnly,
       onToggle: toggle,
       onOpen: open,
@@ -99,6 +103,7 @@ export function useRowContext({
       selection.ids,
       collapsed,
       wide,
+      showProject,
       touch,
       readOnly,
       toggle,

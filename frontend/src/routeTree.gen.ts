@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
+import { Route as AppAllRouteImport } from './routes/_app/all'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
 import { Route as AppSearchRouteImport } from './routes/_app/search'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
@@ -32,6 +33,11 @@ const LoginRoute = LoginRouteImport.update({
 const AppIndexRoute = AppIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppAllRoute = AppAllRouteImport.update({
+  id: '/all',
+  path: '/all',
   getParentRoute: () => AppRoute,
 } as any)
 const AppInboxRoute = AppInboxRouteImport.update({
@@ -73,6 +79,7 @@ const AppTagsTagIdRoute = AppTagsTagIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
+  '/all': typeof AppAllRoute
   '/inbox': typeof AppInboxRoute
   '/search': typeof AppSearchRoute
   '/trash': typeof AppTrashRoute
@@ -83,6 +90,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
+  '/all': typeof AppAllRoute
   '/inbox': typeof AppInboxRoute
   '/search': typeof AppSearchRoute
   '/trash': typeof AppTrashRoute
@@ -96,6 +104,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
+  '/_app/all': typeof AppAllRoute
   '/_app/inbox': typeof AppInboxRoute
   '/_app/search': typeof AppSearchRoute
   '/_app/trash': typeof AppTrashRoute
@@ -110,6 +119,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/login'
+    | '/all'
     | '/inbox'
     | '/search'
     | '/trash'
@@ -120,6 +130,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/login'
+    | '/all'
     | '/inbox'
     | '/search'
     | '/trash'
@@ -132,6 +143,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/_app'
     | '/login'
+    | '/_app/all'
     | '/_app/inbox'
     | '/_app/search'
     | '/_app/trash'
@@ -168,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof AppIndexRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/all': {
+      id: '/_app/all'
+      path: '/all'
+      fullPath: '/all'
+      preLoaderRoute: typeof AppAllRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/inbox': {
@@ -223,6 +242,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AppRouteChildren {
+  AppAllRoute: typeof AppAllRoute
   AppInboxRoute: typeof AppInboxRoute
   AppSearchRoute: typeof AppSearchRoute
   AppTrashRoute: typeof AppTrashRoute
@@ -234,6 +254,7 @@ interface AppRouteChildren {
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppAllRoute: AppAllRoute,
   AppInboxRoute: AppInboxRoute,
   AppSearchRoute: AppSearchRoute,
   AppTrashRoute: AppTrashRoute,

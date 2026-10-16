@@ -46,6 +46,7 @@ function renderApp(onAddTask: (draft: string) => void = vi.fn()) {
       page("/", "Today"),
       page("/inbox", "Inbox"),
       page("/upcoming", "Upcoming"),
+      page("/all", "All"),
       page("/search", "Search"),
       page("/trash", "Trash"),
     ]),
@@ -65,6 +66,7 @@ describe("GlobalShortcuts", () => {
   it.each([
     ["gi", "Inbox"],
     ["gu", "Upcoming"],
+    ["ga", "All"],
     ["gs", "Search"],
     ["gx", "Trash"],
   ])("goes to a view with a G chord (%s)", async (keys, title) => {

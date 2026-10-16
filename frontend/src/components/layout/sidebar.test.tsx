@@ -45,11 +45,12 @@ describe("Sidebar", () => {
       "/inbox",
       "/",
       "/upcoming",
+      "/all",
       "/trash",
     ]);
   });
 
-  it("counts Today, Overdue included, and Upcoming", async () => {
+  it("counts Today, Overdue included, Upcoming and All", async () => {
     vi.spyOn(globalThis, "fetch").mockResolvedValue(
       new Response(
         JSON.stringify({
@@ -58,6 +59,7 @@ describe("Sidebar", () => {
           archived: [],
           today_count: 4,
           upcoming_count: 2,
+          all_count: 9,
         }),
         { headers: { "Content-Type": "application/json" } },
       ),
@@ -71,5 +73,6 @@ describe("Sidebar", () => {
 
     expect(await screen.findByRole("link", { name: "Today, 4 open" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Upcoming, 2 open" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "All, 9 open" })).toBeInTheDocument();
   });
 });

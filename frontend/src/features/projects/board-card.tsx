@@ -24,10 +24,18 @@ export type CardDrag = {
   touch: boolean;
 };
 
+/** A card's place in its column's list: its index, how many cards it holds, and its column. */
+export type CardPlace = { index: number; count: number; column: string; closed?: boolean };
+
+/** A card's place as it is read out, such as "2 of 5 in To do" or "1 of 3 closed in Done". */
+function placeLabel({ index, count, column, closed = false }: CardPlace) {
+  return `${String(index + 1)} of ${String(count)} ${closed ? "closed " : ""}in ${column}`;
+}
+
 export type BoardCardProps = {
   card: TreeRow;
-  /** Where the card sits, such as "2 of 5 in To do", read after its title. */
-  label: string;
+  /** Where the card sits, read after its title, such as "2 of 5 in To do". */
+  place: CardPlace;
   selected: boolean;
   readOnly: boolean;
   onOpen: (taskId: number) => void;
@@ -63,7 +71,7 @@ function dragProps(drag: CardDrag | undefined) {
  */
 export const BoardCard = memo(function BoardCard({
   card: { task, subtasks },
-  label,
+  place,
   selected,
   readOnly,
   onOpen,
@@ -95,7 +103,7 @@ export const BoardCard = memo(function BoardCard({
         <button
           type="button"
           data-task-title
-          aria-label={`${title}, ${label}`}
+          aria-label={`${title}, ${placeLabel(place)}`}
           onClick={() => {
             onOpen(task.id);
           }}

@@ -55,7 +55,7 @@ export function BoardClosedFold({
             <BoardCard
               key={card.task.id}
               card={card}
-              label={`${String(index + 1)} of ${String(cards.length)} closed in ${name}`}
+              place={{ index, count: cards.length, column: name, closed: true }}
               selected={card.task.id === openId}
               readOnly={readOnly}
               onOpen={onOpen}

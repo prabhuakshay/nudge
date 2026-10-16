@@ -89,7 +89,7 @@ export function BoardColumn({
               <SortableBoardCard
                 key={card.task.id}
                 card={card}
-                label={`${String(index + 1)} of ${String(cards.length)} in ${name}`}
+                place={{ index, count: cards.length, column: name }}
                 selected={card.task.id === openId}
                 readOnly={readOnly}
                 onOpen={onOpen}

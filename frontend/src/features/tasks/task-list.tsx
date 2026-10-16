@@ -28,12 +28,13 @@ import { closedTasksQuery, openTasksQuery, type SidebarProject, type Task } from
 
 /**
  * A Project's Tasks as a table: the page header, Quick add, then the pinned Task trees, the other
- * open trees and a collapsed Closed group. A Project with Sections groups its open trees by
- * Section instead, each keeping its Pinned trees at the top; the Inbox has none. Subtasks nest under their parent and fold away from
- * its chevron; dragging a row, or Tab and Alt+↑/↓, reorders and nests it. On phones the table
- * collapses into stacked rows. Clicking a row opens the Task in
- * the drawer, and the URL's `?task=` follows the open Task. An archived Project's list is
- * read-only: a notice replaces Quick add and every control that changes a Task is disabled.
+ * open trees and a collapsed Closed group. A Project with Sections sorts its open trees into
+ * them instead, each keeping its Pinned trees at the top; the Inbox has none. Subtasks nest
+ * under their parent and fold away from its chevron; dragging a row, or Tab and Alt+↑/↓,
+ * reorders and nests it. On phones the table collapses into stacked rows. Clicking a row opens
+ * the Task in the drawer, and the URL's `?task=` follows the open Task. An archived Project's
+ * list is read-only: a notice replaces Quick add and every control that changes a Task is
+ * disabled.
  */
 export function TaskList({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));

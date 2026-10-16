@@ -33,12 +33,19 @@ export function sectionsQuery(projectId: number) {
 
 /**
  * A change to a Project's Sections. It refreshes them once the server answers, and shows the
- * server's reason when it refuses. An optional `optimistic` edit shows the change at once.
+ * server's reason when it refuses. An optional `optimistic` edit shows the change at once, and
+ * `changesTasks` refreshes the Tasks too, for a change that moves them.
  */
 function useSectionMutation<V, R>(
   projectId: number,
   change: (variables: V) => Promise<R>,
-  optimistic?: (sections: Section[], variables: V) => Section[],
+  {
+    optimistic,
+    changesTasks = false,
+  }: {
+    optimistic?: (sections: Section[], variables: V) => Section[];
+    changesTasks?: boolean;
+  } = {},
 ) {
   const queryClient = useQueryClient();
   return useMutation({
@@ -53,7 +60,11 @@ function useSectionMutation<V, R>(
       );
     },
     onError: (error) => toast.error(error.message),
-    onSettled: () => queryClient.invalidateQueries(sectionsQuery(projectId)),
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries(sectionsQuery(projectId)),
+        changesTasks && refreshTasks(queryClient),
+      ]),
   });
 }
 
@@ -83,16 +94,18 @@ export function useUpdateSection(projectId: number) {
       if (error) throw new Error(error.detail);
       return data;
     },
-    (sections, { id, name, collapsed }) =>
-      sections.map((section) =>
-        section.id === id
-          ? {
-              ...section,
-              name: name?.trim() ?? section.name,
-              collapsed: collapsed ?? section.collapsed,
-            }
-          : section,
-      ),
+    {
+      optimistic: (sections, { id, name, collapsed }) =>
+        sections.map((section) =>
+          section.id === id
+            ? {
+                ...section,
+                name: name?.trim() ?? section.name,
+                collapsed: collapsed ?? section.collapsed,
+              }
+            : section,
+        ),
+    },
   );
 }
 
@@ -109,19 +122,14 @@ export function useMoveSection(projectId: number) {
 
 /** Delete a Section for good. Its Tasks stay in the Project, in No section. */
 export function useDeleteSection(projectId: number) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (sectionId: number) => {
+  return useSectionMutation(
+    projectId,
+    async (sectionId: number) => {
       const { error } = await api.DELETE("/api/v1/sections/{section_id}", {
         params: { path: { section_id: sectionId } },
       });
       if (error) throw new Error(error.detail);
     },
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries(sectionsQuery(projectId)),
-        refreshTasks(queryClient),
-      ]),
-  });
+    { changesTasks: true },
+  );
 }

@@ -73,10 +73,8 @@ export function SortableTaskRows({
   context: SortableRowContext;
 }) {
   const sections = useMemo(() => [{ tasks }], [tasks]);
-  return <SortableTaskSections sections={sections} renderSection={justRows} context={context} />;
+  return <SortableTaskSections sections={sections} context={context} />;
 }
-
-const justRows: RenderTaskSection = (_section, _header, rows) => rows;
 
 /**
  * A Project's Sections of Task trees as one sortable list: a row dragged past a Section's header
@@ -89,7 +87,8 @@ export function SortableTaskSections({
   context,
 }: {
   sections: TaskSection[];
-  renderSection: RenderTaskSection;
+  /** Draws each Section around its rows; without it, the rows are all there is. */
+  renderSection?: RenderTaskSection;
   context: SortableRowContext;
 }) {
   const { collapsed, onMove } = context;
@@ -150,7 +149,7 @@ export function SortableTaskSections({
   const drawGroup = useCallback<RenderGroup>(
     (index, header, rows) => {
       const section = sections[index];
-      return section && renderSection(section, header, rows);
+      return section && renderSection ? renderSection(section, header, rows) : rows;
     },
     [sections, renderSection],
   );

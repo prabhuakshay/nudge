@@ -63,11 +63,6 @@
   - Shows current and best streak and a year heatmap. Today shows a strip of today's Habits.
   - Optional Reminder per Habit, delivered like Task Reminders.
   - Add Habit, Check-in and Streak to GLOSSARY.md.
-- [ ] Add Duration and time blocking
-  - A Task gets an optional Duration (the estimate). Quick add reads `for 30m` and `for 2h`.
-  - In Calendar Week and Day, a side panel lists undated open Tasks. Dropping one on the
-    timeline sets its date, time and Duration-long range.
-  - Today's header shows the total Duration planned for the day.
 - [ ] Add a daily digest
   - At a time the user picks, send Today's Tasks and the Overdue count through their channels;
     email gets an HTML version.
@@ -96,11 +91,6 @@
   - Served at `/mcp` over streamable HTTP with token auth.
   - Tools: search Tasks, list Today and Overdue, add a Task from Quick add text, close a Task,
     add a Comment. Read-only tokens see only the read tools.
-- [ ] Add dependencies between Tasks
-  - A Task can be blocked by other Tasks of the same user. Cycles are 422.
-  - A Task with an open blocker shows it and can't be closed without confirming. Closing the
-    last blocker notifies the user that the Task is unblocked.
-  - Add Blocker to GLOSSARY.md and say how it relates to the Blocked Status.
 - [ ] Add a focus timer with YouTube playlist support
   - Focus and break lengths are user settings (25 and 5 minutes by default). A session can be
     tied to a Task; the Task shows its total focus time.
@@ -111,19 +101,12 @@
   - Save a Task with its Subtasks, Tags, Description and Reminders, or a Project with its
     Sections and Tasks, as a Template.
   - Creating from a Template keeps dates relative to the day it is used.
-- [ ] Add a per-user week start setting
-  - Monday, Sunday or Saturday, stored on the User like the time zone.
-  - Changes Calendar Month and Week, Upcoming grouping, the date picker and "next week" in
-    Quick add.
 
 ## Low impact
 
 - [ ] Limit Tags and People in the sidebar
   - Show the first 8 in their sort order, then "Show all (N)". The choice is remembered with the
     other sidebar sections.
-- [ ] Add Quick add syntax for Sections
-  - `~Project/Section` puts the Task in that Section; the picker suggests Sections after `/`.
-  - An unknown Section name is left as text, the same as an unknown Project.
 - [ ] Add countdown
   - Mark a dated Task as a countdown; its row and the Today header show "12 days left".
   - Add Countdown to GLOSSARY.md.

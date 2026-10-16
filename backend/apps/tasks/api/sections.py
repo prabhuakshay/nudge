@@ -1,0 +1,65 @@
+"""Section endpoints: list and add a Project's Sections.
+
+Mounted at the API root because a Project's Sections live under `/projects/{id}/sections` while
+a single Section lives under `/sections/{id}`.
+"""
+
+from __future__ import annotations
+
+from http import HTTPStatus
+from typing import TYPE_CHECKING
+
+from ninja import Router, Status
+
+from apps.core.auth import signed_in_user
+from apps.core.schemas import ErrorOut
+from apps.tasks import sections, services
+from apps.tasks.api.errors import PROJECT_NOT_FOUND, SECTION_NOT_FOUND
+from apps.tasks.schemas.sections import SectionIn, SectionOut
+
+if TYPE_CHECKING:
+    from django.http import HttpRequest
+
+router = Router()
+
+
+@router.get(
+    "/projects/{int:project_id}/sections",
+    response={HTTPStatus.OK: list[SectionOut], HTTPStatus.NOT_FOUND: ErrorOut},
+    summary="List a Project's Sections",
+)
+def list_sections(
+    request: HttpRequest, project_id: int
+) -> Status[list[SectionOut]] | Status[ErrorOut]:
+    """List a Project's Sections in order. The Inbox has none."""
+    project = services.live_project(signed_in_user(request), project_id)
+    if project is None:
+        return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
+    found = sections.project_sections(project)
+    return Status(HTTPStatus.OK, [SectionOut.from_orm(section) for section in found])
+
+
+@router.post(
+    "/projects/{int:project_id}/sections",
+    response={
+        HTTPStatus.CREATED: SectionOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
+    summary="Add a Section to a Project",
+)
+def create_section(
+    request: HttpRequest, project_id: int, section: SectionIn
+) -> Status[SectionOut] | Status[ErrorOut]:
+    """Add an expanded Section after another one, or last. The Inbox can't have Sections."""
+    user = signed_in_user(request)
+    project = services.live_project(user, project_id)
+    if project is None:
+        return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
+    after = None
+    if section.after_id is not None:
+        after = sections.section(user, section.after_id)
+        if after is None:
+            return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    created = sections.create_section(project, section.name, after)
+    return Status(HTTPStatus.CREATED, SectionOut.from_orm(created))

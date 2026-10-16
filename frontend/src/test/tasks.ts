@@ -6,6 +6,7 @@ export function makeTask(overrides: Partial<TaskDetail> = {}): TaskDetail {
     id: 1,
     project_id: 7,
     parent_id: null,
+    section_id: null,
     position: "a0",
     depth: 0,
     parent_title: null,

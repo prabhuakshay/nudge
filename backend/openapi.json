@@ -1203,6 +1203,124 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/sections": {
+      "get": {
+        "operationId": "apps_tasks_api_sections_list_sections",
+        "summary": "List a Project's Sections",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/SectionOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "List a Project's Sections in order. The Inbox has none.",
+        "tags": [
+          "sections"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_tasks_api_sections_create_section",
+        "summary": "Add a Section to a Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add an expanded Section after another one, or last. The Inbox can't have Sections.",
+        "tags": [
+          "sections"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/people": {
       "get": {
         "operationId": "apps_tasks_api_people_list_people",
@@ -3857,6 +3975,18 @@
             "description": "Null for a root Task.",
             "title": "Parent Id"
           },
+          "section_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for No section, and for a Subtask, which sits in its root's Section.",
+            "title": "Section Id"
+          },
           "position": {
             "description": "Sorts the Task among its siblings, byte by byte.",
             "title": "Position",
@@ -4049,6 +4179,7 @@
           "id",
           "project_id",
           "parent_id",
+          "section_id",
           "position",
           "depth",
           "parent_title",
@@ -4098,6 +4229,18 @@
             ],
             "description": "Null for a root Task.",
             "title": "Parent Id"
+          },
+          "section_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for No section, and for a Subtask, which sits in its root's Section.",
+            "title": "Section Id"
           },
           "position": {
             "description": "Sorts the Task among its siblings, byte by byte.",
@@ -4262,6 +4405,7 @@
           "id",
           "project_id",
           "parent_id",
+          "section_id",
           "position",
           "depth",
           "parent_title",
@@ -4635,6 +4779,62 @@
           }
         },
         "title": "ProjectMoveIn",
+        "type": "object"
+      },
+      "SectionOut": {
+        "description": "A Section's own fields.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "collapsed": {
+            "title": "Collapsed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "name",
+          "collapsed"
+        ],
+        "title": "SectionOut",
+        "type": "object"
+      },
+      "SectionIn": {
+        "description": "A new Section.",
+        "properties": {
+          "name": {
+            "description": "1 to 64 characters, surrounding spaces trimmed.",
+            "title": "Name",
+            "type": "string"
+          },
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Section it follows in the Project; last when left out.",
+            "title": "After Id"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "SectionIn",
         "type": "object"
       },
       "PersonOut": {
@@ -5897,6 +6097,18 @@
             "description": "Null for a root Task.",
             "title": "Parent Id"
           },
+          "section_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for No section, and for a Subtask, which sits in its root's Section.",
+            "title": "Section Id"
+          },
           "position": {
             "description": "Sorts the Task among its siblings, byte by byte.",
             "title": "Position",
@@ -6069,6 +6281,7 @@
           "id",
           "project_id",
           "parent_id",
+          "section_id",
           "position",
           "depth",
           "parent_title",

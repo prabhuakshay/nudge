@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.db import IntegrityError, transaction
 
-from apps.tasks import creation, people, projects, services
+from apps.tasks import creation, people, projects, sections, services
 from apps.tasks.models import Attachment, Comment, Task, TaskMention
 
 if TYPE_CHECKING:
@@ -26,6 +26,23 @@ def test_a_project_and_a_task_read_as_their_name_and_title(ada: User) -> None:
 @pytest.mark.django_db
 def test_a_folder_reads_as_its_name(ada: User) -> None:
     assert str(projects.create_folder(ada, "Personal")) == "Personal"
+
+
+@pytest.mark.django_db
+def test_a_section_reads_as_its_name(ada: User) -> None:
+    work = projects.create_project(ada, "Work")
+
+    assert str(sections.create_section(work, "To do")) == "To do"
+
+
+@pytest.mark.django_db
+def test_a_subtask_cant_hold_a_section(ada: User) -> None:
+    work = projects.create_project(ada, "Work")
+    to_do = sections.create_section(work, "To do")
+    subtask = creation.create_subtask(creation.create_task(work, "Plan"), "Draft").task
+
+    with pytest.raises(IntegrityError), transaction.atomic():
+        Task.objects.filter(pk=subtask.pk).update(section=to_do)
 
 
 @pytest.mark.django_db

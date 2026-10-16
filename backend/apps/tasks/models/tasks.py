@@ -10,6 +10,7 @@ from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.tasks.models.projects import Project
+from apps.tasks.models.sections import Section
 from apps.tasks.models.tags import Tag
 
 # Tasks nest four levels deep: a root at depth 0 and Subtasks down to depth 3.
@@ -25,6 +26,9 @@ class Task(models.Model):
 
     A Subtask always lives in its root's Project, and Tasks nest at most `MAX_DEPTH` levels below
     a root. A Closed Task never has open descendants; the services keep it that way.
+
+    A root Task can sit in one of its Project's Sections; null is No section. Only roots hold a
+    Section: a Subtask's is its root's, so a tree is never split across Sections.
 
     Dates are floating: a time means that clock time in the owner's `time_zone`, wherever it is,
     so 09:00 stays 09:00 when the user travels. A due date without a time is all-day; a start
@@ -77,6 +81,13 @@ class Task(models.Model):
         null=True,
         blank=True,
         related_name="subtasks",
+    )
+    section = models.ForeignKey(
+        Section,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="tasks",
     )
     position = models.CharField(max_length=255, db_collation="C")
     title = models.CharField(max_length=500)
@@ -153,6 +164,10 @@ class Task(models.Model):
                 condition=Q(repeat_rule="")
                 | Q(parent__isnull=True, due_date__isnull=False, repeat_anchor__isnull=False),
                 name="tasks_task_repeat_needs_dated_root",
+            ),
+            models.CheckConstraint(
+                condition=Q(section__isnull=True) | Q(parent__isnull=True),
+                name="tasks_task_section_only_on_roots",
             ),
         ]
 

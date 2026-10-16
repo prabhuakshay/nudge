@@ -12,6 +12,7 @@ from apps.tasks.models.comments import Comment
 from apps.tasks.models.people import Person, TaskMention
 from apps.tasks.models.projects import INBOX_NAME, Folder, Project
 from apps.tasks.models.reminders import Reminder
+from apps.tasks.models.sections import SECTION_NAME_MAX_LENGTH, Section
 from apps.tasks.models.tags import Tag
 from apps.tasks.models.tasks import CLOSED_STATUSES, MAX_DEPTH, OPEN_STATUSES, Task
 
@@ -20,12 +21,14 @@ __all__ = [
     "INBOX_NAME",
     "MAX_DEPTH",
     "OPEN_STATUSES",
+    "SECTION_NAME_MAX_LENGTH",
     "Attachment",
     "Comment",
     "Folder",
     "Person",
     "Project",
     "Reminder",
+    "Section",
     "Tag",
     "Task",
     "TaskActivity",

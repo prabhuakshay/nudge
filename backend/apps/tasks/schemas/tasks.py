@@ -27,6 +27,9 @@ class TaskOut(Schema):
     id: int
     project_id: int
     parent_id: int | None = Field(description="Null for a root Task.")
+    section_id: int | None = Field(
+        description="Null for No section, and for a Subtask, which sits in its root's Section.",
+    )
     position: str = Field(description="Sorts the Task among its siblings, byte by byte.")
     depth: int = Field(description="0 for a root Task, up to 3 for the deepest Subtask.")
     parent_title: str | None = Field(description="The parent's title, for a breadcrumb.")

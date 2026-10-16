@@ -536,6 +536,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/projects/{project_id}/sections": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Project's Sections
+     * @description List a Project's Sections in order. The Inbox has none.
+     */
+    get: operations["apps_tasks_api_sections_list_sections"];
+    put?: never;
+    /**
+     * Add a Section to a Project
+     * @description Add an expanded Section after another one, or last. The Inbox can't have Sections.
+     */
+    post: operations["apps_tasks_api_sections_create_section"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/people": {
     parameters: {
       query?: never;
@@ -1457,6 +1481,11 @@ export interface components {
        */
       parent_id: number | null;
       /**
+       * Section Id
+       * @description Null for No section, and for a Subtask, which sits in its root's Section.
+       */
+      section_id: number | null;
+      /**
        * Position
        * @description Sorts the Task among its siblings, byte by byte.
        */
@@ -1579,6 +1608,11 @@ export interface components {
        * @description Null for a root Task.
        */
       parent_id: number | null;
+      /**
+       * Section Id
+       * @description Null for No section, and for a Subtask, which sits in its root's Section.
+       */
+      section_id: number | null;
       /**
        * Position
        * @description Sorts the Task among its siblings, byte by byte.
@@ -1840,6 +1874,36 @@ export interface components {
        * @description The top level when left out.
        */
       folder_id?: number | null;
+    };
+    /**
+     * SectionOut
+     * @description A Section's own fields.
+     */
+    SectionOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /** Name */
+      name: string;
+      /** Collapsed */
+      collapsed: boolean;
+    };
+    /**
+     * SectionIn
+     * @description A new Section.
+     */
+    SectionIn: {
+      /**
+       * Name
+       * @description 1 to 64 characters, surrounding spaces trimmed.
+       */
+      name: string;
+      /**
+       * After Id
+       * @description The Section it follows in the Project; last when left out.
+       */
+      after_id?: number | null;
     };
     /**
      * PersonOut
@@ -2413,6 +2477,11 @@ export interface components {
        * @description Null for a root Task.
        */
       parent_id: number | null;
+      /**
+       * Section Id
+       * @description Null for No section, and for a Subtask, which sits in its root's Section.
+       */
+      section_id: number | null;
       /**
        * Position
        * @description Sorts the Task among its siblings, byte by byte.
@@ -4195,6 +4264,81 @@ export interface operations {
       };
       /** @description Not Found */
       404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_sections_list_sections: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SectionOut"][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_sections_create_section: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SectionIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SectionOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
         headers: {
           [name: string]: unknown;
         };

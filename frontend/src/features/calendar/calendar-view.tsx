@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 import { CalendarRange, ChevronLeft, ChevronRight, ListChecks } from "lucide-react";
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import { QuickAddDialog } from "@/features/tasks/global-quick-add";
 import { useOpenTask } from "@/features/tasks/open-task";
 import { wallClock } from "@/features/tasks/schedule";
 import { useSetTaskStatus } from "@/features/tasks/set-status";
@@ -16,6 +17,7 @@ import { CalendarDrag } from "./calendar-drag";
 import { monthWeeks, shiftDays, shiftMonths, weekDays } from "./layout";
 import { MonthGrid } from "./month-grid";
 import { useShowClosed } from "./show-closed";
+import { slotView, type Slot } from "./slot";
 import { TimeGrid } from "./time-grid";
 
 const MODE_NAMES: Record<CalendarMode, string> = { month: "Month", week: "Week", day: "Day" };
@@ -72,7 +74,8 @@ function useWallClock(timeZone: string): Date {
  * The Calendar View: every dated Task, open and Closed, drawn on the days its dates cover. It
  * shows a month, a week or a day at a time, with controls to switch between them and to step
  * forward, back and to today. Clicking a
- * Task opens its detail; ticking it closes it in place.
+ * Task opens its detail; ticking it closes it in place. Clicking an empty day or hour opens Quick
+ * add with its date and time.
  */
 export function CalendarView({
   inbox,
@@ -91,6 +94,7 @@ export function CalendarView({
   const [showClosed, setShowClosed] = useShowClosed();
   const tasks = (data?.items ?? []).filter((task) => showClosed || !isClosed(task.status));
   const { openTaskId, setOpenTask } = useOpenTask();
+  const [adding, setAdding] = useState<Slot | null>(null);
   const { mutate: setStatus } = useSetTaskStatus();
   const toggle = useCallback(
     (task: Task) => {
@@ -183,6 +187,7 @@ export function CalendarView({
             today={today}
             tasks={tasks}
             onDateChange={moveFocus}
+            onAdd={setAdding}
             onOpen={setOpenTask}
             onToggle={toggle}
           />
@@ -195,8 +200,18 @@ export function CalendarView({
           now={now.getHours() * 60 + now.getMinutes()}
           tasks={tasks}
           onDateChange={moveFocus}
+          onAdd={setAdding}
           onOpen={setOpenTask}
           onToggle={toggle}
+        />
+      )}
+
+      {adding && (
+        <QuickAddDialog
+          view={slotView(adding)}
+          onClose={() => {
+            setAdding(null);
+          }}
         />
       )}
 

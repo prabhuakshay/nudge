@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { DraggableTask } from "./calendar-drag";
 import { monthWeeks, shiftDays, tasksOn } from "./layout";
 import { MoreTasks } from "./more-tasks";
+import { addsToSlot, type Slot } from "./slot";
 
 /** The most Tasks a Month cell lists before the rest go behind "+N more". */
 const CELL_TASKS = 3;
@@ -23,13 +24,15 @@ const ARROW_DAYS: Partial<Record<string, number>> = {
 /**
  * The month around `date` as a grid of days, weeks from Monday, each day listing its Tasks. The
  * arrow keys move between days, stepping into the next or previous month past its edge, and Tab
- * goes into the focused day's Tasks. `date` is the focused day; `onDateChange` moves it.
+ * goes into the focused day's Tasks. `date` is the focused day; `onDateChange` moves it. Clicking
+ * a day, or Enter on it, calls `onAdd` to add a Task there.
  */
 export function MonthGrid({
   date,
   today,
   tasks,
   onDateChange,
+  onAdd,
   onOpen,
   onToggle,
 }: {
@@ -37,6 +40,7 @@ export function MonthGrid({
   today: string;
   tasks: readonly Task[];
   onDateChange: (date: string) => void;
+  onAdd: (slot: Slot) => void;
   onOpen: (taskId: number) => void;
   onToggle: (task: Task) => void;
 }) {
@@ -99,6 +103,7 @@ export function MonthGrid({
               focused={day === date}
               tasks={tasksOn(tasks, day)}
               onKeyDown={onKeyDown}
+              onAdd={onAdd}
               onOpen={onOpen}
               onToggle={onToggle}
             />
@@ -116,6 +121,7 @@ function DayCell({
   focused,
   tasks,
   onKeyDown,
+  onAdd,
   onOpen,
   onToggle,
 }: {
@@ -126,6 +132,7 @@ function DayCell({
   focused: boolean;
   tasks: Task[];
   onKeyDown: (event: KeyboardEvent<HTMLElement>, day: string) => void;
+  onAdd: (slot: Slot) => void;
   onOpen: (taskId: number) => void;
   onToggle: (task: Task) => void;
 }) {
@@ -140,7 +147,11 @@ function DayCell({
       aria-label={isToday ? `${label}, today` : label}
       aria-current={isToday ? "date" : undefined}
       onKeyDown={(event) => {
-        onKeyDown(event, day);
+        if (addsToSlot(event)) onAdd({ day, time: null });
+        else onKeyDown(event, day);
+      }}
+      onClick={(event) => {
+        if (addsToSlot(event)) onAdd({ day, time: null });
       }}
       className={cn(
         "flex min-h-24 min-w-0 flex-col gap-1 border-r border-border p-1 outline-none last:border-r-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring sm:min-h-28",

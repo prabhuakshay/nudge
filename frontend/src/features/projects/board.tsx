@@ -65,6 +65,7 @@ export function ProjectBoard({ project }: { project: SidebarProject }) {
               shown.map((column, index) => (
                 <BoardColumn
                   key={column.section?.id ?? "none"}
+                  projectId={project.id}
                   column={column}
                   position={index + 1}
                   count={shown.length}

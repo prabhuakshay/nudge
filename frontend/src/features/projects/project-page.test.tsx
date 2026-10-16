@@ -16,7 +16,7 @@ function renderProject(project: SidebarProject) {
 /** The Board's column labels, left to right. */
 function columnNames() {
   return within(screen.getByRole("group", { name: "Work board" }))
-    .getAllByRole("region")
+    .getAllByRole("region", { name: /, column \d+ of \d+$/ })
     .map((column) => column.getAttribute("aria-label"));
 }
 
@@ -173,6 +173,69 @@ describe("A Project's Board", () => {
       expect(await writes(fetchSpy)).toEqual([["PATCH /api/v1/tasks/5", { status: "completed" }]]);
     });
     expect(router.state.location.search).toEqual({});
+  });
+
+  it("adds a Task with its typed fields at the bottom of a column", async () => {
+    const fetchSpy = mockApi({
+      project: BOARD,
+      open: [makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: DOING.id })],
+    });
+    const { user } = renderProject(BOARD);
+
+    await user.click(await screen.findByRole("button", { name: "Add a task to Doing" }));
+    await user.keyboard("Review copy !1 #urgent{Escape}{Enter}");
+
+    await waitFor(() => {
+      expect(cardsIn("Doing")).toEqual(["Write brief", "Review copy"]);
+    });
+    expect(screen.getByRole("combobox", { name: "Add a task to Doing" })).toHaveFocus();
+    expect(await writes(fetchSpy)).toEqual([
+      [
+        "POST /api/v1/tasks",
+        {
+          title: "Review copy",
+          project_id: WORK.id,
+          section_id: DOING.id,
+          last: true,
+          priority: 1,
+          tags: ["urgent"],
+        },
+      ],
+    ]);
+  });
+
+  it("adds a Task with no Section from the No section column", async () => {
+    const fetchSpy = mockApi({
+      project: BOARD,
+      open: [makeTask({ id: 1, project_id: WORK.id, title: "Loose end" })],
+    });
+    const { user } = renderProject(BOARD);
+
+    await user.click(await screen.findByRole("button", { name: "Add a task to No section" }));
+    await user.keyboard("Tidy desk{Enter}");
+
+    await waitFor(() => {
+      expect(cardsIn("No section")).toEqual(["Loose end", "Tidy desk"]);
+    });
+    expect(await writes(fetchSpy)).toEqual([
+      [
+        "POST /api/v1/tasks",
+        { title: "Tidy desk", project_id: WORK.id, section_id: null, last: true },
+      ],
+    ]);
+  });
+
+  it("offers no add-Task control on an archived Project's Board", async () => {
+    const archived = { ...BOARD, is_archived: true };
+    mockApi({
+      project: archived,
+      open: [makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: DOING.id })],
+    });
+
+    renderProject(archived);
+
+    expect(await screen.findByText("Write brief")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Add a task to/ })).not.toBeInTheDocument();
   });
 
   it("moves a card to another column from its menu with the keyboard", async () => {

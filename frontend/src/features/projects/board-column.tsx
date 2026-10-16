@@ -5,6 +5,8 @@ import type { Section } from "@/features/sections/sections";
 import type { TreeRow } from "@/features/tasks/task-tree";
 import type { Task } from "@/features/tasks/tasks";
 
+import { BoardAddTask } from "./board-add-task";
+import { BoardClosedFold } from "./board-closed";
 import { SortableBoardCard } from "./board-drag";
 import { columnId } from "./board-moves";
 
@@ -13,10 +15,13 @@ export type BoardColumnCards = { section: Section | null; cards: TreeRow[] };
 
 /**
  * A Board column: the Section's name and how many Tasks it holds, then its cards, Pinned ones
- * first as the server lists them. A card dragged onto it lands in it, even when it is empty. Labelled with its place on the Board for screen readers. On
- * phones it fills most of the Board's width and snaps into place as the Board scrolls.
+ * first as the server lists them, then a control to add a Task at the bottom and a collapsed
+ * fold of its Closed Tasks. A card dragged onto it lands in it, even when it is empty. Labelled
+ * with its place on the Board for screen readers. On phones it fills most of the Board's width
+ * and snaps into place as the Board scrolls.
  */
 export function BoardColumn({
+  projectId,
   column: { section, cards },
   position,
   count,
@@ -25,6 +30,7 @@ export function BoardColumn({
   onOpen,
   onToggle,
 }: {
+  projectId: number;
   column: BoardColumnCards;
   /** Where the column sits on the Board, from 1, and how many columns there are. */
   position: number;
@@ -72,6 +78,15 @@ export function BoardColumn({
           </ul>
         )}
       </SortableContext>
+      {!readOnly && <BoardAddTask projectId={projectId} section={section} />}
+      <BoardClosedFold
+        projectId={projectId}
+        section={section}
+        openId={openId}
+        readOnly={readOnly}
+        onOpen={onOpen}
+        onToggle={onToggle}
+      />
     </section>
   );
 }

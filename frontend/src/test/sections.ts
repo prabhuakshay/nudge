@@ -41,21 +41,40 @@ function movedTask(tasks: Task[], movedId: number, body: MoveBody) {
   );
 }
 
+/** The Tasks in the Section a `section` list filter names, or all of them without one. */
+function inSection(tasks: Task[], section: string | null) {
+  if (section === null) return tasks;
+  const sectionId = section === "none" ? null : Number(section);
+  return tasks.filter((task) => task.section_id === sectionId);
+}
+
 /**
- * A stand-in server holding a Project's Sections and open Tasks; it adds, changes, moves and
- * deletes Sections, adds and moves Tasks, and changes the Project.
+ * A stand-in server holding a Project's Sections and open and Closed Tasks; it adds, changes,
+ * moves and deletes Sections, adds, moves and reopens Tasks, and changes the Project.
  */
 export function mockApi({
   sections = [TO_DO, DOING],
   open = [],
+  closed = [],
   project = WORK,
 }: {
   sections?: Section[];
   open?: Task[];
+  closed?: Task[];
   /** The Project the sidebar lists beside the Inbox; PATCHes to it change it. */
   project?: SidebarProject;
 }) {
   let nextId = 100;
+  /** Adds the Task a POST describes, first in the Project or last when it asks; its answer. */
+  const createTask = async (request: Request) => {
+    const { last, ...body } = (await request.clone().json()) as Pick<
+      Task,
+      "title" | "section_id"
+    > & { last?: boolean };
+    const created = makeTask({ id: nextId++, project_id: WORK.id, ...body });
+    open = last ? [...open, created] : [created, ...open];
+    return json(created, 201);
+  };
   /** Changes, moves or deletes the Section a `/sections/{id}` request names; its answer. */
   const changeSection = async (request: Request, path: string) => {
     const id = Number(/\/sections\/(\d+)/.exec(path)?.[1]);
@@ -88,12 +107,7 @@ export function mockApi({
       sections = [...sections, created];
       return json(created, 201);
     }
-    if (url.pathname === "/api/v1/tasks" && request.method === "POST") {
-      const body = (await request.clone().json()) as Pick<Task, "title" | "section_id">;
-      const created = makeTask({ id: nextId++, project_id: WORK.id, ...body });
-      open = [created, ...open];
-      return json(created, 201);
-    }
+    if (url.pathname === "/api/v1/tasks" && request.method === "POST") return createTask(request);
     const moved = /^\/api\/v1\/tasks\/(\d+)\/move$/.exec(url.pathname);
     if (moved) {
       const id = Number(moved[1]);
@@ -104,9 +118,21 @@ export function mockApi({
     if (url.pathname.endsWith("/sections")) return json(sections);
     const sidebarOrProject = await sidebarAndProject(request, url.pathname);
     if (sidebarOrProject) return sidebarOrProject;
-    if (url.searchParams.get("closed") === "true") return json({ items: [], next_cursor: null });
-    return json({ items: open, next_cursor: null });
+    return listOrReopen(request, url);
   });
+  /** Reopens the Closed Task a PATCH names; any other request reads the open or Closed list. */
+  function listOrReopen(request: Request, url: URL) {
+    if (request.method === "PATCH") {
+      const reopened = closed.find((task) => url.pathname.endsWith(`/${String(task.id)}`));
+      closed = closed.filter((task) => task !== reopened);
+      if (reopened) open = [...open, { ...reopened, status: "open" }];
+      return json({ task: { ...reopened, status: "open" }, affected: [] });
+    }
+    if (url.searchParams.get("closed") === "true") {
+      return json({ items: inSection(closed, url.searchParams.get("section")), next_cursor: null });
+    }
+    return json({ items: open, next_cursor: null });
+  }
 }
 
 /** The requests that changed something, as `METHOD /path` and body, null when there is none. */

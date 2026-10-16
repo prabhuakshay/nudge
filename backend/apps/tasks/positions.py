@@ -42,3 +42,11 @@ def first_root_position(project: Project) -> str:
     roots = project.tasks.filter(parent__isnull=True).order_by("position", "id")
     first = roots.values_list("position", flat=True).first()
     return str(generate_key_between(None, first))
+
+
+def last_root_position(project: Project) -> str:
+    """Lock the Project and return a key after all its root Tasks. Call it in a transaction."""
+    lock_project(project.pk)
+    roots = project.tasks.filter(parent__isnull=True).order_by("-position", "-id")
+    last = roots.values_list("position", flat=True).first()
+    return str(generate_key_between(last, None))

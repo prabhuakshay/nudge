@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date, datetime, time
-from typing import Annotated, Self
+from typing import Annotated, Literal, Self
 
 from ninja import Field, Schema
 from pydantic import StringConstraints, field_validator, model_validator
@@ -90,6 +90,10 @@ class TaskListQuery(Schema):
     person: int | None = None
     tag: int | None = None
     view: View | None = Field(default=None, description="Today, Upcoming or All, picked by date.")
+    section: int | Literal["none"] | None = Field(
+        default=None,
+        description="Only the Project's Tasks in this Section, or `none` for No section.",
+    )
     closed: bool = Field(default=False, description="List Closed Tasks, a page at a time.")
     cursor: str | None = Field(default=None, description="From the previous page of Closed ones.")
 
@@ -98,6 +102,9 @@ class TaskListQuery(Schema):
         sources = (self.project, self.person, self.tag, self.view)
         if sum(source is not None for source in sources) > 1:
             message = "Give only one of project, person, tag or view."
+            raise ValueError(message)
+        if self.section is not None and self.project is None:
+            message = "Give section only with project."
             raise ValueError(message)
         return self
 
@@ -188,6 +195,11 @@ class TaskIn(Schema):
     repeat_from: Task.RepeatFrom | None = Field(
         default=None,
         description="What a repeating Task's next date counts from; the calendar when left out.",
+    )
+    last: bool | None = Field(
+        default=None,
+        description="Adds the Task last among its Project's top-level Tasks instead of first, as "
+        "a Board column adds at its bottom. Ignored for a Subtask, which is always added last.",
     )
 
 

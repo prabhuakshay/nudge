@@ -64,9 +64,15 @@ export function openTasksQuery(projectId: number) {
   });
 }
 
-/** Where a list's Tasks come from: a Project, Tag or Person, or a view that picks them by date. */
+/**
+ * Where a list's Tasks come from: a Project, optionally one of its Sections or No section ("none"),
+ * a Tag or Person, or a view that picks them by date.
+ */
 export type ListSource =
-  { project: number } | { tag: number } | { person: number } | { view: ScheduleView };
+  | { project: number; section?: number | "none" }
+  | { tag: number }
+  | { person: number }
+  | { view: ScheduleView };
 
 /**
  * A view's open Tasks as flat rows, in the order the view lists them: Today has Overdue first,
@@ -88,6 +94,11 @@ export function viewTasksQuery(view: ScheduleView) {
 /** A Project's Closed Tasks with their Subtasks, most recently completed first, a page at a time. */
 export function closedTasksQuery(projectId: number) {
   return closedPagesQuery({ project: projectId });
+}
+
+/** The Closed Tasks of one of a Project's Sections, or of No section for null, as above. */
+export function sectionClosedQuery(projectId: number, sectionId: number | null) {
+  return closedPagesQuery({ project: projectId, section: sectionId ?? "none" });
 }
 
 /** The Tasks in Today that were closed today, most recently closed first, a page at a time. */
@@ -350,11 +361,11 @@ export function useCreateTask() {
       }
       return data;
     },
-    onSuccess: (task) => {
-      queryClient.setQueryData(
-        openTasksQuery(task.project_id).queryKey,
-        (tasks) => tasks && [task, ...tasks],
-      );
+    onSuccess: (task, { last }) => {
+      queryClient.setQueryData(openTasksQuery(task.project_id).queryKey, (tasks) => {
+        if (!tasks) return tasks;
+        return last ? [...tasks, task] : [task, ...tasks];
+      });
     },
     onError: (error) => toast.error(error.message),
     onSettled: () =>

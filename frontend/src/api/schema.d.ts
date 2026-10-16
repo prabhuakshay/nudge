@@ -819,7 +819,8 @@ export interface paths {
      *     Tag's the Tasks it's on, flat, in each Project's manual order. Today, Upcoming and All list
      *     flat rows by date, with Overdue first and, in All, undated Tasks last; Today's Closed Tasks
      *     are those closed today, and Upcoming and All have none. Closed Tasks come most recently
-     *     completed first, in pages; open Tasks come all at once.
+     *     completed first, in pages; open Tasks come all at once. A Project's list can be narrowed to
+     *     one of its Sections, or to No section, as a Board column shows it.
      */
     get: operations["apps_tasks_api_tasks_list_tasks"];
     put?: never;
@@ -827,9 +828,10 @@ export interface paths {
      * Add a Task
      * @description Add a Task first in its Project, or in the Inbox when no Project is given.
      *
-     *     With `parent_id` it is added last under that Task instead, which reopens the parent and its
-     *     ancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are
-     *     created with the Task. A dated top-level Task can repeat from the start.
+     *     With `last` it goes last among the Project's top-level Tasks instead. With `parent_id` it is
+     *     added last under that Task, which reopens the parent and its ancestors if they are Closed.
+     *     Tags named in `tags` that the user doesn't have yet are created with the Task. A dated
+     *     top-level Task can repeat from the start.
      */
     post: operations["apps_tasks_api_tasks_create_task"];
     delete?: never;
@@ -2387,6 +2389,11 @@ export interface components {
       /** @description Today, Upcoming or All, picked by date. */
       view?: components["schemas"]["View"] | null;
       /**
+       * Section
+       * @description Only the Project's Tasks in this Section, or `none` for No section.
+       */
+      section?: number | "none" | null;
+      /**
        * Closed
        * @description List Closed Tasks, a page at a time.
        * @default false
@@ -2460,6 +2467,11 @@ export interface components {
       repeat_rule?: string | null;
       /** @description What a repeating Task's next date counts from; the calendar when left out. */
       repeat_from?: components["schemas"]["RepeatFrom"] | null;
+      /**
+       * Last
+       * @description Adds the Task last among its Project's top-level Tasks instead of first, as a Board column adds at its bottom. Ignored for a Subtask, which is always added last.
+       */
+      last?: boolean | null;
     };
     /**
      * TaskPatchIn
@@ -4998,6 +5010,8 @@ export interface operations {
         tag?: number | null;
         /** @description Today, Upcoming or All, picked by date. */
         view?: components["schemas"]["View"] | null;
+        /** @description Only the Project's Tasks in this Section, or `none` for No section. */
+        section?: number | "none" | null;
         /** @description List Closed Tasks, a page at a time. */
         closed?: boolean;
         /** @description From the previous page of Closed ones. */

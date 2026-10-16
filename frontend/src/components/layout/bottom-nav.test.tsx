@@ -29,7 +29,7 @@ describe("Phone navigation", () => {
     ]);
   });
 
-  it("keeps Upcoming and Calendar in the phone menu", async () => {
+  it("keeps Upcoming, Calendar and the Matrix in the phone menu", async () => {
     vi.spyOn(globalThis, "fetch").mockImplementation(() =>
       Promise.resolve(
         json({
@@ -56,6 +56,6 @@ describe("Phone navigation", () => {
       "navigation",
       { name: "Views" },
     );
-    expect(hrefs(views)).toEqual(["/inbox", "/", "/upcoming", "/calendar", "/all"]);
+    expect(hrefs(views)).toEqual(["/inbox", "/", "/upcoming", "/calendar", "/matrix", "/all"]);
   });
 });

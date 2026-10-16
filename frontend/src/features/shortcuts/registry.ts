@@ -34,6 +34,7 @@ export const SHORTCUTS = {
   goToInbox: { keys: ["g i"], scope: "global", label: "Go to Inbox" },
   goToToday: { keys: ["g t"], scope: "global", label: "Go to Today" },
   goToUpcoming: { keys: ["g u"], scope: "global", label: "Go to Upcoming" },
+  goToMatrix: { keys: ["g m"], scope: "global", label: "Go to Matrix" },
   goToAll: { keys: ["g a"], scope: "global", label: "Go to All" },
   goToSearch: { keys: ["g s"], scope: "global", label: "Go to Search" },
   goToTrash: { keys: ["g x"], scope: "global", label: "Go to Trash" },

@@ -4,11 +4,12 @@ import {
   CalendarRange,
   Inbox,
   Layers,
+  LayoutGrid,
   type LucideIcon,
 } from "lucide-react";
 
 export type NavItem = {
-  to: "/" | "/inbox" | "/upcoming" | "/calendar" | "/all";
+  to: "/" | "/inbox" | "/upcoming" | "/calendar" | "/matrix" | "/all";
   label: string;
   icon: LucideIcon;
 };
@@ -26,5 +27,6 @@ export const NAV_ITEMS: readonly NavItem[] = [
   TODAY,
   { to: "/upcoming", label: "Upcoming", icon: CalendarDays },
   CALENDAR,
+  { to: "/matrix", label: "Matrix", icon: LayoutGrid },
   { to: "/all", label: "All", icon: Layers },
 ];

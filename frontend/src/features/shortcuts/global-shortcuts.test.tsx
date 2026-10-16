@@ -63,6 +63,7 @@ function renderApp(onAddTask: (draft: string) => void = vi.fn()) {
       page("/", "Today"),
       page("/inbox", "Inbox"),
       page("/upcoming", "Upcoming"),
+      page("/matrix", "Matrix"),
       page("/all", "All"),
       page("/search", "Search"),
       page("/trash", "Trash"),
@@ -83,6 +84,7 @@ describe("GlobalShortcuts", () => {
   it.each([
     ["gi", "Inbox"],
     ["gu", "Upcoming"],
+    ["gm", "Matrix"],
     ["ga", "All"],
     ["gs", "Search"],
     ["gx", "Trash"],
@@ -134,6 +136,17 @@ describe("GlobalShortcuts", () => {
     await vi.waitFor(() => {
       expect(onAddTask).toHaveBeenCalledWith("Buy bread");
     });
+  });
+
+  it("goes to the Matrix from the command bar", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.reject(new Error("offline")));
+    const user = renderApp();
+    await screen.findByRole("heading", { name: "Today" });
+
+    await user.keyboard("{Control>}k{/Control}");
+    await user.click(screen.getByRole("option", { name: /Go to Matrix/ }));
+
+    expect(await screen.findByRole("heading", { name: "Matrix" })).toBeInTheDocument();
   });
 
   it("undoes the latest change still offering Undo with Mod+Z", async () => {

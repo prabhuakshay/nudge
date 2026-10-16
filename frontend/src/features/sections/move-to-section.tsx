@@ -24,9 +24,9 @@ type Choice = { id: number | null; name: string };
 
 /**
  * Where a root Task can move within its Project: No section, then each Section, leaving out the
- * one it is in. Empty for a
- * Subtask, which follows its root, and in the Inbox, which has no Sections. Menus mount this only
- * once they open, so a list doesn't ask for Sections it never shows.
+ * one it is in. Empty for a Subtask, which follows its root, and in the Inbox, which has no
+ * Sections. Menus mount this only once they open, so a list doesn't ask for Sections it never
+ * shows.
  */
 function useSectionChoices(task: Task) {
   const { data: inboxId } = useQuery({ ...sidebarQuery, select: (sidebar) => sidebar.inbox.id });

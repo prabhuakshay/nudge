@@ -101,3 +101,19 @@ def test_a_subtask_with_another_users_section_is_not_found(
     assert response.status_code == 404
     assert response.json() == {"detail": "Section not found."}
     assert _sections_by_title(client, work.pk) == {"Paint": None}
+
+
+@pytest.mark.django_db
+def test_a_task_added_last_goes_after_the_projects_other_tasks(client: Client, ada: User) -> None:
+    work = projects.create_project(ada, "Work")
+    to_do = sections.create_section(work, "To do")
+    for title in ("Paint", "Sand"):
+        _create(client, {"title": title, "project_id": work.pk, "section_id": to_do.pk})
+
+    response = _create(
+        client,
+        {"title": "Varnish", "project_id": work.pk, "section_id": to_do.pk, "last": True},
+    )
+
+    assert response.status_code == 201
+    assert list(_sections_by_title(client, work.pk)) == ["Sand", "Paint", "Varnish"]

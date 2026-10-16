@@ -23,7 +23,8 @@ import { sectionsQuery } from "./sections";
 type Choice = { id: number | null; name: string };
 
 /**
- * Where a root Task can move within its Project: No section, then each Section. Empty for a
+ * Where a root Task can move within its Project: No section, then each Section, leaving out the
+ * one it is in. Empty for a
  * Subtask, which follows its root, and in the Inbox, which has no Sections. Menus mount this only
  * once they open, so a list doesn't ask for Sections it never shows.
  */
@@ -36,7 +37,9 @@ function useSectionChoices(task: Task) {
   });
   const { mutate: move } = useMoveTask();
   const choices: Choice[] =
-    canMove && sections.length > 0 ? [{ id: null, name: "No section" }, ...sections] : [];
+    canMove && sections.length > 0
+      ? [{ id: null, name: "No section" }, ...sections].filter(({ id }) => id !== task.section_id)
+      : [];
   return {
     choices,
     moveTo: (sectionId: number | null) => {
@@ -78,7 +81,6 @@ export function MoveToSectionSub({ task, menu }: { task: Task; menu: keyof typeo
         {choices.map(({ id, name }) => (
           <Item
             key={id ?? "none"}
-            disabled={task.section_id === id}
             onSelect={() => {
               moveTo(id);
             }}

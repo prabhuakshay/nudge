@@ -68,7 +68,7 @@ describe("Move to section", () => {
 
     await user.pointer({ keys: "[MouseRight]", target: row("Tile the wall") });
     (await screen.findByRole("menuitem", { name: "Move to section" })).focus();
-    // Kitchen, the Section it is in, is skipped: No section, then Bathroom.
+    // Kitchen, the Section it is in, isn't offered: No section, then Bathroom.
     await user.keyboard("{ArrowRight}{ArrowDown}{Enter}");
 
     await waitFor(() => {
@@ -87,10 +87,8 @@ describe("Move to section", () => {
     await user.click(await within(drawer).findByRole("button", { name: "More actions" }));
     (await screen.findByRole("menuitem", { name: "Move to section" })).focus();
     await user.keyboard("{ArrowRight}");
-    expect(await screen.findByRole("menuitem", { name: "Kitchen" })).toHaveAttribute(
-      "aria-disabled",
-      "true",
-    );
+    expect(await screen.findByRole("menuitem", { name: "No section" })).toBeInTheDocument();
+    expect(screen.queryByRole("menuitem", { name: "Kitchen" })).not.toBeInTheDocument();
     await user.keyboard("{Enter}");
 
     await waitFor(async () => {

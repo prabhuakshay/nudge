@@ -3,6 +3,7 @@ import type { TreeRow } from "@/features/tasks/task-tree";
 import type { Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
+import { BoardAddTask } from "./board-add-task";
 import { BoardCard } from "./board-card";
 import { BoardColumnHeader } from "./board-column-header";
 
@@ -14,11 +15,13 @@ const COLUMN =
 
 /**
  * A Board column: its header with the Section's name and how many Tasks it holds, then its cards,
- * Pinned ones first as the server lists them. Labelled with its place on the Board for screen
- * readers. On phones it fills most of the Board's width and snaps into place as the Board scrolls.
- * A collapsed Section's column is a narrow strip with only its header.
+ * Pinned ones first as the server lists them, and a control to add a Task at the bottom. Labelled
+ * with its place on the Board for screen readers. On phones it fills most of the Board's width and
+ * snaps into place as the Board scrolls. A collapsed Section's column is a narrow strip with only
+ * its header.
  */
 export function BoardColumn({
+  projectId,
   column: { section, cards },
   position,
   count,
@@ -27,6 +30,7 @@ export function BoardColumn({
   onOpen,
   onToggle,
 }: {
+  projectId: number;
   column: BoardColumnCards;
   /** Where the column sits on the Board, from 1, and how many columns there are. */
   position: number;
@@ -67,6 +71,7 @@ export function BoardColumn({
           ))}
         </ul>
       )}
+      {!readOnly && <BoardAddTask projectId={projectId} section={section} />}
     </section>
   );
 }

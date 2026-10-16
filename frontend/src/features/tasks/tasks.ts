@@ -350,11 +350,11 @@ export function useCreateTask() {
       }
       return data;
     },
-    onSuccess: (task) => {
-      queryClient.setQueryData(
-        openTasksQuery(task.project_id).queryKey,
-        (tasks) => tasks && [task, ...tasks],
-      );
+    onSuccess: (task, { last }) => {
+      queryClient.setQueryData(openTasksQuery(task.project_id).queryKey, (tasks) => {
+        if (!tasks) return tasks;
+        return last ? [...tasks, task] : [task, ...tasks];
+      });
     },
     onError: (error) => toast.error(error.message),
     onSettled: () =>

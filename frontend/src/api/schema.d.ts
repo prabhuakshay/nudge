@@ -827,9 +827,10 @@ export interface paths {
      * Add a Task
      * @description Add a Task first in its Project, or in the Inbox when no Project is given.
      *
-     *     With `parent_id` it is added last under that Task instead, which reopens the parent and its
-     *     ancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are
-     *     created with the Task. A dated top-level Task can repeat from the start.
+     *     With `last` it goes last among the Project's top-level Tasks instead. With `parent_id` it is
+     *     added last under that Task, which reopens the parent and its ancestors if they are Closed.
+     *     Tags named in `tags` that the user doesn't have yet are created with the Task. A dated
+     *     top-level Task can repeat from the start.
      */
     post: operations["apps_tasks_api_tasks_create_task"];
     delete?: never;
@@ -2460,6 +2461,11 @@ export interface components {
       repeat_rule?: string | null;
       /** @description What a repeating Task's next date counts from; the calendar when left out. */
       repeat_from?: components["schemas"]["RepeatFrom"] | null;
+      /**
+       * Last
+       * @description Adds the Task last among its Project's top-level Tasks instead of first, as a Board column adds at its bottom. Ignored for a Subtask, which is always added last.
+       */
+      last?: boolean | null;
     };
     /**
      * TaskPatchIn

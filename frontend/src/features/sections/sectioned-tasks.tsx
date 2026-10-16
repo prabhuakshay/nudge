@@ -133,6 +133,7 @@ function SectionTasks({
     >
       {adding && (
         <AddSectionTask
+          projectId={section.project_id}
           section={section}
           onClose={() => {
             setAdding(false);

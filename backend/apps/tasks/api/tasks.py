@@ -44,7 +44,7 @@ if TYPE_CHECKING:
     from django.http import HttpRequest
 
     from apps.accounts.models import User
-    from apps.tasks.models import Tag
+    from apps.tasks.models import Section, Tag
 
 router = Router()
 
@@ -154,14 +154,18 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut] | Status[
     picked = tags.owned_tags(user, task.tag_ids)
     if picked is None:
         return Status(HTTPStatus.NOT_FOUND, TAG_NOT_FOUND)
+    section = None if task.section_id is None else sections.section(user, task.section_id)
+    if task.section_id is not None and section is None:
+        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
     if task.parent_id is not None:
         return _create_subtask(user, task.parent_id, task, [*picked, *task.tags])
-    return _create_root(user, task, [*picked, *task.tags])
+    return _create_root(user, task, section, [*picked, *task.tags])
 
 
 def _create_root(
     user: User,
     task: TaskIn,
+    section: Section | None,
     with_tags: list[Tag | str],
 ) -> Status[TaskOut] | Status[ErrorOut]:
     project = (
@@ -171,9 +175,6 @@ def _create_root(
     )
     if project is None:
         return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
-    section = None if task.section_id is None else sections.section(user, task.section_id)
-    if task.section_id is not None and section is None:
-        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
     new = replace(_new_task(task, with_tags), section=section)
     created = creation.create_task(project, task.title, new)
     return Status(HTTPStatus.CREATED, TaskOut.from_orm(created))

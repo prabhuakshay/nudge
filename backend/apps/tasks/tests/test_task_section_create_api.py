@@ -86,3 +86,18 @@ def test_a_subtask_ignores_the_section_and_follows_its_root(client: Client, ada:
 
     assert response.status_code == 201
     assert response.json()["section_id"] is None
+
+
+@pytest.mark.django_db
+def test_a_subtask_with_another_users_section_is_not_found(
+    client: Client, ada: User, grace: User
+) -> None:
+    work = projects.create_project(ada, "Work")
+    root = _create(client, {"title": "Paint", "project_id": work.pk}).json()["id"]
+    theirs = sections.create_section(projects.create_project(grace, "Work"), "To do")
+
+    response = _create(client, {"title": "Buy brushes", "parent_id": root, "section_id": theirs.pk})
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Section not found."}
+    assert _sections_by_title(client, work.pk) == {"Paint": None}

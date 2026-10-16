@@ -1,3 +1,4 @@
+import type { DraggableSyntheticListeners } from "@dnd-kit/core";
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 
@@ -9,6 +10,16 @@ import { TaskCheckbox } from "@/features/tasks/task-checkbox";
 import { isClosed, STATUS } from "@/features/tasks/task-properties";
 import { sidebarQuery, type Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
+
+/** A chip's drag handle: the node dnd-kit measures, the presses that start a drag and its state. */
+export type ChipDrag = {
+  setNode: (node: HTMLElement | null) => void;
+  listeners: DraggableSyntheticListeners;
+  dragging: boolean;
+};
+
+/** A chip that can't be dragged. */
+const STILL: ChipDrag = { setNode: () => undefined, listeners: undefined, dragging: false };
 
 function when(date: string, time: string | null) {
   const day = format(parseISO(date), "EEEE d MMMM");
@@ -41,12 +52,15 @@ function taskLabel(task: Task, projectName: string | undefined) {
 export function CalendarTask({
   task,
   tabbable,
+  drag: { setNode, listeners, dragging } = STILL,
   onOpen,
   onToggle,
 }: {
   task: Task;
   /** Whether Tab reaches it; only the focused day's Tasks are in the Tab order. */
   tabbable: boolean;
+  /** What lets the chip be dragged, from `DraggableTask`; without it the chip stays put. */
+  drag?: ChipDrag;
   onOpen: (taskId: number) => void;
   onToggle: (task: Task) => void;
 }) {
@@ -57,10 +71,13 @@ export function CalendarTask({
 
   return (
     <li
+      ref={setNode}
+      {...listeners}
       className={cn(
         "flex min-w-0 items-center gap-1 rounded-md py-0.5 pr-1 pl-0.5 text-xs",
         project ? HUE[project.color].soft : "bg-surface-muted",
         closed && "opacity-60",
+        dragging && "opacity-40",
       )}
     >
       <span

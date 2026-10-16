@@ -12,6 +12,7 @@ import { isClosed } from "@/features/tasks/task-properties";
 import type { SidebarProject, Task } from "@/features/tasks/tasks";
 
 import { calendarQuery, useCalendarPlace } from "./calendar";
+import { CalendarDrag } from "./calendar-drag";
 import { monthWeeks, shiftMonths } from "./layout";
 import { MonthGrid } from "./month-grid";
 
@@ -90,16 +91,18 @@ export function CalendarView({
         </div>
       </header>
 
-      <MonthGrid
-        date={date}
-        today={today}
-        tasks={tasks}
-        onDateChange={(day) => {
-          go(day, { replace: true });
-        }}
-        onOpen={setOpenTask}
-        onToggle={toggle}
-      />
+      <CalendarDrag tasks={tasks}>
+        <MonthGrid
+          date={date}
+          today={today}
+          tasks={tasks}
+          onDateChange={(day) => {
+            go(day, { replace: true });
+          }}
+          onOpen={setOpenTask}
+          onToggle={toggle}
+        />
+      </CalendarDrag>
 
       <TaskDetail
         taskId={openTaskId}

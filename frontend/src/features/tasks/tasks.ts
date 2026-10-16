@@ -233,12 +233,12 @@ export type TaskPatch = { id: number; pinned?: boolean } & Partial<
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
 export async function patchTask({ id, tags, ...change }: TaskPatch) {
-  const { data } = await api.PATCH("/api/v1/tasks/{task_id}", {
+  const { data, error } = await api.PATCH("/api/v1/tasks/{task_id}", {
     params: { path: { task_id: id } },
     body: { ...change, ...(tags && { tag_ids: tags.map((tag) => tag.id) }) },
   });
   if (!data) {
-    throw new Error("Could not save the task.");
+    throw new Error(error.detail);
   }
   return data;
 }

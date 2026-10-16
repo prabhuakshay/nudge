@@ -1,10 +1,11 @@
+import { useDroppable } from "@dnd-kit/core";
 import { format, parseISO } from "date-fns";
 import { useEffect, useRef, type KeyboardEvent } from "react";
 
 import type { Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
-import { CalendarTask } from "./calendar-task";
+import { DraggableTask } from "./calendar-drag";
 import { monthWeeks, shiftDays, tasksOn } from "./layout";
 
 /** How far each arrow key moves the focused day. */
@@ -125,8 +126,10 @@ function DayCell({
   onToggle: (task: Task) => void;
 }) {
   const label = format(parseISO(day), "EEEE d MMMM yyyy");
+  const { setNodeRef, isOver } = useDroppable({ id: day });
   return (
     <div
+      ref={setNodeRef}
       role="gridcell"
       data-day={day}
       tabIndex={focused ? 0 : -1}
@@ -138,6 +141,7 @@ function DayCell({
       className={cn(
         "flex min-h-24 min-w-0 flex-col gap-1 border-r border-border p-1 outline-none last:border-r-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring sm:min-h-28",
         !inMonth && "bg-surface-muted/50",
+        isOver && "bg-primary-soft",
       )}
     >
       <span
@@ -153,9 +157,10 @@ function DayCell({
       {tasks.length > 0 && (
         <ul className="flex min-w-0 flex-col gap-0.5">
           {tasks.map((task) => (
-            <CalendarTask
+            <DraggableTask
               key={task.id}
               task={task}
+              day={day}
               tabbable={focused}
               onOpen={onOpen}
               onToggle={onToggle}

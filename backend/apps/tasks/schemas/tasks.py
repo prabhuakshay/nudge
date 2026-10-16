@@ -162,6 +162,11 @@ class TaskIn(Schema):
         default=None,
         description="Makes the Task the last Subtask of this one; reopens it if it's Closed.",
     )
+    section_id: int | None = Field(
+        default=None,
+        description="Puts the Task in this Section of its Project. Ignored for a Subtask, which "
+        "follows its root's.",
+    )
     dates: TaskDatesIn | None = Field(
         default=None,
         description="Dates the Task from the start, such as today in Today.",

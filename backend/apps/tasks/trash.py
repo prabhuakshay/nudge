@@ -114,7 +114,8 @@ def restore_task(user: User, task_id: int) -> Restored | None:
 
     The unit goes back under its parent if the parent is live and the unit still fits below it,
     else it becomes the last root of its Project; a unit whose Project is in Trash goes to the
-    Inbox, in No section. An archived Project takes it back as it is.
+    Inbox. An archived Project takes it back as it is. A root stays in its Section unless the
+    Section was deleted or the root changed Project; then it comes back in No section.
     """
     task = (
         user.tasks.filter(pk=task_id, trash_unit__isnull=False)

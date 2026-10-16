@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import timedelta
 from functools import partial
 from http import HTTPStatus
@@ -11,17 +12,7 @@ from ninja import Query, Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
-from apps.tasks import (
-    creation,
-    moves,
-    people,
-    schedule,
-    sections,
-    services,
-    tags,
-    trash,
-    tree,
-)
+from apps.tasks import creation, moves, people, schedule, sections, services, tags, trash, tree
 from apps.tasks.api.errors import (
     PERSON_NOT_FOUND,
     PROJECT_NOT_FOUND,
@@ -180,7 +171,11 @@ def _create_root(
     )
     if project is None:
         return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
-    created = creation.create_task(project, task.title, _new_task(task, with_tags))
+    section = None if task.section_id is None else sections.section(user, task.section_id)
+    if task.section_id is not None and section is None:
+        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    new = replace(_new_task(task, with_tags), section=section)
+    created = creation.create_task(project, task.title, new)
     return Status(HTTPStatus.CREATED, TaskOut.from_orm(created))
 
 

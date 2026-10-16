@@ -1,4 +1,4 @@
-"""Section endpoints: list and add a Project's Sections.
+"""Section endpoints: list and add a Project's Sections, reorder and delete them.
 
 Mounted at the API root because a Project's Sections live under `/projects/{id}/sections` while
 a single Section lives under `/sections/{id}`.
@@ -15,7 +15,7 @@ from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import sections, services
 from apps.tasks.api.errors import PROJECT_NOT_FOUND, SECTION_NOT_FOUND
-from apps.tasks.schemas.sections import SectionIn, SectionOut
+from apps.tasks.schemas.sections import SectionIn, SectionMoveIn, SectionOut
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -63,3 +63,41 @@ def create_section(
             return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
     created = sections.create_section(project, section.name, after)
     return Status(HTTPStatus.CREATED, SectionOut.from_orm(created))
+
+
+@router.post(
+    "/sections/{int:section_id}/move",
+    response={
+        HTTPStatus.NO_CONTENT: None,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
+    summary="Move a Section in its Project",
+)
+def move_section(
+    request: HttpRequest, section_id: int, move: SectionMoveIn
+) -> Status[None] | Status[ErrorOut]:
+    """Put a Section right after another one in the same Project, or first."""
+    user = signed_in_user(request)
+    moved = sections.section(user, section_id)
+    if moved is None:
+        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    after = None
+    if move.after_id is not None:
+        after = sections.section(user, move.after_id)
+        if after is None:
+            return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    sections.move_section(moved, after)
+    return Status(HTTPStatus.NO_CONTENT, None)
+
+
+@router.delete(
+    "/sections/{int:section_id}",
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
+    summary="Delete a Section",
+)
+def delete_section(request: HttpRequest, section_id: int) -> Status[None] | Status[ErrorOut]:
+    """Delete a Section for good. Its Tasks stay in the Project, in No section."""
+    if not sections.delete_section(signed_in_user(request), section_id):
+        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    return Status(HTTPStatus.NO_CONTENT, None)

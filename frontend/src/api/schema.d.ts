@@ -560,6 +560,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/sections/{section_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Section in its Project
+     * @description Put a Section right after another one in the same Project, or first.
+     */
+    post: operations["apps_tasks_api_sections_move_section"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/sections/{section_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Section
+     * @description Delete a Section for good. Its Tasks stay in the Project, in No section.
+     */
+    delete: operations["apps_tasks_api_sections_delete_section"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/people": {
     parameters: {
       query?: never;
@@ -1906,6 +1946,17 @@ export interface components {
       after_id?: number | null;
     };
     /**
+     * SectionMoveIn
+     * @description Where a Section goes among its Project's Sections.
+     */
+    SectionMoveIn: {
+      /**
+       * After Id
+       * @description The Section it now follows in the same Project; first when left out.
+       */
+      after_id?: number | null;
+    };
+    /**
      * PersonOut
      * @description A Person in the user's address book.
      */
@@ -2349,6 +2400,11 @@ export interface components {
        * @description Makes the Task the last Subtask of this one; reopens it if it's Closed.
        */
       parent_id?: number | null;
+      /**
+       * Section Id
+       * @description Puts the Task in this Section of its Project. Ignored for a Subtask, which follows its root's.
+       */
+      section_id?: number | null;
       /** @description Dates the Task from the start, such as today in Today. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
       /** @description 1 (P1) is the most urgent; left out, the Task has no Priority. */
@@ -4354,6 +4410,77 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_sections_move_section: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        section_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SectionMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_sections_delete_section: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        section_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

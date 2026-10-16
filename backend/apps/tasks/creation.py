@@ -16,10 +16,11 @@ from apps.tasks import repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import check_mentions, sync_mentions
-from apps.tasks.models import MAX_DEPTH, Section, Tag, Task, TaskActivity
+from apps.tasks.models import MAX_DEPTH, Tag, Task, TaskActivity
 from apps.tasks.positions import first_root_position, lock_project
 from apps.tasks.repeat import SUBTASK_REPEAT, Repeat, RepeatRuleError
 from apps.tasks.rows import as_rows, with_overdue
+from apps.tasks.sections import NOT_IN_THIS_PROJECT, SectionRuleError
 from apps.tasks.services import TaskChange, TaskRuleError, live_task
 from apps.tasks.tags import tags_named
 from apps.tasks.tree import reopen_ancestors
@@ -28,7 +29,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Sequence
 
     from apps.accounts.models import User
-    from apps.tasks.models import Project
+    from apps.tasks.models import Project, Section
 
 
 @dataclass(frozen=True)
@@ -36,7 +37,7 @@ class NewTask:
     """What a new Task starts with besides its title; all of it is optional.
 
     `tags` holds Tags, or names of the owner's Tags, which are created if they're new. Only a
-    root Task can repeat or be in a Section.
+    root Task can repeat or sit in a Section.
     """
 
     description: str = ""
@@ -54,9 +55,12 @@ def create_task(project: Project, title: str, new: NewTask | None = None) -> Tas
         ArchivedProjectError: The Project is archived.
         MentionError: The title mentions a Person the owner doesn't have.
         RepeatRuleError: The Repeat's rule is unreadable, or the Task has no due date.
+        SectionRuleError: The Section is in another Project.
     """
     new = new or NewTask()
     ensure_writable(project)
+    if new.section is not None and new.section.project_id != project.pk:
+        raise SectionRuleError(NOT_IN_THIS_PROJECT)
     check_mentions(project.owner, title)
     with transaction.atomic():
         task = _insert(project, title, new, position=first_root_position(project))

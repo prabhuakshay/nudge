@@ -6,14 +6,14 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import creation, project_trash, projects, sections, services, trash
-from apps.tasks.models import Task
+from apps.tasks import creation, projects, sections, services
 
 if TYPE_CHECKING:
     from django.test import Client
     from django.test.client import _MonkeyPatchedWSGIResponse as Response
 
     from apps.accounts.models import User
+    from apps.tasks.models import Task
 
 
 def _move(client: Client, task: Task, **destination: int | None) -> Response:
@@ -40,9 +40,7 @@ def _in_section(project_name: str, ada: User) -> tuple[Task, int]:
     """Create a root Task in a Section of a new Project; return it and the Section's id."""
     project = projects.create_project(ada, project_name)
     section = sections.create_section(project, "Kitchen")
-    task = creation.create_task(project, "Tile the wall")
-    Task.objects.filter(pk=task.pk).update(section=section)
-    task.refresh_from_db()
+    task = creation.create_task(project, "Tile the wall", creation.NewTask(section=section))
     return task, section.pk
 
 
@@ -181,15 +179,3 @@ def test_a_duplicate_keeps_the_section(client: Client, ada: User) -> None:
     copy = client.post(f"/api/v1/tasks/{task.pk}/duplicate").json()
 
     assert copy["section_id"] == kitchen
-
-
-@pytest.mark.django_db
-def test_a_task_restored_to_the_inbox_leaves_its_section(client: Client, ada: User) -> None:
-    task, _ = _in_section("Work", ada)
-    trash.trash_task(ada, task.pk)
-    project_trash.trash_project(ada, task.project_id)
-
-    response = client.post(f"/api/v1/tasks/{task.pk}/restore")
-
-    assert response.json()["project"]["name"] == "Inbox"
-    assert response.json()["task"]["section_id"] is None

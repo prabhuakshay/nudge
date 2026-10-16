@@ -183,3 +183,18 @@ def test_a_repeating_task_shows_once_in_upcoming(client: Client, task: Task) -> 
     assert [(item["title"], item["due_date"]) for item in items] == [
         ("Water the plants", "2026-10-16"),
     ]
+
+
+@pytest.mark.django_db
+def test_moving_a_repeating_task_to_another_time_keeps_its_repeat(
+    client: Client,
+    task: Task,
+) -> None:
+    _patch(client, task.pk, dates={**TODAY, "due_time": "09:00"}, repeat_rule="FREQ=WEEKLY")
+
+    # A Week or Day drag sends only the dates, so only the current Occurrence moves.
+    response = _patch(client, task.pk, dates={"due_date": "2026-10-16", "due_time": "14:15"})
+
+    body = response.json()["task"]
+    assert (body["due_date"], body["due_time"]) == ("2026-10-16", "14:15:00")
+    assert body["repeat_rule"] == "FREQ=WEEKLY"

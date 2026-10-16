@@ -45,44 +45,38 @@ function useSectionChoices(task: Task) {
   };
 }
 
-/** The Task's "Move to section" submenu in its ⋯ menu; nothing when it can't move. */
-export function MoveToSectionDropdownSub({ task }: { task: Task }) {
-  const { choices, moveTo } = useSectionChoices(task);
-  if (choices.length === 0) return null;
-  return (
-    <DropdownMenuSub>
-      <DropdownMenuSubTrigger>
-        <Rows3 aria-hidden /> Move to section
-      </DropdownMenuSubTrigger>
-      <DropdownMenuSubContent>
-        {choices.map(({ id, name }) => (
-          <DropdownMenuItem
-            key={id ?? "none"}
-            disabled={task.section_id === id}
-            onSelect={() => {
-              moveTo(id);
-            }}
-          >
-            {name}
-          </DropdownMenuItem>
-        ))}
-      </DropdownMenuSubContent>
-    </DropdownMenuSub>
-  );
-}
+/** The parts each kind of menu builds a submenu from. */
+const MENU_PARTS = {
+  dropdown: {
+    Sub: DropdownMenuSub,
+    Trigger: DropdownMenuSubTrigger,
+    Content: DropdownMenuSubContent,
+    Item: DropdownMenuItem,
+  },
+  context: {
+    Sub: ContextMenuSub,
+    Trigger: ContextMenuSubTrigger,
+    Content: ContextMenuSubContent,
+    Item: ContextMenuItem,
+  },
+};
 
-/** The Task's "Move to section" submenu in its right-click menu; nothing when it can't move. */
-export function MoveToSectionContextSub({ task }: { task: Task }) {
+/**
+ * The Task's "Move to section" submenu, in its ⋯ (`dropdown`) or right-click (`context`) menu;
+ * nothing when it can't move.
+ */
+export function MoveToSectionSub({ task, menu }: { task: Task; menu: keyof typeof MENU_PARTS }) {
   const { choices, moveTo } = useSectionChoices(task);
+  const { Sub, Trigger, Content, Item } = MENU_PARTS[menu];
   if (choices.length === 0) return null;
   return (
-    <ContextMenuSub>
-      <ContextMenuSubTrigger>
+    <Sub>
+      <Trigger>
         <Rows3 aria-hidden /> Move to section
-      </ContextMenuSubTrigger>
-      <ContextMenuSubContent>
+      </Trigger>
+      <Content>
         {choices.map(({ id, name }) => (
-          <ContextMenuItem
+          <Item
             key={id ?? "none"}
             disabled={task.section_id === id}
             onSelect={() => {
@@ -90,9 +84,9 @@ export function MoveToSectionContextSub({ task }: { task: Task }) {
             }}
           >
             {name}
-          </ContextMenuItem>
+          </Item>
         ))}
-      </ContextMenuSubContent>
-    </ContextMenuSub>
+      </Content>
+    </Sub>
   );
 }

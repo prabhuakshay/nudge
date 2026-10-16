@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import timedelta
-from functools import partial
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
@@ -12,9 +11,9 @@ from ninja import Query, Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
-from apps.tasks import creation, moves, people, schedule, sections, services, tags, trash, tree
+from apps.tasks import creation, moves, sections, services, tags, trash, tree
+from apps.tasks.api import list_sources
 from apps.tasks.api.errors import (
-    PERSON_NOT_FOUND,
     PROJECT_NOT_FOUND,
     SECTION_NOT_FOUND,
     TAG_NOT_FOUND,
@@ -22,7 +21,6 @@ from apps.tasks.api.errors import (
 )
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
-from apps.tasks.pagination import Page
 from apps.tasks.repeat import Repeat
 from apps.tasks.schemas.reminders import ReminderOut
 from apps.tasks.schemas.tasks import (
@@ -39,16 +37,12 @@ from apps.tasks.schemas.tasks import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterable
-
     from django.http import HttpRequest
 
     from apps.accounts.models import User
     from apps.tasks.models import Section, Tag
 
 router = Router()
-
-_ONE_SOURCE = ErrorOut(detail="Give one of project, person, tag or view.")
 
 
 @router.get(
@@ -70,9 +64,10 @@ def list_tasks(
     Tag's the Tasks it's on, flat, in each Project's manual order. Today, Upcoming and All list
     flat rows by date, with Overdue first and, in All, undated Tasks last; Today's Closed Tasks
     are those closed today, and Upcoming and All have none. Closed Tasks come most recently
-    completed first, in pages; open Tasks come all at once.
+    completed first, in pages; open Tasks come all at once. A Project's list can be narrowed to
+    one of its Sections, or to No section, as a Board column shows it.
     """
-    source = _list_source(signed_in_user(request), query)
+    source = list_sources.list_source(signed_in_user(request), query)
     if isinstance(source, Status):
         return source
     open_tasks, closed_page = source
@@ -82,56 +77,6 @@ def list_tasks(
     page = closed_page(query.cursor)
     items = [TaskOut.from_orm(task) for task in page.items]
     return Status(HTTPStatus.OK, TaskListOut(items=items, next_cursor=page.next_cursor))
-
-
-type _ListSource = tuple[Callable[[], Iterable[Task]], Callable[[str | None], Page[Task]]]
-
-
-def _list_source(user: User, query: TaskListQuery) -> _ListSource | Status[ErrorOut]:
-    """Return how to read the open Tasks and a page of Closed ones of the list asked for."""
-    if query.view is not None:
-        return _view_source(user, query.view)
-    by_id = (
-        (query.person, _person_source),
-        (query.tag, _tag_source),
-        (query.project, _project_source),
-    )
-    for source_id, source in by_id:
-        if source_id is not None:
-            return source(user, source_id)
-    return Status(HTTPStatus.UNPROCESSABLE_ENTITY, _ONE_SOURCE)
-
-
-def _person_source(user: User, person: int) -> _ListSource | Status[ErrorOut]:
-    found = people.person(user, person)
-    if found is None:
-        return Status(HTTPStatus.NOT_FOUND, PERSON_NOT_FOUND)
-    return partial(people.open_tasks, found), partial(people.closed_tasks, found)
-
-
-def _view_source(user: User, view: schedule.View) -> _ListSource:
-    open_tasks = partial(schedule.view_tasks, user, view)
-    if view is schedule.View.TODAY:
-        return open_tasks, partial(schedule.closed_today, user)
-    return open_tasks, _nothing_closed
-
-
-def _nothing_closed(_cursor: str | None) -> Page[Task]:
-    return Page(items=[], next_cursor=None)
-
-
-def _tag_source(user: User, tag: int) -> _ListSource | Status[ErrorOut]:
-    found = tags.tag(user, tag)
-    if found is None:
-        return Status(HTTPStatus.NOT_FOUND, TAG_NOT_FOUND)
-    return partial(tags.open_tasks, found), partial(tags.closed_tasks, found)
-
-
-def _project_source(user: User, project: int) -> _ListSource | Status[ErrorOut]:
-    found = services.live_project(user, project)
-    if found is None:
-        return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
-    return partial(services.open_tasks, found), partial(services.closed_tasks, found)
 
 
 @router.post(

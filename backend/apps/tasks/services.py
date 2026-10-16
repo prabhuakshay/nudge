@@ -12,7 +12,7 @@ from dataclasses import dataclass, replace
 from typing import TYPE_CHECKING
 
 from django.db import transaction
-from django.db.models import F
+from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.core.errors import DomainRuleError
@@ -114,29 +114,39 @@ def _live_tasks(project: Project) -> QuerySet[Task]:
     return as_rows(project.tasks.filter(deleted_at__isnull=True), project.owner)
 
 
-def open_tasks(project: Project) -> QuerySet[Task]:
+def open_tasks(project: Project, trees: Q | None = None) -> QuerySet[Task]:
     """Return the Project's open trees: open roots and every Subtask under them.
 
     Pinned roots come first, then the rest in manual order. Subtasks come whatever their Status,
-    so a list can show done steps under open work.
+    so a list can show done steps under open work. `trees` narrows the list to the trees it
+    matches, such as `tree.root_in_section`.
     """
     return (
         _live_tasks(project)
-        .filter(root_status_in(OPEN_STATUSES))
+        .filter(root_status_in(OPEN_STATUSES), trees or Q())
         .order_by(F("pinned_at").asc(nulls_last=True), "position", "id")
     )
 
 
-def closed_tasks(project: Project, cursor: str | None = None) -> Page[Task]:
+def closed_tasks(
+    project: Project,
+    cursor: str | None = None,
+    trees: Q | None = None,
+) -> Page[Task]:
     """Return a page of the Project's Closed trees, most recently completed root first.
 
     Each page holds its Closed roots, newest first, then every Subtask under them in manual
-    order. A Closed root has no open descendants, so the whole tree is Closed.
+    order. A Closed root has no open descendants, so the whole tree is Closed. `trees` narrows
+    the list to the trees it matches, as in `open_tasks`.
 
     Raises:
         InvalidCursorError: The cursor wasn't one this function returned.
     """
-    roots = _live_tasks(project).filter(parent__isnull=True, status__in=CLOSED_STATUSES)
+    roots = _live_tasks(project).filter(
+        trees or Q(),
+        parent__isnull=True,
+        status__in=CLOSED_STATUSES,
+    )
     page = newest_first(roots, "completed_at", cursor)
     rows = [*page.items, *rows_below(page.items, project.owner)]
     return Page(items=rows, next_cursor=page.next_cursor)

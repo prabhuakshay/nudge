@@ -2177,6 +2177,28 @@
           },
           {
             "in": "query",
+            "name": "section",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "const": "none",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Only the Project's Tasks in this Section, or `none` for No section.",
+              "title": "Section"
+            },
+            "required": false,
+            "description": "Only the Project's Tasks in this Section, or `none` for No section."
+          },
+          {
+            "in": "query",
             "name": "closed",
             "schema": {
               "default": false,
@@ -2238,7 +2260,7 @@
             }
           }
         },
-        "description": "Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.\n\nA Project's Tasks come in manual order. A Person's are the Tasks that mention them and a\nTag's the Tasks it's on, flat, in each Project's manual order. Today, Upcoming and All list\nflat rows by date, with Overdue first and, in All, undated Tasks last; Today's Closed Tasks\nare those closed today, and Upcoming and All have none. Closed Tasks come most recently\ncompleted first, in pages; open Tasks come all at once.",
+        "description": "Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.\n\nA Project's Tasks come in manual order. A Person's are the Tasks that mention them and a\nTag's the Tasks it's on, flat, in each Project's manual order. Today, Upcoming and All list\nflat rows by date, with Overdue first and, in All, undated Tasks last; Today's Closed Tasks\nare those closed today, and Upcoming and All have none. Closed Tasks come most recently\ncompleted first, in pages; open Tasks come all at once. A Project's list can be narrowed to\none of its Sections, or to No section, as a Board column shows it.",
         "tags": [
           "tasks"
         ],
@@ -5935,6 +5957,22 @@
               }
             ],
             "description": "Today, Upcoming or All, picked by date."
+          },
+          "section": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "const": "none",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only the Project's Tasks in this Section, or `none` for No section.",
+            "title": "Section"
           },
           "closed": {
             "default": false,

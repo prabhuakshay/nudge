@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from apps.accounts.models import User
-    from apps.tasks.models import Project
+    from apps.tasks.models import Project, Section
 
 
 @dataclass(frozen=True)
@@ -44,6 +44,21 @@ def root_status_in(statuses: tuple[Task.Status, ...]) -> Q:
     for _ in range(MAX_DEPTH + 1):
         match |= Q(**{f"{path}parent__isnull": True, f"{path}status__in": statuses})
         path += "parent__"
+    return match
+
+
+def root_in_section(section: Section | None) -> Q:
+    """Match Tasks whose root, which is the Task itself for a root, is in the Section.
+
+    None matches the trees in No section. Subtasks hold no Section, so their root's is what counts.
+    """
+    match = Q(parent__isnull=True, section=section)
+    path = ""
+    for _ in range(MAX_DEPTH):
+        path += "parent__"
+        # Without it a root would match "its parent's Section is None" through the empty join.
+        exists = Q(**{f"{path}isnull": False})
+        match |= exists & Q(**{f"{path}parent__isnull": True, f"{path}section": section})
     return match
 
 

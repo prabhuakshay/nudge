@@ -27,3 +27,10 @@ class SectionIn(Schema):
         default=None,
         description="The Section it follows in the Project; last when left out.",
     )
+
+
+class SectionPatchIn(Schema):
+    """The fields of a Section to change; fields left out stay as they are."""
+
+    name: str | None = Field(default=None, description=NAME_DESCRIPTION)
+    collapsed: bool | None = None

@@ -11,6 +11,8 @@ from apps.tasks import creation, project_trash, projects, sections, services
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
+    from django.test.client import _MonkeyPatchedWSGIResponse as Response
+
     from apps.accounts.models import User
     from apps.tasks.models import Project
 
@@ -57,6 +59,7 @@ def test_create_adds_an_expanded_section_to_the_project(client: Client, ada: Use
     [
         ("get", "/api/v1/projects/1/sections"),
         ("post", "/api/v1/projects/1/sections"),
+        ("patch", "/api/v1/sections/1"),
     ],
 )
 def test_every_endpoint_requires_a_session(method: str, path: str) -> None:
@@ -205,3 +208,70 @@ def test_task_rows_carry_their_section(client: Client, ada: User) -> None:
 
     rows = {row["title"]: row["section_id"] for row in response.json()["items"]}
     assert rows == {"Grouped": to_do.pk, "Loose": None}
+
+
+def _patch(client: Client, section_id: int, body: dict[str, object]) -> Response:
+    return client.patch(f"/api/v1/sections/{section_id}", body, content_type="application/json")
+
+
+@pytest.mark.django_db
+def test_patch_renames_a_section(client: Client, ada: User) -> None:
+    work = projects.create_project(ada, "Work")
+    to_do = _create(client, work, "To do")
+
+    response = _patch(client, to_do, {"name": "  Next "})
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "id": to_do,
+        "project_id": work.pk,
+        "name": "Next",
+        "collapsed": False,
+    }
+    assert _names(client, work) == ["Next"]
+
+
+@pytest.mark.django_db
+def test_patch_collapses_and_expands_a_section_and_keeps_it(client: Client, ada: User) -> None:
+    work = projects.create_project(ada, "Work")
+    to_do = _create(client, work, "To do")
+
+    assert _patch(client, to_do, {"collapsed": True}).json()["collapsed"] is True
+    listed = client.get(f"/api/v1/projects/{work.pk}/sections").json()
+    assert [(section["name"], section["collapsed"]) for section in listed] == [("To do", True)]
+
+    assert _patch(client, to_do, {"collapsed": False}).json()["collapsed"] is False
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("name", "reason"),
+    [
+        ("", "A Section needs a name."),
+        ("   ", "A Section needs a name."),
+        ("x" * 65, "A Section's name can be at most 64 characters."),
+    ],
+)
+def test_patch_refuses_a_blank_or_overlong_name(
+    client: Client, ada: User, name: str, reason: str
+) -> None:
+    work = projects.create_project(ada, "Work")
+    to_do = _create(client, work, "To do")
+
+    response = _patch(client, to_do, {"name": name})
+
+    assert response.status_code == 422
+    assert response.json() == {"detail": reason}
+    assert _names(client, work) == ["To do"]
+
+
+@pytest.mark.django_db
+def test_patch_of_another_users_section_is_not_found(client: Client, grace: User) -> None:
+    theirs = sections.create_section(projects.create_project(grace, "Theirs"), "To do")
+
+    response = _patch(client, theirs.pk, {"name": "Mine", "collapsed": True})
+
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Section not found."}
+    theirs.refresh_from_db()
+    assert (theirs.name, theirs.collapsed) == ("To do", False)

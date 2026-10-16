@@ -560,6 +560,26 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/sections/{section_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Change a Section
+     * @description Rename a Section, or collapse or expand it.
+     */
+    patch: operations["apps_tasks_api_sections_update_section"];
+    trace?: never;
+  };
   "/api/v1/people": {
     parameters: {
       query?: never;
@@ -1904,6 +1924,19 @@ export interface components {
        * @description The Section it follows in the Project; last when left out.
        */
       after_id?: number | null;
+    };
+    /**
+     * SectionPatchIn
+     * @description The fields of a Section to change; fields left out stay as they are.
+     */
+    SectionPatchIn: {
+      /**
+       * Name
+       * @description 1 to 64 characters, surrounding spaces trimmed.
+       */
+      name?: string | null;
+      /** Collapsed */
+      collapsed?: boolean | null;
     };
     /**
      * PersonOut
@@ -4321,6 +4354,50 @@ export interface operations {
     responses: {
       /** @description Created */
       201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SectionOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_sections_update_section: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        section_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SectionPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
         headers: {
           [name: string]: unknown;
         };

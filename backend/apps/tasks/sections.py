@@ -85,3 +85,22 @@ def create_section(project: Project, name: str, after: Section | None = None) ->
             name=cleaned,
             position=position,
         )
+
+
+def update_section(
+    found: Section,
+    *,
+    name: str | None = None,
+    collapsed: bool | None = None,
+) -> Section:
+    """Rename a Section, or collapse or expand it; fields left as None stay as they are.
+
+    Raises:
+        SectionRuleError: The new name is blank or too long.
+    """
+    if name is not None:
+        found.name = clean_name(name)
+    if collapsed is not None:
+        found.collapsed = collapsed
+    found.save()
+    return found

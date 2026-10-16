@@ -1,4 +1,4 @@
-"""Section endpoints: list and add a Project's Sections.
+"""Section endpoints: list and add a Project's Sections, and change one.
 
 Mounted at the API root because a Project's Sections live under `/projects/{id}/sections` while
 a single Section lives under `/sections/{id}`.
@@ -15,7 +15,7 @@ from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import sections, services
 from apps.tasks.api.errors import PROJECT_NOT_FOUND, SECTION_NOT_FOUND
-from apps.tasks.schemas.sections import SectionIn, SectionOut
+from apps.tasks.schemas.sections import SectionIn, SectionOut, SectionPatchIn
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -63,3 +63,23 @@ def create_section(
             return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
     created = sections.create_section(project, section.name, after)
     return Status(HTTPStatus.CREATED, SectionOut.from_orm(created))
+
+
+@router.patch(
+    "/sections/{int:section_id}",
+    response={
+        HTTPStatus.OK: SectionOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
+    summary="Change a Section",
+)
+def update_section(
+    request: HttpRequest, section_id: int, patch: SectionPatchIn
+) -> Status[SectionOut] | Status[ErrorOut]:
+    """Rename a Section, or collapse or expand it."""
+    found = sections.section(signed_in_user(request), section_id)
+    if found is None:
+        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    updated = sections.update_section(found, name=patch.name, collapsed=patch.collapsed)
+    return Status(HTTPStatus.OK, SectionOut.from_orm(updated))

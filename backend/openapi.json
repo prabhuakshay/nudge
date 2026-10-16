@@ -1321,6 +1321,74 @@
         ]
       }
     },
+    "/api/v1/sections/{section_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_sections_update_section",
+        "summary": "Change a Section",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "section_id",
+            "schema": {
+              "title": "Section Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SectionOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rename a Section, or collapse or expand it.",
+        "tags": [
+          "sections"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SectionPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/people": {
       "get": {
         "operationId": "apps_tasks_api_people_list_people",
@@ -4835,6 +4903,36 @@
           "name"
         ],
         "title": "SectionIn",
+        "type": "object"
+      },
+      "SectionPatchIn": {
+        "description": "The fields of a Section to change; fields left out stay as they are.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 to 64 characters, surrounding spaces trimmed.",
+            "title": "Name"
+          },
+          "collapsed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collapsed"
+          }
+        },
+        "title": "SectionPatchIn",
         "type": "object"
       },
       "PersonOut": {

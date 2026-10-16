@@ -884,6 +884,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/tasks/calendar": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List the Tasks on a range of days
+     * @description Return the dated Tasks, open and Closed, whose dates overlap the range, both days included.
+     *
+     *     Trashed Tasks and archived Projects' Tasks are left out. A range that ends before it starts,
+     *     or is over 42 days long, is refused.
+     */
+    get: operations["apps_tasks_api_calendar_view_calendar"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/tasks/{task_id}/attachments": {
     parameters: {
       query?: never;
@@ -3110,6 +3133,35 @@ export interface components {
       data: components["schemas"]["NoActivityData"];
     };
     /**
+     * CalendarQuery
+     * @description The days the Calendar shows, both included.
+     */
+    CalendarQuery: {
+      /**
+       * Start
+       * Format: date
+       * @description The first day shown.
+       */
+      start: string;
+      /**
+       * End
+       * Format: date
+       * @description The last day shown; at most 42 days after `start`, counted in.
+       */
+      end: string;
+    };
+    /**
+     * CalendarOut
+     * @description The Tasks a range of days shows.
+     */
+    CalendarOut: {
+      /**
+       * Items
+       * @description Open and Closed Tasks whose dates overlap the range, Subtasks as their own rows, by the day they start.
+       */
+      items: components["schemas"]["TaskOut"][];
+    };
+    /**
      * AttachmentOut
      * @description A file attached to a Task. Its bytes come from the download endpoint.
      */
@@ -4875,6 +4927,40 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_view_calendar: {
+    parameters: {
+      query: {
+        /** @description The first day shown. */
+        start: string;
+        /** @description The last day shown; at most 42 days after `start`, counted in. */
+        end: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CalendarOut"];
         };
       };
       /** @description Unprocessable Content */

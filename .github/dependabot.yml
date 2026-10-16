@@ -13,6 +13,10 @@ updates:
     commit-message: { prefix: build, include: scope }
     groups:
       npm: { patterns: ["*"] }
+    ignore:
+      # openapi-typescript only supports TypeScript 5; see CLAUDE.md.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
 
   - package-ecosystem: docker
     directory: /docker

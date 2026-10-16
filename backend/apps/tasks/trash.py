@@ -165,12 +165,12 @@ def _place(user: User, head: Task, height: int) -> None:
     parent = head.parent
     if parent is not None and parent.deleted_at is None and parent.depth + 1 + height <= MAX_DEPTH:
         head.project = parent.project
-        head.position = task_siblings(parent.project_id, parent.pk).keep(head.pk, head.position)
+        task_siblings(parent.project_id, parent.pk).lock()
         return
     project = head.project if head.project.deleted_at is None else services.inbox(user)
     roots = task_siblings(project.pk, None)
     if parent is None and project == head.project:
-        head.position = roots.keep(head.pk, head.position)
+        roots.lock()
         return
     head.position = roots.last()
     if project != head.project:

@@ -1,5 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
+import { requestOf } from "@/test/fetch";
 import { base64UrlToBytes, disablePush, enablePush, PushError, pushStatusQuery } from "./push";
 
 const ENDPOINT = "https://push.example.com/send/1";
@@ -44,7 +45,7 @@ type MockApiOptions = { publicKey?: string | null; status?: number };
 
 function mockApi({ publicKey = "BAEC", status = 204 }: MockApiOptions = {}) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
-    const request = input as Request;
+    const request = requestOf(input);
     if (request.url.endsWith("/api/v1/notifications/push")) {
       return Promise.resolve(
         new Response(JSON.stringify({ public_key: publicKey }), {
@@ -57,7 +58,7 @@ function mockApi({ publicKey = "BAEC", status = 204 }: MockApiOptions = {}) {
 }
 
 function requests(fetchSpy: ReturnType<typeof mockApi>) {
-  return fetchSpy.mock.calls.map(([input]) => input as Request);
+  return fetchSpy.mock.calls.map(([input]) => requestOf(input));
 }
 
 function pushStatus() {

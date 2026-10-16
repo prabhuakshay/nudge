@@ -2,15 +2,39 @@
 
 from __future__ import annotations
 
+from functools import cache
 from typing import ClassVar, override
+from zoneinfo import available_timezones
 
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.contrib.auth.models import PermissionsMixin
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models.functions import Lower
 from django.utils import timezone
 
 from apps.accounts.managers import UserManager
+
+
+@cache
+def _time_zone_names() -> frozenset[str]:
+    return frozenset(available_timezones())
+
+
+def is_time_zone(name: str) -> bool:
+    """Return whether `name` is an IANA time zone name, such as `Europe/London`."""
+    return name in _time_zone_names()
+
+
+def validate_time_zone(name: str) -> None:
+    """Reject anything that isn't an IANA time zone name.
+
+    Raises:
+        ValidationError: `name` is not a known time zone.
+    """
+    if not is_time_zone(name):
+        message = f"{name!r} is not a known time zone."
+        raise ValidationError(message)
 
 
 class User(AbstractBaseUser, PermissionsMixin):
@@ -22,6 +46,32 @@ class User(AbstractBaseUser, PermissionsMixin):
 
     email = models.EmailField("email address", unique=True)
     full_name = models.CharField(max_length=150, blank=True)
+    time_zone = models.CharField(
+        max_length=64,
+        blank=True,
+        validators=[validate_time_zone],
+        help_text=(
+            "IANA name, such as Europe/London. Every clock time on the user's tasks is in this "
+            "zone. Empty until the browser sets it on the first sign-in."
+        ),
+    )
+    calendar_feed_token = models.CharField(
+        max_length=64,
+        null=True,
+        blank=True,
+        unique=True,
+        help_text=(
+            "The secret in the user's Calendar feed address. Empty while the feed is off; "
+            "stored as is so the address can be copied again at any time."
+        ),
+    )
+    single_key_shortcuts = models.BooleanField(
+        default=True,
+        help_text=(
+            "Whether shortcuts of one unmodified key, such as C or G then I, work. Speech input "
+            "can trigger them by accident (WCAG 2.1.4), so the user can turn them off."
+        ),
+    )
     is_staff = models.BooleanField(
         default=False,
         help_text="Whether the user can sign in to the admin site.",

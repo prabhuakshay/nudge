@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
+from zoneinfo import ZoneInfo
 
+from django.conf import settings
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
 
@@ -37,3 +39,27 @@ def update_profile(user: User, full_name: str) -> User:
     user.full_name = full_name.strip()
     user.save(update_fields=["full_name"])
     return user
+
+
+def set_time_zone(user: User, time_zone: str) -> User:
+    """Save the user's IANA time zone.
+
+    Clock times on tasks are floating in this zone, so they keep their wall-clock value: a task
+    due at 09:00 is still due at 09:00 in the new zone. Their Reminders move with them; the tasks
+    app reschedules them when the zone is saved.
+    """
+    user.time_zone = time_zone
+    user.save(update_fields=["time_zone"])
+    return user
+
+
+def set_single_key_shortcuts(user: User, *, enabled: bool) -> User:
+    """Turn the user's single-key shortcuts on or off."""
+    user.single_key_shortcuts = enabled
+    user.save(update_fields=["single_key_shortcuts"])
+    return user
+
+
+def local_zone(user: User) -> ZoneInfo:
+    """Return the zone the user's clock times are in: theirs, or the server's until it's set."""
+    return ZoneInfo(user.time_zone or settings.TIME_ZONE)

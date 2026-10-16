@@ -124,6 +124,46 @@ export interface paths {
     patch: operations["apps_accounts_api_profile"];
     trace?: never;
   };
+  "/api/v1/auth/time-zone": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Set time zone
+     * @description Change the signed-in user's time zone and return the updated user.
+     */
+    put: operations["apps_accounts_api_time_zone"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/auth/shortcuts": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Set keyboard shortcuts
+     * @description Turn the signed-in user's single-key shortcuts on or off and return the updated user.
+     */
+    put: operations["apps_accounts_api_shortcuts"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/notifications": {
     parameters: {
       query?: never;
@@ -268,6 +308,806 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/notifications/{notification_id}/complete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Complete a Task from its Reminder
+     * @description Complete the Task a Reminder notification is about, as ticking it off would.
+     */
+    post: operations["apps_tasks_api_reminder_actions_complete"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/{notification_id}/snooze": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Snooze a Reminder
+     * @description Fire a Reminder notification once more later, leaving its Task as it is.
+     */
+    post: operations["apps_tasks_api_reminder_actions_snooze"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/folders": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a Folder
+     * @description Create an expanded Folder last in the sidebar.
+     */
+    post: operations["apps_tasks_api_folders_create_folder"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/folders/{folder_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Folder
+     * @description Delete a Folder for good; its Projects stay, ungrouped, where it was.
+     */
+    delete: operations["apps_tasks_api_folders_delete_folder"];
+    options?: never;
+    head?: never;
+    /**
+     * Change a Folder
+     * @description Rename a Folder, or collapse or expand it.
+     */
+    patch: operations["apps_tasks_api_folders_update_folder"];
+    trace?: never;
+  };
+  "/api/v1/folders/{folder_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Folder in the sidebar
+     * @description Put a Folder right after a top-level sibling, or first.
+     */
+    post: operations["apps_tasks_api_folders_move_folder"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/projects": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a Project
+     * @description Create a Project last in its Folder, or last in the sidebar.
+     */
+    post: operations["apps_tasks_api_projects_create_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/projects/{project_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Move a Project to Trash
+     * @description Move a Project and its Tasks to Trash as one unit. The Inbox can't be deleted.
+     */
+    delete: operations["apps_tasks_api_projects_delete_project"];
+    options?: never;
+    head?: never;
+    /**
+     * Change a Project
+     * @description Rename, recolour or change the icon of a Project. The Inbox can't be changed.
+     */
+    patch: operations["apps_tasks_api_projects_update_project"];
+    trace?: never;
+  };
+  "/api/v1/projects/{project_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Project in the sidebar
+     * @description Put a Project in a Folder or on the top level, right after a sibling or first.
+     */
+    post: operations["apps_tasks_api_projects_move_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/projects/{project_id}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Archive a Project
+     * @description Make a Project read-only and move it to the sidebar's Archived section.
+     */
+    post: operations["apps_tasks_api_projects_archive_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/projects/{project_id}/unarchive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Unarchive a Project
+     * @description Bring an archived Project back to its place in the sidebar, unchanged.
+     */
+    post: operations["apps_tasks_api_projects_unarchive_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/people": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List People
+     * @description Return the user's People, A to Z.
+     */
+    get: operations["apps_tasks_api_people_list_people"];
+    put?: never;
+    /**
+     * Add a Person
+     * @description Add a Person to the address book.
+     */
+    post: operations["apps_tasks_api_people_create_person"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/people/{person_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Person
+     * @description Delete a Person for good; their Mentions become plain `@Name` text.
+     */
+    delete: operations["apps_tasks_api_people_delete_person"];
+    options?: never;
+    head?: never;
+    /**
+     * Change a Person
+     * @description Rename or recolour a Person. A rename shows in every Mention of them.
+     */
+    patch: operations["apps_tasks_api_people_update_person"];
+    trace?: never;
+  };
+  "/api/v1/people/{person_id}/merge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Merge a Person into another
+     * @description Fold a Person into another: their Mentions move over and they are deleted.
+     */
+    post: operations["apps_tasks_api_people_merge_person"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/sidebar": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the sidebar
+     * @description Return everything the sidebar lists, with open counts for Projects, Tags and views.
+     */
+    get: operations["apps_tasks_api_sidebar_sidebar"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tags": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Create a Tag
+     * @description Create a Tag last in the user's order.
+     */
+    post: operations["apps_tasks_api_tags_create_tag"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tags/{tag_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Tag
+     * @description Delete a Tag for good, taking it off every Task that has it.
+     */
+    delete: operations["apps_tasks_api_tags_delete_tag"];
+    options?: never;
+    head?: never;
+    /**
+     * Change a Tag
+     * @description Rename or recolour a Tag; the new name shows on every Task that has it.
+     */
+    patch: operations["apps_tasks_api_tags_update_tag"];
+    trace?: never;
+  };
+  "/api/v1/tags/{tag_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Tag in the user's order
+     * @description Put a Tag right after another, or first.
+     */
+    post: operations["apps_tasks_api_tags_move_tag"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tags/{tag_id}/merge": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Merge a Tag into another
+     * @description Move every Task of a Tag onto another Tag, then delete the first for good.
+     */
+    post: operations["apps_tasks_api_tags_merge_tag"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/bulk": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Change several Tasks at once
+     * @description Apply one action to every Task given, in one transaction.
+     *
+     *     Each Task changes as it would on its own, cascades and Activity included. If any id isn't one
+     *     of the user's Tasks, or the Project or Tag isn't theirs, nothing changes and the answer is
+     *     404; if any Task refuses the change, nothing changes and the answer is 422. Every Task whose
+     *     Status changed comes back with its Status from before, and a move says where each Task was,
+     *     so the client can offer Undo.
+     */
+    post: operations["apps_tasks_api_bulk_bulk_change"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Project's, a Person's, a Tag's or a view's Tasks
+     * @description Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.
+     *
+     *     A Project's Tasks come in manual order. A Person's are the Tasks that mention them and a
+     *     Tag's the Tasks it's on, flat, in each Project's manual order. Today and Upcoming list flat
+     *     rows by date, with Overdue first in Today; Today's Closed Tasks are those closed today, and
+     *     Upcoming has none. Closed Tasks come most recently completed first, in pages; open Tasks come
+     *     all at once.
+     */
+    get: operations["apps_tasks_api_tasks_list_tasks"];
+    put?: never;
+    /**
+     * Add a Task
+     * @description Add a Task first in its Project, or in the Inbox when no Project is given.
+     *
+     *     With `parent_id` it is added last under that Task instead, which reopens the parent and its
+     *     ancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are
+     *     created with the Task. A dated top-level Task can repeat from the start.
+     */
+    post: operations["apps_tasks_api_tasks_create_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get a Task
+     * @description Return a Task with everything the detail drawer shows.
+     */
+    get: operations["apps_tasks_api_tasks_get_task"];
+    put?: never;
+    post?: never;
+    /**
+     * Move a Task to Trash
+     * @description Send a Task and its Subtasks to Trash as one unit, which `restore` brings back.
+     */
+    delete: operations["apps_tasks_api_tasks_delete_task"];
+    options?: never;
+    head?: never;
+    /**
+     * Change a Task
+     * @description Change a Task's fields, returning it and every Task whose Status changed.
+     *
+     *     Each changed Task comes with its Status and Blocked reason from before, so the client can
+     *     offer Undo without the server keeping anything.
+     */
+    patch: operations["apps_tasks_api_tasks_update_task"];
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Task
+     * @description Move a Task and its Subtasks under a parent, or to a Project's top level, after a sibling.
+     *
+     *     The server picks the new order key. The Task comes back with every Closed ancestor the move
+     *     reopened, so the client can offer Undo.
+     */
+    post: operations["apps_tasks_api_tasks_move_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/duplicate": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Duplicate a Task
+     * @description Add an open copy of a Task right after it, with its title, Description and Priority.
+     */
+    post: operations["apps_tasks_api_tasks_duplicate_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/search": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Search Tasks
+     * @description Find Tasks whose title, Description or one Comment holds every word, best matches first.
+     *
+     *     Archived Projects are searched too. At most 50 Tasks come back, with no further pages.
+     */
+    get: operations["apps_tasks_api_search_search"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/activity": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Task's Activity
+     * @description Return a page of a Task's history, newest first, with the number of events in all.
+     */
+    get: operations["apps_tasks_api_activity_list_activity"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/attachments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Task's Attachments
+     * @description Return a Task's Attachments, oldest first.
+     */
+    get: operations["apps_tasks_api_attachments_list_attachments"];
+    put?: never;
+    /**
+     * Attach a file to a Task
+     * @description Store one file against a Task, up to the configured size.
+     */
+    post: operations["apps_tasks_api_attachments_upload_attachment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/attachments/{attachment_id}/download": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download an Attachment
+     * @description Send an Attachment's bytes, inline for images and PDFs and as a download otherwise.
+     */
+    get: operations["apps_tasks_api_attachments_download_attachment"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/attachments/{attachment_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete an Attachment
+     * @description Delete an Attachment and its file for good.
+     */
+    delete: operations["apps_tasks_api_attachments_delete_attachment"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/comments": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Task's Comments
+     * @description Return all of a Task's Comments, oldest first.
+     */
+    get: operations["apps_tasks_api_comments_list_comments"];
+    put?: never;
+    /**
+     * Comment on a Task
+     * @description Add a markdown Comment to a Task.
+     */
+    post: operations["apps_tasks_api_comments_add_comment"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/comments/{comment_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Comment
+     * @description Delete a Comment for good.
+     */
+    delete: operations["apps_tasks_api_comments_delete_comment"];
+    options?: never;
+    head?: never;
+    /**
+     * Edit a Comment
+     * @description Replace a Comment's body.
+     */
+    patch: operations["apps_tasks_api_comments_edit_comment"];
+    trace?: never;
+  };
+  "/api/v1/calendar/feed": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Get the Calendar feed address
+     * @description Return the signed-in user's feed address, or null while the feed is off.
+     */
+    get: operations["apps_tasks_api_calendar_get_feed"];
+    put?: never;
+    /**
+     * Turn on or reset the Calendar feed
+     * @description Give the user a new feed address; any old address stops working.
+     */
+    post: operations["apps_tasks_api_calendar_turn_on_feed"];
+    /**
+     * Turn off the Calendar feed
+     * @description Clear the user's feed address so it stops working.
+     */
+    delete: operations["apps_tasks_api_calendar_turn_off_feed"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/calendar/{token}.ics": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Fetch a Calendar feed
+     * @description Return the feed's owner's open dated Tasks as an iCalendar file.
+     */
+    get: operations["apps_tasks_api_calendar_feed"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/trash": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List the Trash
+     * @description Return one row per deleted Task or Project unit, most recently deleted first.
+     */
+    get: operations["apps_tasks_api_trash_list_trash"];
+    put?: never;
+    post?: never;
+    /**
+     * Empty the Trash
+     * @description Delete everything in the Trash for good.
+     */
+    delete: operations["apps_tasks_api_trash_empty_trash"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/tasks/{task_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restore a Task from Trash
+     * @description Bring back a Task with everything deleted along with it, and say where it went.
+     */
+    post: operations["apps_tasks_api_trash_restore_task"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/projects/{project_id}/restore": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Restore a Project from Trash
+     * @description Bring back a Project with its Tasks, renamed "<Name> (2)" if its name was taken.
+     */
+    post: operations["apps_tasks_api_trash_restore_project"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/trash/delete": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Delete Tasks and Projects in Trash forever
+     * @description Delete the given Trash units for good; nothing goes if any id isn't in the user's Trash.
+     */
+    post: operations["apps_tasks_api_trash_delete_forever"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -306,6 +1146,16 @@ export interface components {
       email: string;
       /** Full Name */
       full_name: string;
+      /**
+       * Time Zone
+       * @description IANA time zone name, or empty when not set yet.
+       */
+      time_zone: string;
+      /**
+       * Single Key Shortcuts
+       * @description Whether shortcuts of one unmodified key, such as C, are on.
+       */
+      single_key_shortcuts: boolean;
     };
     /**
      * ErrorOut
@@ -344,6 +1194,25 @@ export interface components {
       full_name: string;
     };
     /**
+     * TimeZoneIn
+     * @description The user's new time zone.
+     */
+    TimeZoneIn: {
+      /**
+       * Time Zone
+       * @description IANA time zone name, such as Europe/London.
+       */
+      time_zone: string;
+    };
+    /**
+     * ShortcutsIn
+     * @description Whether the user wants single-key shortcuts on.
+     */
+    ShortcutsIn: {
+      /** Single Key */
+      single_key: boolean;
+    };
+    /**
      * NotificationListOut
      * @description The latest notifications and how many of all the user's notifications are unread.
      */
@@ -369,6 +1238,11 @@ export interface components {
        * @description Path in the app to open, or empty.
        */
       url: string;
+      /**
+       * Is Reminder
+       * @description Whether a Reminder sent it, so its Task can be completed or snoozed from it.
+       */
+      is_reminder: boolean;
       /**
        * Created At
        * Format: date-time
@@ -414,6 +1288,1941 @@ export interface components {
     PushUnsubscribeIn: {
       /** Endpoint */
       endpoint: string;
+    };
+    /**
+     * AffectedTaskOut
+     * @description A Task whose Status a change touched, with its Status before, so the client can undo.
+     */
+    AffectedTaskOut: {
+      /** Id */
+      id: number;
+      prior_status: components["schemas"]["Status"];
+      /** Prior Blocked Reason */
+      prior_blocked_reason: string;
+    };
+    /**
+     * PaletteColor
+     * @description A colour a user can give a Project, Tag or Person.
+     * @enum {string}
+     */
+    PaletteColor: "red" | "orange" | "amber" | "green" | "teal" | "blue" | "violet" | "pink";
+    /**
+     * Priority
+     * @description How urgent a Task is; P1 is the most urgent.
+     * @enum {integer}
+     */
+    Priority: 0 | 1 | 2 | 3 | 4;
+    /**
+     * ReminderOut
+     * @description One of a Task's Reminders.
+     */
+    ReminderOut: {
+      /**
+       * Offset
+       * @description Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.
+       */
+      offset: number;
+      /**
+       * Fire At
+       * @description When it fires next; null when it won't: the Task is Closed or archived, or the time has passed.
+       */
+      fire_at: string | null;
+    };
+    /**
+     * RepeatFrom
+     * @description What a repeating Task's next Occurrence counts from.
+     * @enum {string}
+     */
+    RepeatFrom: "due" | "completion" | "calendar";
+    /**
+     * Status
+     * @description Where a Task stands.
+     * @enum {string}
+     */
+    Status: "open" | "completed" | "wont_do" | "blocked";
+    /**
+     * TagOut
+     * @description A Tag's own fields.
+     */
+    TagOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** @description Null shows the Tag grey. */
+      color: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * TaskAncestorOut
+     * @description A Task above another in the tree, as a breadcrumb links to it.
+     */
+    TaskAncestorOut: {
+      /** Id */
+      id: number;
+      /** Title */
+      title: string;
+    };
+    /**
+     * TaskChangeOut
+     * @description A changed Task and every Task whose Status the change touched.
+     */
+    TaskChangeOut: {
+      task: components["schemas"]["TaskDetailOut"];
+      /** Affected */
+      affected: components["schemas"]["AffectedTaskOut"][];
+    };
+    /**
+     * TaskDetailOut
+     * @description A Task as the detail drawer shows it, with where it sits in the tree and what's under it.
+     */
+    TaskDetailOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
+      completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
+      /**
+       * Tags
+       * @description In the user's Tag order.
+       */
+      tags: components["schemas"]["TagOut"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
+      /**
+       * Description
+       * @description Markdown, as the user wrote it.
+       */
+      description: string;
+      /**
+       * Ancestors
+       * @description From the root down to the parent.
+       */
+      ancestors: components["schemas"]["TaskAncestorOut"][];
+      /**
+       * Subtasks
+       * @description Every Subtask below, whatever its Status, as flat rows in manual order.
+       */
+      subtasks: components["schemas"]["TaskOut"][];
+      /**
+       * Reminders
+       * @description Earliest offset first.
+       */
+      reminders: components["schemas"]["ReminderOut"][];
+    };
+    /**
+     * TaskOut
+     * @description A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`.
+     */
+    TaskOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
+      completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
+      /**
+       * Tags
+       * @description In the user's Tag order.
+       */
+      tags: components["schemas"]["TagOut"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
+    };
+    /**
+     * Snooze
+     * @description How long to snooze a Reminder for.
+     * @enum {string}
+     */
+    Snooze: "in_15_minutes" | "in_1_hour" | "in_3_hours" | "tomorrow_morning";
+    /**
+     * SnoozeIn
+     * @description When a snoozed Reminder should fire again.
+     */
+    SnoozeIn: {
+      /** @description Tomorrow morning is 09:00 in the user's time zone. */
+      until: components["schemas"]["Snooze"];
+    };
+    /**
+     * FolderOut
+     * @description A Folder's own fields.
+     */
+    FolderOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** Collapsed */
+      collapsed: boolean;
+    };
+    /**
+     * FolderIn
+     * @description A new Folder.
+     */
+    FolderIn: {
+      /** Name */
+      name: string;
+    };
+    /**
+     * FolderPatchIn
+     * @description The fields of a Folder to change; fields left out stay as they are.
+     */
+    FolderPatchIn: {
+      /** Name */
+      name?: string | null;
+      /** Collapsed */
+      collapsed?: boolean | null;
+    };
+    /**
+     * FolderMoveIn
+     * @description Where a Folder goes on the sidebar's top level.
+     */
+    FolderMoveIn: {
+      /** @description The item it now follows; first when left out, last when it isn't there. */
+      after?: components["schemas"]["SiblingIn"] | null;
+    };
+    /**
+     * SiblingIn
+     * @description A Folder or Project in the sidebar. Both kinds share the top level's order.
+     */
+    SiblingIn: {
+      /**
+       * Kind
+       * @enum {string}
+       */
+      kind: "folder" | "project";
+      /** Id */
+      id: number;
+    };
+    /**
+     * Icon
+     * @description The Lucide icons a Project can show. Only the Inbox shows the `inbox` icon.
+     * @enum {string}
+     */
+    Icon:
+      | "inbox"
+      | "list"
+      | "briefcase"
+      | "house"
+      | "heart-pulse"
+      | "rocket"
+      | "book-open"
+      | "hammer"
+      | "shopping-cart"
+      | "plane"
+      | "graduation-cap"
+      | "dumbbell"
+      | "music"
+      | "camera"
+      | "code"
+      | "palette"
+      | "wallet"
+      | "piggy-bank"
+      | "gift"
+      | "car"
+      | "utensils"
+      | "coffee"
+      | "leaf"
+      | "sun"
+      | "moon"
+      | "star"
+      | "flag"
+      | "target"
+      | "lightbulb"
+      | "calendar"
+      | "users"
+      | "user"
+      | "baby"
+      | "dog"
+      | "gamepad-2"
+      | "film"
+      | "pencil"
+      | "wrench"
+      | "globe"
+      | "mail"
+      | "phone";
+    /**
+     * ProjectOut
+     * @description A Project's own fields.
+     */
+    ProjectOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      color: components["schemas"]["PaletteColor"];
+      icon: components["schemas"]["Icon"];
+      /** Folder Id */
+      folder_id: number | null;
+      /** Is Inbox */
+      is_inbox: boolean;
+      /**
+       * Is Archived
+       * @description Archived Projects are read-only.
+       */
+      is_archived: boolean;
+    };
+    /**
+     * ProjectIn
+     * @description A new Project.
+     */
+    ProjectIn: {
+      /** Name */
+      name: string;
+      /** @description Random when left out. */
+      color?: components["schemas"]["PaletteColor"] | null;
+      /** @default list */
+      icon: components["schemas"]["Icon"];
+      /**
+       * Folder Id
+       * @description Ungrouped when left out.
+       */
+      folder_id?: number | null;
+    };
+    /**
+     * ProjectPatchIn
+     * @description The fields of a Project to change; fields left out stay as they are.
+     */
+    ProjectPatchIn: {
+      /** Name */
+      name?: string | null;
+      color?: components["schemas"]["PaletteColor"] | null;
+      icon?: components["schemas"]["Icon"] | null;
+    };
+    /**
+     * ProjectMoveIn
+     * @description Where a Project goes: into a Folder or onto the top level, after a sibling.
+     */
+    ProjectMoveIn: {
+      /** @description The item it now follows; first when left out, last when it isn't there. */
+      after?: components["schemas"]["SiblingIn"] | null;
+      /**
+       * Folder Id
+       * @description The top level when left out.
+       */
+      folder_id?: number | null;
+    };
+    /**
+     * PersonOut
+     * @description A Person in the user's address book.
+     */
+    PersonOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      color: components["schemas"]["PaletteColor"];
+    };
+    /**
+     * PersonIn
+     * @description A new Person.
+     */
+    PersonIn: {
+      /**
+       * Name
+       * @description Unique among the user's People, ignoring case.
+       */
+      name: string;
+      /** @description Random when left out. */
+      color?: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * PersonPatchIn
+     * @description The fields of a Person to change; fields left out stay as they are.
+     */
+    PersonPatchIn: {
+      /**
+       * Name
+       * @description Rewrites every Mention.
+       */
+      name?: string | null;
+      color?: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * PersonMergeIn
+     * @description The Person to fold another into.
+     */
+    PersonMergeIn: {
+      /** Into Id */
+      into_id: number;
+    };
+    /**
+     * SidebarFolderOut
+     * @description A Folder as the sidebar lists it, with its Projects in order.
+     */
+    SidebarFolderOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** Collapsed */
+      collapsed: boolean;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "folder";
+      /** Projects */
+      projects: components["schemas"]["SidebarProjectOut"][];
+    };
+    /**
+     * SidebarOut
+     * @description Everything the sidebar shows.
+     */
+    SidebarOut: {
+      inbox: components["schemas"]["SidebarProjectOut"];
+      /**
+       * Items
+       * @description Folders and ungrouped Projects in the user's order.
+       */
+      items: (
+        components["schemas"]["SidebarFolderOut"] | components["schemas"]["SidebarProjectOut"]
+      )[];
+      /**
+       * Archived
+       * @description Archived Projects, by name.
+       */
+      archived: components["schemas"]["SidebarProjectOut"][];
+      /**
+       * Today Count
+       * @description Open Tasks in Today, Overdue ones included.
+       */
+      today_count: number;
+      /**
+       * Upcoming Count
+       * @description Open Tasks in Upcoming.
+       */
+      upcoming_count: number;
+      /**
+       * Tags
+       * @description In the user's order.
+       */
+      tags: components["schemas"]["SidebarTagOut"][];
+      /**
+       * People
+       * @description A to Z.
+       */
+      people: components["schemas"]["PersonOut"][];
+    };
+    /**
+     * SidebarProjectOut
+     * @description A Project as the sidebar lists it.
+     */
+    SidebarProjectOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      color: components["schemas"]["PaletteColor"];
+      icon: components["schemas"]["Icon"];
+      /** Folder Id */
+      folder_id: number | null;
+      /** Is Inbox */
+      is_inbox: boolean;
+      /**
+       * Is Archived
+       * @description Archived Projects are read-only.
+       */
+      is_archived: boolean;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "project";
+      /** Open Count */
+      open_count: number;
+    };
+    /**
+     * SidebarTagOut
+     * @description A Tag as the sidebar lists it.
+     */
+    SidebarTagOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /** @description Null shows the Tag grey. */
+      color: components["schemas"]["PaletteColor"] | null;
+      /**
+       * Open Count
+       * @description Open and Blocked Tasks with the Tag.
+       */
+      open_count: number;
+      /**
+       * Task Count
+       * @description Tasks with the Tag that aren't in Trash, closed too.
+       */
+      task_count: number;
+    };
+    /**
+     * TagIn
+     * @description A new Tag.
+     */
+    TagIn: {
+      /** Name */
+      name: string;
+      /** @description Grey when left out. */
+      color?: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * TagPatchIn
+     * @description The fields of a Tag to change; fields left out stay as they are.
+     */
+    TagPatchIn: {
+      /** Name */
+      name?: string | null;
+      /** @description Null makes the Tag grey. */
+      color?: components["schemas"]["PaletteColor"] | null;
+    };
+    /**
+     * TagMoveIn
+     * @description Where a Tag goes in the user's order.
+     */
+    TagMoveIn: {
+      /**
+       * After Id
+       * @description The Tag it now follows; first when null, last when it isn't there.
+       */
+      after_id?: number | null;
+    };
+    /**
+     * TagMergeIn
+     * @description The Tag to merge into.
+     */
+    TagMergeIn: {
+      /** Into Id */
+      into_id: number;
+    };
+    /**
+     * TaskBulkOut
+     * @description What the action changed, for Undo.
+     */
+    TaskBulkOut: {
+      /**
+       * Affected
+       * @description Every Task whose Status changed, with its Status before.
+       */
+      affected: components["schemas"]["AffectedTaskOut"][];
+      /**
+       * Moved From
+       * @description For a move: where each moved Task was, in the order to put them back.
+       */
+      moved_from: components["schemas"]["TaskPlace"][];
+    };
+    /**
+     * TaskPlace
+     * @description Where a Task sits: its Project, its parent and the sibling before it.
+     */
+    TaskPlace: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description None at the top level.
+       */
+      parent_id: number | null;
+      /**
+       * After Id
+       * @description None when it's first among its siblings.
+       */
+      after_id: number | null;
+    };
+    /**
+     * BulkDatesIn
+     * @description Replace the Tasks' dates; their Reminders keep their offsets.
+     */
+    BulkDatesIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "dates";
+      dates: components["schemas"]["TaskDatesIn"];
+    };
+    /**
+     * BulkDeleteIn
+     * @description Send the Tasks to Trash, each as its own unit with its Subtasks.
+     */
+    BulkDeleteIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "delete";
+    };
+    /**
+     * BulkMoveIn
+     * @description Move the Tasks first into a Project; a Subtask moved alone becomes a root there.
+     */
+    BulkMoveIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "move";
+      /** Project Id */
+      project_id: number;
+    };
+    /**
+     * BulkPlaceIn
+     * @description Put each Task in its own place, in the order listed, as Undo of a move does.
+     */
+    BulkPlaceIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "place";
+      /** Places */
+      places: components["schemas"]["TaskPlace"][];
+    };
+    /**
+     * BulkPriorityIn
+     * @description Set the Tasks' Priority.
+     */
+    BulkPriorityIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "priority";
+      priority: components["schemas"]["Priority"];
+    };
+    /**
+     * BulkStatusIn
+     * @description Set the Tasks' Status, cascading through their trees as a single change does.
+     */
+    BulkStatusIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "status";
+      status: components["schemas"]["Status"];
+    };
+    /**
+     * BulkStatusesIn
+     * @description Give each Task its own Status, in the order listed, as Undo of a cascade does.
+     */
+    BulkStatusesIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "statuses";
+      /** Statuses */
+      statuses: components["schemas"]["TaskStatusIn"][];
+    };
+    /**
+     * BulkTagIn
+     * @description Put a Tag on the Tasks, or take it off.
+     */
+    BulkTagIn: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "add_tag" | "remove_tag";
+      /** Tag Id */
+      tag_id: number;
+    };
+    /**
+     * TaskBulkIn
+     * @description One action for several Tasks.
+     */
+    TaskBulkIn: {
+      /** Ids */
+      ids: number[];
+      /** Action */
+      action:
+        | components["schemas"]["BulkMoveIn"]
+        | components["schemas"]["BulkStatusIn"]
+        | components["schemas"]["BulkStatusesIn"]
+        | components["schemas"]["BulkPlaceIn"]
+        | components["schemas"]["BulkPriorityIn"]
+        | components["schemas"]["BulkDatesIn"]
+        | components["schemas"]["BulkTagIn"]
+        | components["schemas"]["BulkDeleteIn"];
+    };
+    /**
+     * TaskDatesIn
+     * @description A Task's due date, time and range, all clock times in the user's time zone.
+     *
+     *     Without a time the Task is all-day. A start turns it into a range ending at the due date;
+     *     start and due are then both all-day or both timed. Times have minute precision.
+     */
+    TaskDatesIn: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Due Time */
+      due_time?: string | null;
+      /** Start Date */
+      start_date?: string | null;
+      /** Start Time */
+      start_time?: string | null;
+    };
+    /**
+     * TaskStatusIn
+     * @description The Status, and Blocked reason, to give one Task.
+     */
+    TaskStatusIn: {
+      /** Id */
+      id: number;
+      status: components["schemas"]["Status"];
+      /**
+       * Blocked Reason
+       * @default
+       */
+      blocked_reason: string;
+    };
+    /**
+     * TaskListQuery
+     * @description Which Tasks to list: one Project's, Person's, Tag's or view's, open or Closed.
+     */
+    TaskListQuery: {
+      /** Project */
+      project?: number | null;
+      /** Person */
+      person?: number | null;
+      /** Tag */
+      tag?: number | null;
+      /** @description Today or Upcoming, picked by date. */
+      view?: components["schemas"]["View"] | null;
+      /**
+       * Closed
+       * @description List Closed Tasks, a page at a time.
+       * @default false
+       */
+      closed: boolean;
+      /**
+       * Cursor
+       * @description From the previous page of Closed ones.
+       */
+      cursor?: string | null;
+    };
+    /**
+     * View
+     * @description A list of Tasks picked by their dates rather than by Project.
+     * @enum {string}
+     */
+    View: "today" | "upcoming";
+    /**
+     * TaskListOut
+     * @description Tasks for a list, and the cursor for the next page when the list is paginated.
+     */
+    TaskListOut: {
+      /** Items */
+      items: components["schemas"]["TaskOut"][];
+      /**
+       * Next Cursor
+       * @description Pass as `cursor` to get the next page; null on the last page.
+       */
+      next_cursor: string | null;
+    };
+    /**
+     * TaskIn
+     * @description A new Task from Quick add.
+     */
+    TaskIn: {
+      /** Title */
+      title: string;
+      /**
+       * Project Id
+       * @description Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.
+       */
+      project_id?: number | null;
+      /**
+       * Parent Id
+       * @description Makes the Task the last Subtask of this one; reopens it if it's Closed.
+       */
+      parent_id?: number | null;
+      /** @description Dates the Task from the start, such as today in Today. */
+      dates?: components["schemas"]["TaskDatesIn"] | null;
+      /** @description 1 (P1) is the most urgent; left out, the Task has no Priority. */
+      priority?: components["schemas"]["Priority"] | null;
+      /**
+       * Tags
+       * @description Tag names, in any case; Tags the user doesn't have yet are created.
+       */
+      tags?: string[];
+      /**
+       * Tag Ids
+       * @description Tags picked by id.
+       */
+      tag_ids?: number[];
+      /**
+       * Repeat Rule
+       * @description Makes the Task repeat from its due date, as an RFC 5545 RRULE. Needs a due date; a Subtask can't repeat.
+       */
+      repeat_rule?: string | null;
+      /** @description What a repeating Task's next date counts from; the calendar when left out. */
+      repeat_from?: components["schemas"]["RepeatFrom"] | null;
+    };
+    /**
+     * TaskPatchIn
+     * @description The fields of a Task to change; fields left out stay as they are.
+     */
+    TaskPatchIn: {
+      /** Title */
+      title?: string | null;
+      /**
+       * Description
+       * @description Markdown.
+       */
+      description?: string | null;
+      /** @description Changing it clears the Blocked reason unless one is given with it. */
+      status?: components["schemas"]["Status"] | null;
+      /**
+       * Blocked Reason
+       * @description Only a Blocked Task can have one; send an empty string to clear it.
+       */
+      blocked_reason?: string | null;
+      priority?: components["schemas"]["Priority"] | null;
+      /**
+       * Pinned
+       * @description Pin the Task to the top of its lists, or unpin it.
+       */
+      pinned?: boolean | null;
+      /** @description Replaces all of the Task's dates; null removes them and its Reminders. */
+      dates?: components["schemas"]["TaskDatesIn"] | null;
+      /**
+       * Reminders
+       * @description Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.
+       */
+      reminders?: number[] | null;
+      /**
+       * Project Id
+       * @description Moves the Task first into it.
+       */
+      project_id?: number | null;
+      /**
+       * Repeat Rule
+       * @description Makes a dated top-level Task repeat, as an RFC 5545 RRULE; an empty string stops it. Closing a repeating Task moves it on to its next Occurrence instead; setting the Status it had before, straight after, undoes that.
+       */
+      repeat_rule?: string | null;
+      repeat_from?: components["schemas"]["RepeatFrom"] | null;
+      /**
+       * Tag Ids
+       * @description Replaces all of its Tags.
+       */
+      tag_ids?: number[] | null;
+    };
+    /**
+     * TaskMoveIn
+     * @description Where a Task goes: under a parent, or to the top level of a Project, after a sibling.
+     */
+    TaskMoveIn: {
+      /**
+       * Project Id
+       * @description Defaults to the parent's Project, or the Task's own for a root.
+       */
+      project_id?: number | null;
+      /**
+       * Parent Id
+       * @description The top level when left out.
+       */
+      parent_id?: number | null;
+      /**
+       * After Id
+       * @description The sibling it now follows; first when left out, last when it isn't there.
+       */
+      after_id?: number | null;
+    };
+    /**
+     * TaskSearchQuery
+     * @description What to search for.
+     */
+    TaskSearchQuery: {
+      /**
+       * Q
+       * @description Words that must all appear, ignoring case.
+       */
+      q: string;
+    };
+    /**
+     * MatchIn
+     * @description Where a Task matched, best first: a title match outranks a Description or Comment one.
+     * @enum {string}
+     */
+    MatchIn: "title" | "description" | "comment";
+    /**
+     * TaskSearchOut
+     * @description A Task that matched a search, with where it matched and the text around the match.
+     */
+    TaskSearchOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Parent Id
+       * @description Null for a root Task.
+       */
+      parent_id: number | null;
+      /**
+       * Position
+       * @description Sorts the Task among its siblings, byte by byte.
+       */
+      position: string;
+      /**
+       * Depth
+       * @description 0 for a root Task, up to 3 for the deepest Subtask.
+       */
+      depth: number;
+      /**
+       * Parent Title
+       * @description The parent's title, for a breadcrumb.
+       */
+      parent_title: string | null;
+      /** Title */
+      title: string;
+      status: components["schemas"]["Status"];
+      /** @description 0 is no Priority; 1 (P1) is the most urgent. */
+      priority: components["schemas"]["Priority"];
+      /**
+       * Blocked Reason
+       * @description Why a Blocked Task waits; empty otherwise.
+       */
+      blocked_reason: string;
+      /**
+       * Completed At
+       * @description When it was Completed or marked Won't do.
+       */
+      completed_at: string | null;
+      /**
+       * Pinned At
+       * @description When it was pinned; null when it isn't.
+       */
+      pinned_at: string | null;
+      /** Due Date */
+      due_date: string | null;
+      /**
+       * Due Time
+       * @description Null for an all-day Task.
+       */
+      due_time: string | null;
+      /**
+       * Start Date
+       * @description Set for a range, which ends on the due date.
+       */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Repeat Rule
+       * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
+       */
+      repeat_rule: string;
+      /** @description What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences. */
+      repeat_from: components["schemas"]["RepeatFrom"];
+      /**
+       * Is Overdue
+       * @description Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.
+       */
+      is_overdue: boolean;
+      /**
+       * Tags
+       * @description In the user's Tag order.
+       */
+      tags: components["schemas"]["TagOut"][];
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+      /**
+       * Attachment Count
+       * @description How many Attachments the Task has. A Task just added has none.
+       * @default 0
+       */
+      attachment_count: number;
+      /**
+       * Comment Count
+       * @description How many Comments the Task has. A Task just added has none.
+       * @default 0
+       */
+      comment_count: number;
+      /** @description Where it matched: the title, else the Description, else a Comment. */
+      match_in: components["schemas"]["MatchIn"];
+      /**
+       * Snippet
+       * @description The matching text as one plain line, cut to the part around the first match.
+       */
+      snippet: string;
+    };
+    /**
+     * AttachmentAddedActivityOut
+     * @description A file was attached to the Task.
+     */
+    AttachmentAddedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "attachment_added";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["AttachmentData"];
+    };
+    /**
+     * AttachmentData
+     * @description The Attachment an event is about, by the name it had.
+     */
+    AttachmentData: {
+      /** Name */
+      name: string;
+    };
+    /**
+     * AttachmentRemovedActivityOut
+     * @description An Attachment was deleted from the Task.
+     */
+    AttachmentRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "attachment_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["AttachmentData"];
+    };
+    /**
+     * CreatedActivityOut
+     * @description The Task was created.
+     */
+    CreatedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "created";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * DatesChangedActivityOut
+     * @description The Task's due date, time or range was set, changed or removed.
+     */
+    DatesChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "dates_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["DatesChangedData"];
+    };
+    /**
+     * DatesChangedData
+     * @description The dates before and after a change; null when the Task had or has none.
+     */
+    DatesChangedData: {
+      old: components["schemas"]["DatesData"] | null;
+      new: components["schemas"]["DatesData"] | null;
+    };
+    /**
+     * DatesData
+     * @description A Task's dates at one moment, as a change recorded them.
+     */
+    DatesData: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Due Time */
+      due_time: string | null;
+      /** Start Date */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+    };
+    /**
+     * DescriptionEditedActivityOut
+     * @description The Task's Description was edited. The edit itself isn't kept.
+     */
+    DescriptionEditedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "description_edited";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * MovedActivityOut
+     * @description The Task moved to another Project or parent.
+     */
+    MovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "moved";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["MovedData"];
+    };
+    /**
+     * MovedData
+     * @description The Projects and parents a Task moved between, by their names and titles at the time.
+     */
+    MovedData: {
+      /** From Project */
+      from_project: string;
+      /** To Project */
+      to_project: string;
+      /**
+       * From Parent
+       * @description Null when it was a root.
+       */
+      from_parent?: string | null;
+      /**
+       * To Parent
+       * @description Null when it became a root.
+       */
+      to_parent?: string | null;
+    };
+    /**
+     * NoActivityData
+     * @description The details of an event whose kind says it all.
+     */
+    NoActivityData: Record<string, never>;
+    /**
+     * PersonMergedActivityOut
+     * @description A Person the Task mentioned was merged into another.
+     */
+    PersonMergedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "person_merged";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["PersonMergedData"];
+    };
+    /**
+     * PersonMergedData
+     * @description The People merged, by their names at the time: `from_person` was folded into `to_person`.
+     */
+    PersonMergedData: {
+      /** From Person */
+      from_person: string;
+      /** To Person */
+      to_person: string;
+    };
+    /**
+     * PinnedActivityOut
+     * @description The Task was pinned.
+     */
+    PinnedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "pinned";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * PriorityChangedActivityOut
+     * @description The Task's Priority changed.
+     */
+    PriorityChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "priority_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["PriorityChangedData"];
+    };
+    /**
+     * PriorityChangedData
+     * @description The Priority before and after a change.
+     */
+    PriorityChangedData: {
+      old: components["schemas"]["Priority"];
+      new: components["schemas"]["Priority"];
+    };
+    /**
+     * RemindersChangedActivityOut
+     * @description The Task's Reminders were added, changed or removed.
+     */
+    RemindersChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "reminders_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RemindersChangedData"];
+    };
+    /**
+     * RemindersChangedData
+     * @description The Reminders before and after a change, as offsets in minutes.
+     */
+    RemindersChangedData: {
+      /** Old */
+      old: number[];
+      /** New */
+      new: number[];
+      /**
+       * All Day
+       * @description Whether the offsets count from the start of a day.
+       */
+      all_day: boolean;
+    };
+    /**
+     * RepeatAdvancedActivityOut
+     * @description Closing the repeating Task moved it on to its next Occurrence.
+     */
+    RepeatAdvancedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_advanced";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatAdvancedData"];
+    };
+    /**
+     * RepeatAdvancedData
+     * @description Which Occurrence was closed, how, and the one the Task moved on to.
+     */
+    RepeatAdvancedData: {
+      /**
+       * Action
+       * @description Skipped is Won't do.
+       * @enum {string}
+       */
+      action: "completed" | "skipped";
+      /**
+       * Occurrence
+       * Format: date
+       */
+      occurrence: string;
+      /**
+       * Next
+       * Format: date
+       */
+      next: string;
+    };
+    /**
+     * RepeatChangedActivityOut
+     * @description The Task's Repeat was set, changed or stopped.
+     */
+    RepeatChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatChangedData"];
+    };
+    /**
+     * RepeatChangedData
+     * @description The Repeat before and after a change; null when the Task didn't or doesn't repeat.
+     */
+    RepeatChangedData: {
+      old: components["schemas"]["RepeatData"] | null;
+      new: components["schemas"]["RepeatData"] | null;
+    };
+    /**
+     * RepeatData
+     * @description A Task's Repeat at one moment, as a change recorded it.
+     */
+    RepeatData: {
+      /**
+       * Rule
+       * @description An RFC 5545 RRULE.
+       */
+      rule: string;
+      repeat_from: components["schemas"]["RepeatFrom"];
+    };
+    /**
+     * RepeatRemovedActivityOut
+     * @description The Task stopped repeating because it lost its due date or became a Subtask.
+     */
+    RepeatRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatData"];
+    };
+    /**
+     * RestoredActivityOut
+     * @description The Task was restored from Trash.
+     */
+    RestoredActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "restored";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * StatusChangedActivityOut
+     * @description The Task's Status changed.
+     */
+    StatusChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "status_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["StatusChangedData"];
+    };
+    /**
+     * StatusChangedData
+     * @description The Status before and after a change, the Blocked reason it was given, and any cascade.
+     *
+     *     A change the user made to a relative names that relative: `via_parent` when closing a
+     *     parent closed this Task, `via_subtask` when reopening a Subtask reopened it.
+     */
+    StatusChangedData: {
+      old: components["schemas"]["Status"];
+      new: components["schemas"]["Status"];
+      /** Blocked Reason */
+      blocked_reason: string;
+      /**
+       * Via Parent
+       * @description The Closed parent's title.
+       */
+      via_parent?: string | null;
+      /**
+       * Via Subtask
+       * @description The reopened Subtask's title.
+       */
+      via_subtask?: string | null;
+      /**
+       * Closed Subtasks
+       * @description How many Subtasks closed with it.
+       * @default 0
+       */
+      closed_subtasks: number;
+    };
+    /**
+     * TagAddedActivityOut
+     * @description A Tag was put on the Task.
+     */
+    TagAddedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tag_added";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagData"];
+    };
+    /**
+     * TagData
+     * @description The Tag an event is about, by the name it had.
+     */
+    TagData: {
+      /** Name */
+      name: string;
+    };
+    /**
+     * TagRemovedActivityOut
+     * @description A Tag was taken off the Task, or deleted.
+     */
+    TagRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tag_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagData"];
+    };
+    /**
+     * TagsMergedActivityOut
+     * @description One of the Task's Tags was merged into another.
+     */
+    TagsMergedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tags_merged";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagsMergedData"];
+    };
+    /**
+     * TagsMergedData
+     * @description The Tags of a merge, by the names they had.
+     */
+    TagsMergedData: {
+      /** From Tag */
+      from_tag: string;
+      /** Into Tag */
+      into_tag: string;
+    };
+    /**
+     * TaskActivityListOut
+     * @description A page of a Task's history, newest first.
+     */
+    TaskActivityListOut: {
+      /** Items */
+      items: (
+        | components["schemas"]["CreatedActivityOut"]
+        | components["schemas"]["TitleChangedActivityOut"]
+        | components["schemas"]["DescriptionEditedActivityOut"]
+        | components["schemas"]["StatusChangedActivityOut"]
+        | components["schemas"]["PriorityChangedActivityOut"]
+        | components["schemas"]["PinnedActivityOut"]
+        | components["schemas"]["UnpinnedActivityOut"]
+        | components["schemas"]["AttachmentAddedActivityOut"]
+        | components["schemas"]["AttachmentRemovedActivityOut"]
+        | components["schemas"]["DatesChangedActivityOut"]
+        | components["schemas"]["RemindersChangedActivityOut"]
+        | components["schemas"]["MovedActivityOut"]
+        | components["schemas"]["PersonMergedActivityOut"]
+        | components["schemas"]["RepeatChangedActivityOut"]
+        | components["schemas"]["RepeatRemovedActivityOut"]
+        | components["schemas"]["RepeatAdvancedActivityOut"]
+        | components["schemas"]["TagAddedActivityOut"]
+        | components["schemas"]["TagRemovedActivityOut"]
+        | components["schemas"]["TagsMergedActivityOut"]
+        | components["schemas"]["TrashedActivityOut"]
+        | components["schemas"]["RestoredActivityOut"]
+      )[];
+      /**
+       * Next Cursor
+       * @description Pass as `cursor` to get the next page; null on the last page.
+       */
+      next_cursor: string | null;
+      /**
+       * Count
+       * @description How many events the whole history holds.
+       */
+      count: number;
+    };
+    /**
+     * TitleChangedActivityOut
+     * @description The Task was renamed.
+     */
+    TitleChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "title_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TitleChangedData"];
+    };
+    /**
+     * TitleChangedData
+     * @description The title before and after a rename.
+     */
+    TitleChangedData: {
+      /** Old */
+      old: string;
+      /** New */
+      new: string;
+    };
+    /**
+     * TrashedActivityOut
+     * @description The Task was moved to Trash.
+     */
+    TrashedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "trashed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * UnpinnedActivityOut
+     * @description The Task was unpinned.
+     */
+    UnpinnedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "unpinned";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * AttachmentOut
+     * @description A file attached to a Task. Its bytes come from the download endpoint.
+     */
+    AttachmentOut: {
+      /** Id */
+      id: number;
+      /**
+       * Name
+       * @description The file's name as it was uploaded.
+       */
+      name: string;
+      /**
+       * Size
+       * @description In bytes.
+       */
+      size: number;
+      /**
+       * Content Type
+       * @description Chosen by the server from the file's name.
+       */
+      content_type: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+    };
+    /**
+     * CommentOut
+     * @description A Comment on a Task. It was edited when `updated_at` differs from `created_at`.
+     */
+    CommentOut: {
+      /** Id */
+      id: number;
+      /** Task Id */
+      task_id: number;
+      /**
+       * Body
+       * @description Markdown, as the user wrote it.
+       */
+      body: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Updated At
+       * Format: date-time
+       */
+      updated_at: string;
+    };
+    /**
+     * CommentIn
+     * @description A Comment's markdown body, which may hold Mention tokens of the user's People.
+     */
+    CommentIn: {
+      /** Body */
+      body: string;
+    };
+    /**
+     * CalendarFeedOut
+     * @description The user's Calendar feed address.
+     */
+    CalendarFeedOut: {
+      /**
+       * Url
+       * @description The private `.ics` address, or null while it's off.
+       */
+      url: string | null;
+    };
+    /**
+     * TrashedProjectOut
+     * @description One Trash unit: a deleted Project, with the Tasks that went with it counted.
+     */
+    TrashedProjectOut: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "project";
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      color: components["schemas"]["PaletteColor"];
+      icon: components["schemas"]["Icon"];
+      /**
+       * Task Count
+       * @description How many Tasks went to Trash with it.
+       */
+      task_count: number;
+      /**
+       * Deleted At
+       * Format: date-time
+       */
+      deleted_at: string;
+      /**
+       * Expires At
+       * Format: date-time
+       * @description When it will be deleted for good.
+       */
+      expires_at: string;
+    };
+    /**
+     * TrashedTaskOut
+     * @description One Trash unit: a deleted Task, with the Subtasks that went with it counted.
+     */
+    TrashedTaskOut: {
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "task";
+      /** Id */
+      id: number;
+      /** Title */
+      title: string;
+      /**
+       * Project Name
+       * @description The Project it was deleted from.
+       */
+      project_name: string;
+      /**
+       * Subtask Count
+       * @description How many Subtasks went to Trash with it.
+       */
+      subtask_count: number;
+      /**
+       * Deleted At
+       * Format: date-time
+       */
+      deleted_at: string;
+      /**
+       * Expires At
+       * Format: date-time
+       * @description When it will be deleted for good.
+       */
+      expires_at: string;
+    };
+    /**
+     * TaskRestoreOut
+     * @description A Task back from Trash, and the Project it went back to, which may be the Inbox.
+     */
+    TaskRestoreOut: {
+      task: components["schemas"]["TaskOut"];
+      project: components["schemas"]["ProjectOut"];
+    };
+    /**
+     * TrashDeleteIn
+     * @description The trashed Tasks and Projects whose units to delete for good; at least one id.
+     */
+    TrashDeleteIn: {
+      /**
+       * Task Ids
+       * @description Trashed Tasks; each takes the whole unit it went to Trash with.
+       * @default []
+       */
+      task_ids: number[];
+      /**
+       * Project Ids
+       * @description Trashed Projects; each takes the Tasks that went to Trash with it.
+       * @default []
+       */
+      project_ids: number[];
     };
   };
   responses: never;
@@ -565,6 +3374,54 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["ProfileIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserOut"];
+        };
+      };
+    };
+  };
+  apps_accounts_api_time_zone: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TimeZoneIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["UserOut"];
+        };
+      };
+    };
+  };
+  apps_accounts_api_shortcuts: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ShortcutsIn"];
       };
     };
     responses: {
@@ -756,6 +3613,1740 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  apps_tasks_api_reminder_actions_complete: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskChangeOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_reminder_actions_snooze: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SnoozeIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_folders_create_folder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FolderIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FolderOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_folders_delete_folder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        folder_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_folders_update_folder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        folder_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FolderPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["FolderOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_folders_move_folder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        folder_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["FolderMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_create_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProjectIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_delete_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_update_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProjectPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_move_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ProjectMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_archive_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_projects_unarchive_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_people_list_people: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonOut"][];
+        };
+      };
+    };
+  };
+  apps_tasks_api_people_create_person: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PersonIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_people_delete_person: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        person_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_people_update_person: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        person_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PersonPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_people_merge_person: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        person_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["PersonMergeIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["PersonOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_sidebar_sidebar: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["SidebarOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_create_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TagOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_delete_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_update_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TagOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_move_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tags_merge_tag: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        tag_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TagMergeIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_bulk_bulk_change: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskBulkIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskBulkOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_list_tasks: {
+    parameters: {
+      query?: {
+        project?: number | null;
+        person?: number | null;
+        tag?: number | null;
+        /** @description Today or Upcoming, picked by date. */
+        view?: components["schemas"]["View"] | null;
+        /** @description List Closed Tasks, a page at a time. */
+        closed?: boolean;
+        /** @description From the previous page of Closed ones. */
+        cursor?: string | null;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskListOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_create_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_get_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskDetailOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_delete_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_update_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskChangeOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_move_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TaskMoveIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskChangeOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_tasks_duplicate_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_search_search: {
+    parameters: {
+      query: {
+        /** @description Words that must all appear, ignoring case. */
+        q: string;
+      };
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskSearchOut"][];
+        };
+      };
+    };
+  };
+  apps_tasks_api_activity_list_activity: {
+    parameters: {
+      query?: {
+        cursor?: string | null;
+      };
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskActivityListOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_list_attachments: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AttachmentOut"][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_upload_attachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "multipart/form-data": {
+          /**
+           * File
+           * Format: binary
+           */
+          file: string;
+        };
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["AttachmentOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Content Too Large */
+      413: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_download_attachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The file's bytes. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": unknown;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_attachments_delete_attachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        attachment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_comments_list_comments: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommentOut"][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_comments_add_comment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CommentIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommentOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_comments_delete_comment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        comment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_comments_edit_comment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        comment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CommentIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CommentOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_get_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CalendarFeedOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_turn_on_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CalendarFeedOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_calendar_turn_off_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  apps_tasks_api_calendar_feed: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        token: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The feed as an iCalendar file. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "text/calendar": string;
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_trash_list_trash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": (
+            components["schemas"]["TrashedTaskOut"] | components["schemas"]["TrashedProjectOut"]
+          )[];
+        };
+      };
+    };
+  };
+  apps_tasks_api_trash_empty_trash: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+    };
+  };
+  apps_tasks_api_trash_restore_task: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        task_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["TaskRestoreOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_trash_restore_project: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ProjectOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_trash_delete_forever: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["TrashDeleteIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
       };
     };
   };

@@ -25,6 +25,14 @@ class Notification(models.Model):
         blank=True,
         help_text="Path in the app to open when the notification is clicked.",
     )
+    reminder = models.ForeignKey(
+        "tasks.Reminder",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notifications",
+        help_text="The Reminder that sent it, which lets the user complete or snooze its Task.",
+    )
     created_at = models.DateTimeField(default=timezone.now)
     read_at = models.DateTimeField(null=True, blank=True)
 
@@ -40,6 +48,11 @@ class Notification(models.Model):
     def __str__(self) -> str:
         """Return the title, which is what the user sees first."""
         return self.title
+
+    @property
+    def is_reminder(self) -> bool:
+        """Whether a Reminder sent it, so its Task can still be completed or snoozed from it."""
+        return self.reminder_id is not None
 
 
 class PushSubscription(models.Model):

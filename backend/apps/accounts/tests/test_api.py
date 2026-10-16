@@ -67,6 +67,8 @@ def test_login_starts_a_session(browser: Client, ada: User) -> None:
         "id": ada.pk,
         "email": "ada@example.com",
         "full_name": "Ada Lovelace",
+        "time_zone": "",
+        "single_key_shortcuts": True,
     }
     session = browser.get("/api/v1/auth/session").json()
     assert session["user"]["email"] == "ada@example.com"
@@ -243,6 +245,8 @@ def test_update_profile_changes_the_name(browser: Client, ada: User) -> None:
         "id": ada.pk,
         "email": "ada@example.com",
         "full_name": "Augusta Ada King",
+        "time_zone": "",
+        "single_key_shortcuts": True,
     }
 
 
@@ -271,5 +275,72 @@ def test_update_profile_rejects_overlong_names(browser: Client, ada: User) -> No
 @pytest.mark.django_db
 def test_update_profile_requires_a_session(browser: Client) -> None:
     response = update_profile(browser, "Nobody")
+
+    assert response.status_code == 401
+
+
+def set_time_zone(client: Client, time_zone: str) -> Response:
+    return client.put(
+        "/api/v1/auth/time-zone",
+        {"time_zone": time_zone},
+        content_type="application/json",
+        headers=csrf_headers(client),
+    )
+
+
+@pytest.mark.django_db
+def test_set_time_zone_saves_it_and_returns_the_user(browser: Client, ada: User) -> None:
+    browser.force_login(ada)
+    browser.get("/api/v1/auth/session")
+
+    response = set_time_zone(browser, "Europe/London")
+
+    assert response.status_code == 200
+    assert response.json()["time_zone"] == "Europe/London"
+    ada.refresh_from_db()
+    assert ada.time_zone == "Europe/London"
+
+
+@pytest.mark.django_db
+def test_session_includes_the_time_zone(browser: Client, ada: User) -> None:
+    ada.time_zone = "Asia/Kolkata"
+    ada.save()
+    browser.force_login(ada)
+
+    response = browser.get("/api/v1/auth/session")
+
+    assert response.json()["user"]["time_zone"] == "Asia/Kolkata"
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("time_zone", ["", "Mars/Olympus_Mons", "europe/london"])
+def test_set_time_zone_rejects_names_that_are_not_iana_zones(
+    browser: Client, ada: User, time_zone: str
+) -> None:
+    browser.force_login(ada)
+    browser.get("/api/v1/auth/session")
+
+    response = set_time_zone(browser, time_zone)
+
+    assert response.status_code == 422
+    ada.refresh_from_db()
+    assert ada.time_zone == ""
+
+
+@pytest.mark.django_db
+def test_set_time_zone_only_changes_the_signed_in_user(browser: Client, ada: User) -> None:
+    grace = User.objects.create_user("grace@example.com", PASSWORD, time_zone="America/New_York")
+    browser.force_login(ada)
+    browser.get("/api/v1/auth/session")
+
+    set_time_zone(browser, "Europe/London")
+
+    grace.refresh_from_db()
+    assert grace.time_zone == "America/New_York"
+
+
+@pytest.mark.django_db
+def test_set_time_zone_requires_a_session(browser: Client) -> None:
+    response = set_time_zone(browser, "Europe/London")
 
     assert response.status_code == 401

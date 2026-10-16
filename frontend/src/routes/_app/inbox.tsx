@@ -1,22 +1,17 @@
+import { useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
-import { Inbox } from "lucide-react";
 
-import { EmptyState } from "@/components/layout/empty-state";
-import { PageHeader } from "@/components/layout/page-header";
+import { validateTaskSearch } from "@/features/tasks/open-task";
+import { TaskList } from "@/features/tasks/task-list";
+import { sidebarQuery } from "@/features/tasks/tasks";
 
 export const Route = createFileRoute("/_app/inbox")({
+  validateSearch: validateTaskSearch,
+  loader: ({ context }) => context.queryClient.query(sidebarQuery),
   component: InboxPage,
 });
 
 function InboxPage() {
-  return (
-    <>
-      <PageHeader title="Inbox" description="Everything you haven't sorted into a list yet." />
-      <EmptyState
-        icon={Inbox}
-        title="Your inbox is empty"
-        description="New tasks land here until you give them a list."
-      />
-    </>
-  );
+  const { data } = useSuspenseQuery(sidebarQuery);
+  return <TaskList project={data.inbox} />;
 }

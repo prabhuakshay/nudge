@@ -28,5 +28,6 @@
     "paths": { "@/*": ["./src/*"] }
   },
   "include": ["src"],
-  "exclude": ["src/sw.ts"]
+  // These run on Node and read files from disk; tsconfig.node-tests.json checks them with Node's types.
+  "exclude": ["src/sw.ts", "src/styles/tokens.test.ts"]
 }

@@ -205,6 +205,82 @@
         ]
       }
     },
+    "/api/v1/auth/time-zone": {
+      "put": {
+        "operationId": "apps_accounts_api_time_zone",
+        "summary": "Set time zone",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change the signed-in user's time zone and return the updated user.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TimeZoneIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/auth/shortcuts": {
+      "put": {
+        "operationId": "apps_accounts_api_shortcuts",
+        "summary": "Set keyboard shortcuts",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Turn the signed-in user's single-key shortcuts on or off and return the updated user.",
+        "tags": [
+          "auth"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShortcutsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/notifications": {
       "get": {
         "operationId": "apps_notifications_api_notifications",
@@ -451,6 +527,2645 @@
           }
         ]
       }
+    },
+    "/api/v1/notifications/{notification_id}/complete": {
+      "post": {
+        "operationId": "apps_tasks_api_reminder_actions_complete",
+        "summary": "Complete a Task from its Reminder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "schema": {
+              "title": "Notification Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskChangeOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Complete the Task a Reminder notification is about, as ticking it off would.",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}/snooze": {
+      "post": {
+        "operationId": "apps_tasks_api_reminder_actions_snooze",
+        "summary": "Snooze a Reminder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "schema": {
+              "title": "Notification Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Fire a Reminder notification once more later, leaving its Task as it is.",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnoozeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/folders": {
+      "post": {
+        "operationId": "apps_tasks_api_folders_create_folder",
+        "summary": "Create a Folder",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create an expanded Folder last in the sidebar.",
+        "tags": [
+          "folders"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/folders/{folder_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_folders_update_folder",
+        "summary": "Change a Folder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folder_id",
+            "schema": {
+              "title": "Folder Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FolderOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rename a Folder, or collapse or expand it.",
+        "tags": [
+          "folders"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_folders_delete_folder",
+        "summary": "Delete a Folder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folder_id",
+            "schema": {
+              "title": "Folder Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete a Folder for good; its Projects stay, ungrouped, where it was.",
+        "tags": [
+          "folders"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/folders/{folder_id}/move": {
+      "post": {
+        "operationId": "apps_tasks_api_folders_move_folder",
+        "summary": "Move a Folder in the sidebar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "folder_id",
+            "schema": {
+              "title": "Folder Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Put a Folder right after a top-level sibling, or first.",
+        "tags": [
+          "folders"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FolderMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects": {
+      "post": {
+        "operationId": "apps_tasks_api_projects_create_project",
+        "summary": "Create a Project",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a Project last in its Folder, or last in the sidebar.",
+        "tags": [
+          "projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_projects_update_project",
+        "summary": "Change a Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rename, recolour or change the icon of a Project. The Inbox can't be changed.",
+        "tags": [
+          "projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_projects_delete_project",
+        "summary": "Move a Project to Trash",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Move a Project and its Tasks to Trash as one unit. The Inbox can't be deleted.",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/move": {
+      "post": {
+        "operationId": "apps_tasks_api_projects_move_project",
+        "summary": "Move a Project in the sidebar",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Put a Project in a Folder or on the top level, right after a sibling or first.",
+        "tags": [
+          "projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/archive": {
+      "post": {
+        "operationId": "apps_tasks_api_projects_archive_project",
+        "summary": "Archive a Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Make a Project read-only and move it to the sidebar's Archived section.",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/unarchive": {
+      "post": {
+        "operationId": "apps_tasks_api_projects_unarchive_project",
+        "summary": "Unarchive a Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Bring an archived Project back to its place in the sidebar, unchanged.",
+        "tags": [
+          "projects"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/people": {
+      "get": {
+        "operationId": "apps_tasks_api_people_list_people",
+        "summary": "List People",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/PersonOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the user's People, A to Z.",
+        "tags": [
+          "people"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_tasks_api_people_create_person",
+        "summary": "Add a Person",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add a Person to the address book.",
+        "tags": [
+          "people"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/people/{person_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_people_update_person",
+        "summary": "Change a Person",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "schema": {
+              "title": "Person Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rename or recolour a Person. A rename shows in every Mention of them.",
+        "tags": [
+          "people"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_people_delete_person",
+        "summary": "Delete a Person",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "schema": {
+              "title": "Person Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete a Person for good; their Mentions become plain `@Name` text.",
+        "tags": [
+          "people"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/people/{person_id}/merge": {
+      "post": {
+        "operationId": "apps_tasks_api_people_merge_person",
+        "summary": "Merge a Person into another",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "person_id",
+            "schema": {
+              "title": "Person Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Fold a Person into another: their Mentions move over and they are deleted.",
+        "tags": [
+          "people"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PersonMergeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/sidebar": {
+      "get": {
+        "operationId": "apps_tasks_api_sidebar_sidebar",
+        "summary": "Get the sidebar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SidebarOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return everything the sidebar lists, with open counts for Projects, Tags and views.",
+        "tags": [
+          "sidebar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags": {
+      "post": {
+        "operationId": "apps_tasks_api_tags_create_tag",
+        "summary": "Create a Tag",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a Tag last in the user's order.",
+        "tags": [
+          "tags"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/{tag_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_tags_update_tag",
+        "summary": "Change a Tag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "schema": {
+              "title": "Tag Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TagOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Rename or recolour a Tag; the new name shows on every Task that has it.",
+        "tags": [
+          "tags"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_tags_delete_tag",
+        "summary": "Delete a Tag",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "schema": {
+              "title": "Tag Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete a Tag for good, taking it off every Task that has it.",
+        "tags": [
+          "tags"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/{tag_id}/move": {
+      "post": {
+        "operationId": "apps_tasks_api_tags_move_tag",
+        "summary": "Move a Tag in the user's order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "schema": {
+              "title": "Tag Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Put a Tag right after another, or first.",
+        "tags": [
+          "tags"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tags/{tag_id}/merge": {
+      "post": {
+        "operationId": "apps_tasks_api_tags_merge_tag",
+        "summary": "Merge a Tag into another",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "schema": {
+              "title": "Tag Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Move every Task of a Tag onto another Tag, then delete the first for good.",
+        "tags": [
+          "tags"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TagMergeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/bulk": {
+      "post": {
+        "operationId": "apps_tasks_api_bulk_bulk_change",
+        "summary": "Change several Tasks at once",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskBulkOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Apply one action to every Task given, in one transaction.\n\nEach Task changes as it would on its own, cascades and Activity included. If any id isn't one\nof the user's Tasks, or the Project or Tag isn't theirs, nothing changes and the answer is\n404; if any Task refuses the change, nothing changes and the answer is 422. Every Task whose\nStatus changed comes back with its Status from before, and a move says where each Task was,\nso the client can offer Undo.",
+        "tags": [
+          "tasks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskBulkIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks": {
+      "get": {
+        "operationId": "apps_tasks_api_tasks_list_tasks",
+        "summary": "List a Project's, a Person's, a Tag's or a view's Tasks",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "project",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Project"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "person",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Person"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "tag",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Tag"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "view",
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/View"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Today or Upcoming, picked by date."
+            },
+            "required": false,
+            "description": "Today or Upcoming, picked by date."
+          },
+          {
+            "in": "query",
+            "name": "closed",
+            "schema": {
+              "default": false,
+              "description": "List Closed Tasks, a page at a time.",
+              "title": "Closed",
+              "type": "boolean"
+            },
+            "required": false,
+            "description": "List Closed Tasks, a page at a time."
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "From the previous page of Closed ones.",
+              "title": "Cursor"
+            },
+            "required": false,
+            "description": "From the previous page of Closed ones."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskListOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the open Tasks of a Project, Person, Tag or view, or, with `closed`, Closed ones.\n\nA Project's Tasks come in manual order. A Person's are the Tasks that mention them and a\nTag's the Tasks it's on, flat, in each Project's manual order. Today and Upcoming list flat\nrows by date, with Overdue first in Today; Today's Closed Tasks are those closed today, and\nUpcoming has none. Closed Tasks come most recently completed first, in pages; open Tasks come\nall at once.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_tasks_api_tasks_create_task",
+        "summary": "Add a Task",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add a Task first in its Project, or in the Inbox when no Project is given.\n\nWith `parent_id` it is added last under that Task instead, which reopens the parent and its\nancestors if they are Closed. Tags named in `tags` that the user doesn't have yet are\ncreated with the Task. A dated top-level Task can repeat from the start.",
+        "tags": [
+          "tasks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}": {
+      "get": {
+        "operationId": "apps_tasks_api_tasks_get_task",
+        "summary": "Get a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskDetailOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return a Task with everything the detail drawer shows.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "patch": {
+        "operationId": "apps_tasks_api_tasks_update_task",
+        "summary": "Change a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskChangeOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change a Task's fields, returning it and every Task whose Status changed.\n\nEach changed Task comes with its Status and Blocked reason from before, so the client can\noffer Undo without the server keeping anything.",
+        "tags": [
+          "tasks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_tasks_delete_task",
+        "summary": "Move a Task to Trash",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Send a Task and its Subtasks to Trash as one unit, which `restore` brings back.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/move": {
+      "post": {
+        "operationId": "apps_tasks_api_tasks_move_task",
+        "summary": "Move a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskChangeOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Move a Task and its Subtasks under a parent, or to a Project's top level, after a sibling.\n\nThe server picks the new order key. The Task comes back with every Closed ancestor the move\nreopened, so the client can offer Undo.",
+        "tags": [
+          "tasks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TaskMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/duplicate": {
+      "post": {
+        "operationId": "apps_tasks_api_tasks_duplicate_task",
+        "summary": "Duplicate a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add an open copy of a Task right after it, with its title, Description and Priority.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/search": {
+      "get": {
+        "operationId": "apps_tasks_api_search_search",
+        "summary": "Search Tasks",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "q",
+            "schema": {
+              "description": "Words that must all appear, ignoring case.",
+              "maxLength": 200,
+              "minLength": 2,
+              "title": "Q",
+              "type": "string"
+            },
+            "required": true,
+            "description": "Words that must all appear, ignoring case."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/TaskSearchOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Find Tasks whose title, Description or one Comment holds every word, best matches first.\n\nArchived Projects are searched too. At most 50 Tasks come back, with no further pages.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/activity": {
+      "get": {
+        "operationId": "apps_tasks_api_activity_list_activity",
+        "summary": "List a Task's Activity",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "cursor",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Cursor"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskActivityListOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return a page of a Task's history, newest first, with the number of events in all.",
+        "tags": [
+          "tasks"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/attachments": {
+      "post": {
+        "operationId": "apps_tasks_api_attachments_upload_attachment",
+        "summary": "Attach a file to a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AttachmentOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Content Too Large",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Store one file against a Task, up to the configured size.",
+        "tags": [
+          "attachments"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "properties": {
+                  "file": {
+                    "format": "binary",
+                    "title": "File",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "file"
+                ],
+                "title": "FileParams",
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "apps_tasks_api_attachments_list_attachments",
+        "summary": "List a Task's Attachments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/AttachmentOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return a Task's Attachments, oldest first.",
+        "tags": [
+          "attachments"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/attachments/{attachment_id}/download": {
+      "get": {
+        "operationId": "apps_tasks_api_attachments_download_attachment",
+        "summary": "Download an Attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "schema": {
+              "title": "Attachment Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The file's bytes.",
+            "content": {
+              "application/octet-stream": {}
+            }
+          }
+        },
+        "description": "Send an Attachment's bytes, inline for images and PDFs and as a download otherwise.",
+        "tags": [
+          "attachments"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/attachments/{attachment_id}": {
+      "delete": {
+        "operationId": "apps_tasks_api_attachments_delete_attachment",
+        "summary": "Delete an Attachment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "schema": {
+              "title": "Attachment Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete an Attachment and its file for good.",
+        "tags": [
+          "attachments"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/comments": {
+      "get": {
+        "operationId": "apps_tasks_api_comments_list_comments",
+        "summary": "List a Task's Comments",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CommentOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return all of a Task's Comments, oldest first.",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_tasks_api_comments_add_comment",
+        "summary": "Comment on a Task",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add a markdown Comment to a Task.",
+        "tags": [
+          "comments"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/comments/{comment_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_comments_edit_comment",
+        "summary": "Edit a Comment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "comment_id",
+            "schema": {
+              "title": "Comment Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CommentOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Replace a Comment's body.",
+        "tags": [
+          "comments"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CommentIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_comments_delete_comment",
+        "summary": "Delete a Comment",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "comment_id",
+            "schema": {
+              "title": "Comment Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete a Comment for good.",
+        "tags": [
+          "comments"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/calendar/feed": {
+      "get": {
+        "operationId": "apps_tasks_api_calendar_get_feed",
+        "summary": "Get the Calendar feed address",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeedOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the signed-in user's feed address, or null while the feed is off.",
+        "tags": [
+          "calendar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_tasks_api_calendar_turn_on_feed",
+        "summary": "Turn on or reset the Calendar feed",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarFeedOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Give the user a new feed address; any old address stops working.",
+        "tags": [
+          "calendar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_calendar_turn_off_feed",
+        "summary": "Turn off the Calendar feed",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Clear the user's feed address so it stops working.",
+        "tags": [
+          "calendar"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/calendar/{token}.ics": {
+      "get": {
+        "operationId": "apps_tasks_api_calendar_feed",
+        "summary": "Fetch a Calendar feed",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "token",
+            "schema": {
+              "title": "Token",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The feed as an iCalendar file.",
+            "content": {
+              "text/calendar": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the feed's owner's open dated Tasks as an iCalendar file.",
+        "tags": [
+          "calendar"
+        ]
+      }
+    },
+    "/api/v1/trash": {
+      "get": {
+        "operationId": "apps_tasks_api_trash_list_trash",
+        "summary": "List the Trash",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "discriminator": {
+                      "mapping": {
+                        "project": "#/components/schemas/TrashedProjectOut",
+                        "task": "#/components/schemas/TrashedTaskOut"
+                      },
+                      "propertyName": "kind"
+                    },
+                    "oneOf": [
+                      {
+                        "$ref": "#/components/schemas/TrashedTaskOut"
+                      },
+                      {
+                        "$ref": "#/components/schemas/TrashedProjectOut"
+                      }
+                    ]
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return one row per deleted Task or Project unit, most recently deleted first.",
+        "tags": [
+          "trash"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "apps_tasks_api_trash_empty_trash",
+        "summary": "Empty the Trash",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "description": "Delete everything in the Trash for good.",
+        "tags": [
+          "trash"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/tasks/{task_id}/restore": {
+      "post": {
+        "operationId": "apps_tasks_api_trash_restore_task",
+        "summary": "Restore a Task from Trash",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "task_id",
+            "schema": {
+              "title": "Task Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TaskRestoreOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Bring back a Task with everything deleted along with it, and say where it went.",
+        "tags": [
+          "trash"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/projects/{project_id}/restore": {
+      "post": {
+        "operationId": "apps_tasks_api_trash_restore_project",
+        "summary": "Restore a Project from Trash",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Bring back a Project with its Tasks, renamed \"<Name> (2)\" if its name was taken.",
+        "tags": [
+          "trash"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/trash/delete": {
+      "post": {
+        "operationId": "apps_tasks_api_trash_delete_forever",
+        "summary": "Delete Tasks and Projects in Trash forever",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete the given Trash units for good; nothing goes if any id isn't in the user's Trash.",
+        "tags": [
+          "trash"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TrashDeleteIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -516,12 +3231,24 @@
           "full_name": {
             "title": "Full Name",
             "type": "string"
+          },
+          "time_zone": {
+            "description": "IANA time zone name, or empty when not set yet.",
+            "title": "Time Zone",
+            "type": "string"
+          },
+          "single_key_shortcuts": {
+            "description": "Whether shortcuts of one unmodified key, such as C, are on.",
+            "title": "Single Key Shortcuts",
+            "type": "boolean"
           }
         },
         "required": [
           "id",
           "email",
-          "full_name"
+          "full_name",
+          "time_zone",
+          "single_key_shortcuts"
         ],
         "title": "UserOut",
         "type": "object"
@@ -593,6 +3320,35 @@
         "title": "ProfileIn",
         "type": "object"
       },
+      "TimeZoneIn": {
+        "description": "The user's new time zone.",
+        "properties": {
+          "time_zone": {
+            "description": "IANA time zone name, such as Europe/London.",
+            "title": "Time Zone",
+            "type": "string"
+          }
+        },
+        "required": [
+          "time_zone"
+        ],
+        "title": "TimeZoneIn",
+        "type": "object"
+      },
+      "ShortcutsIn": {
+        "description": "Whether the user wants single-key shortcuts on.",
+        "properties": {
+          "single_key": {
+            "title": "Single Key",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "single_key"
+        ],
+        "title": "ShortcutsIn",
+        "type": "object"
+      },
       "NotificationListOut": {
         "description": "The latest notifications and how many of all the user's notifications are unread.",
         "properties": {
@@ -635,6 +3391,11 @@
             "title": "Url",
             "type": "string"
           },
+          "is_reminder": {
+            "description": "Whether a Reminder sent it, so its Task can be completed or snoozed from it.",
+            "title": "Is Reminder",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -658,6 +3419,7 @@
           "title",
           "body",
           "url",
+          "is_reminder",
           "created_at",
           "read_at"
         ],
@@ -738,6 +3500,3833 @@
           "endpoint"
         ],
         "title": "PushUnsubscribeIn",
+        "type": "object"
+      },
+      "AffectedTaskOut": {
+        "description": "A Task whose Status a change touched, with its Status before, so the client can undo.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "prior_status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "prior_blocked_reason": {
+            "title": "Prior Blocked Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "prior_status",
+          "prior_blocked_reason"
+        ],
+        "title": "AffectedTaskOut",
+        "type": "object"
+      },
+      "PaletteColor": {
+        "description": "A colour a user can give a Project, Tag or Person.",
+        "enum": [
+          "red",
+          "orange",
+          "amber",
+          "green",
+          "teal",
+          "blue",
+          "violet",
+          "pink"
+        ],
+        "title": "PaletteColor",
+        "type": "string"
+      },
+      "Priority": {
+        "description": "How urgent a Task is; P1 is the most urgent.",
+        "enum": [
+          0,
+          1,
+          2,
+          3,
+          4
+        ],
+        "title": "Priority",
+        "type": "integer"
+      },
+      "ReminderOut": {
+        "description": "One of a Task's Reminders.",
+        "properties": {
+          "offset": {
+            "description": "Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.",
+            "maximum": 525600,
+            "minimum": -525600,
+            "title": "Offset",
+            "type": "integer"
+          },
+          "fire_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it fires next; null when it won't: the Task is Closed or archived, or the time has passed.",
+            "title": "Fire At"
+          }
+        },
+        "required": [
+          "offset",
+          "fire_at"
+        ],
+        "title": "ReminderOut",
+        "type": "object"
+      },
+      "RepeatFrom": {
+        "description": "What a repeating Task's next Occurrence counts from.",
+        "enum": [
+          "due",
+          "completion",
+          "calendar"
+        ],
+        "title": "RepeatFrom",
+        "type": "string"
+      },
+      "Status": {
+        "description": "Where a Task stands.",
+        "enum": [
+          "open",
+          "completed",
+          "wont_do",
+          "blocked"
+        ],
+        "title": "Status",
+        "type": "string"
+      },
+      "TagOut": {
+        "description": "A Tag's own fields.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null shows the Tag grey."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color"
+        ],
+        "title": "TagOut",
+        "type": "object"
+      },
+      "TaskAncestorOut": {
+        "description": "A Task above another in the tree, as a breadcrumb links to it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "TaskAncestorOut",
+        "type": "object"
+      },
+      "TaskChangeOut": {
+        "description": "A changed Task and every Task whose Status the change touched.",
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/TaskDetailOut"
+          },
+          "affected": {
+            "items": {
+              "$ref": "#/components/schemas/AffectedTaskOut"
+            },
+            "title": "Affected",
+            "type": "array"
+          }
+        },
+        "required": [
+          "task",
+          "affected"
+        ],
+        "title": "TaskChangeOut",
+        "type": "object"
+      },
+      "TaskDetailOut": {
+        "description": "A Task as the detail drawer shows it, with where it sits in the tree and what's under it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for a root Task.",
+            "title": "Parent Id"
+          },
+          "position": {
+            "description": "Sorts the Task among its siblings, byte by byte.",
+            "title": "Position",
+            "type": "string"
+          },
+          "depth": {
+            "description": "0 for a root Task, up to 3 for the deepest Subtask.",
+            "title": "Depth",
+            "type": "integer"
+          },
+          "parent_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The parent's title, for a breadcrumb.",
+            "title": "Parent Title"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority",
+            "description": "0 is no Priority; 1 (P1) is the most urgent."
+          },
+          "blocked_reason": {
+            "description": "Why a Blocked Task waits; empty otherwise.",
+            "title": "Blocked Reason",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was Completed or marked Won't do.",
+            "title": "Completed At"
+          },
+          "pinned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was pinned; null when it isn't.",
+            "title": "Pinned At"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for an all-day Task.",
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for a range, which ends on the due date.",
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "repeat_rule": {
+            "description": "An RFC 5545 RRULE; empty when the Task doesn't repeat.",
+            "title": "Repeat Rule",
+            "type": "string"
+          },
+          "repeat_from": {
+            "$ref": "#/components/schemas/RepeatFrom",
+            "description": "What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences."
+          },
+          "is_overdue": {
+            "description": "Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.",
+            "title": "Is Overdue",
+            "type": "boolean"
+          },
+          "tags": {
+            "description": "In the user's Tag order.",
+            "items": {
+              "$ref": "#/components/schemas/TagOut"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "attachment_count": {
+            "default": 0,
+            "description": "How many Attachments the Task has. A Task just added has none.",
+            "title": "Attachment Count",
+            "type": "integer"
+          },
+          "comment_count": {
+            "default": 0,
+            "description": "How many Comments the Task has. A Task just added has none.",
+            "title": "Comment Count",
+            "type": "integer"
+          },
+          "description": {
+            "description": "Markdown, as the user wrote it.",
+            "title": "Description",
+            "type": "string"
+          },
+          "ancestors": {
+            "description": "From the root down to the parent.",
+            "items": {
+              "$ref": "#/components/schemas/TaskAncestorOut"
+            },
+            "title": "Ancestors",
+            "type": "array"
+          },
+          "subtasks": {
+            "description": "Every Subtask below, whatever its Status, as flat rows in manual order.",
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Subtasks",
+            "type": "array"
+          },
+          "reminders": {
+            "description": "Earliest offset first.",
+            "items": {
+              "$ref": "#/components/schemas/ReminderOut"
+            },
+            "title": "Reminders",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "parent_id",
+          "position",
+          "depth",
+          "parent_title",
+          "title",
+          "status",
+          "priority",
+          "blocked_reason",
+          "completed_at",
+          "pinned_at",
+          "due_date",
+          "due_time",
+          "start_date",
+          "start_time",
+          "repeat_rule",
+          "repeat_from",
+          "is_overdue",
+          "tags",
+          "created_at",
+          "updated_at",
+          "description",
+          "ancestors",
+          "subtasks",
+          "reminders"
+        ],
+        "title": "TaskDetailOut",
+        "type": "object"
+      },
+      "TaskOut": {
+        "description": "A Task as a list row shows it. Rows are flat; clients build the tree from `parent_id`.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for a root Task.",
+            "title": "Parent Id"
+          },
+          "position": {
+            "description": "Sorts the Task among its siblings, byte by byte.",
+            "title": "Position",
+            "type": "string"
+          },
+          "depth": {
+            "description": "0 for a root Task, up to 3 for the deepest Subtask.",
+            "title": "Depth",
+            "type": "integer"
+          },
+          "parent_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The parent's title, for a breadcrumb.",
+            "title": "Parent Title"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority",
+            "description": "0 is no Priority; 1 (P1) is the most urgent."
+          },
+          "blocked_reason": {
+            "description": "Why a Blocked Task waits; empty otherwise.",
+            "title": "Blocked Reason",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was Completed or marked Won't do.",
+            "title": "Completed At"
+          },
+          "pinned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was pinned; null when it isn't.",
+            "title": "Pinned At"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for an all-day Task.",
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for a range, which ends on the due date.",
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "repeat_rule": {
+            "description": "An RFC 5545 RRULE; empty when the Task doesn't repeat.",
+            "title": "Repeat Rule",
+            "type": "string"
+          },
+          "repeat_from": {
+            "$ref": "#/components/schemas/RepeatFrom",
+            "description": "What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences."
+          },
+          "is_overdue": {
+            "description": "Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.",
+            "title": "Is Overdue",
+            "type": "boolean"
+          },
+          "tags": {
+            "description": "In the user's Tag order.",
+            "items": {
+              "$ref": "#/components/schemas/TagOut"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "attachment_count": {
+            "default": 0,
+            "description": "How many Attachments the Task has. A Task just added has none.",
+            "title": "Attachment Count",
+            "type": "integer"
+          },
+          "comment_count": {
+            "default": 0,
+            "description": "How many Comments the Task has. A Task just added has none.",
+            "title": "Comment Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "parent_id",
+          "position",
+          "depth",
+          "parent_title",
+          "title",
+          "status",
+          "priority",
+          "blocked_reason",
+          "completed_at",
+          "pinned_at",
+          "due_date",
+          "due_time",
+          "start_date",
+          "start_time",
+          "repeat_rule",
+          "repeat_from",
+          "is_overdue",
+          "tags",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "TaskOut",
+        "type": "object"
+      },
+      "Snooze": {
+        "description": "How long to snooze a Reminder for.",
+        "enum": [
+          "in_15_minutes",
+          "in_1_hour",
+          "in_3_hours",
+          "tomorrow_morning"
+        ],
+        "title": "Snooze",
+        "type": "string"
+      },
+      "SnoozeIn": {
+        "description": "When a snoozed Reminder should fire again.",
+        "properties": {
+          "until": {
+            "$ref": "#/components/schemas/Snooze",
+            "description": "Tomorrow morning is 09:00 in the user's time zone."
+          }
+        },
+        "required": [
+          "until"
+        ],
+        "title": "SnoozeIn",
+        "type": "object"
+      },
+      "FolderOut": {
+        "description": "A Folder's own fields.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "collapsed": {
+            "title": "Collapsed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "collapsed"
+        ],
+        "title": "FolderOut",
+        "type": "object"
+      },
+      "FolderIn": {
+        "description": "A new Folder.",
+        "properties": {
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "FolderIn",
+        "type": "object"
+      },
+      "FolderPatchIn": {
+        "description": "The fields of a Folder to change; fields left out stay as they are.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "collapsed": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Collapsed"
+          }
+        },
+        "title": "FolderPatchIn",
+        "type": "object"
+      },
+      "FolderMoveIn": {
+        "description": "Where a Folder goes on the sidebar's top level.",
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiblingIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The item it now follows; first when left out, last when it isn't there."
+          }
+        },
+        "title": "FolderMoveIn",
+        "type": "object"
+      },
+      "SiblingIn": {
+        "description": "A Folder or Project in the sidebar. Both kinds share the top level's order.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "folder",
+              "project"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "id"
+        ],
+        "title": "SiblingIn",
+        "type": "object"
+      },
+      "Icon": {
+        "description": "The Lucide icons a Project can show. Only the Inbox shows the `inbox` icon.",
+        "enum": [
+          "inbox",
+          "list",
+          "briefcase",
+          "house",
+          "heart-pulse",
+          "rocket",
+          "book-open",
+          "hammer",
+          "shopping-cart",
+          "plane",
+          "graduation-cap",
+          "dumbbell",
+          "music",
+          "camera",
+          "code",
+          "palette",
+          "wallet",
+          "piggy-bank",
+          "gift",
+          "car",
+          "utensils",
+          "coffee",
+          "leaf",
+          "sun",
+          "moon",
+          "star",
+          "flag",
+          "target",
+          "lightbulb",
+          "calendar",
+          "users",
+          "user",
+          "baby",
+          "dog",
+          "gamepad-2",
+          "film",
+          "pencil",
+          "wrench",
+          "globe",
+          "mail",
+          "phone"
+        ],
+        "title": "Icon",
+        "type": "string"
+      },
+      "ProjectOut": {
+        "description": "A Project's own fields.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/Icon"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "is_inbox": {
+            "title": "Is Inbox",
+            "type": "boolean"
+          },
+          "is_archived": {
+            "description": "Archived Projects are read-only.",
+            "title": "Is Archived",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "icon",
+          "folder_id",
+          "is_inbox",
+          "is_archived"
+        ],
+        "title": "ProjectOut",
+        "type": "object"
+      },
+      "ProjectIn": {
+        "description": "A new Project.",
+        "properties": {
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Random when left out."
+          },
+          "icon": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Icon"
+              }
+            ],
+            "default": "list"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ungrouped when left out.",
+            "title": "Folder Id"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "ProjectIn",
+        "type": "object"
+      },
+      "ProjectPatchIn": {
+        "description": "The fields of a Project to change; fields left out stay as they are.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Icon"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "ProjectPatchIn",
+        "type": "object"
+      },
+      "ProjectMoveIn": {
+        "description": "Where a Project goes: into a Folder or onto the top level, after a sibling.",
+        "properties": {
+          "after": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/SiblingIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The item it now follows; first when left out, last when it isn't there."
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The top level when left out.",
+            "title": "Folder Id"
+          }
+        },
+        "title": "ProjectMoveIn",
+        "type": "object"
+      },
+      "PersonOut": {
+        "description": "A Person in the user's address book.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color"
+        ],
+        "title": "PersonOut",
+        "type": "object"
+      },
+      "PersonIn": {
+        "description": "A new Person.",
+        "properties": {
+          "name": {
+            "description": "Unique among the user's People, ignoring case.",
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[^@\\[\\]()]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Random when left out."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "PersonIn",
+        "type": "object"
+      },
+      "PersonPatchIn": {
+        "description": "The fields of a Person to change; fields left out stay as they are.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[^@\\[\\]()]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Rewrites every Mention.",
+            "title": "Name"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "PersonPatchIn",
+        "type": "object"
+      },
+      "PersonMergeIn": {
+        "description": "The Person to fold another into.",
+        "properties": {
+          "into_id": {
+            "title": "Into Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "into_id"
+        ],
+        "title": "PersonMergeIn",
+        "type": "object"
+      },
+      "SidebarFolderOut": {
+        "description": "A Folder as the sidebar lists it, with its Projects in order.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "collapsed": {
+            "title": "Collapsed",
+            "type": "boolean"
+          },
+          "kind": {
+            "const": "folder",
+            "title": "Kind",
+            "type": "string"
+          },
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/SidebarProjectOut"
+            },
+            "title": "Projects",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "collapsed",
+          "kind",
+          "projects"
+        ],
+        "title": "SidebarFolderOut",
+        "type": "object"
+      },
+      "SidebarOut": {
+        "description": "Everything the sidebar shows.",
+        "properties": {
+          "inbox": {
+            "$ref": "#/components/schemas/SidebarProjectOut"
+          },
+          "items": {
+            "description": "Folders and ungrouped Projects in the user's order.",
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "folder": "#/components/schemas/SidebarFolderOut",
+                  "project": "#/components/schemas/SidebarProjectOut"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/SidebarFolderOut"
+                },
+                {
+                  "$ref": "#/components/schemas/SidebarProjectOut"
+                }
+              ]
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "archived": {
+            "description": "Archived Projects, by name.",
+            "items": {
+              "$ref": "#/components/schemas/SidebarProjectOut"
+            },
+            "title": "Archived",
+            "type": "array"
+          },
+          "today_count": {
+            "description": "Open Tasks in Today, Overdue ones included.",
+            "title": "Today Count",
+            "type": "integer"
+          },
+          "upcoming_count": {
+            "description": "Open Tasks in Upcoming.",
+            "title": "Upcoming Count",
+            "type": "integer"
+          },
+          "tags": {
+            "description": "In the user's order.",
+            "items": {
+              "$ref": "#/components/schemas/SidebarTagOut"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "people": {
+            "description": "A to Z.",
+            "items": {
+              "$ref": "#/components/schemas/PersonOut"
+            },
+            "title": "People",
+            "type": "array"
+          }
+        },
+        "required": [
+          "inbox",
+          "items",
+          "archived",
+          "today_count",
+          "upcoming_count",
+          "tags",
+          "people"
+        ],
+        "title": "SidebarOut",
+        "type": "object"
+      },
+      "SidebarProjectOut": {
+        "description": "A Project as the sidebar lists it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/Icon"
+          },
+          "folder_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Folder Id"
+          },
+          "is_inbox": {
+            "title": "Is Inbox",
+            "type": "boolean"
+          },
+          "is_archived": {
+            "description": "Archived Projects are read-only.",
+            "title": "Is Archived",
+            "type": "boolean"
+          },
+          "kind": {
+            "const": "project",
+            "title": "Kind",
+            "type": "string"
+          },
+          "open_count": {
+            "title": "Open Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "icon",
+          "folder_id",
+          "is_inbox",
+          "is_archived",
+          "kind",
+          "open_count"
+        ],
+        "title": "SidebarProjectOut",
+        "type": "object"
+      },
+      "SidebarTagOut": {
+        "description": "A Tag as the sidebar lists it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null shows the Tag grey."
+          },
+          "open_count": {
+            "description": "Open and Blocked Tasks with the Tag.",
+            "title": "Open Count",
+            "type": "integer"
+          },
+          "task_count": {
+            "description": "Tasks with the Tag that aren't in Trash, closed too.",
+            "title": "Task Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "open_count",
+          "task_count"
+        ],
+        "title": "SidebarTagOut",
+        "type": "object"
+      },
+      "TagIn": {
+        "description": "A new Tag.",
+        "properties": {
+          "name": {
+            "maxLength": 64,
+            "minLength": 1,
+            "pattern": "^[^\\s#]+$",
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Grey when left out."
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "TagIn",
+        "type": "object"
+      },
+      "TagPatchIn": {
+        "description": "The fields of a Tag to change; fields left out stay as they are.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 64,
+                "minLength": 1,
+                "pattern": "^[^\\s#]+$",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null makes the Tag grey."
+          }
+        },
+        "title": "TagPatchIn",
+        "type": "object"
+      },
+      "TagMoveIn": {
+        "description": "Where a Tag goes in the user's order.",
+        "properties": {
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Tag it now follows; first when null, last when it isn't there.",
+            "title": "After Id"
+          }
+        },
+        "title": "TagMoveIn",
+        "type": "object"
+      },
+      "TagMergeIn": {
+        "description": "The Tag to merge into.",
+        "properties": {
+          "into_id": {
+            "title": "Into Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "into_id"
+        ],
+        "title": "TagMergeIn",
+        "type": "object"
+      },
+      "TaskBulkOut": {
+        "description": "What the action changed, for Undo.",
+        "properties": {
+          "affected": {
+            "description": "Every Task whose Status changed, with its Status before.",
+            "items": {
+              "$ref": "#/components/schemas/AffectedTaskOut"
+            },
+            "title": "Affected",
+            "type": "array"
+          },
+          "moved_from": {
+            "description": "For a move: where each moved Task was, in the order to put them back.",
+            "items": {
+              "$ref": "#/components/schemas/TaskPlace"
+            },
+            "title": "Moved From",
+            "type": "array"
+          }
+        },
+        "required": [
+          "affected",
+          "moved_from"
+        ],
+        "title": "TaskBulkOut",
+        "type": "object"
+      },
+      "TaskPlace": {
+        "description": "Where a Task sits: its Project, its parent and the sibling before it.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None at the top level.",
+            "title": "Parent Id"
+          },
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "None when it's first among its siblings.",
+            "title": "After Id"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "parent_id",
+          "after_id"
+        ],
+        "title": "TaskPlace",
+        "type": "object"
+      },
+      "BulkDatesIn": {
+        "description": "Replace the Tasks' dates; their Reminders keep their offsets.",
+        "properties": {
+          "kind": {
+            "const": "dates",
+            "title": "Kind",
+            "type": "string"
+          },
+          "dates": {
+            "$ref": "#/components/schemas/TaskDatesIn"
+          }
+        },
+        "required": [
+          "kind",
+          "dates"
+        ],
+        "title": "BulkDatesIn",
+        "type": "object"
+      },
+      "BulkDeleteIn": {
+        "description": "Send the Tasks to Trash, each as its own unit with its Subtasks.",
+        "properties": {
+          "kind": {
+            "const": "delete",
+            "title": "Kind",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind"
+        ],
+        "title": "BulkDeleteIn",
+        "type": "object"
+      },
+      "BulkMoveIn": {
+        "description": "Move the Tasks first into a Project; a Subtask moved alone becomes a root there.",
+        "properties": {
+          "kind": {
+            "const": "move",
+            "title": "Kind",
+            "type": "string"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "project_id"
+        ],
+        "title": "BulkMoveIn",
+        "type": "object"
+      },
+      "BulkPlaceIn": {
+        "description": "Put each Task in its own place, in the order listed, as Undo of a move does.",
+        "properties": {
+          "kind": {
+            "const": "place",
+            "title": "Kind",
+            "type": "string"
+          },
+          "places": {
+            "items": {
+              "$ref": "#/components/schemas/TaskPlace"
+            },
+            "title": "Places",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "places"
+        ],
+        "title": "BulkPlaceIn",
+        "type": "object"
+      },
+      "BulkPriorityIn": {
+        "description": "Set the Tasks' Priority.",
+        "properties": {
+          "kind": {
+            "const": "priority",
+            "title": "Kind",
+            "type": "string"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority"
+          }
+        },
+        "required": [
+          "kind",
+          "priority"
+        ],
+        "title": "BulkPriorityIn",
+        "type": "object"
+      },
+      "BulkStatusIn": {
+        "description": "Set the Tasks' Status, cascading through their trees as a single change does.",
+        "properties": {
+          "kind": {
+            "const": "status",
+            "title": "Kind",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          }
+        },
+        "required": [
+          "kind",
+          "status"
+        ],
+        "title": "BulkStatusIn",
+        "type": "object"
+      },
+      "BulkStatusesIn": {
+        "description": "Give each Task its own Status, in the order listed, as Undo of a cascade does.",
+        "properties": {
+          "kind": {
+            "const": "statuses",
+            "title": "Kind",
+            "type": "string"
+          },
+          "statuses": {
+            "items": {
+              "$ref": "#/components/schemas/TaskStatusIn"
+            },
+            "title": "Statuses",
+            "type": "array"
+          }
+        },
+        "required": [
+          "kind",
+          "statuses"
+        ],
+        "title": "BulkStatusesIn",
+        "type": "object"
+      },
+      "BulkTagIn": {
+        "description": "Put a Tag on the Tasks, or take it off.",
+        "properties": {
+          "kind": {
+            "enum": [
+              "add_tag",
+              "remove_tag"
+            ],
+            "title": "Kind",
+            "type": "string"
+          },
+          "tag_id": {
+            "title": "Tag Id",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "kind",
+          "tag_id"
+        ],
+        "title": "BulkTagIn",
+        "type": "object"
+      },
+      "TaskBulkIn": {
+        "description": "One action for several Tasks.",
+        "properties": {
+          "ids": {
+            "items": {
+              "type": "integer"
+            },
+            "maxItems": 500,
+            "minItems": 1,
+            "title": "Ids",
+            "type": "array"
+          },
+          "action": {
+            "discriminator": {
+              "mapping": {
+                "add_tag": "#/components/schemas/BulkTagIn",
+                "dates": "#/components/schemas/BulkDatesIn",
+                "delete": "#/components/schemas/BulkDeleteIn",
+                "move": "#/components/schemas/BulkMoveIn",
+                "place": "#/components/schemas/BulkPlaceIn",
+                "priority": "#/components/schemas/BulkPriorityIn",
+                "remove_tag": "#/components/schemas/BulkTagIn",
+                "status": "#/components/schemas/BulkStatusIn",
+                "statuses": "#/components/schemas/BulkStatusesIn"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/BulkMoveIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkStatusIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkStatusesIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkPlaceIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkPriorityIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkDatesIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkTagIn"
+              },
+              {
+                "$ref": "#/components/schemas/BulkDeleteIn"
+              }
+            ],
+            "title": "Action"
+          }
+        },
+        "required": [
+          "ids",
+          "action"
+        ],
+        "title": "TaskBulkIn",
+        "type": "object"
+      },
+      "TaskDatesIn": {
+        "description": "A Task's due date, time and range, all clock times in the user's time zone.\n\nWithout a time the Task is all-day. A start turns it into a range ending at the due date;\nstart and due are then both all-day or both timed. Times have minute precision.",
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          }
+        },
+        "required": [
+          "due_date"
+        ],
+        "title": "TaskDatesIn",
+        "type": "object"
+      },
+      "TaskStatusIn": {
+        "description": "The Status, and Blocked reason, to give one Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "blocked_reason": {
+            "default": "",
+            "title": "Blocked Reason",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "status"
+        ],
+        "title": "TaskStatusIn",
+        "type": "object"
+      },
+      "TaskListQuery": {
+        "description": "Which Tasks to list: one Project's, Person's, Tag's or view's, open or Closed.",
+        "properties": {
+          "project": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project"
+          },
+          "person": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Person"
+          },
+          "tag": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tag"
+          },
+          "view": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/View"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Today or Upcoming, picked by date."
+          },
+          "closed": {
+            "default": false,
+            "description": "List Closed Tasks, a page at a time.",
+            "title": "Closed",
+            "type": "boolean"
+          },
+          "cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "From the previous page of Closed ones.",
+            "title": "Cursor"
+          }
+        },
+        "title": "TaskListQuery",
+        "type": "object"
+      },
+      "View": {
+        "description": "A list of Tasks picked by their dates rather than by Project.",
+        "enum": [
+          "today",
+          "upcoming"
+        ],
+        "title": "View",
+        "type": "string"
+      },
+      "TaskListOut": {
+        "description": "Tasks for a list, and the cursor for the next page when the list is paginated.",
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page.",
+            "title": "Next Cursor"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor"
+        ],
+        "title": "TaskListOut",
+        "type": "object"
+      },
+      "TaskIn": {
+        "description": "A new Task from Quick add.",
+        "properties": {
+          "title": {
+            "maxLength": 500,
+            "minLength": 1,
+            "title": "Title",
+            "type": "string"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the Inbox. Ignored for a Subtask, which joins its parent's.",
+            "title": "Project Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Makes the Task the last Subtask of this one; reopens it if it's Closed.",
+            "title": "Parent Id"
+          },
+          "dates": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskDatesIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dates the Task from the start, such as today in Today."
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Priority"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "1 (P1) is the most urgent; left out, the Task has no Priority."
+          },
+          "tags": {
+            "description": "Tag names, in any case; Tags the user doesn't have yet are created.",
+            "items": {
+              "maxLength": 64,
+              "minLength": 1,
+              "pattern": "^[^\\s#]+$",
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "tag_ids": {
+            "description": "Tags picked by id.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Tag Ids",
+            "type": "array"
+          },
+          "repeat_rule": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Makes the Task repeat from its due date, as an RFC 5545 RRULE. Needs a due date; a Subtask can't repeat.",
+            "title": "Repeat Rule"
+          },
+          "repeat_from": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatFrom"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "What a repeating Task's next date counts from; the calendar when left out."
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "TaskIn",
+        "type": "object"
+      },
+      "TaskPatchIn": {
+        "description": "The fields of a Task to change; fields left out stay as they are.",
+        "properties": {
+          "title": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Markdown.",
+            "title": "Description"
+          },
+          "status": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Status"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Changing it clears the Blocked reason unless one is given with it."
+          },
+          "blocked_reason": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Only a Blocked Task can have one; send an empty string to clear it.",
+            "title": "Blocked Reason"
+          },
+          "priority": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Priority"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "pinned": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pin the Task to the top of its lists, or unpin it.",
+            "title": "Pinned"
+          },
+          "dates": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/TaskDatesIn"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Replaces all of the Task's dates; null removes them and its Reminders."
+          },
+          "reminders": {
+            "anyOf": [
+              {
+                "items": {
+                  "description": "Minutes from the start of a range, else from the due time; negative is before. An all-day Task counts from the start of its day, so 540 is 09:00 on the day.",
+                  "maximum": 525600,
+                  "minimum": -525600,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Replaces the Task's Reminders: up to 10 different offsets. Needs a due date.",
+            "title": "Reminders"
+          },
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Moves the Task first into it.",
+            "title": "Project Id"
+          },
+          "repeat_rule": {
+            "anyOf": [
+              {
+                "maxLength": 500,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Makes a dated top-level Task repeat, as an RFC 5545 RRULE; an empty string stops it. Closing a repeating Task moves it on to its next Occurrence instead; setting the Status it had before, straight after, undoes that.",
+            "title": "Repeat Rule"
+          },
+          "repeat_from": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatFrom"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tag_ids": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Replaces all of its Tags.",
+            "title": "Tag Ids"
+          }
+        },
+        "title": "TaskPatchIn",
+        "type": "object"
+      },
+      "TaskMoveIn": {
+        "description": "Where a Task goes: under a parent, or to the top level of a Project, after a sibling.",
+        "properties": {
+          "project_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to the parent's Project, or the Task's own for a root.",
+            "title": "Project Id"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The top level when left out.",
+            "title": "Parent Id"
+          },
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The sibling it now follows; first when left out, last when it isn't there.",
+            "title": "After Id"
+          }
+        },
+        "title": "TaskMoveIn",
+        "type": "object"
+      },
+      "TaskSearchQuery": {
+        "description": "What to search for.",
+        "properties": {
+          "q": {
+            "description": "Words that must all appear, ignoring case.",
+            "maxLength": 200,
+            "minLength": 2,
+            "title": "Q",
+            "type": "string"
+          }
+        },
+        "required": [
+          "q"
+        ],
+        "title": "TaskSearchQuery",
+        "type": "object"
+      },
+      "MatchIn": {
+        "description": "Where a Task matched, best first: a title match outranks a Description or Comment one.",
+        "enum": [
+          "title",
+          "description",
+          "comment"
+        ],
+        "title": "MatchIn",
+        "type": "string"
+      },
+      "TaskSearchOut": {
+        "description": "A Task that matched a search, with where it matched and the text around the match.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "parent_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for a root Task.",
+            "title": "Parent Id"
+          },
+          "position": {
+            "description": "Sorts the Task among its siblings, byte by byte.",
+            "title": "Position",
+            "type": "string"
+          },
+          "depth": {
+            "description": "0 for a root Task, up to 3 for the deepest Subtask.",
+            "title": "Depth",
+            "type": "integer"
+          },
+          "parent_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The parent's title, for a breadcrumb.",
+            "title": "Parent Title"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "priority": {
+            "$ref": "#/components/schemas/Priority",
+            "description": "0 is no Priority; 1 (P1) is the most urgent."
+          },
+          "blocked_reason": {
+            "description": "Why a Blocked Task waits; empty otherwise.",
+            "title": "Blocked Reason",
+            "type": "string"
+          },
+          "completed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was Completed or marked Won't do.",
+            "title": "Completed At"
+          },
+          "pinned_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it was pinned; null when it isn't.",
+            "title": "Pinned At"
+          },
+          "due_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Date"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for an all-day Task.",
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Set for a range, which ends on the due date.",
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "repeat_rule": {
+            "description": "An RFC 5545 RRULE; empty when the Task doesn't repeat.",
+            "title": "Repeat Rule",
+            "type": "string"
+          },
+          "repeat_from": {
+            "$ref": "#/components/schemas/RepeatFrom",
+            "description": "What the next Occurrence counts from: the due date, the completion date, or the calendar, which skips missed Occurrences."
+          },
+          "is_overdue": {
+            "description": "Whether the Task is open and its due date or time has passed in the user's time zone. A range is overdue only once its end has passed.",
+            "title": "Is Overdue",
+            "type": "boolean"
+          },
+          "tags": {
+            "description": "In the user's Tag order.",
+            "items": {
+              "$ref": "#/components/schemas/TagOut"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          },
+          "attachment_count": {
+            "default": 0,
+            "description": "How many Attachments the Task has. A Task just added has none.",
+            "title": "Attachment Count",
+            "type": "integer"
+          },
+          "comment_count": {
+            "default": 0,
+            "description": "How many Comments the Task has. A Task just added has none.",
+            "title": "Comment Count",
+            "type": "integer"
+          },
+          "match_in": {
+            "$ref": "#/components/schemas/MatchIn",
+            "description": "Where it matched: the title, else the Description, else a Comment."
+          },
+          "snippet": {
+            "description": "The matching text as one plain line, cut to the part around the first match.",
+            "title": "Snippet",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "parent_id",
+          "position",
+          "depth",
+          "parent_title",
+          "title",
+          "status",
+          "priority",
+          "blocked_reason",
+          "completed_at",
+          "pinned_at",
+          "due_date",
+          "due_time",
+          "start_date",
+          "start_time",
+          "repeat_rule",
+          "repeat_from",
+          "is_overdue",
+          "tags",
+          "created_at",
+          "updated_at",
+          "match_in",
+          "snippet"
+        ],
+        "title": "TaskSearchOut",
+        "type": "object"
+      },
+      "AttachmentAddedActivityOut": {
+        "description": "A file was attached to the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "attachment_added",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttachmentData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "AttachmentAddedActivityOut",
+        "type": "object"
+      },
+      "AttachmentData": {
+        "description": "The Attachment an event is about, by the name it had.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AttachmentData",
+        "type": "object"
+      },
+      "AttachmentRemovedActivityOut": {
+        "description": "An Attachment was deleted from the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "attachment_removed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttachmentData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "AttachmentRemovedActivityOut",
+        "type": "object"
+      },
+      "CreatedActivityOut": {
+        "description": "The Task was created.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "created",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "CreatedActivityOut",
+        "type": "object"
+      },
+      "DatesChangedActivityOut": {
+        "description": "The Task's due date, time or range was set, changed or removed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "dates_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DatesChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "DatesChangedActivityOut",
+        "type": "object"
+      },
+      "DatesChangedData": {
+        "description": "The dates before and after a change; null when the Task had or has none.",
+        "properties": {
+          "old": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatesData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "new": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatesData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "DatesChangedData",
+        "type": "object"
+      },
+      "DatesData": {
+        "description": "A Task's dates at one moment, as a change recorded them.",
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          }
+        },
+        "required": [
+          "due_date",
+          "due_time",
+          "start_date",
+          "start_time"
+        ],
+        "title": "DatesData",
+        "type": "object"
+      },
+      "DescriptionEditedActivityOut": {
+        "description": "The Task's Description was edited. The edit itself isn't kept.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "description_edited",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "DescriptionEditedActivityOut",
+        "type": "object"
+      },
+      "MovedActivityOut": {
+        "description": "The Task moved to another Project or parent.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "moved",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MovedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "MovedActivityOut",
+        "type": "object"
+      },
+      "MovedData": {
+        "description": "The Projects and parents a Task moved between, by their names and titles at the time.",
+        "properties": {
+          "from_project": {
+            "title": "From Project",
+            "type": "string"
+          },
+          "to_project": {
+            "title": "To Project",
+            "type": "string"
+          },
+          "from_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when it was a root.",
+            "title": "From Parent"
+          },
+          "to_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when it became a root.",
+            "title": "To Parent"
+          }
+        },
+        "required": [
+          "from_project",
+          "to_project"
+        ],
+        "title": "MovedData",
+        "type": "object"
+      },
+      "NoActivityData": {
+        "description": "The details of an event whose kind says it all.",
+        "properties": {},
+        "title": "NoActivityData",
+        "type": "object"
+      },
+      "PersonMergedActivityOut": {
+        "description": "A Person the Task mentioned was merged into another.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "person_merged",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PersonMergedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "PersonMergedActivityOut",
+        "type": "object"
+      },
+      "PersonMergedData": {
+        "description": "The People merged, by their names at the time: `from_person` was folded into `to_person`.",
+        "properties": {
+          "from_person": {
+            "title": "From Person",
+            "type": "string"
+          },
+          "to_person": {
+            "title": "To Person",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_person",
+          "to_person"
+        ],
+        "title": "PersonMergedData",
+        "type": "object"
+      },
+      "PinnedActivityOut": {
+        "description": "The Task was pinned.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "pinned",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "PinnedActivityOut",
+        "type": "object"
+      },
+      "PriorityChangedActivityOut": {
+        "description": "The Task's Priority changed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "priority_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PriorityChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "PriorityChangedActivityOut",
+        "type": "object"
+      },
+      "PriorityChangedData": {
+        "description": "The Priority before and after a change.",
+        "properties": {
+          "old": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "new": {
+            "$ref": "#/components/schemas/Priority"
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "PriorityChangedData",
+        "type": "object"
+      },
+      "RemindersChangedActivityOut": {
+        "description": "The Task's Reminders were added, changed or removed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "reminders_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RemindersChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RemindersChangedActivityOut",
+        "type": "object"
+      },
+      "RemindersChangedData": {
+        "description": "The Reminders before and after a change, as offsets in minutes.",
+        "properties": {
+          "old": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Old",
+            "type": "array"
+          },
+          "new": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "New",
+            "type": "array"
+          },
+          "all_day": {
+            "description": "Whether the offsets count from the start of a day.",
+            "title": "All Day",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "old",
+          "new",
+          "all_day"
+        ],
+        "title": "RemindersChangedData",
+        "type": "object"
+      },
+      "RepeatAdvancedActivityOut": {
+        "description": "Closing the repeating Task moved it on to its next Occurrence.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "repeat_advanced",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RepeatAdvancedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RepeatAdvancedActivityOut",
+        "type": "object"
+      },
+      "RepeatAdvancedData": {
+        "description": "Which Occurrence was closed, how, and the one the Task moved on to.",
+        "properties": {
+          "action": {
+            "description": "Skipped is Won't do.",
+            "enum": [
+              "completed",
+              "skipped"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "occurrence": {
+            "format": "date",
+            "title": "Occurrence",
+            "type": "string"
+          },
+          "next": {
+            "format": "date",
+            "title": "Next",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "occurrence",
+          "next"
+        ],
+        "title": "RepeatAdvancedData",
+        "type": "object"
+      },
+      "RepeatChangedActivityOut": {
+        "description": "The Task's Repeat was set, changed or stopped.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "repeat_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RepeatChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RepeatChangedActivityOut",
+        "type": "object"
+      },
+      "RepeatChangedData": {
+        "description": "The Repeat before and after a change; null when the Task didn't or doesn't repeat.",
+        "properties": {
+          "old": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "new": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "RepeatChangedData",
+        "type": "object"
+      },
+      "RepeatData": {
+        "description": "A Task's Repeat at one moment, as a change recorded it.",
+        "properties": {
+          "rule": {
+            "description": "An RFC 5545 RRULE.",
+            "title": "Rule",
+            "type": "string"
+          },
+          "repeat_from": {
+            "$ref": "#/components/schemas/RepeatFrom"
+          }
+        },
+        "required": [
+          "rule",
+          "repeat_from"
+        ],
+        "title": "RepeatData",
+        "type": "object"
+      },
+      "RepeatRemovedActivityOut": {
+        "description": "The Task stopped repeating because it lost its due date or became a Subtask.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "repeat_removed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RepeatData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RepeatRemovedActivityOut",
+        "type": "object"
+      },
+      "RestoredActivityOut": {
+        "description": "The Task was restored from Trash.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "restored",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RestoredActivityOut",
+        "type": "object"
+      },
+      "StatusChangedActivityOut": {
+        "description": "The Task's Status changed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "status_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/StatusChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "StatusChangedActivityOut",
+        "type": "object"
+      },
+      "StatusChangedData": {
+        "description": "The Status before and after a change, the Blocked reason it was given, and any cascade.\n\nA change the user made to a relative names that relative: `via_parent` when closing a\nparent closed this Task, `via_subtask` when reopening a Subtask reopened it.",
+        "properties": {
+          "old": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "new": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "blocked_reason": {
+            "title": "Blocked Reason",
+            "type": "string"
+          },
+          "via_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Closed parent's title.",
+            "title": "Via Parent"
+          },
+          "via_subtask": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The reopened Subtask's title.",
+            "title": "Via Subtask"
+          },
+          "closed_subtasks": {
+            "default": 0,
+            "description": "How many Subtasks closed with it.",
+            "title": "Closed Subtasks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "old",
+          "new",
+          "blocked_reason"
+        ],
+        "title": "StatusChangedData",
+        "type": "object"
+      },
+      "TagAddedActivityOut": {
+        "description": "A Tag was put on the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "tag_added",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TagData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TagAddedActivityOut",
+        "type": "object"
+      },
+      "TagData": {
+        "description": "The Tag an event is about, by the name it had.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "TagData",
+        "type": "object"
+      },
+      "TagRemovedActivityOut": {
+        "description": "A Tag was taken off the Task, or deleted.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "tag_removed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TagData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TagRemovedActivityOut",
+        "type": "object"
+      },
+      "TagsMergedActivityOut": {
+        "description": "One of the Task's Tags was merged into another.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "tags_merged",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TagsMergedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TagsMergedActivityOut",
+        "type": "object"
+      },
+      "TagsMergedData": {
+        "description": "The Tags of a merge, by the names they had.",
+        "properties": {
+          "from_tag": {
+            "title": "From Tag",
+            "type": "string"
+          },
+          "into_tag": {
+            "title": "Into Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_tag",
+          "into_tag"
+        ],
+        "title": "TagsMergedData",
+        "type": "object"
+      },
+      "TaskActivityListOut": {
+        "description": "A page of a Task's history, newest first.",
+        "properties": {
+          "items": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "attachment_added": "#/components/schemas/AttachmentAddedActivityOut",
+                  "attachment_removed": "#/components/schemas/AttachmentRemovedActivityOut",
+                  "created": "#/components/schemas/CreatedActivityOut",
+                  "dates_changed": "#/components/schemas/DatesChangedActivityOut",
+                  "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
+                  "moved": "#/components/schemas/MovedActivityOut",
+                  "person_merged": "#/components/schemas/PersonMergedActivityOut",
+                  "pinned": "#/components/schemas/PinnedActivityOut",
+                  "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
+                  "reminders_changed": "#/components/schemas/RemindersChangedActivityOut",
+                  "repeat_advanced": "#/components/schemas/RepeatAdvancedActivityOut",
+                  "repeat_changed": "#/components/schemas/RepeatChangedActivityOut",
+                  "repeat_removed": "#/components/schemas/RepeatRemovedActivityOut",
+                  "restored": "#/components/schemas/RestoredActivityOut",
+                  "status_changed": "#/components/schemas/StatusChangedActivityOut",
+                  "tag_added": "#/components/schemas/TagAddedActivityOut",
+                  "tag_removed": "#/components/schemas/TagRemovedActivityOut",
+                  "tags_merged": "#/components/schemas/TagsMergedActivityOut",
+                  "title_changed": "#/components/schemas/TitleChangedActivityOut",
+                  "trashed": "#/components/schemas/TrashedActivityOut",
+                  "unpinned": "#/components/schemas/UnpinnedActivityOut"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/CreatedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TitleChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/DescriptionEditedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/StatusChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/PriorityChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/PinnedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/UnpinnedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/AttachmentAddedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/AttachmentRemovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/DatesChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RemindersChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/MovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/PersonMergedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RepeatChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RepeatRemovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RepeatAdvancedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TagAddedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TagRemovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TagsMergedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TrashedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RestoredActivityOut"
+                }
+              ]
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Pass as `cursor` to get the next page; null on the last page.",
+            "title": "Next Cursor"
+          },
+          "count": {
+            "description": "How many events the whole history holds.",
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "next_cursor",
+          "count"
+        ],
+        "title": "TaskActivityListOut",
+        "type": "object"
+      },
+      "TitleChangedActivityOut": {
+        "description": "The Task was renamed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "title_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TitleChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TitleChangedActivityOut",
+        "type": "object"
+      },
+      "TitleChangedData": {
+        "description": "The title before and after a rename.",
+        "properties": {
+          "old": {
+            "title": "Old",
+            "type": "string"
+          },
+          "new": {
+            "title": "New",
+            "type": "string"
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "TitleChangedData",
+        "type": "object"
+      },
+      "TrashedActivityOut": {
+        "description": "The Task was moved to Trash.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "trashed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TrashedActivityOut",
+        "type": "object"
+      },
+      "UnpinnedActivityOut": {
+        "description": "The Task was unpinned.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "unpinned",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "UnpinnedActivityOut",
+        "type": "object"
+      },
+      "AttachmentOut": {
+        "description": "A file attached to a Task. Its bytes come from the download endpoint.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "description": "The file's name as it was uploaded.",
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "description": "In bytes.",
+            "title": "Size",
+            "type": "integer"
+          },
+          "content_type": {
+            "description": "Chosen by the server from the file's name.",
+            "title": "Content Type",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "size",
+          "content_type",
+          "created_at"
+        ],
+        "title": "AttachmentOut",
+        "type": "object"
+      },
+      "CommentOut": {
+        "description": "A Comment on a Task. It was edited when `updated_at` differs from `created_at`.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          },
+          "body": {
+            "description": "Markdown, as the user wrote it.",
+            "title": "Body",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "task_id",
+          "body",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "CommentOut",
+        "type": "object"
+      },
+      "CommentIn": {
+        "description": "A Comment's markdown body, which may hold Mention tokens of the user's People.",
+        "properties": {
+          "body": {
+            "maxLength": 10000,
+            "minLength": 1,
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "body"
+        ],
+        "title": "CommentIn",
+        "type": "object"
+      },
+      "CalendarFeedOut": {
+        "description": "The user's Calendar feed address.",
+        "properties": {
+          "url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The private `.ics` address, or null while it's off.",
+            "title": "Url"
+          }
+        },
+        "required": [
+          "url"
+        ],
+        "title": "CalendarFeedOut",
+        "type": "object"
+      },
+      "TrashedProjectOut": {
+        "description": "One Trash unit: a deleted Project, with the Tasks that went with it counted.",
+        "properties": {
+          "kind": {
+            "const": "project",
+            "default": "project",
+            "title": "Kind",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/Icon"
+          },
+          "task_count": {
+            "description": "How many Tasks went to Trash with it.",
+            "title": "Task Count",
+            "type": "integer"
+          },
+          "deleted_at": {
+            "format": "date-time",
+            "title": "Deleted At",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "When it will be deleted for good.",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "icon",
+          "task_count",
+          "deleted_at",
+          "expires_at"
+        ],
+        "title": "TrashedProjectOut",
+        "type": "object"
+      },
+      "TrashedTaskOut": {
+        "description": "One Trash unit: a deleted Task, with the Subtasks that went with it counted.",
+        "properties": {
+          "kind": {
+            "const": "task",
+            "default": "task",
+            "title": "Kind",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "project_name": {
+            "description": "The Project it was deleted from.",
+            "title": "Project Name",
+            "type": "string"
+          },
+          "subtask_count": {
+            "description": "How many Subtasks went to Trash with it.",
+            "title": "Subtask Count",
+            "type": "integer"
+          },
+          "deleted_at": {
+            "format": "date-time",
+            "title": "Deleted At",
+            "type": "string"
+          },
+          "expires_at": {
+            "description": "When it will be deleted for good.",
+            "format": "date-time",
+            "title": "Expires At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "project_name",
+          "subtask_count",
+          "deleted_at",
+          "expires_at"
+        ],
+        "title": "TrashedTaskOut",
+        "type": "object"
+      },
+      "TaskRestoreOut": {
+        "description": "A Task back from Trash, and the Project it went back to, which may be the Inbox.",
+        "properties": {
+          "task": {
+            "$ref": "#/components/schemas/TaskOut"
+          },
+          "project": {
+            "$ref": "#/components/schemas/ProjectOut"
+          }
+        },
+        "required": [
+          "task",
+          "project"
+        ],
+        "title": "TaskRestoreOut",
+        "type": "object"
+      },
+      "TrashDeleteIn": {
+        "description": "The trashed Tasks and Projects whose units to delete for good; at least one id.",
+        "properties": {
+          "task_ids": {
+            "default": [],
+            "description": "Trashed Tasks; each takes the whole unit it went to Trash with.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Task Ids",
+            "type": "array"
+          },
+          "project_ids": {
+            "default": [],
+            "description": "Trashed Projects; each takes the Tasks that went to Trash with it.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Project Ids",
+            "type": "array"
+          }
+        },
+        "title": "TrashDeleteIn",
         "type": "object"
       }
     },

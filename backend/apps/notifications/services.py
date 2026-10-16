@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from apps.accounts.models import User
+    from apps.tasks.models import Reminder
 
 logger = logging.getLogger(__name__)
 
@@ -38,15 +39,27 @@ def push_is_configured() -> bool:
     return bool(settings.VAPID_PUBLIC_KEY and settings.VAPID_PRIVATE_KEY)
 
 
-def notify(user: User, title: str, body: str = "", url: str = "") -> Notification:
+def notify(
+    user: User,
+    title: str,
+    body: str = "",
+    url: str = "",
+    reminder: Reminder | None = None,
+) -> Notification:
     """Add a notification to the user's notification center and push it to their devices.
 
-    Pushing happens in the background worker, so a slow push service never delays the caller.
+    A notification from a Reminder offers to complete or snooze its Task. Pushing happens in the
+    background worker, so a slow push service never delays the caller.
     """
-    # Imported here because the task module calls back into this one.
-    from apps.notifications.tasks import push_notification  # noqa: PLC0415
+    from apps.notifications.tasks import push_notification  # noqa: PLC0415 - it imports this module
 
-    notification = Notification.objects.create(user=user, title=title, body=body, url=url)
+    notification = Notification.objects.create(
+        user=user,
+        title=title,
+        body=body,
+        url=url,
+        reminder=reminder,
+    )
     if push_is_configured():
         push_notification.defer(notification_id=notification.pk)
     return notification
@@ -127,6 +140,7 @@ def push_to_devices(notification_id: int) -> None:
             "title": notification.title,
             "body": notification.body,
             "url": notification.url,
+            "is_reminder": notification.is_reminder,
         },
     )
     for subscription in notification.user.push_subscriptions.all():

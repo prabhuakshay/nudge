@@ -17,7 +17,7 @@ Nudge is an open-source, self-hostable alternative to TickTick. This file record
 | Backend | Django + Django Ninja, managed with uv |
 | Database | PostgreSQL on the host. Docker stacks use host networking; no database container. |
 | Background jobs | Procrastinate (Postgres-backed, no Redis), run as a separate `worker` service from the same image |
-| Recurrence | Store RFC 5545 RRULE strings and expand with `python-dateutil` |
+| Repeat | Store RFC 5545 RRULE strings and expand with `python-dateutil` |
 | Auth | Django session cookies + CSRF (same origin). Add API tokens only when native mobile apps need them. |
 | Accounts | Email + password, custom user model with `email` and `full_name`. No sign-up: an admin creates accounts. |
 | Data ownership | Every record belongs to one user; every query is scoped to the signed-in user. |
@@ -34,16 +34,17 @@ nudge/
 │   ├── config/                 # settings, urls, asgi
 │   └── apps/
 │       ├── accounts/
-│       ├── lists/              # lists, folders, tags
-│       ├── tasks/              # models, schemas.py, api.py, services.py
-│       └── reminders/          # scheduling + delivery
+│       ├── core/
+│       ├── notifications/      # notification center, Web Push, Reminder delivery
+│       └── tasks/              # Tasks, Projects, Folders, Tags, People, Comments,
+│                               # Attachments, Activity, Reminders
 ├── frontend/
 │   ├── vite.config.ts          # dev: proxies /api → :8000
 │   ├── public/                 # favicons copied from branding/favicon
 │   └── src/
 │       ├── api/                # generated client
 │       ├── routes/
-│       ├── features/           # tasks/, lists/, calendar/
+│       ├── features/           # tasks/, projects/, notifications/, ...
 │       ├── components/ui/      # shadcn components
 │       └── styles/tokens.css   # from branding/colors
 ├── branding/                   # logos, icons, colours (see branding/README.md)
@@ -56,6 +57,8 @@ nudge/
 ```
 
 Backend apps keep HTTP handling in `api.py`, request/response shapes in `schemas.py`, and business logic in `services.py`, so the worker and the API share the same logic.
+
+One `tasks` app holds Task, Project, Folder, Tag, Person, Comment, Attachment, Activity, Mention and Reminder. These models are coupled through services (Status cascades, Project delete, Tag and Person merge), so splitting them into apps would add cross-app calls without isolating anything. The app keeps one router file per resource. Reminder delivery (creating the notification and sending Web Push) stays in `notifications`.
 
 ## Serving and deployment
 
@@ -75,24 +78,30 @@ In development (`compose.dev.yaml`), Django's runserver, the worker and Vite all
 ## Product scope
 
 ### v1: the core loop
-- Quick add with natural-language parsing ("pay rent every month on the 1st 9am #home !high")
-- Lists, folders and tags
-- Due dates, times and priorities
-- Repeating tasks (RRULE)
-- Reminders
-- Views: Inbox, Today, Upcoming
+The full v1 spec is issue #30.
+
+- Quick add with natural-language parsing ("pay rent every month on the 1st 9am #home !1 @Alice")
+- Projects, Folders, Tags and People (names to Mention, not accounts)
+- Due dates, times, ranges, Priority and Status (Open, Completed, Won't do, Blocked)
+- Subtasks, Pinned Tasks, Description, Comments, Attachments and Activity
+- Repeat (RRULE), moving one Task on to its next Occurrence
+- Reminders, delivered through the notification center and Web Push
+- Views: Inbox, Today, Upcoming, Project, Tag, Person, Search and Trash
+- Trash, kept for a year by default
+- Calendar feed
 - Ctrl+K command bar
 - Sign-in page and responsive app shell (done: bottom navigation on phones, sidebar from `lg`)
 
 ### How Nudge differs from TickTick
 - Self-host friendly notifications: Web Push (installable PWA), email, and Apprise/ntfy. (Web Push done: notification center, per-device push setting, test notification; VAPID keys from `.env`.)
-- Read-only iCal feed so tasks appear in any calendar app. Two-way CalDAV later.
-- Offline-ready data model from day one (see rules below), with full offline mode later.
+- A private, read-only Calendar feed so Tasks appear in any calendar app. Two-way CalDAV later.
+
+Offline mode is not planned.
 
 ### Later
 - Calendar view
 - Habits, Pomodoro, Eisenhower matrix
-- Shared lists and collaboration
+- Shared Projects and collaboration
 - CalDAV sync
 - Native mobile apps
 
@@ -100,8 +109,15 @@ In development (`compose.dev.yaml`), Django's runserver, the worker and Vite all
 
 - Every user-data model has an owner, and every query filters by `request.user`. Each endpoint has a test proving another user can't reach the data.
 - API endpoints are private by default (global session auth); public ones opt out with `auth=None`.
-- Every syncable model has `updated_at` and soft deletes (`deleted_at`). Adding these later breaks offline sync.
-- Recurrence is always an RRULE string, never a custom format.
+- Tasks and Projects have `updated_at` and soft delete (`deleted_at`) from their first migration: Trash restores soft-deleted rows, and Activity relies on knowing when a row last changed.
+- Repeat is always an RFC 5545 RRULE string, never a custom format.
+
+## API conventions
+
+- `PATCH /{id}` edits a resource; `POST /{id}/<verb>` performs an action on it (`/archive`, `/move`, `/restore`).
+- Responses carry explicit status codes with `ninja.Status(code, body)`; errors use `ErrorOut`.
+- Another user's id is 404, never 403.
+- A request that breaks a domain rule (too deep, a cycle, an Inbox guard, Repeat on a Subtask, a bad RRULE, a Mention of another user's Person) is 422 with a reason in `ErrorOut.detail`.
 - Frontend types come from the generated API client only.
 - All colours in the frontend come from tokens derived from `branding/colors`. No hard-coded hex values in components.
 - Logo and icon files come from `branding/`. Regenerate them with `branding/source/build_brand.py`; don't edit the exports by hand.

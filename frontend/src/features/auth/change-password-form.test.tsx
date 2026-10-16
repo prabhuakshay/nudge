@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { requestOf } from "@/test/fetch";
 import { ChangePasswordForm } from "./change-password-form";
 
 function renderForm({ onSuccess = vi.fn(), onCancel = vi.fn() } = {}) {
@@ -41,7 +42,7 @@ describe("ChangePasswordForm", () => {
     await vi.waitFor(() => {
       expect(onSuccess).toHaveBeenCalled();
     });
-    const request = fetchSpy.mock.calls[0]?.[0] as Request;
+    const request = requestOf(fetchSpy.mock.calls[0]?.[0]);
     expect(request.url).toMatch(/\/api\/v1\/auth\/password$/);
     expect(await request.json()).toEqual({
       current_password: "old-passphrase",

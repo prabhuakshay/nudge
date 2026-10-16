@@ -28,7 +28,7 @@ environ.Env.read_env(REPO_ROOT / ".env")
 
 DEBUG = env.bool("NUDGE_DEBUG", default=False)
 
-_INSECURE_DEV_SECRET_KEY = "django-insecure-dev-only-never-use-in-production"  # noqa: S105
+_INSECURE_DEV_SECRET_KEY = "django-insecure-dev-only-never-use-in-production"  # noqa: S105 - only the default with DEBUG on
 SECRET_KEY = env.str(
     "NUDGE_SECRET_KEY",
     default=_INSECURE_DEV_SECRET_KEY if DEBUG else environ.Env.NOTSET,
@@ -59,6 +59,7 @@ INSTALLED_APPS = [
     "apps.core",
     "apps.accounts",
     "apps.notifications",
+    "apps.tasks",
 ]
 
 MIDDLEWARE = [
@@ -129,6 +130,10 @@ SESSION_COOKIE_AGE = env.int("NUDGE_SESSION_COOKIE_AGE", default=60 * 60 * 24 * 
 # Sign-in attempts allowed per client IP, and password changes per user, e.g. "10/m".
 LOGIN_RATE_LIMIT = env.str("NUDGE_LOGIN_RATE_LIMIT", default="10/m")
 
+# Calendar feed fetches allowed per client IP. Calendar apps poll at most every few minutes, so
+# this only bites someone guessing feed addresses.
+CALENDAR_FEED_RATE_LIMIT = env.str("NUDGE_CALENDAR_FEED_RATE_LIMIT", default="30/m")
+
 # ---------------------------------------------------------------- security
 
 # Caddy (or another proxy) terminates HTTPS and forwards plain HTTP, so Django must trust the
@@ -166,6 +171,18 @@ STORAGES = {
     "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
+
+# Uploaded files (Attachments). Never served from a public URL: only the owner-checked download
+# endpoint reads them. In Docker this is the `media` volume, shared by the web and the worker.
+MEDIA_ROOT = Path(env.path("NUDGE_MEDIA_ROOT", default=BASE_DIR / "media"))
+# Big uploads are spooled to disk while they arrive. Keep them on the media volume: the
+# container's /tmp is RAM, and a read-only container has nowhere else to write.
+FILE_UPLOAD_TEMP_DIR = MEDIA_ROOT / "uploads"
+# The largest Attachment, in bytes. Keep the proxy's request body limit a little above it.
+ATTACHMENT_MAX_SIZE = env.int("NUDGE_ATTACHMENT_MAX_SIZE", default=25 * 1024 * 1024)
+
+# How many days deleted Tasks and Projects wait in Trash before they are gone for good.
+TRASH_RETENTION_DAYS = env.int("NUDGE_TRASH_RETENTION_DAYS", default=365)
 
 # The built React app. WhiteNoise serves its files from the site root; `apps.core.views.spa`
 # returns its index.html for every other non-API path, `/` included, so client-side routing
@@ -237,6 +254,9 @@ LOGGING = {
     "formatters": {
         "plain": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"},
     },
+    "filters": {
+        "redact_feed_tokens": {"()": "apps.core.log_redaction.RedactFeedTokens"},
+    },
     "handlers": {
         "console": {"class": "logging.StreamHandler", "formatter": "plain"},
     },
@@ -247,5 +267,8 @@ LOGGING = {
             "level": env.str("NUDGE_DJANGO_LOG_LEVEL", default="WARNING"),
             "propagate": False,
         },
+        # These two log request paths, which for a Calendar feed include its secret token.
+        "django.request": {"filters": ["redact_feed_tokens"]},
+        "django.server": {"filters": ["redact_feed_tokens"]},
     },
 }

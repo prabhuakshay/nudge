@@ -8,7 +8,13 @@ vi.mock("@/features/auth/sign-out-button", () => ({
   SignOutButton: () => <button type="button">Sign out</button>,
 }));
 
-const ada = { id: 1, email: "ada@example.com", full_name: "Ada Lovelace" };
+const ada = {
+  id: 1,
+  email: "ada@example.com",
+  full_name: "Ada Lovelace",
+  time_zone: "Europe/London",
+  single_key_shortcuts: true,
+};
 
 async function openDialog() {
   render(
@@ -85,6 +91,31 @@ describe("SettingsDialog", () => {
     await user.click(screen.getByRole("radio", { name: "Dark" }));
 
     expect(appearance).toHaveTextContent("Dark");
+  });
+
+  it("shows the time zone beside Time zone and opens its page", async () => {
+    const user = await openDialog();
+    const timeZone = screen.getByRole("button", { name: /Time zone/ });
+    expect(timeZone).toHaveTextContent("Europe/London");
+
+    await user.click(timeZone);
+
+    expect(screen.getByRole("region", { name: "Time zone" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Change" })).toBeInTheDocument();
+  });
+
+  it("opens the Calendar feed page", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(
+      new Response(JSON.stringify({ url: null }), {
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+    const user = await openDialog();
+
+    await user.click(screen.getByRole("button", { name: /Calendar feed/ }));
+
+    expect(screen.getByRole("region", { name: "Calendar feed" })).toBeInTheDocument();
+    expect(await screen.findByRole("button", { name: "Turn on" })).toBeInTheDocument();
   });
 
   it("closes with Escape", async () => {

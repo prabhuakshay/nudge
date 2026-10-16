@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 from ninja import Field, Schema
+from pydantic import field_validator
+
+from apps.accounts.models import is_time_zone
 
 
 class UserOut(Schema):
@@ -11,6 +14,10 @@ class UserOut(Schema):
     id: int
     email: str
     full_name: str
+    time_zone: str = Field(description="IANA time zone name, or empty when not set yet.")
+    single_key_shortcuts: bool = Field(
+        description="Whether shortcuts of one unmodified key, such as C, are on."
+    )
 
 
 class SessionOut(Schema):
@@ -39,7 +46,21 @@ class ProfileIn(Schema):
     full_name: str = Field(max_length=150)
 
 
-class ErrorOut(Schema):
-    """A human-readable error message."""
+class TimeZoneIn(Schema):
+    """The user's new time zone."""
 
-    detail: str
+    time_zone: str = Field(description="IANA time zone name, such as Europe/London.")
+
+    @field_validator("time_zone")
+    @classmethod
+    def _must_be_iana_name(cls, value: str) -> str:
+        if not is_time_zone(value):
+            message = "Not a known IANA time zone name."
+            raise ValueError(message)
+        return value
+
+
+class ShortcutsIn(Schema):
+    """Whether the user wants single-key shortcuts on."""
+
+    single_key: bool

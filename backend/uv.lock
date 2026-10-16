@@ -611,6 +611,18 @@ wheels = [
 ]
 
 [[package]]
+name = "fractional-indexing"
+version = "0.1.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "setuptools" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/76/9e/2c14b6dc812defa58e9d515b44b4d126b48338545e14089413df50dadda3/fractional-indexing-0.1.3.tar.gz", hash = "sha256:59e25f441c213bf7f921aa329a6bf3e5930ee8d8852df0b4e930aaf39a39ac5e", size = 7791, upload-time = "2023-08-13T10:03:16.946Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/02/d1/627b86b1eb95ec2c7e012f0036e28a9335f3177f6c7e15047df6ee544bbc/fractional_indexing-0.1.3-py3-none-any.whl", hash = "sha256:389abb9da24add388af3f0146ee4fcf2ebec5816ee728fa672657e394d9a7824", size = 7971, upload-time = "2023-08-13T10:03:15.504Z" },
+]
+
+[[package]]
 name = "frozenlist"
 version = "1.8.0"
 source = { registry = "https://pypi.org/simple" }
@@ -668,6 +680,19 @@ dependencies = [
     { name = "cryptography" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/7c/af/249d1576653b69c20b9ac30e284b63bd94af6a175d72d87813235caf2482/http_ece-1.2.1.tar.gz", hash = "sha256:8c6ab23116bbf6affda894acfd5f2ca0fb8facbcbb72121c11c75c33e7ce8cff", size = 8830, upload-time = "2024-08-08T00:10:47.301Z" }
+
+[[package]]
+name = "icalendar"
+version = "7.3.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "python-dateutil" },
+    { name = "tzdata" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/47/2b/1bbf82d316df18c3331d9a06228819c8a5814ceda545a3e9980e52ffce1b/icalendar-7.3.0.tar.gz", hash = "sha256:7bd001c8e648205e1bde5c6a5b77096598e8d0893dcf57755c6c597635620132", size = 525811, upload-time = "2026-08-19T15:10:21.05Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/bb/82/50bff78b0bb0c7d7c0cb39e0ee189b92f611fff6bd7cf57f25e92d5a7551/icalendar-7.3.0-py3-none-any.whl", hash = "sha256:8355acfe17be81b368f0b1e3740817cea9b56ea889931f8f1a87c62f2d28db0b", size = 542540, upload-time = "2026-08-19T15:10:19.525Z" },
+]
 
 [[package]]
 name = "idna"
@@ -913,10 +938,14 @@ dependencies = [
     { name = "django-environ" },
     { name = "django-ninja" },
     { name = "django-stubs-ext" },
+    { name = "fractional-indexing" },
     { name = "gunicorn" },
+    { name = "icalendar" },
     { name = "procrastinate" },
     { name = "psycopg", extra = ["binary", "pool"] },
+    { name = "python-dateutil" },
     { name = "pywebpush" },
+    { name = "tzdata" },
     { name = "whitenoise" },
 ]
 
@@ -929,6 +958,7 @@ dev = [
     { name = "pytest-django" },
     { name = "pytest-env" },
     { name = "ruff" },
+    { name = "types-python-dateutil" },
     { name = "watchfiles" },
 ]
 
@@ -939,10 +969,14 @@ requires-dist = [
     { name = "django-environ", specifier = ">=0.14.0" },
     { name = "django-ninja", specifier = ">=1.7.1" },
     { name = "django-stubs-ext", specifier = ">=6.1.2" },
+    { name = "fractional-indexing", specifier = ">=0.1.3" },
     { name = "gunicorn", specifier = ">=26.2.0" },
+    { name = "icalendar", specifier = ">=7.3" },
     { name = "procrastinate", specifier = ">=3.10.0" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.3.6" },
+    { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "pywebpush", specifier = ">=2.5.0" },
+    { name = "tzdata", specifier = ">=2026.5" },
     { name = "whitenoise", specifier = ">=6.12.0" },
 ]
 
@@ -955,6 +989,7 @@ dev = [
     { name = "pytest-django", specifier = ">=4.14.0" },
     { name = "pytest-env", specifier = ">=1.8.0" },
     { name = "ruff", specifier = ">=0.17.0" },
+    { name = "types-python-dateutil", specifier = ">=2.9.0.20260807" },
     { name = "watchfiles", specifier = ">=1.3.0" },
 ]
 
@@ -1390,6 +1425,15 @@ wheels = [
 ]
 
 [[package]]
+name = "setuptools"
+version = "84.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/44/f5da03a8ef95d369145c5bb53050e7877c9f3d312e128605fd9504829143/setuptools-84.0.0.tar.gz", hash = "sha256:f4695c21257f0d9b537ec2692c941d02ee143b7cc1276941349a546573b2ef73", size = 1168449, upload-time = "2026-08-08T18:27:58.365Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/95/9c/c510029fc6ef33a6275cd2c5d3cecd6613dfd6aa401d57c54f1c18852ccf/setuptools-84.0.0-py3-none-any.whl", hash = "sha256:51a52592b3b99e102b609654876bd65f19f999935166d1352678931132b0c670", size = 818216, upload-time = "2026-08-08T18:27:56.719Z" },
+]
+
+[[package]]
 name = "six"
 version = "1.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1405,6 +1449,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/5f/d3/3f06a1006f2261d1342aefb3c71eed02f5d4ca5bdbecd86ebc12ad38306e/sqlparse-0.6.0.tar.gz", hash = "sha256:113c35c75365ab9cc9c7231d68c6428fb11c085fc8e9eb1ad659b7ddbf6cd2b9", size = 178477, upload-time = "2026-08-13T19:16:06.396Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d9/50/f00935da0ec7cbf325f8dc4f772ae46fbc7b672dd62876e73f0a94adda57/sqlparse-0.6.0-py3-none-any.whl", hash = "sha256:b861c0288ce2fa56209a9a6412d2e066ac664b3873b89c26c9d8415e8e32996f", size = 50070, upload-time = "2026-08-13T19:16:04.062Z" },
+]
+
+[[package]]
+name = "types-python-dateutil"
+version = "2.9.0.20260807"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c8/4e/b3fa538f9cb38dfece0d6ccf6d3d0d925bdedb144fb9c8129dfc007cd003/types_python_dateutil-2.9.0.20260807.tar.gz", hash = "sha256:e0b8a90d464c8684c66b7b8e4556d9074afdddcc56ca45323f0987134f9e7034", size = 17618, upload-time = "2026-08-07T04:17:13.491Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/e4/5e/3715867caea2f4cea56ccb04c851cde23ed063449c3b004c7a047f20dd48/types_python_dateutil-2.9.0.20260807-py3-none-any.whl", hash = "sha256:54aa3707350ed7a9cc0776fd2f6739679d6967d11b40150985e81edcb86df4db", size = 18486, upload-time = "2026-08-07T04:17:12.504Z" },
 ]
 
 [[package]]

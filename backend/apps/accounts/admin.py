@@ -21,7 +21,7 @@ class UserAdmin(DjangoUserAdmin[User]):
     ordering = ("email",)
     fieldsets = (
         (None, {"fields": ("email", "password")}),
-        ("Profile", {"fields": ("full_name",)}),
+        ("Profile", {"fields": ("full_name", "time_zone", "single_key_shortcuts")}),
         (
             "Permissions",
             {"fields": ("is_active", "is_staff", "is_superuser", "groups", "user_permissions")},

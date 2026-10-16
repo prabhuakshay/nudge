@@ -13,7 +13,12 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
+import { Route as AppSearchRouteImport } from './routes/_app/search'
+import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as AppUpcomingRouteImport } from './routes/_app/upcoming'
+import { Route as AppPeoplePersonIdRouteImport } from './routes/_app/people.$personId'
+import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects.$projectId'
+import { Route as AppTagsTagIdRouteImport } from './routes/_app/tags.$tagId'
 
 const AppRoute = AppRouteImport.update({
   id: '/_app',
@@ -34,9 +39,34 @@ const AppInboxRoute = AppInboxRouteImport.update({
   path: '/inbox',
   getParentRoute: () => AppRoute,
 } as any)
+const AppSearchRoute = AppSearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTrashRoute = AppTrashRouteImport.update({
+  id: '/trash',
+  path: '/trash',
+  getParentRoute: () => AppRoute,
+} as any)
 const AppUpcomingRoute = AppUpcomingRouteImport.update({
   id: '/upcoming',
   path: '/upcoming',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppPeoplePersonIdRoute = AppPeoplePersonIdRouteImport.update({
+  id: '/people/$personId',
+  path: '/people/$personId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppProjectsProjectIdRoute = AppProjectsProjectIdRouteImport.update({
+  id: '/projects/$projectId',
+  path: '/projects/$projectId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppTagsTagIdRoute = AppTagsTagIdRouteImport.update({
+  id: '/tags/$tagId',
+  path: '/tags/$tagId',
   getParentRoute: () => AppRoute,
 } as any)
 
@@ -44,34 +74,72 @@ export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
   '/login': typeof LoginRoute
   '/inbox': typeof AppInboxRoute
+  '/search': typeof AppSearchRoute
+  '/trash': typeof AppTrashRoute
   '/upcoming': typeof AppUpcomingRoute
+  '/people/$personId': typeof AppPeoplePersonIdRoute
+  '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/tags/$tagId': typeof AppTagsTagIdRoute
 }
 export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/inbox': typeof AppInboxRoute
+  '/search': typeof AppSearchRoute
+  '/trash': typeof AppTrashRoute
   '/upcoming': typeof AppUpcomingRoute
   '/': typeof AppIndexRoute
+  '/people/$personId': typeof AppPeoplePersonIdRoute
+  '/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/tags/$tagId': typeof AppTagsTagIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
   '/login': typeof LoginRoute
   '/_app/inbox': typeof AppInboxRoute
+  '/_app/search': typeof AppSearchRoute
+  '/_app/trash': typeof AppTrashRoute
   '/_app/upcoming': typeof AppUpcomingRoute
   '/_app/': typeof AppIndexRoute
+  '/_app/people/$personId': typeof AppPeoplePersonIdRoute
+  '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
+  '/_app/tags/$tagId': typeof AppTagsTagIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/login' | '/inbox' | '/upcoming'
+  fullPaths:
+    | '/'
+    | '/login'
+    | '/inbox'
+    | '/search'
+    | '/trash'
+    | '/upcoming'
+    | '/people/$personId'
+    | '/projects/$projectId'
+    | '/tags/$tagId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/login' | '/inbox' | '/upcoming' | '/'
+  to:
+    | '/login'
+    | '/inbox'
+    | '/search'
+    | '/trash'
+    | '/upcoming'
+    | '/'
+    | '/people/$personId'
+    | '/projects/$projectId'
+    | '/tags/$tagId'
   id:
     | '__root__'
     | '/_app'
     | '/login'
     | '/_app/inbox'
+    | '/_app/search'
+    | '/_app/trash'
     | '/_app/upcoming'
     | '/_app/'
+    | '/_app/people/$personId'
+    | '/_app/projects/$projectId'
+    | '/_app/tags/$tagId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -109,6 +177,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppInboxRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/search': {
+      id: '/_app/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof AppSearchRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/trash': {
+      id: '/_app/trash'
+      path: '/trash'
+      fullPath: '/trash'
+      preLoaderRoute: typeof AppTrashRouteImport
+      parentRoute: typeof AppRoute
+    }
     '/_app/upcoming': {
       id: '/_app/upcoming'
       path: '/upcoming'
@@ -116,19 +198,50 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUpcomingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/people/$personId': {
+      id: '/_app/people/$personId'
+      path: '/people/$personId'
+      fullPath: '/people/$personId'
+      preLoaderRoute: typeof AppPeoplePersonIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/projects/$projectId': {
+      id: '/_app/projects/$projectId'
+      path: '/projects/$projectId'
+      fullPath: '/projects/$projectId'
+      preLoaderRoute: typeof AppProjectsProjectIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/tags/$tagId': {
+      id: '/_app/tags/$tagId'
+      path: '/tags/$tagId'
+      fullPath: '/tags/$tagId'
+      preLoaderRoute: typeof AppTagsTagIdRouteImport
+      parentRoute: typeof AppRoute
+    }
   }
 }
 
 interface AppRouteChildren {
   AppInboxRoute: typeof AppInboxRoute
+  AppSearchRoute: typeof AppSearchRoute
+  AppTrashRoute: typeof AppTrashRoute
   AppUpcomingRoute: typeof AppUpcomingRoute
   AppIndexRoute: typeof AppIndexRoute
+  AppPeoplePersonIdRoute: typeof AppPeoplePersonIdRoute
+  AppProjectsProjectIdRoute: typeof AppProjectsProjectIdRoute
+  AppTagsTagIdRoute: typeof AppTagsTagIdRoute
 }
 
 const AppRouteChildren: AppRouteChildren = {
   AppInboxRoute: AppInboxRoute,
+  AppSearchRoute: AppSearchRoute,
+  AppTrashRoute: AppTrashRoute,
   AppUpcomingRoute: AppUpcomingRoute,
   AppIndexRoute: AppIndexRoute,
+  AppPeoplePersonIdRoute: AppPeoplePersonIdRoute,
+  AppProjectsProjectIdRoute: AppProjectsProjectIdRoute,
+  AppTagsTagIdRoute: AppTagsTagIdRoute,
 }
 
 const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)

@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import {
   Bell,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
+  Globe,
+  Keyboard,
   KeyRound,
   LogOut,
   type LucideIcon,
@@ -23,34 +26,52 @@ import {
 } from "@/components/ui/dialog";
 import type { User } from "@/features/auth/session";
 import { SignOutButton } from "@/features/auth/sign-out-button";
+import { CalendarFeedSettings } from "@/features/calendar-feed/calendar-feed-settings";
 import { NotificationSettings } from "@/features/notifications/notification-settings";
 import { PUSH_STATUS_LABELS, pushStatusQuery } from "@/features/notifications/push";
+import { ShortcutSettings } from "@/features/shortcuts/shortcut-settings";
 import { THEME_LABELS, useTheme } from "@/features/theme/theme";
 import { ThemePicker } from "@/features/theme/theme-picker";
+import { TimeZoneSettings } from "@/features/time-zone/time-zone-settings";
 import { cn } from "@/lib/utils";
 
 import { PasswordPage, ProfilePage } from "./account-pages";
 
-type Page = "profile" | "password" | "notifications" | "appearance";
+type Page =
+  | "profile"
+  | "password"
+  | "time-zone"
+  | "notifications"
+  | "calendar-feed"
+  | "appearance"
+  | "shortcuts";
 
 const PAGES: { page: Page; label: string; icon: LucideIcon }[] = [
   { page: "profile", label: "Profile", icon: UserRound },
   { page: "password", label: "Password", icon: KeyRound },
+  { page: "time-zone", label: "Time zone", icon: Globe },
   { page: "notifications", label: "Notifications", icon: Bell },
+  { page: "calendar-feed", label: "Calendar feed", icon: CalendarDays },
   { page: "appearance", label: "Appearance", icon: Palette },
+  { page: "shortcuts", label: "Keyboard shortcuts", icon: Keyboard },
 ];
 
 type SettingsDialogProps = {
   user: User;
-  /** The element that opens the dialog; it must accept a ref and an `onClick`, like a button. */
-  children: ReactNode;
+  /**
+   * The element that opens the dialog; it must accept a ref and an `onClick`, like a button. Left
+   * out when the dialog is opened some other way, such as from a shortcut, through `open`.
+   */
+  children?: ReactNode;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /**
  * Account and app settings, modelled on iOS and macOS Settings. Phones drill down from a list
  * of pages into one page at a time; from `sm` up the list stays beside the open page.
  */
-export function SettingsDialog({ user, children }: SettingsDialogProps) {
+export function SettingsDialog({ user, children, open, onOpenChange }: SettingsDialogProps) {
   // `null` is the list on phones; wider screens show the profile beside it instead.
   const [page, setPage] = useState<Page | null>(null);
   const shown = page ?? "profile";
@@ -58,11 +79,13 @@ export function SettingsDialog({ user, children }: SettingsDialogProps) {
 
   return (
     <Dialog
-      onOpenChange={() => {
+      open={open}
+      onOpenChange={(opened) => {
         setPage(null);
+        onOpenChange?.(opened);
       }}
     >
-      <DialogTrigger asChild>{children}</DialogTrigger>
+      {children && <DialogTrigger asChild>{children}</DialogTrigger>}
       <DialogContent
         aria-describedby={undefined}
         className="sm:h-[min(44rem,calc(100dvh-4rem))] sm:w-[min(64rem,calc(100vw-4rem))]"
@@ -133,10 +156,16 @@ function PageContent({ page, user }: { page: Page; user: User }) {
       return <ProfilePage user={user} />;
     case "password":
       return <PasswordPage />;
+    case "time-zone":
+      return <TimeZoneSettings timeZone={user.time_zone} />;
     case "notifications":
       return <NotificationSettings />;
+    case "calendar-feed":
+      return <CalendarFeedSettings />;
     case "appearance":
       return <ThemePicker />;
+    case "shortcuts":
+      return <ShortcutSettings singleKey={user.single_key_shortcuts} />;
   }
 }
 
@@ -152,6 +181,7 @@ function SettingsNav({ user, current, onSelect, className }: SettingsNavProps) {
   const { data: pushStatus } = useQuery(pushStatusQuery);
   const theme = useTheme();
   const hints: Partial<Record<Page, string>> = {
+    "time-zone": user.time_zone,
     notifications: pushStatus && PUSH_STATUS_LABELS[pushStatus],
     appearance: THEME_LABELS[theme],
   };

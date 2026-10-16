@@ -2,10 +2,17 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
+import { requestOf } from "@/test/fetch";
 import { EditNameForm } from "./edit-name-form";
 import { sessionQuery } from "./session";
 
-const ada = { id: 1, email: "ada@example.com", full_name: "Ada Lovelace" };
+const ada = {
+  id: 1,
+  email: "ada@example.com",
+  full_name: "Ada Lovelace",
+  time_zone: "Europe/London",
+  single_key_shortcuts: true,
+};
 
 function renderForm({ onSuccess = vi.fn(), onCancel = vi.fn() } = {}) {
   const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
@@ -52,7 +59,7 @@ describe("EditNameForm", () => {
     await vi.waitFor(() => {
       expect(onSuccess).toHaveBeenCalled();
     });
-    const request = fetchSpy.mock.calls[0]?.[0] as Request;
+    const request = requestOf(fetchSpy.mock.calls[0]?.[0]);
     expect(request.method).toBe("PATCH");
     expect(await request.json()).toEqual({ full_name: "Augusta Ada King" });
     expect(queryClient.getQueryData(sessionQuery.queryKey)).toEqual(renamed);

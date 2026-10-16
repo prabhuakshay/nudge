@@ -14,6 +14,10 @@ x-nudge: &nudge
   read_only: true
   tmpfs:
     - /tmp
+  # Attachments live on a named volume: the container is read-only, and the worker needs the
+  # same files as the web server. It is mounted wherever NUDGE_MEDIA_ROOT points the app.
+  volumes:
+    - media:${NUDGE_MEDIA_ROOT:-/app/backend/media}
   security_opt:
     - no-new-privileges:true
   cap_drop:
@@ -48,3 +52,6 @@ services:
       web:
         condition: service_healthy
     stop_grace_period: 60s
+
+volumes:
+  media:

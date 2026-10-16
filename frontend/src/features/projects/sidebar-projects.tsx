@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FolderPlus, Plus } from "lucide-react";
 import { useState } from "react";
 
+import { HEADING_ACTION, SidebarSection } from "@/components/layout/sidebar-section";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -14,7 +15,6 @@ import { FolderDialog, ProjectDialog } from "./project-dialog";
 import { useMoveFolder, useMoveProject, type SidebarFolder, type SidebarProject } from "./projects";
 import { SidebarArchived } from "./sidebar-archived";
 import { FolderRow, ProjectRow } from "./sidebar-rows";
-import { HEADING_ACTION, SidebarSection } from "./sidebar-section";
 import { SidebarTree } from "./sidebar-tree";
 
 type OpenDialog =

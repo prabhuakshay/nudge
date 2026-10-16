@@ -5,7 +5,7 @@ import { useState } from "react";
 
 import { DropdownMenuItem, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { ROW, RowMenu } from "@/features/projects/sidebar-rows";
-import { HEADING_ACTION, SidebarSection } from "@/features/projects/sidebar-section";
+import { HEADING_ACTION, SidebarSection } from "@/components/layout/sidebar-section";
 import { cn } from "@/lib/utils";
 
 import { PersonAvatar } from "./person-avatar";

@@ -1,8 +1,9 @@
 import { ChevronRight } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { useSidebarSection, type SidebarSection as Section } from "@/features/auth/session";
 import { cn } from "@/lib/utils";
+
+import { useSidebarSection, type SidebarSectionName } from "./use-sidebar-section";
 
 /** The `+` on a section heading, shown on hover or focus where there is a pointer, always on touch. */
 export const HEADING_ACTION =
@@ -18,7 +19,7 @@ export function SidebarSection({
   add,
   children,
 }: {
-  section: Section;
+  section: SidebarSectionName;
   title: string;
   add: ReactNode;
   children: ReactNode;

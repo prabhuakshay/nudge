@@ -17,7 +17,7 @@ import {
 import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog";
 import { useSidebarSensors } from "@/features/projects/sidebar-drag";
 import { ROW, RowMenu } from "@/features/projects/sidebar-rows";
-import { HEADING_ACTION, SidebarSection } from "@/features/projects/sidebar-section";
+import { HEADING_ACTION, SidebarSection } from "@/components/layout/sidebar-section";
 import { sidebarQuery } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 

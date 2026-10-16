@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 from django.test import Client
 
-from apps.tasks import creation, projects, services, tags, trash
+from apps.tasks import creation, projects, sections, services, tags, trash
 from apps.tasks.models import Task, TaskActivity
 
 if TYPE_CHECKING:
@@ -198,6 +198,19 @@ def test_moving_takes_a_subtask_along_with_its_selected_parent(client: Client, a
     assert _fresh(loose).parent_id is None
     assert _fresh(loose).project_id == work.pk
     assert TaskActivity.Kind.MOVED in _kinds(parent)
+
+
+@pytest.mark.django_db
+def test_moving_to_another_project_leaves_the_section(client: Client, ada: User) -> None:
+    work = projects.create_project(ada, "Work")
+    home = projects.create_project(ada, "Home")
+    to_do = sections.create_section(work, "To do")
+    grouped = creation.create_task(work, "Grouped", creation.NewTask(section=to_do))
+
+    response = _bulk(client, [grouped], {"kind": "move", "project_id": home.pk})
+
+    assert response.status_code == 200
+    assert (_fresh(grouped).project_id, _fresh(grouped).section_id) == (home.pk, None)
 
 
 @pytest.mark.django_db

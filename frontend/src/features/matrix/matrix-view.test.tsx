@@ -5,17 +5,37 @@ import { INBOX, json, renderListRoute, WORK } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 import { patches } from "@/test/drawer";
 import { makeTask as task } from "@/test/tasks";
-import type { TaskDetail } from "@/features/tasks/tasks";
+import type { NewTask, TaskDetail } from "@/features/tasks/tasks";
 
 import { MatrixView } from "./matrix-view";
 
-/** A stand-in server: All's open Tasks, each Task's details, and PATCHes that save to them. */
+/** Add the Task a create request asks for to `tasks`, as the server would. */
+async function addTask(request: Request, tasks: TaskDetail[]) {
+  const body = (await request.clone().json()) as NewTask;
+  const added = task({
+    id: 100 + tasks.length,
+    title: body.title,
+    project_id: body.project_id ?? INBOX.id,
+    priority: body.priority ?? 0,
+    ...body.dates,
+  });
+  tasks.push(added);
+  return added;
+}
+
+/**
+ * A stand-in server: All's open Tasks, each Task's details, PATCHes that save to them, and new
+ * Tasks added to them.
+ */
 function mockApi(tasks: TaskDetail[] = []) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
     const url = new URL(request.url);
     if (url.pathname === "/api/v1/sidebar") {
       return json({ inbox: INBOX, items: [WORK], archived: [], tags: [], people: [] });
+    }
+    if (url.pathname === "/api/v1/tasks" && request.method === "POST") {
+      return json(await addTask(request, tasks), 201);
     }
     if (url.pathname === "/api/v1/tasks") {
       const open = tasks.filter((each) => each.status === "open" || each.status === "blocked");
@@ -216,5 +236,125 @@ describe("MatrixView", () => {
 
     expect(await screen.findByText("Pay rent")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^Urgent & Important/ })).not.toBeInTheDocument();
+  });
+});
+
+/** The body of every Task the page created. */
+function created(fetchSpy: ReturnType<typeof mockApi>) {
+  return Promise.all(
+    fetchSpy.mock.calls
+      .map(([input]) => requestOf(input))
+      .filter((request) => request.method === "POST")
+      .map(async (request) => (await request.clone().json()) as NewTask),
+  );
+}
+
+/** Open a Quadrant's Quick add line, type into it and press Enter. */
+async function addIn(user: ReturnType<typeof renderMatrix>["user"], label: string, text: string) {
+  await user.click(within(quadrant(label)).getByRole("button", { name: `Add a task to ${label}` }));
+  await user.type(within(quadrant(label)).getByRole("combobox", { name: "New task" }), text);
+  await user.keyboard("{Enter}");
+}
+
+describe("MatrixView Quick add", () => {
+  it("adds a Task to Urgent & Important as Priority 1, due today, in the Inbox", async () => {
+    const fetchSpy = mockApi();
+    const { user } = renderMatrix();
+
+    await screen.findAllByText("Nothing here.");
+    await addIn(user, "Urgent & Important", "Pay rent");
+
+    await waitFor(async () => {
+      expect(await created(fetchSpy)).toEqual([
+        { title: "Pay rent", project_id: INBOX.id, priority: 1, dates: { due_date: "2026-10-15" } },
+      ]);
+    });
+    await waitFor(() => {
+      expect(titlesIn("Urgent & Important")).toEqual(["Pay rent"]);
+    });
+  });
+
+  it.each([
+    ["Important not urgent", { priority: 2 }],
+    ["Urgent not important", { dates: { due_date: "2026-10-15" } }],
+    ["Neither", {}],
+  ])("adds a Task to %s with what puts it there", async (label, defaults) => {
+    const fetchSpy = mockApi();
+    const { user } = renderMatrix();
+
+    await screen.findAllByText("Nothing here.");
+    await addIn(user, label, "Call mum");
+
+    await waitFor(async () => {
+      expect(await created(fetchSpy)).toEqual([
+        { title: "Call mum", project_id: INBOX.id, ...defaults },
+      ]);
+    });
+    await waitFor(() => {
+      expect(titlesIn(label)).toEqual(["Call mum"]);
+    });
+  });
+
+  it("lets a typed Priority, date and Project take the place of the Quadrant's", async () => {
+    const fetchSpy = mockApi();
+    const { user } = renderMatrix();
+
+    await screen.findAllByText("Nothing here.");
+    await addIn(user, "Urgent & Important", "Call Sam !3 next monday ~Work{Escape}");
+
+    await waitFor(async () => {
+      expect(await created(fetchSpy)).toEqual([
+        {
+          title: "Call Sam",
+          project_id: WORK.id,
+          priority: 3,
+          dates: { due_date: "2026-10-19", due_time: null, start_date: null, start_time: null },
+        },
+      ]);
+    });
+    await waitFor(() => {
+      expect(titlesIn("Neither")).toEqual(["Call Sam"]);
+    });
+  });
+
+  it("drops a Quadrant's Priority when its chip is removed", async () => {
+    const fetchSpy = mockApi();
+    const { user } = renderMatrix();
+
+    await screen.findAllByText("Nothing here.");
+    await user.click(
+      within(quadrant("Important not urgent")).getByRole("button", {
+        name: "Add a task to Important not urgent",
+      }),
+    );
+    await user.click(screen.getByRole("button", { name: "Remove Priority 2" }));
+    await user.keyboard("Water plants{Enter}");
+
+    await waitFor(async () => {
+      expect(await created(fetchSpy)).toEqual([{ title: "Water plants", project_id: INBOX.id }]);
+    });
+  });
+
+  it("closes Quick add when it is left empty", async () => {
+    mockApi();
+    const { user } = renderMatrix();
+
+    await screen.findAllByText("Nothing here.");
+    await user.click(screen.getByRole("button", { name: "Add a task to Neither" }));
+    expect(within(quadrant("Neither")).getByRole("combobox", { name: "New task" })).toHaveFocus();
+    await user.click(document.body);
+
+    expect(screen.queryByRole("combobox", { name: "New task" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add a task to Neither" })).toBeInTheDocument();
+  });
+
+  it("hides a folded Quadrant's Quick add on a phone", async () => {
+    mockApi();
+    const { user } = renderMatrix({ wide: false });
+
+    await user.click(await screen.findByRole("button", { name: /^Neither/ }));
+
+    expect(screen.queryByRole("button", { name: "Add a task to Neither" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add a task to Urgent & Important" })).toBeVisible();
   });
 });

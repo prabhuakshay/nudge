@@ -63,6 +63,7 @@ export function MatrixView({
             key={id}
             quadrant={id}
             tasks={quadrants[id]}
+            today={today}
             openId={openTaskId}
             onOpen={setOpenTask}
             onToggle={toggle}

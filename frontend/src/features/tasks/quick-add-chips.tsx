@@ -45,30 +45,31 @@ function Chip({
 }
 
 /**
- * A chip for the view's own chip and each match below the input. The × on a match turns it back
- * into plain text; on the view's chip it drops what the view would give the Task.
+ * A chip for each of the view's own chips and each match below the input. The × on a match turns
+ * it back into plain text; on a view's chip it drops what the view would give the Task.
  */
 export function QuickAddChips({
   matches,
-  given,
+  given = [],
   onKeep,
   onDropGiven,
 }: {
   matches: readonly QuickAddMatch[];
-  given?: ViewDefault | null;
+  given?: readonly ViewDefault[];
   onKeep: (match: QuickAddMatch) => void;
-  onDropGiven?: () => void;
+  onDropGiven?: (chip: ViewDefault) => void;
 }) {
-  if (matches.length === 0 && !given) return null;
+  if (matches.length === 0 && given.length === 0) return null;
   return (
     <div className="flex flex-wrap gap-1.5">
-      {given && (
+      {given.map((chip) => (
         <Chip
-          match={given}
-          removeLabel={`Remove ${chipLabel(given)}`}
-          onRemove={() => onDropGiven?.()}
+          key={chip.kind}
+          match={chip}
+          removeLabel={`Remove ${chipLabel(chip)}`}
+          onRemove={() => onDropGiven?.(chip)}
         />
-      )}
+      ))}
       {matches.map((match) => (
         <Chip
           key={`${match.kind}-${String(match.start)}`}

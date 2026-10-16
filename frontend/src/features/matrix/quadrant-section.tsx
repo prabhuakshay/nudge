@@ -7,6 +7,7 @@ import type { Task } from "@/features/tasks/tasks";
 import { plural } from "@/features/trash/trash";
 import { cn } from "@/lib/utils";
 
+import { QuadrantAddTask } from "./quadrant-add-task";
 import { QUADRANT_LABEL, type Quadrant } from "./quadrants";
 
 /** Each Quadrant's accent, as TickTick colours them: red, amber, blue and green. */
@@ -22,11 +23,12 @@ export type QuadrantFold = { collapsed: boolean; onToggle: () => void };
 
 /**
  * One Quadrant of the Matrix: its label and how many Tasks it holds, then its Tasks as cards, or
- * a line saying it is empty. Given `fold`, as on a phone, its heading folds it away.
+ * a line saying it is empty, and Quick add for adding one there. Given `fold`, as on a phone, its heading folds it away.
  */
 export function QuadrantSection({
   quadrant,
   tasks,
+  today,
   openId,
   onOpen,
   onToggle,
@@ -34,6 +36,8 @@ export function QuadrantSection({
 }: {
   quadrant: Quadrant;
   tasks: Task[];
+  /** The user's ISO date, which Quick add gives an Urgent Quadrant's new Tasks. */
+  today: string;
   /** The Task open in the drawer, whose card shows as selected. */
   openId: number | null;
   onOpen: (taskId: number) => void;
@@ -82,6 +86,7 @@ export function QuadrantSection({
           ))}
         </ul>
       )}
+      {!fold?.collapsed && <QuadrantAddTask quadrant={quadrant} today={today} />}
     </section>
   );
 }

@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Kbd } from "@/components/ui/kbd";
 import { shortcutText } from "@/features/shortcuts/registry";
@@ -13,12 +13,13 @@ import { QuickAddField } from "./quick-add-field";
 import { useAnnounceTask } from "./announce-task";
 import { useQuickAddTitle } from "./quick-add-people";
 import {
-  keptDefault,
+  keptDefaults,
   newTaskFields,
   showsTask,
-  viewDefault,
+  viewDefaults,
   withGivenMention,
   type QuickAddView,
+  type ViewDefault,
 } from "./quick-add-view";
 import { sidebarQuery, useCreateTask, type Task } from "./tasks";
 import { useQuickAdd } from "./use-quick-add";
@@ -85,23 +86,28 @@ function KeyHints({ focused, typed }: { focused: boolean; typed: boolean }) {
  * `@person` as they are typed, highlighting each and showing it as a chip. The view starts it with
  * a removable chip of its own, such as today in Today, so new Tasks land where the user is
  * looking. Enter adds the Task and keeps the input focused for the next, and `C` focuses it from
- * anywhere on the page.
+ * anywhere on the page. Given `onClose`, as when a button opens it, it takes focus at once and
+ * closes when left empty.
  */
 export function QuickAddCard({
   view,
   initialText,
+  className,
   onAdded,
+  onClose,
 }: {
   view: QuickAddView;
   /** Text to start with, as if typed. */
   initialText?: string;
+  className?: string;
   /** Called with each new Task instead of pointing to ones that landed outside the view. */
   onAdded?: (task: Task) => void;
+  onClose?: () => void;
 }) {
   const { data: sidebar } = useQuery(sidebarQuery);
   const [focused, setFocused] = useState(false);
-  const [givenDropped, setGivenDropped] = useState(false);
-  const given = givenDropped ? null : viewDefault(view);
+  const [dropped, setDropped] = useState<readonly ViewDefault["kind"][]>([]);
+  const given = viewDefaults(view).filter((chip) => !dropped.includes(chip.kind));
   const { mutate: createTask } = useCreateTask();
   const titleOf = useQuickAddTitle();
   const announce = useAnnounceElsewhere(view);
@@ -118,13 +124,17 @@ export function QuickAddCard({
     inputRef,
     initialValue: initialText,
     onSubmit: (text, parsed) => {
-      setGivenDropped(false);
+      setDropped([]);
       void add(text, parsed);
     },
   });
 
   const { matches } = quick.parsed;
-  const shownGiven = keptDefault(quick.parsed, given);
+  const shownGiven = keptDefaults(quick.parsed, given);
+  const opened = onClose !== undefined;
+  useEffect(() => {
+    if (opened) inputRef.current?.focus();
+  }, [opened]);
 
   return (
     <div
@@ -133,6 +143,7 @@ export function QuickAddCard({
       className={cn(
         "mb-3 rounded-xl border border-border bg-surface px-3 py-1.5 shadow-sm transition-colors",
         focused && "border-primary ring-2 ring-primary/15",
+        className,
       )}
     >
       <div className="flex min-h-10 items-center gap-2.5">
@@ -142,7 +153,10 @@ export function QuickAddCard({
           inputRef={inputRef}
           label="New task"
           placeholder="New task… try “Call @Priya #phone !2”"
-          onFocusChange={setFocused}
+          onFocusChange={(next) => {
+            setFocused(next);
+            if (!next && !quick.value.trim()) onClose?.();
+          }}
         />
         <KeyHints focused={focused} typed={quick.value !== ""} />
       </div>
@@ -152,8 +166,8 @@ export function QuickAddCard({
             matches={matches}
             given={shownGiven}
             onKeep={quick.keep}
-            onDropGiven={() => {
-              setGivenDropped(true);
+            onDropGiven={(chip) => {
+              setDropped([...dropped, chip.kind]);
             }}
           />
           {focused && <QuickAddHint />}

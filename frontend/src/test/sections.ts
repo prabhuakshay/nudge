@@ -41,17 +41,26 @@ function movedTask(tasks: Task[], movedId: number, body: MoveBody) {
   );
 }
 
+/** The Tasks in the Section a `section` list filter names, or all of them without one. */
+function inSection(tasks: Task[], section: string | null) {
+  if (section === null) return tasks;
+  const sectionId = section === "none" ? null : Number(section);
+  return tasks.filter((task) => task.section_id === sectionId);
+}
+
 /**
- * A stand-in server holding a Project's Sections and open Tasks; it adds, changes, moves and
- * deletes Sections, adds and moves Tasks, and changes the Project.
+ * A stand-in server holding a Project's Sections and open and Closed Tasks; it adds, changes,
+ * moves and deletes Sections, adds, moves and reopens Tasks, and changes the Project.
  */
 export function mockApi({
   sections = [TO_DO, DOING],
   open = [],
+  closed = [],
   project = WORK,
 }: {
   sections?: Section[];
   open?: Task[];
+  closed?: Task[];
   /** The Project the sidebar lists beside the Inbox; PATCHes to it change it. */
   project?: SidebarProject;
 }) {
@@ -104,9 +113,21 @@ export function mockApi({
     if (url.pathname.endsWith("/sections")) return json(sections);
     const sidebarOrProject = await sidebarAndProject(request, url.pathname);
     if (sidebarOrProject) return sidebarOrProject;
-    if (url.searchParams.get("closed") === "true") return json({ items: [], next_cursor: null });
-    return json({ items: open, next_cursor: null });
+    return listOrReopen(request, url);
   });
+  /** Reopens the Closed Task a PATCH names; any other request reads the open or Closed list. */
+  function listOrReopen(request: Request, url: URL) {
+    if (request.method === "PATCH") {
+      const reopened = closed.find((task) => url.pathname.endsWith(`/${String(task.id)}`));
+      closed = closed.filter((task) => task !== reopened);
+      if (reopened) open = [...open, { ...reopened, status: "open" }];
+      return json({ task: { ...reopened, status: "open" }, affected: [] });
+    }
+    if (url.searchParams.get("closed") === "true") {
+      return json({ items: inSection(closed, url.searchParams.get("section")), next_cursor: null });
+    }
+    return json({ items: open, next_cursor: null });
+  }
 }
 
 /** The requests that changed something, as `METHOD /path` and body, null when there is none. */

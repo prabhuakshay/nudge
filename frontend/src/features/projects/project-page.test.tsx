@@ -15,7 +15,7 @@ function renderProject(project: SidebarProject) {
 /** The Board's column labels, left to right. */
 function columnNames() {
   return within(screen.getByRole("group", { name: "Work board" }))
-    .getAllByRole("region")
+    .getAllByRole("region", { name: /, column \d+ of \d+$/ })
     .map((column) => column.getAttribute("aria-label"));
 }
 

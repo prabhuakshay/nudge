@@ -3,6 +3,7 @@ import type { TreeRow } from "@/features/tasks/task-tree";
 import type { Task } from "@/features/tasks/tasks";
 
 import { BoardCard } from "./board-card";
+import { BoardClosedFold } from "./board-closed";
 
 /** One Board column: a Section, or No section for null, and its root Tasks as cards in order. */
 export type BoardColumnCards = { section: Section | null; cards: TreeRow[] };
@@ -10,9 +11,11 @@ export type BoardColumnCards = { section: Section | null; cards: TreeRow[] };
 /**
  * A Board column: the Section's name and how many Tasks it holds, then its cards, Pinned ones
  * first as the server lists them. Labelled with its place on the Board for screen readers. On
- * phones it fills most of the Board's width and snaps into place as the Board scrolls.
+ * phones it fills most of the Board's width and snaps into place as the Board scrolls. A
+ * collapsed fold of the column's Closed Tasks ends it.
  */
 export function BoardColumn({
+  projectId,
   column: { section, cards },
   position,
   count,
@@ -21,6 +24,7 @@ export function BoardColumn({
   onOpen,
   onToggle,
 }: {
+  projectId: number;
   column: BoardColumnCards;
   /** Where the column sits on the Board, from 1, and how many columns there are. */
   position: number;
@@ -61,6 +65,14 @@ export function BoardColumn({
           ))}
         </ul>
       )}
+      <BoardClosedFold
+        projectId={projectId}
+        section={section}
+        openId={openId}
+        readOnly={readOnly}
+        onOpen={onOpen}
+        onToggle={onToggle}
+      />
     </section>
   );
 }

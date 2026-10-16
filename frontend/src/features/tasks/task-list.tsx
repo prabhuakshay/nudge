@@ -142,7 +142,9 @@ export function TaskList({ project }: { project: SidebarProject }) {
             <UnsectionedTasks pinned={pinned} unpinned={unpinned} context={context} />
           )}
 
-          {!project.is_inbox && !project.is_archived && <AddSection projectId={project.id} />}
+          {!project.is_inbox && !project.is_archived && (
+            <AddSection projectId={project.id} className="border-b border-border px-3 py-1.5" />
+          )}
 
           <ClosedGroup
             query={closed}

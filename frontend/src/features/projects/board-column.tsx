@@ -1,16 +1,22 @@
 import type { Section } from "@/features/sections/sections";
 import type { TreeRow } from "@/features/tasks/task-tree";
 import type { Task } from "@/features/tasks/tasks";
+import { cn } from "@/lib/utils";
 
 import { BoardCard } from "./board-card";
+import { BoardColumnHeader } from "./board-column-header";
 
 /** One Board column: a Section, or No section for null, and its root Tasks as cards in order. */
 export type BoardColumnCards = { section: Section | null; cards: TreeRow[] };
 
+const COLUMN =
+  "flex shrink-0 snap-start flex-col rounded-xl border border-border/60 bg-surface-muted/60";
+
 /**
- * A Board column: the Section's name and how many Tasks it holds, then its cards, Pinned ones
- * first as the server lists them. Labelled with its place on the Board for screen readers. On
- * phones it fills most of the Board's width and snaps into place as the Board scrolls.
+ * A Board column: its header with the Section's name and how many Tasks it holds, then its cards,
+ * Pinned ones first as the server lists them. Labelled with its place on the Board for screen
+ * readers. On phones it fills most of the Board's width and snaps into place as the Board scrolls.
+ * A collapsed Section's column is a narrow strip with only its header.
  */
 export function BoardColumn({
   column: { section, cards },
@@ -32,18 +38,18 @@ export function BoardColumn({
   onToggle: (task: Task) => void;
 }) {
   const name = section?.name ?? "No section";
+  const label = `${name}, column ${String(position)} of ${String(count)}`;
+  const collapsed = section?.collapsed ?? false;
+  if (collapsed) {
+    return (
+      <section aria-label={label} className={cn(COLUMN, "w-11")}>
+        <BoardColumnHeader section={section} count={cards.length} readOnly={readOnly} />
+      </section>
+    );
+  }
   return (
-    <section
-      aria-label={`${name}, column ${String(position)} of ${String(count)}`}
-      className="flex w-[85%] max-w-80 shrink-0 snap-start flex-col rounded-xl border border-border/60 bg-surface-muted/60 sm:w-72"
-    >
-      <header className="flex min-h-10 items-center gap-2 px-3 pt-1">
-        <h2 className="min-w-0 truncate text-sm font-semibold">{name}</h2>
-        <span className="text-xs text-muted-foreground tabular-nums">
-          {cards.length}
-          <span className="sr-only"> tasks</span>
-        </span>
-      </header>
+    <section aria-label={label} className={cn(COLUMN, "w-[85%] max-w-80 sm:w-72")}>
+      <BoardColumnHeader section={section} count={cards.length} readOnly={readOnly} />
       {cards.length === 0 ? (
         <p className="px-3 pt-2 pb-4 text-center text-xs text-muted-foreground">No tasks</p>
       ) : (

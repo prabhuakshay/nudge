@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 
+import { AddSection } from "@/features/sections/add-section";
 import { bySection } from "@/features/sections/section-trees";
 import { sectionsQuery, type Section } from "@/features/sections/sections";
 import { useOpenTask } from "@/features/tasks/open-task";
@@ -19,7 +20,7 @@ import type { SidebarProject } from "./projects";
 /**
  * A Project's open Tasks as a Board: one column of cards per Section, in Section order, after a
  * No section column that only shows when it has Tasks. A card is a root Task; its Subtasks show
- * as progress on it. On phones the columns scroll sideways inside the Board, one at a time, so
+ * as progress on it. An Add section control ends the Board. On phones the columns scroll sideways inside the Board, one at a time, so
  * the page itself never does. An archived Project's Board is read-only.
  */
 export function ProjectBoard({ project }: { project: SidebarProject }) {
@@ -49,11 +50,12 @@ export function ProjectBoard({ project }: { project: SidebarProject }) {
         <QuickAddCard view={{ kind: "project", project }} />
       )}
 
-      {columns.length === 0 ? (
+      {columns.length === 0 && (
         <p className="px-4 py-8 text-center text-sm text-muted-foreground">
           Nothing here yet. Add a task above.
         </p>
-      ) : (
+      )}
+      {(columns.length > 0 || !project.is_archived) && (
         <div
           role="group"
           aria-label={`${project.name} board`}
@@ -71,6 +73,12 @@ export function ProjectBoard({ project }: { project: SidebarProject }) {
               onToggle={toggle}
             />
           ))}
+          {!project.is_archived && (
+            <AddSection
+              projectId={project.id}
+              className="w-[85%] max-w-80 shrink-0 snap-start sm:w-72"
+            />
+          )}
         </div>
       )}
 

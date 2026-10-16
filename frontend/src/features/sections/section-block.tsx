@@ -1,7 +1,6 @@
-import { ChevronDown, ChevronRight, Pencil } from "lucide-react";
+import { ChevronDown, ChevronRight } from "lucide-react";
 import { useRef, useState, type ReactNode } from "react";
 
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import type { GroupHeader } from "@/features/tasks/sortable-tree";
 import { GroupCount } from "@/features/tasks/task-groups";
 
@@ -37,8 +36,6 @@ export function SectionBlock({
 }) {
   const { mutate: update } = useUpdateSection(section.project_id);
   const [renaming, setRenaming] = useState(false);
-  // The menu traps focus while open, so the name field can only take it once the menu has closed.
-  const renameOnClose = useRef(false);
   const menuRef = useRef<HTMLButtonElement>(null);
   const expanded = !section.collapsed;
   const Chevron = expanded ? ChevronDown : ChevronRight;
@@ -82,20 +79,10 @@ export function SectionBlock({
             <SectionMenu
               section={section}
               triggerRef={menuRef}
-              onCloseAutoFocus={(event) => {
-                if (!renameOnClose.current) return;
-                renameOnClose.current = false;
-                event.preventDefault();
+              onRename={() => {
                 setRenaming(true);
               }}
             >
-              <DropdownMenuItem
-                onSelect={() => {
-                  renameOnClose.current = true;
-                }}
-              >
-                <Pencil aria-hidden /> Rename
-              </DropdownMenuItem>
               {menuItems}
             </SectionMenu>
           )}

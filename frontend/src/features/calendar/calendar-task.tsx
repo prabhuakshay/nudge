@@ -1,5 +1,6 @@
 import type { DraggableSyntheticListeners } from "@dnd-kit/core";
 import { useQuery } from "@tanstack/react-query";
+import { Repeat } from "lucide-react";
 
 import { HUE } from "@/features/projects/project-style";
 import { findProject } from "@/features/projects/projects";
@@ -10,6 +11,7 @@ import { isClosed } from "@/features/tasks/task-properties";
 import { sidebarQuery, type Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
+import type { CalendarItem } from "./occurrences";
 import { taskLabel } from "./task-label";
 
 /** A chip's drag handle: the node dnd-kit measures, the presses that start a drag and its state. */
@@ -25,7 +27,8 @@ const STILL: ChipDrag = { setNode: () => undefined, listeners: undefined, draggi
 /**
  * A Task as the Calendar draws it on a day: a chip in its Project's colour with a checkbox that
  * ticks it in place, its time, and its parent's title above a Subtask. Clicking it opens it.
- * Closed Tasks are struck through and Overdue ones take the warning colour.
+ * Closed Tasks are struck through and Overdue ones take the warning colour. A future Occurrence
+ * is faded, with a Repeat mark where the checkbox would be.
  */
 export function CalendarTask({
   task,
@@ -34,7 +37,7 @@ export function CalendarTask({
   onOpen,
   onToggle,
 }: {
-  task: Task;
+  task: CalendarItem;
   /** Whether Tab reaches it; only the focused day's Tasks are in the Tab order. */
   tabbable: boolean;
   /** What lets the chip be dragged, from `DraggableTask`; without it the chip stays put. */
@@ -55,6 +58,7 @@ export function CalendarTask({
         "flex min-w-0 items-center gap-1 rounded-md py-0.5 pr-1 pl-0.5 text-xs",
         project ? HUE[project.color].soft : "bg-surface-muted",
         closed && "opacity-60",
+        task.occurrence && "opacity-50",
         dragging && "opacity-40",
       )}
     >
@@ -62,13 +66,11 @@ export function CalendarTask({
         aria-hidden
         className={cn("w-0.5 self-stretch rounded-full", project && HUE[project.color].bg)}
       />
-      <TaskCheckbox
+      <TickOrRepeat
         task={task}
         tabIndex={tabIndex}
         className="size-3.5 rounded-[4px] border-[1.5px]"
-        onToggle={() => {
-          onToggle(task);
-        }}
+        onToggle={onToggle}
       />
       <button
         type="button"
@@ -83,6 +85,33 @@ export function CalendarTask({
         <ChipText task={task} closed={closed} />
       </button>
     </li>
+  );
+}
+
+/** A Task's checkbox, or for a future Occurrence, which can't be ticked yet, a Repeat mark. */
+export function TickOrRepeat({
+  task,
+  tabIndex,
+  className,
+  onToggle,
+}: {
+  task: CalendarItem;
+  tabIndex: number;
+  className: string;
+  onToggle: (task: Task) => void;
+}) {
+  if (task.occurrence) {
+    return <Repeat aria-hidden className={cn(className, "border-0 text-muted-foreground")} />;
+  }
+  return (
+    <TaskCheckbox
+      task={task}
+      tabIndex={tabIndex}
+      className={className}
+      onToggle={() => {
+        onToggle(task);
+      }}
+    />
   );
 }
 

@@ -895,6 +895,7 @@ export interface paths {
      * List the Tasks on a range of days
      * @description Return the dated Tasks, open and Closed, whose dates overlap the range, both days included.
      *
+     *     Repeating Tasks also list the days they come back on after their current Occurrence.
      *     Trashed Tasks and archived Projects' Tasks are left out. A range that ends before it starts,
      *     or is over 42 days long, is refused.
      */
@@ -3160,6 +3161,29 @@ export interface components {
        * @description Open and Closed Tasks whose dates overlap the range, Subtasks as their own rows, by the day they start.
        */
       items: components["schemas"]["TaskOut"][];
+      /**
+       * Occurrences
+       * @description The days in the range that repeating Tasks come back on after their current Occurrence, by Task then day. Repeat from completion Tasks have none.
+       */
+      occurrences: components["schemas"]["OccurrenceOut"][];
+      /**
+       * Repeating
+       * @description The Tasks the Occurrences belong to, whose current Occurrence may be outside the range.
+       */
+      repeating: components["schemas"]["TaskOut"][];
+    };
+    /**
+     * OccurrenceOut
+     * @description A later Occurrence of a repeating Task: a day it will come back on.
+     */
+    OccurrenceOut: {
+      /** Task Id */
+      task_id: number;
+      /**
+       * Date
+       * Format: date
+       */
+      date: string;
     };
     /**
      * AttachmentOut

@@ -255,4 +255,29 @@ describe("CalendarView drag and resize in Week mode", () => {
     });
     expect(within(thursday).getByText("Call the bank")).toBeInTheDocument();
   });
+
+  it("can't move or resize a future Occurrence, whose date doesn't exist yet", async () => {
+    const standUp = task({
+      id: 6,
+      title: "Stand-up",
+      due_date: "2026-10-15",
+      due_time: "09:00:00",
+      repeat_rule: "FREQ=DAILY",
+    });
+    const fetchSpy = mockApi([standUp], {
+      occurrences: [{ task_id: 6, date: "2026-10-16" }],
+      repeating: [standUp],
+    });
+    renderCalendar("/?mode=week&date=2026-10-15");
+    const later = await screen.findByRole("button", { name: /^Stand-up,.*future Occurrence$/ });
+    const item = later.closest("li");
+    if (!item) throw new Error("The Occurrence isn't on the Calendar.");
+
+    dragBy(item, 0, HOUR_HEIGHT * 2);
+    // A drop saves after a tick, so wait one before checking that nothing was sent.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(item.querySelector("[data-resize]")).toBeNull();
+    expect(await patchedDates(fetchSpy)).toEqual([]);
+  });
 });

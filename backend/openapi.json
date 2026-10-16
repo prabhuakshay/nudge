@@ -2470,7 +2470,7 @@
             }
           }
         },
-        "description": "Return the dated Tasks, open and Closed, whose dates overlap the range, both days included.\n\nTrashed Tasks and archived Projects' Tasks are left out. A range that ends before it starts,\nor is over 42 days long, is refused.",
+        "description": "Return the dated Tasks, open and Closed, whose dates overlap the range, both days included.\n\nRepeating Tasks also list the days they come back on after their current Occurrence.\nTrashed Tasks and archived Projects' Tasks are left out. A range that ends before it starts,\nor is over 42 days long, is refused.",
         "tags": [
           "tasks"
         ],
@@ -7271,12 +7271,50 @@
             },
             "title": "Items",
             "type": "array"
+          },
+          "occurrences": {
+            "description": "The days in the range that repeating Tasks come back on after their current Occurrence, by Task then day. Repeat from completion Tasks have none.",
+            "items": {
+              "$ref": "#/components/schemas/OccurrenceOut"
+            },
+            "title": "Occurrences",
+            "type": "array"
+          },
+          "repeating": {
+            "description": "The Tasks the Occurrences belong to, whose current Occurrence may be outside the range.",
+            "items": {
+              "$ref": "#/components/schemas/TaskOut"
+            },
+            "title": "Repeating",
+            "type": "array"
           }
         },
         "required": [
-          "items"
+          "items",
+          "occurrences",
+          "repeating"
         ],
         "title": "CalendarOut",
+        "type": "object"
+      },
+      "OccurrenceOut": {
+        "description": "A later Occurrence of a repeating Task: a day it will come back on.",
+        "properties": {
+          "task_id": {
+            "title": "Task Id",
+            "type": "integer"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "task_id",
+          "date"
+        ],
+        "title": "OccurrenceOut",
         "type": "object"
       },
       "AttachmentOut": {

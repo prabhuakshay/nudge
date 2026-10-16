@@ -170,4 +170,22 @@ describe("CalendarView drag to reschedule in Month mode", () => {
     expect(within(day("Thursday 15 October")).getByText("Pay rent")).toBeInTheDocument();
     expect(await patchesOf(fetchSpy)).toEqual([]);
   });
+
+  it("can't drag a future Occurrence, whose date doesn't exist yet", async () => {
+    const gym = task({ id: 4, title: "Gym", due_date: "2026-10-15", repeat_rule: "FREQ=WEEKLY" });
+    const fetchSpy = mockApi([gym], {
+      occurrences: [{ task_id: 4, date: "2026-10-22" }],
+      repeating: [gym],
+    });
+    renderCalendar();
+    await within(await screen.findByRole("gridcell", { name: /^Thursday 22/ })).findByText("Gym");
+
+    drag("Gym", "Thursday 22 October", "Tuesday 27 October");
+    // A drop saves after a tick, so wait one before checking that nothing was sent.
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(within(day("Thursday 22 October")).getByText("Gym")).toBeInTheDocument();
+    expect(within(day("Tuesday 27 October")).queryByText("Gym")).not.toBeInTheDocument();
+    expect(await patchesOf(fetchSpy)).toEqual([]);
+  });
 });

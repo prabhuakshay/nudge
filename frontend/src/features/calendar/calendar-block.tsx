@@ -4,17 +4,17 @@ import type { ReactNode } from "react";
 import { HUE } from "@/features/projects/project-style";
 import { findProject } from "@/features/projects/projects";
 import { plainMentions } from "@/features/people/mentions";
-import { TaskCheckbox } from "@/features/tasks/task-checkbox";
 import { isClosed } from "@/features/tasks/task-properties";
 import { sidebarQuery, type Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
-import type { ChipDrag } from "./calendar-task";
+import { TickOrRepeat, type ChipDrag } from "./calendar-task";
 import { clockTime, percent, type Block, type TimeSpan } from "./layout";
+import type { CalendarItem } from "./occurrences";
 import { taskLabel } from "./task-label";
 
 /** Where a block sits in its hour slot, `stretch` pixels taller while its end is dragged. */
-function placement({ span, column, columns }: Block<Task>, stretch: number) {
+function placement({ span, column, columns }: Block<CalendarItem>, stretch: number) {
   const height = percent((span.end - span.start) / 60);
   return {
     top: percent((span.start % 60) / 60),
@@ -35,7 +35,7 @@ type CardProps = {
  * A timed Task as Week and Day mode draw it: a block in its Project's colour, placed inside the
  * hour slot it starts in and as tall as its span, overflowing into the slots below. Overlapping
  * blocks take their share of the width. Like the Month chip it ticks in place, opens on click,
- * and shows Closed and Overdue the same way.
+ * and shows Closed, Overdue and future Occurrences the same way.
  */
 export function CalendarBlock({
   block,
@@ -45,7 +45,7 @@ export function CalendarBlock({
   filling = false,
   ...card
 }: CardProps & {
-  block: Block<Task>;
+  block: Block<CalendarItem>;
   /** What lets the block be dragged to another time, from `DraggableBlock`. */
   drag?: ChipDrag;
   /** The pixels its end is pulled down (or up, below zero) while it is dragged. */
@@ -74,7 +74,7 @@ function BlockCard({
   tabbable,
   onOpen,
   onToggle,
-}: CardProps & { task: Task; span: TimeSpan }) {
+}: CardProps & { task: CalendarItem; span: TimeSpan }) {
   const { data: sidebar } = useQuery(sidebarQuery);
   const project = sidebar && findProject(sidebar, task.project_id);
   const closed = isClosed(task.status);
@@ -86,19 +86,18 @@ function BlockCard({
         "flex h-full min-h-5 min-w-0 items-start gap-1 overflow-hidden rounded-md py-0.5 pr-1 pl-0.5 text-xs",
         project ? HUE[project.color].soft : "bg-surface-muted",
         closed && "opacity-60",
+        task.occurrence && "opacity-50",
       )}
     >
       <span
         aria-hidden
         className={cn("w-0.5 self-stretch rounded-full", project && HUE[project.color].bg)}
       />
-      <TaskCheckbox
+      <TickOrRepeat
         task={task}
         tabIndex={tabIndex}
         className="mt-px size-3.5 rounded-[4px] border-[1.5px]"
-        onToggle={() => {
-          onToggle(task);
-        }}
+        onToggle={onToggle}
       />
       <button
         type="button"
@@ -110,24 +109,33 @@ function BlockCard({
         }}
         className="min-w-0 flex-1 self-stretch overflow-hidden rounded-sm text-left focus-visible:outline-2 focus-visible:outline-ring"
       >
-        {task.parent_title !== null && (
-          <span className="block truncate text-[0.625rem] leading-tight text-muted-foreground">
-            {plainMentions(task.parent_title)}
-          </span>
-        )}
-        <span
-          className={cn(
-            "block truncate leading-snug font-medium text-foreground",
-            closed && "text-muted-foreground line-through",
-            task.is_overdue && "text-warning",
-          )}
-        >
-          {plainMentions(task.title)}
-        </span>
-        <span className="block truncate text-[0.625rem] leading-tight text-muted-foreground tabular-nums">
-          {clockTime(span.start)} – {clockTime(span.end)}
-        </span>
+        <BlockText task={task} span={span} closed={closed} />
       </button>
     </div>
+  );
+}
+
+/** A block's text: the parent's title above a Subtask, then the title and the times it covers. */
+function BlockText({ task, span, closed }: { task: Task; span: TimeSpan; closed: boolean }) {
+  return (
+    <>
+      {task.parent_title !== null && (
+        <span className="block truncate text-[0.625rem] leading-tight text-muted-foreground">
+          {plainMentions(task.parent_title)}
+        </span>
+      )}
+      <span
+        className={cn(
+          "block truncate leading-snug font-medium text-foreground",
+          closed && "text-muted-foreground line-through",
+          task.is_overdue && "text-warning",
+        )}
+      >
+        {plainMentions(task.title)}
+      </span>
+      <span className="block truncate text-[0.625rem] leading-tight text-muted-foreground tabular-nums">
+        {clockTime(span.start)} – {clockTime(span.end)}
+      </span>
+    </>
   );
 }

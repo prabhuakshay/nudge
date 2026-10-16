@@ -17,6 +17,7 @@ import { CalendarDrag } from "./calendar-drag";
 import { DayTasks } from "./day-tasks";
 import { monthWeeks, shiftDays, shiftMonths, tasksOn, weekDays } from "./layout";
 import { MonthGrid } from "./month-grid";
+import { futureOccurrences } from "./occurrences";
 import { useShowClosed } from "./show-closed";
 import { slotView, type Slot } from "./slot";
 import { TimeGrid } from "./time-grid";
@@ -76,7 +77,7 @@ function useWallClock(timeZone: string): Date {
  * shows a month, a week or a day at a time, with controls to switch between them and to step
  * forward, back and to today. Clicking a
  * Task opens its detail; ticking it closes it in place. Clicking an empty day or hour opens Quick
- * add with its date and time.
+ * add with its date and time. Repeating Tasks also show faded on the days they come back on.
  */
 export function CalendarView({
   inbox,
@@ -94,7 +95,8 @@ export function CalendarView({
   const days = shownDays(mode, date);
   const { data } = useQuery(calendarQuery({ start: days[0] ?? date, end: days.at(-1) ?? date }));
   const [showClosed, setShowClosed] = useShowClosed();
-  const tasks = (data?.items ?? []).filter((task) => showClosed || !isClosed(task.status));
+  const shown = (data?.items ?? []).filter((task) => showClosed || !isClosed(task.status));
+  const tasks = data ? [...shown, ...futureOccurrences(data)] : shown;
   const { openTaskId, setOpenTask } = useOpenTask();
   const [adding, setAdding] = useState<Slot | null>(null);
   const { mutate: setStatus } = useSetTaskStatus();
@@ -183,7 +185,7 @@ export function CalendarView({
         </div>
       </header>
 
-      <CalendarDrag tasks={tasks}>
+      <CalendarDrag tasks={shown}>
         {mode === "month" ? (
           <>
             <MonthGrid
@@ -232,7 +234,7 @@ export function CalendarView({
       <TaskDetail
         taskId={openTaskId}
         project={inbox}
-        order={tasks.map((task) => task.id)}
+        order={shown.map((task) => task.id)}
         onOpen={setOpenTask}
         onClose={() => {
           setOpenTask(null);

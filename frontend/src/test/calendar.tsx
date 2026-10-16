@@ -1,7 +1,7 @@
 /** Test helpers for the Calendar View: a stand-in server and a router to render it on. */
 import { screen } from "@testing-library/react";
 
-import { validateCalendarSearch } from "@/features/calendar/calendar";
+import { validateCalendarSearch, type CalendarRange } from "@/features/calendar/calendar";
 import { CalendarView } from "@/features/calendar/calendar-view";
 import type { NewTask, TaskDetail } from "@/features/tasks/tasks";
 
@@ -9,15 +9,25 @@ import { INBOX, json, renderListRoute, WORK } from "./drawer";
 import { requestOf } from "./fetch";
 import { makeTask } from "./tasks";
 
-/** A stand-in server: the sidebar, the Calendar's Tasks, each Task's detail and its PATCHes. */
-export function mockApi(tasks: TaskDetail[] = []) {
+/** Repeating Tasks and the days they come back on, as the Calendar range returns them. */
+type Later = Pick<CalendarRange, "occurrences"> & { repeating: TaskDetail[] };
+
+/**
+ * A stand-in server: the sidebar, the Calendar's Tasks and future Occurrences, each Task's
+ * detail and its PATCHes.
+ */
+export function mockApi(
+  tasks: TaskDetail[] = [],
+  { occurrences, repeating }: Later = { occurrences: [], repeating: [] },
+) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
     const url = new URL(request.url);
     if (url.pathname === "/api/v1/sidebar") {
       return json({ inbox: INBOX, items: [WORK], archived: [], tags: [], people: [] });
     }
-    if (url.pathname === "/api/v1/tasks/calendar") return json({ items: tasks });
+    if (url.pathname === "/api/v1/tasks/calendar")
+      return json({ items: tasks, occurrences, repeating });
     if (url.pathname === "/api/v1/tasks" && request.method === "POST") {
       const body = (await request.clone().json()) as NewTask;
       const added = makeTask({ id: 50, title: body.title, ...body.dates });
@@ -27,7 +37,9 @@ export function mockApi(tasks: TaskDetail[] = []) {
     if (url.pathname.endsWith("/activity")) return json({ items: [], next_cursor: null, count: 0 });
     if (url.pathname.endsWith("/attachments") || url.pathname.endsWith("/comments"))
       return json([]);
-    const found = tasks.find((each) => each.id === Number(url.pathname.split("/").at(-1)));
+    const found = [...tasks, ...repeating].find(
+      (each) => each.id === Number(url.pathname.split("/").at(-1)),
+    );
     if (!found) return json({ detail: "Not found." }, 404);
     if (request.method === "PATCH") {
       const { dates, ...change } = (await request.clone().json()) as Partial<TaskDetail> & {

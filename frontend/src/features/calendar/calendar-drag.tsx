@@ -17,6 +17,7 @@ import type { Task } from "@/features/tasks/tasks";
 
 import { CalendarBlock } from "./calendar-block";
 import { CalendarTask } from "./calendar-task";
+import type { CalendarItem } from "./occurrences";
 import { timeSpan, type Block, type Row } from "./layout";
 import {
   moveDates,
@@ -179,13 +180,16 @@ function noop() {
   // The picture under the pointer can't be clicked.
 }
 
-/** A Task's chip on one of its days that can be dragged to another day inside `CalendarDrag`. */
+/**
+ * A Task's chip on one of its days that can be dragged to another day inside `CalendarDrag`. A
+ * future Occurrence stays put: its date doesn't exist yet.
+ */
 export function DraggableTask({
   task,
   day,
   ...props
 }: {
-  task: Task;
+  task: CalendarItem;
   day: string;
   tabbable: boolean;
   onOpen: (taskId: number) => void;
@@ -193,38 +197,36 @@ export function DraggableTask({
 }) {
   const { setNodeRef, listeners, isDragging } = useDraggable({
     id: dragId({ task, day, grip: "chip" }),
+    disabled: task.occurrence,
   });
-  return (
-    <CalendarTask
-      task={task}
-      drag={{ setNode: setNodeRef, listeners, dragging: isDragging }}
-      {...props}
-    />
-  );
+  const drag = { setNode: setNodeRef, listeners, dragging: isDragging };
+  return <CalendarTask task={task} drag={task.occurrence ? undefined : drag} {...props} />;
 }
 
 /**
  * A timed Task's block in Week or Day mode inside `CalendarDrag`: dragged by its body to another
- * time or day, or by its bottom edge to change when it ends.
+ * time or day, or by its bottom edge to change when it ends. A future Occurrence stays put.
  */
 export function DraggableBlock({
   block,
   day,
   ...props
 }: {
-  block: Block<Task>;
+  block: Block<CalendarItem>;
   day: string;
   tabbable: boolean;
   onOpen: (taskId: number) => void;
   onToggle: (task: Task) => void;
 }) {
   const { task } = block;
-  const move = useDraggable({ id: dragId({ task, day, grip: "block" }) });
+  const disabled = task.occurrence;
+  const move = useDraggable({ id: dragId({ task, day, grip: "block" }), disabled });
   const {
     setNodeRef: setEdge,
     listeners: edgeListeners,
     transform,
-  } = useDraggable({ id: dragId({ task, day, grip: "end" }) });
+  } = useDraggable({ id: dragId({ task, day, grip: "end" }), disabled });
+  if (disabled) return <CalendarBlock block={block} {...props} />;
   return (
     <CalendarBlock
       block={block}

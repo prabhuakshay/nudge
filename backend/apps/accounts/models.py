@@ -72,6 +72,18 @@ class User(AbstractBaseUser, PermissionsMixin):
             "can trigger them by accident (WCAG 2.1.4), so the user can turn them off."
         ),
     )
+    projects_collapsed = models.BooleanField(
+        default=True,
+        help_text="Whether the Projects section of the sidebar is collapsed on every device.",
+    )
+    tags_collapsed = models.BooleanField(
+        default=True,
+        help_text="Whether the Tags section of the sidebar is collapsed on every device.",
+    )
+    people_collapsed = models.BooleanField(
+        default=True,
+        help_text="Whether the People section of the sidebar is collapsed on every device.",
+    )
     is_staff = models.BooleanField(
         default=False,
         help_text="Whether the user can sign in to the admin site.",

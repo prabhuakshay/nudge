@@ -35,6 +35,9 @@ describe("LoginForm", () => {
       full_name: "Ada Lovelace",
       time_zone: "Europe/London",
       single_key_shortcuts: true,
+      projects_collapsed: true,
+      tags_collapsed: true,
+      people_collapsed: true,
     };
     const fetchSpy = mockFetch(200, ada);
     const onSuccess = vi.fn();

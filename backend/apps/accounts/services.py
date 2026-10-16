@@ -60,6 +60,26 @@ def set_single_key_shortcuts(user: User, *, enabled: bool) -> User:
     return user
 
 
+def collapse_sidebar_sections(
+    user: User,
+    *,
+    projects: bool | None = None,
+    tags: bool | None = None,
+    people: bool | None = None,
+) -> User:
+    """Collapse or expand the user's sidebar sections, leaving any section not given as it is."""
+    changes = {
+        "projects_collapsed": projects,
+        "tags_collapsed": tags,
+        "people_collapsed": people,
+    }
+    given = {field: collapsed for field, collapsed in changes.items() if collapsed is not None}
+    for field, collapsed in given.items():
+        setattr(user, field, collapsed)
+    user.save(update_fields=list(given))
+    return user
+
+
 def local_zone(user: User) -> ZoneInfo:
     """Return the zone the user's clock times are in: theirs, or the server's until it's set."""
     return ZoneInfo(user.time_zone or settings.TIME_ZONE)

@@ -1,4 +1,4 @@
-"""Sign-in, sign-out, session, profile and password endpoints.
+"""Sign-in, sign-out, session, profile, password and preference endpoints.
 
 There is deliberately no sign-up endpoint: accounts are created by an administrator with
 `manage.py createsuperuser` or the Django admin.
@@ -25,12 +25,14 @@ from apps.accounts.schemas import (
     ProfileIn,
     SessionOut,
     ShortcutsIn,
+    SidebarSectionsIn,
     TimeZoneIn,
     UserOut,
 )
 from apps.accounts.services import (
     PasswordChangeError,
     change_password,
+    collapse_sidebar_sections,
     set_single_key_shortcuts,
     set_time_zone,
     update_profile,
@@ -145,4 +147,21 @@ def time_zone(request: HttpRequest, changes: TimeZoneIn) -> Status[UserOut]:
 def shortcuts(request: HttpRequest, changes: ShortcutsIn) -> Status[UserOut]:
     """Turn the signed-in user's single-key shortcuts on or off and return the updated user."""
     user = set_single_key_shortcuts(signed_in_user(request), enabled=changes.single_key)
+    return Status(HTTPStatus.OK, UserOut.from_orm(user))
+
+
+@router.patch(
+    "/sidebar-sections",
+    response={HTTPStatus.OK: UserOut},
+    auth=django_auth,
+    summary="Collapse or expand sidebar sections",
+)
+def sidebar_sections(request: HttpRequest, changes: SidebarSectionsIn) -> Status[UserOut]:
+    """Collapse or expand the signed-in user's sidebar sections and return the updated user."""
+    user = collapse_sidebar_sections(
+        signed_in_user(request),
+        projects=changes.projects_collapsed,
+        tags=changes.tags_collapsed,
+        people=changes.people_collapsed,
+    )
     return Status(HTTPStatus.OK, UserOut.from_orm(user))

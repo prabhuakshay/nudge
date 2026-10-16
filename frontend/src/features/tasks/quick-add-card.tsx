@@ -86,15 +86,15 @@ function KeyHints({ focused, typed }: { focused: boolean; typed: boolean }) {
  * `@person` as they are typed, highlighting each and showing it as a chip. The view starts it with
  * a removable chip of its own, such as today in Today, so new Tasks land where the user is
  * looking. Enter adds the Task and keeps the input focused for the next, and `C` focuses it from
- * anywhere on the page. Given `onClose`, as when a button opens it, it takes focus at once and
- * closes when left empty.
+ * anywhere on the page.
  */
 export function QuickAddCard({
   view,
   initialText,
   className,
   onAdded,
-  onClose,
+  focusOnMount = false,
+  onLeaveEmpty,
 }: {
   view: QuickAddView;
   /** Text to start with, as if typed. */
@@ -102,7 +102,10 @@ export function QuickAddCard({
   className?: string;
   /** Called with each new Task instead of pointing to ones that landed outside the view. */
   onAdded?: (task: Task) => void;
-  onClose?: () => void;
+  /** Take focus as soon as it shows, as when a button opens it. */
+  focusOnMount?: boolean;
+  /** Called when focus leaves it with nothing typed, so a button that opened it can close it. */
+  onLeaveEmpty?: () => void;
 }) {
   const { data: sidebar } = useQuery(sidebarQuery);
   const [focused, setFocused] = useState(false);
@@ -131,10 +134,9 @@ export function QuickAddCard({
 
   const { matches } = quick.parsed;
   const shownGiven = keptDefaults(quick.parsed, given);
-  const opened = onClose !== undefined;
   useEffect(() => {
-    if (opened) inputRef.current?.focus();
-  }, [opened]);
+    if (focusOnMount) inputRef.current?.focus();
+  }, [focusOnMount]);
 
   return (
     <div
@@ -155,7 +157,7 @@ export function QuickAddCard({
           placeholder="New task… try “Call @Priya #phone !2”"
           onFocusChange={(next) => {
             setFocused(next);
-            if (!next && !quick.value.trim()) onClose?.();
+            if (!next && !quick.value.trim()) onLeaveEmpty?.();
           }}
         />
         <KeyHints focused={focused} typed={quick.value !== ""} />

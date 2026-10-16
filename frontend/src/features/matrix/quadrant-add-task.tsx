@@ -24,7 +24,8 @@ export function QuadrantAddTask({ quadrant, today }: { quadrant: Quadrant; today
       <QuickAddCard
         view={quadrantView(quadrant, today)}
         className="mx-2 mb-2"
-        onClose={() => {
+        focusOnMount
+        onLeaveEmpty={() => {
           setAdding(false);
         }}
       />

@@ -38,6 +38,15 @@ describe("CalendarView future Occurrences", () => {
     expect(screen.queryByRole("checkbox", { name: "Complete “Gym”" })).not.toBeInTheDocument();
   });
 
+  it("colours a future Occurrence's Repeat mark by its Task's Priority", async () => {
+    mockApi([], { ...later, repeating: [{ ...gym, priority: 1 }] });
+    renderCalendar();
+
+    const occurrence = await screen.findByRole("button", { name: /^Gym, Thursday 22 October/ });
+
+    expect(occurrence.closest("li")?.querySelector("svg")).toHaveClass("text-p1");
+  });
+
   it("opens the repeating Task when a future Occurrence is clicked", async () => {
     mockApi([], later);
     const { user, router } = renderCalendar();

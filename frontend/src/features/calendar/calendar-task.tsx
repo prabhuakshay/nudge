@@ -7,7 +7,7 @@ import { findProject } from "@/features/projects/projects";
 import { plainMentions } from "@/features/people/mentions";
 import { shortTime } from "@/features/tasks/due";
 import { TaskCheckbox } from "@/features/tasks/task-checkbox";
-import { isClosed } from "@/features/tasks/task-properties";
+import { isClosed, PRIORITY } from "@/features/tasks/task-properties";
 import { sidebarQuery, type Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
 
@@ -28,7 +28,7 @@ const STILL: ChipDrag = { setNode: () => undefined, listeners: undefined, draggi
  * A Task as the Calendar draws it on a day: a chip in its Project's colour with a checkbox that
  * ticks it in place, its time, and its parent's title above a Subtask. Clicking it opens it.
  * Closed Tasks are struck through and Overdue ones take the warning colour. A future Occurrence
- * is faded, with a Repeat mark where the checkbox would be.
+ * is faded, with a Repeat mark in its Priority colour where the checkbox would be.
  */
 export function CalendarTask({
   task,
@@ -88,7 +88,10 @@ export function CalendarTask({
   );
 }
 
-/** A Task's checkbox, or for a future Occurrence, which can't be ticked yet, a Repeat mark. */
+/**
+ * A Task's checkbox, or for a future Occurrence, which can't be ticked yet, a Repeat mark. Either
+ * takes the Priority colour, so urgent work stands out on every day it comes back.
+ */
 export function TickOrRepeat({
   task,
   tabIndex,
@@ -101,7 +104,9 @@ export function TickOrRepeat({
   onToggle: (task: Task) => void;
 }) {
   if (task.occurrence) {
-    return <Repeat aria-hidden className={cn(className, "border-0 text-muted-foreground")} />;
+    return (
+      <Repeat aria-hidden className={cn(className, "border-0", PRIORITY[task.priority].text)} />
+    );
   }
   return (
     <TaskCheckbox

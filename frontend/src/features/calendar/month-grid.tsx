@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { DraggableTask } from "./calendar-drag";
 import { monthWeeks, shiftDays, tasksOn } from "./layout";
 import { MoreTasks } from "./more-tasks";
+import { addsToSlot, type Slot } from "./slot";
 
 /** The most Tasks a Month cell lists before the rest go behind "+N more". */
 const CELL_TASKS = 3;
@@ -27,9 +28,10 @@ const ARROW_DAYS: Partial<Record<string, number>> = {
 /**
  * The month around `date` as a grid of days, weeks from Monday, each day listing its Tasks. The
  * arrow keys move between days, stepping into the next or previous month past its edge, and Tab
- * goes into the focused day's Tasks. `date` is the focused day; `onDateChange` moves it.
+ * goes into the focused day's Tasks. `date` is the focused day; `onDateChange` moves it. Clicking
+ * a day, or Enter on it, calls `onAdd` to add a Task there.
  * A `compact` grid, for phones, marks each day's Tasks with dots instead, and tapping a day
- * selects it so its Tasks can be listed below.
+ * selects it so its Tasks can be listed below; tapping the selected day adds a Task there.
  */
 export function MonthGrid({
   date,
@@ -37,6 +39,7 @@ export function MonthGrid({
   tasks,
   compact,
   onDateChange,
+  onAdd,
   onOpen,
   onToggle,
 }: {
@@ -45,6 +48,7 @@ export function MonthGrid({
   tasks: readonly Task[];
   compact: boolean;
   onDateChange: (date: string) => void;
+  onAdd: (slot: Slot) => void;
   onOpen: (taskId: number) => void;
   onToggle: (task: Task) => void;
 }) {
@@ -109,6 +113,7 @@ export function MonthGrid({
               tasks={tasksOn(tasks, day)}
               onKeyDown={onKeyDown}
               onSelect={onDateChange}
+              onAdd={onAdd}
               onOpen={onOpen}
               onToggle={onToggle}
             />
@@ -128,6 +133,7 @@ function DayCell({
   tasks,
   onKeyDown,
   onSelect,
+  onAdd,
   onOpen,
   onToggle,
 }: {
@@ -141,6 +147,7 @@ function DayCell({
   tasks: Task[];
   onKeyDown: (event: KeyboardEvent<HTMLElement>, day: string) => void;
   onSelect: (day: string) => void;
+  onAdd: (slot: Slot) => void;
   onOpen: (taskId: number) => void;
   onToggle: (task: Task) => void;
 }) {
@@ -155,15 +162,16 @@ function DayCell({
       aria-label={dayLabel(day, isToday, compact ? tasks.length : 0)}
       aria-current={isToday ? "date" : undefined}
       onKeyDown={(event) => {
-        onKeyDown(event, day);
+        if (addsToSlot(event)) onAdd({ day, time: null });
+        else onKeyDown(event, day);
       }}
-      // A compact cell is tapped to select it, and says whether it is the selected day.
-      {...(compact && {
-        "aria-selected": focused,
-        onClick: () => {
-          onSelect(day);
-        },
-      })}
+      onClick={(event) => {
+        if (!addsToSlot(event)) return;
+        // A phone's first tap on a day selects it, to list its Tasks below the grid.
+        if (compact && !focused) onSelect(day);
+        else onAdd({ day, time: null });
+      }}
+      aria-selected={compact ? focused : undefined}
       className={cn(
         "flex min-w-0 flex-col gap-1 border-r border-border outline-none last:border-r-0 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
         compact ? "min-h-12 items-center py-1.5" : "min-h-24 p-1 sm:min-h-28",

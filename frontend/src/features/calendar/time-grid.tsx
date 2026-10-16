@@ -1,5 +1,5 @@
 import { format, parseISO } from "date-fns";
-import { useEffect, useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent, type MouseEvent } from "react";
 
 import type { Task } from "@/features/tasks/tasks";
 import { cn } from "@/lib/utils";
@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { CalendarBlock } from "./calendar-block";
 import { CalendarTask } from "./calendar-task";
 import { allDayTasks, clockTime, dayBlocks, percent, shiftDays, type Block } from "./layout";
+import { addsToSlot, type Slot } from "./slot";
 
 /** A row of the grid: the all-day strip or an hour of the day, 0 to 23. */
 type Row = "all-day" | number;
@@ -33,7 +34,8 @@ function slotLabel(day: string, today: string, row: Row) {
  * Week and Day mode: one column per day with hours down the side and an all-day strip on top.
  * Every slot is a grid cell; the arrow keys move between them, Left and Right by a day (past the
  * edge into the next or previous week) and Up and Down by an hour. Tab goes into the focused
- * day's Tasks. `date` is the focused day; `onDateChange` moves it.
+ * day's Tasks. `date` is the focused day; `onDateChange` moves it. Clicking a slot, or Enter on
+ * it, calls `onAdd` to add a Task at its day and hour.
  */
 export function TimeGrid({
   days,
@@ -42,6 +44,7 @@ export function TimeGrid({
   now,
   tasks,
   onDateChange,
+  onAdd,
   onOpen,
   onToggle,
 }: {
@@ -53,6 +56,7 @@ export function TimeGrid({
   now: number;
   tasks: readonly Task[];
   onDateChange: (date: string) => void;
+  onAdd: (slot: Slot) => void;
   onOpen: (taskId: number) => void;
   onToggle: (task: Task) => void;
 }) {
@@ -91,6 +95,9 @@ export function TimeGrid({
     if (next.day !== day) onDateChange(next.day);
   };
 
+  const add = (day: string, slotRow: Row) => {
+    onAdd({ day, time: slotRow === "all-day" ? null : hourLabel(slotRow) });
+  };
   const slot = (day: string, slotRow: Row) => ({
     role: "gridcell",
     "data-day": day,
@@ -98,7 +105,11 @@ export function TimeGrid({
     tabIndex: day === date && slotRow === row ? 0 : -1,
     "aria-label": slotLabel(day, today, slotRow),
     onKeyDown: (event: KeyboardEvent<HTMLElement>) => {
-      onKeyDown(event, day);
+      if (addsToSlot(event)) add(day, slotRow);
+      else onKeyDown(event, day);
+    },
+    onClick: (event: MouseEvent<HTMLElement>) => {
+      if (addsToSlot(event)) add(day, slotRow);
     },
   });
   const slotClass =

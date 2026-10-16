@@ -7,6 +7,7 @@ import { useShortcuts } from "@/features/shortcuts/use-shortcuts";
 
 import { QuickAddCard } from "./quick-add-card";
 import { useAnnounceTask } from "./announce-task";
+import type { QuickAddView } from "./quick-add-view";
 import { sidebarQuery, type Task } from "./tasks";
 
 /**
@@ -22,6 +23,58 @@ function useQuickAddShortcut(open: () => void) {
       else open();
     },
   });
+}
+
+/**
+ * Quick add in a dialog, for adding a Task where the page has no card of its own. It closes once
+ * a Task is added and hands the Task to `onAdded`.
+ */
+export function QuickAddDialog({
+  view,
+  initialText,
+  onClose,
+  onAdded,
+}: {
+  view: QuickAddView;
+  initialText?: string;
+  onClose: () => void;
+  onAdded?: (task: Task) => void;
+}) {
+  return (
+    <Dialog
+      open
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
+    >
+      <DialogContent aria-describedby={undefined} className="sm:w-[36rem]">
+        <div className="flex h-14 shrink-0 items-center pr-14 pl-5">
+          <DialogTitle className="text-lg font-bold tracking-tight">Add a task</DialogTitle>
+        </div>
+        <div className="px-4 pb-1">
+          <QuickAddCard
+            view={view}
+            initialText={initialText}
+            onAdded={(task) => {
+              onClose();
+              onAdded?.(task);
+            }}
+          />
+        </div>
+        {/* After the card, so the dialog focuses Quick add first when it opens. */}
+        <DialogClose asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Close"
+            className="absolute top-[calc(env(safe-area-inset-top)+0.375rem)] right-2 text-muted-foreground sm:top-2.5"
+          >
+            <X aria-hidden />
+          </Button>
+        </DialogClose>
+      </DialogContent>
+    </Dialog>
+  );
 }
 
 /**
@@ -43,45 +96,15 @@ export function GlobalQuickAdd({
   useQuickAddShortcut(() => {
     onDraftChange("");
   });
-  if (!sidebar) return null;
-
-  const close = () => {
-    onDraftChange(null);
-  };
-  const added = (task: Task) => {
-    close();
-    announce(task);
-  };
+  if (!sidebar || draft === null) return null;
   return (
-    <Dialog
-      open={draft !== null}
-      onOpenChange={(open) => {
-        if (!open) close();
+    <QuickAddDialog
+      view={{ kind: "project", project: sidebar.inbox }}
+      initialText={draft}
+      onClose={() => {
+        onDraftChange(null);
       }}
-    >
-      <DialogContent aria-describedby={undefined} className="sm:w-[36rem]">
-        <div className="flex h-14 shrink-0 items-center pr-14 pl-5">
-          <DialogTitle className="text-lg font-bold tracking-tight">Add a task</DialogTitle>
-        </div>
-        <div className="px-4 pb-1">
-          <QuickAddCard
-            view={{ kind: "project", project: sidebar.inbox }}
-            initialText={draft ?? ""}
-            onAdded={added}
-          />
-        </div>
-        {/* After the card, so the dialog focuses Quick add first when it opens. */}
-        <DialogClose asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            aria-label="Close"
-            className="absolute top-[calc(env(safe-area-inset-top)+0.375rem)] right-2 text-muted-foreground sm:top-2.5"
-          >
-            <X aria-hidden />
-          </Button>
-        </DialogClose>
-      </DialogContent>
-    </Dialog>
+      onAdded={announce}
+    />
   );
 }

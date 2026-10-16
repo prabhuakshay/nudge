@@ -11,6 +11,7 @@ export type QuickAddView =
   | { kind: "project"; project: SidebarProject }
   | { kind: "today" | "upcoming"; today: string; tomorrow: string }
   | { kind: "all" }
+  | { kind: "calendar"; label: string; dates: NonNullable<DatesIn> }
   | { kind: "tag"; tag: QuickAddTag }
   | { kind: "person"; person: Person };
 
@@ -21,7 +22,10 @@ export type ViewDefault =
   | { kind: "tag"; tag: QuickAddTag }
   | { kind: "person"; person: Person };
 
-/** The chip a view starts with: its Project, today, tomorrow, its Tag or its Person; none in All. */
+/**
+ * The chip a view starts with: its Project, today, tomorrow, the Calendar slot's date and time,
+ * its Tag or its Person; none in All.
+ */
 export function viewDefault(view: QuickAddView): ViewDefault | null {
   switch (view.kind) {
     case "project":
@@ -29,6 +33,8 @@ export function viewDefault(view: QuickAddView): ViewDefault | null {
       return view.project.is_inbox ? null : view;
     case "all":
       return null;
+    case "calendar":
+      return { kind: "date", label: view.label, dates: view.dates };
     case "today":
       return { kind: "date", label: "Today", dates: { due_date: view.today } };
     case "upcoming":
@@ -85,6 +91,20 @@ export function withGivenMention(title: string, given: ViewDefault | null): stri
   return `${title} [@${given.person.name}](person:${String(given.person.id)})`;
 }
 
+type DateView = Extract<QuickAddView, { kind: "calendar" | "today" | "upcoming" }>;
+
+/** Whether a Task whose dates begin on `from` shows in a view chosen by date. */
+function showsFrom(view: DateView, from: string): boolean {
+  switch (view.kind) {
+    case "calendar":
+      return true;
+    case "today":
+      return from <= view.today;
+    case "upcoming":
+      return from > view.today;
+  }
+}
+
 /** Whether a Task shows in the view, so Quick add can point to one that landed elsewhere. */
 export function showsTask(view: QuickAddView, task: Task): boolean {
   const from = task.start_date ?? task.due_date;
@@ -94,10 +114,10 @@ export function showsTask(view: QuickAddView, task: Task): boolean {
     case "all":
       // Quick add can't put a Task in an archived Project, so every new Task shows in All.
       return true;
+    case "calendar":
     case "today":
-      return from !== null && from <= view.today;
     case "upcoming":
-      return from !== null && from > view.today;
+      return from !== null && showsFrom(view, from);
     case "tag":
       return task.tags.some((tag) => tag.id === view.tag.id);
     case "person":

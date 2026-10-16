@@ -10,18 +10,17 @@ from dataclasses import asdict, dataclass, field
 from typing import TYPE_CHECKING
 
 from django.db import transaction
-from fractional_indexing import generate_key_between
 
 from apps.tasks import repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import check_mentions, sync_mentions
 from apps.tasks.models import MAX_DEPTH, Tag, Task, TaskActivity
-from apps.tasks.positions import first_root_position, last_root_position, lock_project
 from apps.tasks.repeat import SUBTASK_REPEAT, Repeat, RepeatRuleError
 from apps.tasks.rows import as_rows, with_overdue
 from apps.tasks.sections import NOT_IN_THIS_PROJECT, SectionRuleError
 from apps.tasks.services import TaskChange, TaskRuleError, live_task
+from apps.tasks.siblings import task_siblings
 from apps.tasks.tags import tags_named
 from apps.tasks.tree import reopen_ancestors
 
@@ -67,7 +66,8 @@ def create_task(project: Project, title: str, new: NewTask | None = None) -> Tas
         raise SectionRuleError(NOT_IN_THIS_PROJECT)
     check_mentions(project.owner, title)
     with transaction.atomic():
-        position = last_root_position(project) if new.last else first_root_position(project)
+        roots = task_siblings(project.pk, None)
+        position = roots.last() if new.last else roots.first()
         task = _insert(project, title, new, position=position)
         if new.repeat is not None:
             repeat.start(task, new.repeat.rule, Task.RepeatFrom(new.repeat.repeat_from))
@@ -94,10 +94,7 @@ def create_subtask(parent: Task, title: str, new: NewTask | None = None) -> Task
         raise RepeatRuleError(SUBTASK_REPEAT)
     check_mentions(parent.owner, title)
     with transaction.atomic():
-        lock_project(parent.project_id)
-        siblings = parent.subtasks.order_by("-position", "-id")
-        last = siblings.values_list("position", flat=True).first()
-        position = str(generate_key_between(last, None))
+        position = task_siblings(parent.project_id, parent.pk).last()
         task = _insert(parent.project, title, new, position=position, parent=parent)
         affected = reopen_ancestors(task)
     fresh = as_rows(Task.objects.filter(pk=task.pk), parent.owner).get()
@@ -118,10 +115,8 @@ def duplicate_task(user: User, task_id: int) -> Task | None:
         return None
     ensure_writable(original.project)
     with transaction.atomic():
-        lock_project(original.project_id)
-        siblings = original.project.tasks.filter(parent_id=original.parent_id)
-        later = siblings.filter(position__gt=original.position).order_by("position")
-        following = later.values_list("position", flat=True).first()
+        siblings = task_siblings(original.project_id, original.parent_id)
+        position = siblings.after(original.pk)
         task = _insert(
             original.project,
             original.title,
@@ -130,7 +125,7 @@ def duplicate_task(user: User, task_id: int) -> Task | None:
                 priority=Task.Priority(original.priority),
                 section=original.section,
             ),
-            position=str(generate_key_between(original.position, following)),
+            position=position,
             parent=original.parent,
         )
         reopen_ancestors(task)

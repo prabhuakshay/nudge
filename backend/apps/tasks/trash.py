@@ -26,13 +26,12 @@ from django.db.models import (
     Value,
 )
 from django.utils import timezone
-from fractional_indexing import generate_key_between
 
 from apps.tasks import reminders, services
 from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, Project, Task, TaskActivity
-from apps.tasks.positions import lock_project
 from apps.tasks.rows import as_rows
+from apps.tasks.siblings import task_siblings
 from apps.tasks.tree import below, reopen_ancestors
 
 if TYPE_CHECKING:
@@ -166,15 +165,14 @@ def _place(user: User, head: Task, height: int) -> None:
     parent = head.parent
     if parent is not None and parent.deleted_at is None and parent.depth + 1 + height <= MAX_DEPTH:
         head.project = parent.project
+        head.position = task_siblings(parent.project_id, parent.pk).keep(head.pk, head.position)
         return
     project = head.project if head.project.deleted_at is None else services.inbox(user)
+    roots = task_siblings(project.pk, None)
     if parent is None and project == head.project:
+        head.position = roots.keep(head.pk, head.position)
         return
-    lock_project(project.pk)
-    roots = project.tasks.filter(parent__isnull=True).order_by("-position", "-id")
-    head.position = str(
-        generate_key_between(roots.values_list("position", flat=True).first(), None)
-    )
+    head.position = roots.last()
     if project != head.project:
         head.section = None
     head.project, head.parent = project, None

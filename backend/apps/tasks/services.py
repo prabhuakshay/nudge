@@ -31,8 +31,8 @@ from apps.tasks.models import (
     TaskActivity,
 )
 from apps.tasks.pagination import Page, newest_first
-from apps.tasks.positions import first_root_position
 from apps.tasks.rows import as_rows, with_counts, with_overdue
+from apps.tasks.siblings import task_siblings
 from apps.tasks.tags import retag
 from apps.tasks.tree import (
     AffectedTask,
@@ -245,7 +245,9 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     cascaded: list[AffectedTask] = []
     target = edit.project if edit.project and edit.project.pk != task.project_id else None
     with transaction.atomic():
-        moved = [] if target is None else move_tree(task, target, first_root_position(target))
+        moved = []
+        if target is not None:
+            moved = move_tree(task, target, task_siblings(target.pk, None).first())
         if changed or moved:
             task.save(update_fields=[*changed, *moved, "updated_at"])
             sync_mentions(task)

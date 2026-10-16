@@ -15,10 +15,10 @@ from django.db import transaction
 from apps.tasks import repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, Project, Section, Task, TaskActivity
-from apps.tasks.positions import key_after, lock_project
 from apps.tasks.rows import as_rows
 from apps.tasks.sections import NOT_IN_THIS_PROJECT, SectionRuleError
 from apps.tasks.services import TaskChange, TaskRuleError
+from apps.tasks.siblings import task_siblings
 from apps.tasks.tree import (
     ancestors,
     height,
@@ -68,7 +68,8 @@ def move_task(task: Task, destination: Destination) -> TaskChange:
     from_project, from_parent = task.project.name, task.parent_title
     from_section = section_name(task)
     with transaction.atomic():
-        lock_project(project.pk)
+        siblings = task_siblings(project.pk, _pk(parent))
+        position = siblings.after(destination.after_id, moving=task.pk)
         events = []
         if parent is not None and task.pinned_at is not None:
             task.pinned_at = None
@@ -82,7 +83,7 @@ def move_task(task: Task, destination: Destination) -> TaskChange:
             or task.parent_id != _pk(parent)
             or task.section_id != _pk(section)
         )
-        task.position = _key_after(project, parent, task, destination.after_id)
+        task.position = position
         task.project, task.parent, task.section = project, parent, section
         task.save(
             update_fields=[
@@ -148,14 +149,3 @@ def _check_parent(task: Task, parent: Task | None) -> None:
     if parent.depth + 1 + height(task) > MAX_DEPTH:
         message = "Tasks can only nest four levels deep."
         raise TaskRuleError(message)
-
-
-def _key_after(project: Project, parent: Task | None, task: Task, after_id: int | None) -> str:
-    """Return a key right after `after_id` among the Task's new siblings, first or last."""
-    siblings = list(
-        project.tasks.filter(parent=parent)
-        .exclude(pk=task.pk)
-        .order_by("position", "id")
-        .values_list("pk", "position"),
-    )
-    return key_after(siblings, after_id)

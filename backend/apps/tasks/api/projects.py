@@ -11,8 +11,9 @@ from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import project_trash, projects
 from apps.tasks.api.errors import FOLDER_NOT_FOUND, PROJECT_NOT_FOUND
-from apps.tasks.projects import ProjectEdit, SiblingRef
+from apps.tasks.projects import ProjectEdit
 from apps.tasks.schemas.projects import ProjectIn, ProjectMoveIn, ProjectOut, ProjectPatchIn
+from apps.tasks.siblings import SiblingRef
 
 if TYPE_CHECKING:
     from django.http import HttpRequest

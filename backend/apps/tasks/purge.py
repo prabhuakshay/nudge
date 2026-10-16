@@ -19,11 +19,10 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
-from fractional_indexing import generate_key_between
 
 from apps.tasks import services
 from apps.tasks.models import Attachment, Project, Task
-from apps.tasks.positions import lock_project
+from apps.tasks.siblings import task_siblings
 
 if TYPE_CHECKING:
     import uuid
@@ -104,11 +103,8 @@ def _delete_units(units: set[uuid.UUID | None]) -> int:
 def _detach(orphans: Collection[Task]) -> None:
     """Make each Task the last root of its Project, so it outlives the parent being deleted."""
     for orphan in orphans:
-        lock_project(orphan.project_id)
-        roots = Task.objects.filter(project_id=orphan.project_id, parent__isnull=True)
-        last = roots.order_by("-position", "-id").values_list("position", flat=True).first()
         orphan.parent = None
-        orphan.position = str(generate_key_between(last, None))
+        orphan.position = task_siblings(orphan.project_id, None).last()
         orphan.save(update_fields=["parent", "position", "updated_at"])
 
 
@@ -121,10 +117,7 @@ def _rehome(strays: QuerySet[Task]) -> None:
     for stray in strays.select_related("owner"):
         inbox = services.inbox(stray.owner)
         if stray.parent_id is None:
-            lock_project(inbox.pk)
-            roots = inbox.tasks.filter(parent__isnull=True)
-            last = roots.order_by("-position", "-id").values_list("position", flat=True).first()
-            stray.position = str(generate_key_between(last, None))
+            stray.position = task_siblings(inbox.pk, None).last()
         stray.project = inbox
         stray.save(update_fields=["position", "project", "updated_at"])
 

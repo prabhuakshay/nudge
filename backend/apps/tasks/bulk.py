@@ -12,17 +12,16 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 from django.db import transaction
-from django.db.models import Q
 
 from apps.tasks import moves, sections, services, trash
-from apps.tasks.models import Task
+from apps.tasks.siblings import task_siblings
 from apps.tasks.tree import ancestors
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from apps.accounts.models import User
-    from apps.tasks.models import Project, Tag
+    from apps.tasks.models import Project, Tag, Task
     from apps.tasks.tree import AffectedTask
 
 
@@ -75,17 +74,8 @@ def _tops(tasks: list[Task]) -> list[Task]:
 
 def _place_of(task: Task) -> Place:
     """Return where the Task sits now."""
-    siblings = Task.objects.filter(project_id=task.project_id, parent_id=task.parent_id)
-    before = siblings.filter(
-        Q(position__lt=task.position) | Q(position=task.position, pk__lt=task.pk),
-    ).order_by("-position", "-id")
-    return Place(
-        task.pk,
-        task.project_id,
-        task.parent_id,
-        before.values_list("pk", flat=True).first(),
-        task.section_id,
-    )
+    before = task_siblings(task.project_id, task.parent_id).before(task.pk)
+    return Place(task.pk, task.project_id, task.parent_id, before, task.section_id)
 
 
 def update_tasks(

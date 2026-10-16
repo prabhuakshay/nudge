@@ -14,7 +14,7 @@ from django.db import transaction
 from apps.core.errors import DomainRuleError
 from apps.tasks.archive import ensure_writable
 from apps.tasks.models import SECTION_NAME_MAX_LENGTH, Project, Section
-from apps.tasks.positions import key_after, lock_project
+from apps.tasks.siblings import section_siblings
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -65,10 +65,6 @@ def project_sections(project: Project) -> QuerySet[Section]:
     return project.sections.order_by("position", "id")
 
 
-def _sibling_keys(project: Project) -> list[tuple[int, str]]:
-    return list(project_sections(project).values_list("pk", "position"))
-
-
 def create_section(project: Project, name: str, after: Section | None = None) -> Section:
     """Create an expanded Section right after `after`, or last when there is none.
 
@@ -84,10 +80,8 @@ def create_section(project: Project, name: str, after: Section | None = None) ->
     if after is not None and after.project_id != project.pk:
         raise SectionRuleError(NOT_IN_THIS_PROJECT)
     with transaction.atomic():
-        lock_project(project.pk)
-        siblings = _sibling_keys(project)
-        last = siblings[-1][0] if siblings else None
-        position = key_after(siblings, last if after is None else after.pk)
+        siblings = section_siblings(project.pk)
+        position = siblings.last() if after is None else siblings.after(after.pk)
         return Section.objects.create(
             owner=project.owner,
             project=project,
@@ -128,9 +122,8 @@ def move_section(moved: Section, after: Section | None) -> None:
     if after is not None and after.project_id != moved.project_id:
         raise SectionRuleError(NOT_IN_THIS_PROJECT)
     with transaction.atomic():
-        lock_project(moved.project_id)
-        siblings = [sibling for sibling in _sibling_keys(moved.project) if sibling[0] != moved.pk]
-        moved.position = key_after(siblings, None if after is None else after.pk)
+        siblings = section_siblings(moved.project_id)
+        moved.position = siblings.after(None if after is None else after.pk, moving=moved.pk)
         moved.save(update_fields=["position", "updated_at"])
 
 

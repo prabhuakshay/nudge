@@ -11,8 +11,8 @@ from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import projects
 from apps.tasks.api.errors import FOLDER_NOT_FOUND
-from apps.tasks.projects import SiblingRef
 from apps.tasks.schemas.projects import FolderIn, FolderMoveIn, FolderOut, FolderPatchIn
+from apps.tasks.siblings import SiblingRef
 
 if TYPE_CHECKING:
     from django.http import HttpRequest

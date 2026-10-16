@@ -18,8 +18,8 @@ from django.utils import timezone
 from apps.tasks import reminders
 from apps.tasks.models import Project, TaskActivity
 from apps.tasks.models.projects import PROJECT_NAME_MAX_LENGTH
-from apps.tasks.positions import key_after
-from apps.tasks.projects import ProjectRuleError, lock_sidebar, sibling_keys
+from apps.tasks.projects import ProjectRuleError
+from apps.tasks.siblings import SiblingRef, sidebar_siblings
 from apps.tasks.trash import expires_at
 
 if TYPE_CHECKING:
@@ -80,10 +80,10 @@ def restore_project(user: User, project_id: int) -> Project | None:
         return None
     now = timezone.now()
     with transaction.atomic():
-        lock_sidebar(user)
+        siblings = sidebar_siblings(user, project.folder)
+        project.position = siblings.keep(SiblingRef("project", project.pk), project.position)
         ids = list(user.tasks.filter(trash_unit=project.trash_unit).values_list("pk", flat=True))
         project.name = _free_name(user, project.name)
-        project.position = _free_position(user, project)
         project.deleted_at = project.trash_unit = None
         project.save(update_fields=["name", "position", "deleted_at", "trash_unit", "updated_at"])
         tasks = project.tasks.filter(pk__in=ids)
@@ -108,15 +108,3 @@ def _free_name(user: User, name: str) -> str:
         suffix = f" ({number})"
         candidate = name[: PROJECT_NAME_MAX_LENGTH - len(suffix)] + suffix
     return candidate
-
-
-def _free_position(user: User, project: Project) -> str:
-    """Return the Project's old key, or one right after the sibling that has since taken it.
-
-    Two siblings can't share a key, or nothing could ever be placed between them.
-    """
-    siblings = sibling_keys(user, project.folder)
-    clash = next((ref for ref, key in siblings if key == project.position), None)
-    if clash is None:
-        return project.position
-    return key_after(siblings, clash)

@@ -13,29 +13,25 @@ from typing import TYPE_CHECKING, Literal
 
 from django.db import IntegrityError, transaction
 from django.db.models import Count
-from fractional_indexing import generate_key_between
 
-from apps.accounts.models import User
 from apps.core.errors import DomainRuleError
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Tag, Task, TaskActivity
 from apps.tasks.pagination import Page, newest_first
 from apps.tasks.rows import as_rows, unpinned
+from apps.tasks.siblings import tag_siblings
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
 
     from django.db.models import QuerySet
 
+    from apps.accounts.models import User
     from apps.core.palette import PaletteColor
 
 
 class TagRuleError(DomainRuleError):
     """A change to a Tag breaks one of the rules Tags follow."""
-
-
-def _lock_order(user: User) -> None:
-    User.objects.select_for_update().get(pk=user.pk)
 
 
 def _name_taken(name: str) -> TagRuleError:
@@ -63,11 +59,6 @@ def owned_tags(user: User, tag_ids: Iterable[int]) -> list[Tag] | None:
     return found if len(found) == len(wanted) else None
 
 
-def _last_key(user: User) -> str:
-    last = user.tags.order_by("-position", "-id").values_list("position", flat=True).first()
-    return str(generate_key_between(last, None))
-
-
 def create_tag(user: User, name: str, *, color: PaletteColor | None = None) -> Tag:
     """Create a Tag last in the user's order; grey when no colour is given.
 
@@ -75,8 +66,8 @@ def create_tag(user: User, name: str, *, color: PaletteColor | None = None) -> T
         TagRuleError: The user already has a Tag of that name.
     """
     with transaction.atomic():
-        _lock_order(user)
-        created = Tag(owner=user, name=name, color=color or "", position=_last_key(user))
+        position = tag_siblings(user).last()
+        created = Tag(owner=user, name=name, color=color or "", position=position)
         _save(created)
     return created
 
@@ -125,18 +116,7 @@ def move_tag(user: User, tag_id: int, after_id: int | None) -> bool:
     if after_id == found.pk:
         return True
     with transaction.atomic():
-        _lock_order(user)
-        keys = list(user.tags.exclude(pk=found.pk).values_list("pk", "position"))
-        ids = [pk for pk, _ in keys]
-        if after_id is None:
-            before, following = None, keys[0][1] if keys else None
-        elif after_id in ids:
-            index = ids.index(after_id)
-            before = keys[index][1]
-            following = keys[index + 1][1] if index + 1 < len(keys) else None
-        else:
-            before, following = keys[-1][1] if keys else None, None
-        found.position = str(generate_key_between(before, following))
+        found.position = tag_siblings(user).after(after_id, moving=found.pk)
         found.save(update_fields=["position", "updated_at"])
     return True
 

@@ -13,22 +13,22 @@ from __future__ import annotations
 
 import secrets
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING
 
 from django.db import IntegrityError, transaction
 from django.db.models import Count
 from django.utils import timezone
-from fractional_indexing import generate_key_between, generate_n_keys_between
 
-from apps.accounts.models import User
 from apps.core.errors import DomainRuleError
 from apps.core.palette import PaletteColor
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import OPEN_STATUSES, Folder, Project
-from apps.tasks.positions import key_after
+from apps.tasks.siblings import SiblingRef, sidebar_siblings
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
+
+    from apps.accounts.models import User
 
 
 class ProjectRuleError(DomainRuleError):
@@ -38,14 +38,6 @@ class ProjectRuleError(DomainRuleError):
 INBOX_IS_FIXED = "The Inbox can't be renamed, recoloured or moved."
 INBOX_HAS_NO_BOARD = "The Inbox has no Sections, so it can't be a Board."
 INBOX_CANT_BE_ARCHIVED = "The Inbox can't be archived."
-
-
-@dataclass(frozen=True)
-class SiblingRef:
-    """A Folder or Project in the sidebar, named by kind because the two share one order."""
-
-    kind: Literal["folder", "project"]
-    id: int
 
 
 @dataclass(frozen=True)
@@ -71,47 +63,6 @@ class Sidebar:
     folder_projects: dict[int, list[Project]]
     archived: list[Project]
     open_counts: dict[int, int]
-
-
-def lock_sidebar(user: User) -> None:
-    """Lock the user's row, so writes to their sibling sets never race to the same key."""
-    User.objects.select_for_update().get(pk=user.pk)
-
-
-def _sidebar_projects(user: User) -> QuerySet[Project]:
-    return user.projects.filter(deleted_at__isnull=True, is_inbox=False).order_by("position", "id")
-
-
-def sibling_keys(user: User, folder: Folder | None) -> list[tuple[SiblingRef, str]]:
-    """Return a sibling set in order: a Folder's Projects, or the top level for no Folder."""
-    projects = [
-        (SiblingRef("project", pk), position)
-        for pk, position in _sidebar_projects(user)
-        .filter(folder=folder)
-        .values_list("pk", "position")
-    ]
-    if folder is not None:
-        return projects
-    folders = [
-        (SiblingRef("folder", pk), position)
-        for pk, position in user.folders.values_list("pk", "position")
-    ]
-    return sorted([*folders, *projects], key=lambda sibling: (sibling[1], sibling[0].id))
-
-
-def _key_after_moving(
-    user: User,
-    folder: Folder | None,
-    moving: SiblingRef,
-    after: SiblingRef | None,
-) -> str:
-    siblings = [sibling for sibling in sibling_keys(user, folder) if sibling[0] != moving]
-    return key_after(siblings, after)
-
-
-def _last_key(user: User, folder: Folder | None) -> str:
-    siblings = sibling_keys(user, folder)
-    return str(generate_key_between(siblings[-1][1] if siblings else None, None))
 
 
 def sidebar(user: User) -> Sidebar:
@@ -199,14 +150,13 @@ def create_project(
     """
     _check_icon(icon)
     with transaction.atomic():
-        lock_sidebar(user)
         project = Project(
             owner=user,
             name=name,
             color=color or secrets.choice(PaletteColor.values),
             icon=icon,
             folder=folder,
-            position=_last_key(user, folder),
+            position=sidebar_siblings(user, folder).last(),
         )
         _save_project(project, name=name)
     return project
@@ -256,8 +206,7 @@ def move_project(
     if after == moving:
         return True
     with transaction.atomic():
-        lock_sidebar(user)
-        project.position = _key_after_moving(user, folder, moving, after)
+        project.position = sidebar_siblings(user, folder).after(after, moving=moving)
         project.folder = folder
         project.save(update_fields=["position", "folder", "updated_at"])
     return True
@@ -294,8 +243,8 @@ def unarchive_project(user: User, project_id: int) -> Project | None:
 def create_folder(user: User, name: str) -> Folder:
     """Create an expanded Folder last in the sidebar."""
     with transaction.atomic():
-        lock_sidebar(user)
-        return Folder.objects.create(owner=user, name=name, position=_last_key(user, None))
+        position = sidebar_siblings(user, None).last()
+        return Folder.objects.create(owner=user, name=name, position=position)
 
 
 def update_folder(
@@ -328,8 +277,7 @@ def move_folder(user: User, folder_id: int, after: SiblingRef | None) -> bool:
     if after == moving:
         return True
     with transaction.atomic():
-        lock_sidebar(user)
-        found.position = _key_after_moving(user, None, moving, after)
+        found.position = sidebar_siblings(user, None).after(after, moving=moving)
         found.save(update_fields=["position", "updated_at"])
     return True
 
@@ -344,16 +292,13 @@ def delete_folder(user: User, folder_id: int) -> bool:
     if found is None:
         return False
     with transaction.atomic():
-        lock_sidebar(user)
-        top_level = sibling_keys(user, None)
-        index = [ref for ref, _ in top_level].index(SiblingRef("folder", found.pk))
-        following = top_level[index + 1][1] if index + 1 < len(top_level) else None
         # Trashed Projects are ungrouped too, so a restore never points at a missing Folder.
         projects = list(found.projects.order_by("position", "id"))
-        keys = generate_n_keys_between(found.position, following, len(projects))
+        top_level = sidebar_siblings(user, None)
+        keys = top_level.keys_after(SiblingRef("folder", found.pk), len(projects))
         for project, key in zip(projects, keys, strict=True):
             project.folder = None
-            project.position = str(key)
+            project.position = key
         Project.objects.bulk_update(projects, ["folder", "position"])
         found.delete()
     return True

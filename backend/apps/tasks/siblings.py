@@ -20,7 +20,7 @@ from apps.tasks.models import Project, Section, Tag, Task
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from django.db.models import QuerySet
+    from django.db.models import Model, QuerySet
 
     from apps.tasks.models import Folder
 
@@ -29,19 +29,23 @@ if TYPE_CHECKING:
 class Siblings[Ref]:
     """An ordered set of siblings, each named by a reference such as its id.
 
-    Every method that returns a key locks the set first, so call it inside a transaction. `lock`
-    takes the same lock alone, for a write that reads the set's rows before asking for a key.
+    Every method that returns a key locks the set first, so call it inside a transaction.
+
+    Attributes:
+        lock: Takes the set's lock alone, for a write that reads the rows it moves before asking
+            for their keys, or for a row that comes back to its own key.
+        ordered: Returns the siblings as (reference, key) pairs in order. It takes no lock.
+        before: Returns the sibling right before a row, or None when it's first. It takes no lock.
     """
 
     lock: Callable[[], None]
-    _ordered: Callable[[], list[tuple[Ref, str]]]
+    ordered: Callable[[], list[tuple[Ref, str]]]
     before: Callable[[Ref], Ref | None]
-    """Return the sibling right before a row, or None when it's first. It takes no lock."""
 
     def _locked(self, moving: Ref | None = None) -> list[tuple[Ref, str]]:
         """Lock the set and return its siblings in order, leaving out the row being placed."""
         self.lock()
-        return [(ref, key) for ref, key in self._ordered() if ref != moving]
+        return [(ref, key) for ref, key in self.ordered() if ref != moving]
 
     def first(self) -> str:
         """Return a key before every sibling."""
@@ -50,7 +54,7 @@ class Siblings[Ref]:
     def last(self) -> str:
         """Return a key after every sibling."""
         siblings = self._locked()
-        return str(generate_key_between(siblings[-1][1] if siblings else None, None))
+        return _key_after(siblings, siblings[-1][0] if siblings else None)
 
     def after(self, ref: Ref | None, moving: Ref | None = None) -> str:
         """Return a key right after `ref`: first for None, last when `ref` isn't a sibling.
@@ -58,7 +62,7 @@ class Siblings[Ref]:
         `moving` is the row being placed, if it's already in the set. Siblings that share `ref`'s
         key can't be split, so the key goes after all of them.
         """
-        return str(generate_key_between(*_gap_after(self._locked(moving), ref)))
+        return _key_after(self._locked(moving), ref)
 
     def keys_after(self, ref: Ref, count: int) -> list[str]:
         """Return `count` keys in order right after `ref`, as `after` places one."""
@@ -74,7 +78,12 @@ class Siblings[Ref]:
         clash = next((sibling for sibling, taken in siblings if taken == key), None)
         if clash is None:
             return key
-        return str(generate_key_between(*_gap_after(siblings, clash)))
+        return _key_after(siblings, clash)
+
+
+def _key_after[Ref](siblings: list[tuple[Ref, str]], ref: Ref | None) -> str:
+    """Return a key right after `ref` among `siblings`, as `Siblings.after` places one."""
+    return str(generate_key_between(*_gap_after(siblings, ref)))
 
 
 def _gap_after[Ref](
@@ -92,31 +101,31 @@ def _gap_after[Ref](
     return key, next((later for later in keys if later > key), None)
 
 
-def _lock_project(project_id: int) -> Callable[[], None]:
+def _row_lock(row: QuerySet[Model]) -> Callable[[], None]:
+    """Return a lock on the one row `row` selects, which every write to the set takes."""
+
     def lock() -> None:
-        Project.objects.select_for_update().get(pk=project_id)
+        row.select_for_update().get()
 
     return lock
 
 
-def _lock_user(user: User) -> Callable[[], None]:
-    def lock() -> None:
-        User.objects.select_for_update().get(pk=user.pk)
-
-    return lock
-
-
-def _before_by_key[Row: (Task, Section, Tag)](
+def _by_key[Row: (Task, Section, Tag)](
+    lock: Callable[[], None],
     rows: QuerySet[Row],
-) -> Callable[[int], int | None]:
-    """Return a lookup of the row right before another, in one query however big the set is."""
+) -> Siblings[int]:
+    """Return `rows` as a set ordered by key and then id, named by their ids."""
+
+    def ordered() -> list[tuple[int, str]]:
+        return list(rows.order_by("position", "id").values_list("pk", "position"))
 
     def before(ref: int) -> int | None:
+        # Bulk undo asks this once per Task, so it reads one row rather than the whole set.
         key = Subquery(rows.filter(pk=ref).values("position")[:1])
         earlier = rows.filter(Q(position__lt=key) | Q(position=key, pk__lt=ref))
         return earlier.order_by("-position", "-id").values_list("pk", flat=True).first()
 
-    return before
+    return Siblings(lock=lock, ordered=ordered, before=before)
 
 
 def task_siblings(project_id: int, parent_id: int | None) -> Siblings[int]:
@@ -125,31 +134,18 @@ def task_siblings(project_id: int, parent_id: int | None) -> Siblings[int]:
     Trashed Tasks keep their place, so they stay in the set. Writes lock the Project.
     """
     rows = Task.objects.filter(project_id=project_id, parent_id=parent_id)
-
-    def ordered() -> list[tuple[int, str]]:
-        return list(rows.order_by("position", "id").values_list("pk", "position"))
-
-    return Siblings(_lock_project(project_id), ordered, _before_by_key(rows))
+    return _by_key(_row_lock(Project.objects.filter(pk=project_id)), rows)
 
 
 def section_siblings(project_id: int) -> Siblings[int]:
     """Return a Project's Sections, ordered by key and then id. Writes lock the Project."""
     rows = Section.objects.filter(project_id=project_id)
-
-    def ordered() -> list[tuple[int, str]]:
-        return list(rows.order_by("position", "id").values_list("pk", "position"))
-
-    return Siblings(_lock_project(project_id), ordered, _before_by_key(rows))
+    return _by_key(_row_lock(Project.objects.filter(pk=project_id)), rows)
 
 
 def tag_siblings(user: User) -> Siblings[int]:
     """Return the user's Tags, ordered by key and then id. Writes lock the user."""
-    rows = user.tags.all()
-
-    def ordered() -> list[tuple[int, str]]:
-        return list(rows.order_by("position", "id").values_list("pk", "position"))
-
-    return Siblings(_lock_user(user), ordered, _before_by_key(rows))
+    return _by_key(_row_lock(User.objects.filter(pk=user.pk)), user.tags.all())
 
 
 @dataclass(frozen=True)
@@ -185,4 +181,4 @@ def sidebar_siblings(user: User, folder: Folder | None) -> Siblings[SiblingRef]:
         index = refs.index(ref)
         return refs[index - 1] if index > 0 else None
 
-    return Siblings(_lock_user(user), ordered, before)
+    return Siblings(lock=_row_lock(User.objects.filter(pk=user.pk)), ordered=ordered, before=before)

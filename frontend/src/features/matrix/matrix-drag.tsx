@@ -21,12 +21,14 @@ import { QUADRANT, QUADRANTS, type MatrixQuadrants, type Quadrant } from "./quad
 
 /**
  * The Priority a Task dropped from one Quadrant into another takes: the smallest change that
- * moves it, P2 up into Important and P3 down out of it. Dates never change by dragging, so a drop
+ * moves it, P2 up into Important (a P1 Task stays P1) and P3 down out of it. Dates never change by dragging, so a drop
  * into the other urgency column, or into the same row, changes nothing.
  */
-function droppedPriority(from: Quadrant, to: Quadrant): TaskPriority | null {
+function droppedPriority({ task, from }: Dragged, to: Quadrant): TaskPriority | null {
   const [source, target] = [QUADRANT[from], QUADRANT[to]];
   if (source.urgent !== target.urgent || source.important === target.important) return null;
+  // P1 is Important already; making it P2 would only demote it.
+  if (target.important && task.priority === 1) return null;
   return target.droppedPriority;
 }
 
@@ -96,20 +98,20 @@ function announcements(quadrants: MatrixQuadrants): Announcements {
     // Silent over its own Quadrant: a drag starts there, and "Picked up" has already said so.
     onDragOver: ({ active, over }) => {
       const to = quadrantOfId(over?.id);
-      return said(active.id, (title, { from }) => {
+      return said(active.id, (title, dragged) => {
         if (!to) return `${title} is over no Quadrant.`;
-        if (to === from) return undefined;
-        if (droppedPriority(from, to) === null) {
+        if (to === dragged.from) return undefined;
+        if (droppedPriority(dragged, to) === null) {
           return `${title} is over ${QUADRANT[to].label}, which only takes Tasks from above or below it.`;
         }
         return `${title} is over ${QUADRANT[to].label}.`;
       });
     },
     onDragEnd: ({ active, over }) =>
-      said(active.id, (title, { from }) => {
+      said(active.id, (title, dragged) => {
         const to = quadrantOfId(over?.id);
-        const priority = to && droppedPriority(from, to);
-        if (!to || !priority) return `${title} stays in ${QUADRANT[from].label}.`;
+        const priority = to && droppedPriority(dragged, to);
+        if (!to || !priority) return `${title} stays in ${QUADRANT[dragged.from].label}.`;
         return `${title} moved to ${QUADRANT[to].label}, now ${PRIORITY[priority].long}.`;
       }),
     onDragCancel: ({ active }) =>
@@ -134,7 +136,7 @@ export function MatrixDrag({
   const [dragged, setDragged] = useState<Dragged | null>(null);
   const [over, setOver] = useState<Quadrant | null>(null);
   const { mutate: update } = useUpdateTask();
-  const target = dragged && over && droppedPriority(dragged.from, over) !== null ? over : null;
+  const target = dragged && over && droppedPriority(dragged, over) !== null ? over : null;
 
   const stop = () => {
     setDragged(null);
@@ -155,7 +157,7 @@ export function MatrixDrag({
       onDragEnd={({ over: dropped }) => {
         stop();
         const to = quadrantOfId(dropped?.id);
-        const priority = dragged && to && droppedPriority(dragged.from, to);
+        const priority = dragged && to && droppedPriority(dragged, to);
         if (dragged && priority) update({ id: dragged.task.id, priority });
       }}
       onDragCancel={stop}

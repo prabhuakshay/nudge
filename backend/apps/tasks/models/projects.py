@@ -30,7 +30,7 @@ class Folder(models.Model):
     )
     name = models.CharField(max_length=64)
     position = models.CharField(max_length=255, db_collation="C")
-    collapsed = models.BooleanField(default=False)
+    collapsed = models.BooleanField(default=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 

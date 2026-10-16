@@ -30,7 +30,7 @@ def test_every_endpoint_requires_a_session(method: str, path: str) -> None:
 
 
 @pytest.mark.django_db
-def test_create_makes_an_expanded_folder_last_in_the_sidebar(client: Client, ada: User) -> None:
+def test_create_makes_a_collapsed_folder_last_in_the_sidebar(client: Client, ada: User) -> None:
     projects.create_project(ada, "Work")
 
     response = client.post(
@@ -41,7 +41,7 @@ def test_create_makes_an_expanded_folder_last_in_the_sidebar(client: Client, ada
 
     assert response.status_code == 201
     body = response.json()
-    assert body == {"id": body["id"], "name": "Personal", "collapsed": False}
+    assert body == {"id": body["id"], "name": "Personal", "collapsed": True}
     assert [item.name for item in projects.sidebar_items(ada)] == ["Work", "Personal"]
 
 

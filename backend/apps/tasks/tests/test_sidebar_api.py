@@ -122,7 +122,7 @@ def test_sidebar_lists_folders_and_ungrouped_projects_in_order_with_counts(
             "kind": "folder",
             "id": folder.pk,
             "name": "Personal",
-            "collapsed": False,
+            "collapsed": True,
             "projects": [
                 {
                     "kind": "project",

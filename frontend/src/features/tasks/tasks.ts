@@ -305,7 +305,12 @@ export async function showChange(queryClient: QueryClient, change: TaskPatch) {
   );
   queryClient.setQueriesData<CalendarRange>(
     { queryKey: CALENDAR_KEY },
-    (range) => range && { ...range, items: range.items.map((task) => applyTo(task, change)) },
+    (range) =>
+      range && {
+        ...range,
+        items: range.items.map((task) => applyTo(task, change)),
+        repeating: range.repeating.map((task) => applyTo(task, change)),
+      },
   );
 }
 

@@ -56,8 +56,10 @@ function layOutWeek() {
   });
 }
 
+/** The Task's current Occurrence, the one that can be dragged. */
 function itemOf(title: string) {
-  const item = screen.getByRole("button", { name: new RegExp(`^${title},`) }).closest("li");
+  const name = new RegExp(`^${title},(?!.*future Occurrence$)`);
+  const item = screen.getByRole("button", { name }).closest("li");
   if (!item) throw new Error(`${title} isn't on the Calendar.`);
   return item;
 }
@@ -256,20 +258,25 @@ describe("CalendarView drag and resize in Week mode", () => {
     expect(within(thursday).getByText("Call the bank")).toBeInTheDocument();
   });
 
+  it("moves a repeating Task's future Occurrences to its new time with it", async () => {
+    const fetchSpy = await renderStandUp();
+    // The save never answers, so only the drop itself can move the Occurrences.
+    const serve = fetchSpy.getMockImplementation();
+    fetchSpy.mockImplementation(async (input, init) => {
+      if (requestOf(input).method === "PATCH") return new Promise(() => undefined);
+      if (!serve) throw new Error("The stand-in server has no handler.");
+      return serve(input, init);
+    });
+
+    dragTo("Stand-up", "2026-10-15", 14 * 60);
+
+    const friday = screen.getByRole("gridcell", { name: "Friday 16 October 2026, 14:00" });
+    expect(await within(friday).findByText("Stand-up")).toBeInTheDocument();
+  });
+
   it("can't move or resize a future Occurrence, whose date doesn't exist yet", async () => {
-    const standUp = task({
-      id: 6,
-      title: "Stand-up",
-      due_date: "2026-10-15",
-      due_time: "09:00:00",
-      repeat_rule: "FREQ=DAILY",
-    });
-    const fetchSpy = mockApi([standUp], {
-      occurrences: [{ task_id: 6, date: "2026-10-16" }],
-      repeating: [standUp],
-    });
-    renderCalendar("/?mode=week&date=2026-10-15");
-    const later = await screen.findByRole("button", { name: /^Stand-up,.*future Occurrence$/ });
+    const fetchSpy = await renderStandUp();
+    const later = screen.getByRole("button", { name: /^Stand-up,.*future Occurrence$/ });
     const item = later.closest("li");
     if (!item) throw new Error("The Occurrence isn't on the Calendar.");
 
@@ -281,3 +288,22 @@ describe("CalendarView drag and resize in Week mode", () => {
     expect(await patchedDates(fetchSpy)).toEqual([]);
   });
 });
+
+/** Renders a daily 09:00 Stand-up due today, with its Occurrence tomorrow. */
+async function renderStandUp() {
+  const standUp = () =>
+    task({
+      id: 6,
+      title: "Stand-up",
+      due_date: "2026-10-15",
+      due_time: "09:00:00",
+      repeat_rule: "FREQ=DAILY",
+    });
+  const fetchSpy = mockApi([standUp()], {
+    occurrences: [{ task_id: 6, date: "2026-10-16" }],
+    repeating: [standUp()],
+  });
+  renderCalendar("/?mode=week&date=2026-10-15");
+  await screen.findByRole("button", { name: /^Stand-up,.*future Occurrence$/ });
+  return fetchSpy;
+}

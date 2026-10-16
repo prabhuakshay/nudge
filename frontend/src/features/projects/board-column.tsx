@@ -2,6 +2,7 @@ import type { Section } from "@/features/sections/sections";
 import type { TreeRow } from "@/features/tasks/task-tree";
 import type { Task } from "@/features/tasks/tasks";
 
+import { BoardAddTask } from "./board-add-task";
 import { BoardCard } from "./board-card";
 
 /** One Board column: a Section, or No section for null, and its root Tasks as cards in order. */
@@ -9,10 +10,11 @@ export type BoardColumnCards = { section: Section | null; cards: TreeRow[] };
 
 /**
  * A Board column: the Section's name and how many Tasks it holds, then its cards, Pinned ones
- * first as the server lists them. Labelled with its place on the Board for screen readers. On
+ * first as the server lists them, and a control to add a Task at the bottom. Labelled with its place on the Board for screen readers. On
  * phones it fills most of the Board's width and snaps into place as the Board scrolls.
  */
 export function BoardColumn({
+  projectId,
   column: { section, cards },
   position,
   count,
@@ -21,6 +23,7 @@ export function BoardColumn({
   onOpen,
   onToggle,
 }: {
+  projectId: number;
   column: BoardColumnCards;
   /** Where the column sits on the Board, from 1, and how many columns there are. */
   position: number;
@@ -61,6 +64,7 @@ export function BoardColumn({
           ))}
         </ul>
       )}
+      {!readOnly && <BoardAddTask projectId={projectId} section={section} />}
     </section>
   );
 }

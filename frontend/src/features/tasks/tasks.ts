@@ -67,7 +67,7 @@ export type ListSource =
 
 /**
  * A view's open Tasks as flat rows, in the order the view lists them: Today has Overdue first,
- * Upcoming goes day by day.
+ * Upcoming goes day by day, All goes day by day with undated Tasks last.
  */
 export function viewTasksQuery(view: ScheduleView) {
   return queryOptions({
@@ -334,7 +334,7 @@ export function useCreateTask() {
     onError: (error) => toast.error(error.message),
     onSettled: () =>
       Promise.all([
-        ...["today", "upcoming", "tag", "person"].map((list) =>
+        ...["today", "upcoming", "all", "tag", "person"].map((list) =>
           queryClient.invalidateQueries({ queryKey: [...OPEN_KEY, list] }),
         ),
         queryClient.invalidateQueries(sidebarQuery),

@@ -16,6 +16,7 @@ function renderText(text: string) {
     people: [{ id: 1, name: "Priya Shah", color: "violet" }],
     today_count: 0,
     upcoming_count: 0,
+    all_count: 0,
   });
   const { container } = render(
     <QueryClientProvider client={queryClient}>

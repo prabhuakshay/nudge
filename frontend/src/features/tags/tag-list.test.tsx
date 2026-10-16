@@ -59,6 +59,12 @@ function renderTagList() {
   return user;
 }
 
+function rowOf(title: string) {
+  const row = screen.getByText(title).closest<HTMLElement>("[role=row]");
+  if (!row) throw new Error(`No row for “${title}”.`);
+  return row;
+}
+
 function rowsIn(group: string) {
   return within(screen.getByRole("region", { name: group }))
     .queryAllByRole("row")
@@ -82,6 +88,8 @@ describe("A Tag's list", () => {
       .getAllByRole("region")
       .map((region) => region.getAttribute("aria-label"));
     expect(regions.slice(0, 2)).toEqual(["Inbox", "Work"]);
+    expect(within(rowOf("Report")).getByText("Work")).toBeInTheDocument();
+    expect(within(rowOf("Email")).getByText("Inbox")).toBeInTheDocument();
     const lists = fetchSpy.mock.calls.map(([request]) => new URL(requestOf(request).url).search);
     expect(lists).toContain(`?tag=${String(WORK_TAG.id)}`);
   });

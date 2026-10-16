@@ -58,6 +58,7 @@ const SIDEBAR: Sidebar = {
   archived: [],
   today_count: 0,
   upcoming_count: 0,
+  all_count: 0,
 };
 
 function json(body: unknown, status = 200) {

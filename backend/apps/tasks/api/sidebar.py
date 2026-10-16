@@ -71,6 +71,7 @@ def sidebar(request: HttpRequest) -> Status[SidebarOut]:
         archived=[_project_out(project, found) for project in found.archived],
         today_count=schedule.open_count(user, schedule.View.TODAY),
         upcoming_count=schedule.open_count(user, schedule.View.UPCOMING),
+        all_count=schedule.open_count(user, schedule.View.ALL),
         tags=[_tag_out(found) for found in tags.sidebar_tags(user)],
         people=[PersonOut.from_orm(person) for person in people.people(user)],
     )

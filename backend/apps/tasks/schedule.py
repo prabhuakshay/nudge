@@ -1,6 +1,7 @@
-"""Today and Upcoming: the user's dated Tasks, sorted by where their dates fall on the user's clock.
+"""Today, Upcoming and All: the user's Tasks, sorted by where their dates fall on the user's clock.
 
 Each view is one rule over the dates, applied to the user's live Tasks outside archived Projects.
+All takes every Task, dated or not.
 Times are floating, so "today" is the user's local date. Rows are flat: a matching Subtask shows
 on its own and names its parent for a breadcrumb.
 """
@@ -31,6 +32,7 @@ class View(StrEnum):
 
     TODAY = "today"
     UPCOMING = "upcoming"
+    ALL = "all"
 
 
 def _rule(view: View, today: date) -> Q:
@@ -38,10 +40,12 @@ def _rule(view: View, today: date) -> Q:
     if view is View.TODAY:
         # Due today or before (so Overdue), or a range that has started.
         return Q(due_date__lte=today) | Q(start_date__lte=today)
+    if view is View.ALL:
+        return Q()
     return Q(due_date__gt=today) & ~Q(start_date__lte=today)
 
 
-def _dated(user: User, view: View, today: date) -> QuerySet[Task]:
+def _in_view(user: User, view: View, today: date) -> QuerySet[Task]:
     return as_rows(active_tasks(user).filter(_rule(view, today)), user)
 
 
@@ -49,14 +53,19 @@ def view_tasks(user: User, view: View) -> QuerySet[Task]:
     """Return the user's open Tasks in the view, in the order the view lists them.
 
     Pinned Tasks come first, then Overdue Tasks, oldest first. Then Tasks go day by day, a range
-    on the day it starts or today if it already has. Within a day, timed Tasks come first by time,
-    then all-day Tasks by Priority, then manual order.
+    on the day it starts or today if it already has, and undated Tasks last. Within a day, timed
+    Tasks come first by time, then all-day Tasks by Priority, then manual order.
     """
     today = local_now(user).date()
     starts = Coalesce("start_date", "due_date")
-    day = Case(When(is_overdue=True, then="due_date"), default=Greatest(starts, Value(today)))
+    day = Case(
+        When(is_overdue=True, then="due_date"),
+        # GREATEST ignores NULLs, so an undated Task would otherwise land on today.
+        When(start_date__isnull=True, due_date__isnull=True, then=None),
+        default=Greatest(starts, Value(today)),
+    )
     return (
-        _dated(user, view, today)
+        _in_view(user, view, today)
         .filter(status__in=OPEN_STATUSES)
         .annotate(
             day=day,
@@ -71,7 +80,7 @@ def view_tasks(user: User, view: View) -> QuerySet[Task]:
         .order_by(
             unpinned(),
             F("is_overdue").desc(),
-            "day",
+            F("day").asc(nulls_last=True),
             F("clock").asc(nulls_last=True),
             "urgency",
             "position",
@@ -88,7 +97,7 @@ def closed_today(user: User, cursor: str | None = None) -> Page[Task]:
     """
     today = local_now(user).date()
     midnight = datetime.combine(today, time.min, tzinfo=local_zone(user))
-    closed = _dated(user, View.TODAY, today).filter(
+    closed = _in_view(user, View.TODAY, today).filter(
         status__in=CLOSED_STATUSES,
         completed_at__gte=midnight,
     )

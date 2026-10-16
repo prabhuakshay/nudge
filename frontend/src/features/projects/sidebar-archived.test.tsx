@@ -34,6 +34,7 @@ function sidebar(archived: SidebarProject[]): Sidebar {
     people: [],
     today_count: 0,
     upcoming_count: 0,
+    all_count: 0,
   };
 }
 

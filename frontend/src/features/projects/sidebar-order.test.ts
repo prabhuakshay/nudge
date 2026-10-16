@@ -32,6 +32,7 @@ const SIDEBAR: Sidebar = {
   archived: [],
   today_count: 0,
   upcoming_count: 0,
+  all_count: 0,
 };
 
 /** The sidebar as `name` lines, Projects in a Folder indented. */

@@ -22,7 +22,7 @@ function mockApi(open: Task[], closed: Task[] = []) {
   return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
     const url = new URL(requestOf(input).url);
     if (url.pathname.endsWith("/sidebar")) {
-      return json({ inbox: INBOX, items: [WORK], people: [PRIYA] });
+      return json({ inbox: INBOX, items: [WORK], archived: [], people: [PRIYA] });
     }
     if (url.searchParams.get("person") !== "1") throw new Error(`Unexpected ${url.href}`);
     const items = url.searchParams.get("closed") === "true" ? closed : open;
@@ -74,6 +74,9 @@ describe("PersonTasks", () => {
     expect(groups).toEqual(["Inbox", "Work", "Closed"]);
     expect(titlesIn("Work")).toEqual(["Review with Priya", "Send Priya the deck"]);
     expect(titlesIn("Inbox")).toEqual(["Call Priya"]);
+    const [row] = within(screen.getByRole("region", { name: "Inbox" })).getAllByRole("row");
+    if (!row) throw new Error("No row for the Task.");
+    expect(within(row).getByText("Inbox")).toBeInTheDocument();
   });
 
   it("lists a mentioning Subtask on its own, under its parent's title", async () => {

@@ -3,7 +3,7 @@ import { addDays as addCalendarDays, differenceInCalendarDays, format, parseISO 
 import type { Task } from "./tasks";
 
 /** The views that list Tasks by their dates. The server decides which Tasks each one holds. */
-export type ScheduleView = "today" | "upcoming";
+export type ScheduleView = "today" | "upcoming" | "all";
 
 /** Upcoming names each of the next this-many days; later Tasks are grouped by month. */
 const DAYS_BY_NAME = 7;
@@ -42,7 +42,7 @@ export function addDays(date: string, days: number): string {
 export type UpcomingGroup = { key: string; label: string; hint: string | null; tasks: Task[] };
 
 function groupOf(task: Task, today: string): Omit<UpcomingGroup, "tasks"> {
-  // The server only sends dated Tasks; a range goes on the day it starts.
+  // Only dated Tasks get here; a range goes on the day it starts.
   const date = parseISO(task.start_date ?? task.due_date ?? today);
   const days = differenceInCalendarDays(date, parseISO(today));
   if (days <= DAYS_BY_NAME) {
@@ -70,4 +70,23 @@ export function upcomingGroups(tasks: Task[], today: string): UpcomingGroup[] {
     else groups.push({ ...group, tasks: [task] });
   }
   return groups;
+}
+
+/** All's Tasks split by date, each part in the server's order. */
+export type AllSections = { overdue: Task[]; today: Task[]; later: Task[]; undated: Task[] };
+
+/**
+ * All's Tasks under Overdue, Today, the days after (grouped as Upcoming groups them) and No date.
+ * A range that has started counts as today.
+ */
+export function allSections(tasks: Task[], today: string): AllSections {
+  const sections: AllSections = { overdue: [], today: [], later: [], undated: [] };
+  for (const task of tasks) {
+    const from = task.start_date ?? task.due_date;
+    if (task.is_overdue) sections.overdue.push(task);
+    else if (from === null) sections.undated.push(task);
+    else if (from <= today) sections.today.push(task);
+    else sections.later.push(task);
+  }
+  return sections;
 }

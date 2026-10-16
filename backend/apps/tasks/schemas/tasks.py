@@ -86,7 +86,7 @@ class TaskListQuery(Schema):
     project: int | None = None
     person: int | None = None
     tag: int | None = None
-    view: View | None = Field(default=None, description="Today or Upcoming, picked by date.")
+    view: View | None = Field(default=None, description="Today, Upcoming or All, picked by date.")
     closed: bool = Field(default=False, description="List Closed Tasks, a page at a time.")
     cursor: str | None = Field(default=None, description="From the previous page of Closed ones.")
 

@@ -37,6 +37,7 @@ const SIDEBAR: SidebarData = {
   people: [{ id: 1, name: "Al", color: "teal" }],
   today_count: 0,
   upcoming_count: 0,
+  all_count: 0,
 };
 
 /** A stand-in server: the sidebar for reads, and the updated user for section changes. */
@@ -84,16 +85,18 @@ describe("Sidebar", () => {
       "/inbox",
       "/",
       "/upcoming",
+      "/all",
       "/trash",
     ]);
   });
 
-  it("counts Today, Overdue included, and Upcoming", async () => {
-    mockApi({ ...SIDEBAR, today_count: 4, upcoming_count: 2 });
+  it("counts Today, Overdue included, Upcoming and All", async () => {
+    mockApi({ ...SIDEBAR, today_count: 4, upcoming_count: 2, all_count: 9 });
     renderSidebar();
 
     expect(await screen.findByRole("link", { name: "Today, 4 open" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Upcoming, 2 open" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "All, 9 open" })).toBeInTheDocument();
   });
 
   it("opens the command bar from the Search row, by click or keyboard", async () => {

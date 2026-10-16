@@ -10,6 +10,7 @@ import type { DatesIn, NewTask, SidebarProject, Task } from "./tasks";
 export type QuickAddView =
   | { kind: "project"; project: SidebarProject }
   | { kind: "today" | "upcoming"; today: string; tomorrow: string }
+  | { kind: "all" }
   | { kind: "tag"; tag: QuickAddTag }
   | { kind: "person"; person: Person };
 
@@ -20,12 +21,14 @@ export type ViewDefault =
   | { kind: "tag"; tag: QuickAddTag }
   | { kind: "person"; person: Person };
 
-/** The chip a view starts with: its Project, today, tomorrow, its Tag or its Person. */
+/** The chip a view starts with: its Project, today, tomorrow, its Tag or its Person; none in All. */
 export function viewDefault(view: QuickAddView): ViewDefault | null {
   switch (view.kind) {
     case "project":
       // The Inbox is where Tasks go anyway.
       return view.project.is_inbox ? null : view;
+    case "all":
+      return null;
     case "today":
       return { kind: "date", label: "Today", dates: { due_date: view.today } };
     case "upcoming":
@@ -88,6 +91,9 @@ export function showsTask(view: QuickAddView, task: Task): boolean {
   switch (view.kind) {
     case "project":
       return task.project_id === view.project.id;
+    case "all":
+      // Quick add can't put a Task in an archived Project, so every new Task shows in All.
+      return true;
     case "today":
       return from !== null && from <= view.today;
     case "upcoming":

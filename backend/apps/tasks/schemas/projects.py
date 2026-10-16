@@ -111,5 +111,6 @@ class SidebarOut(Schema):
     archived: list[SidebarProjectOut] = Field(description="Archived Projects, by name.")
     today_count: int = Field(description="Open Tasks in Today, Overdue ones included.")
     upcoming_count: int = Field(description="Open Tasks in Upcoming.")
+    all_count: int = Field(description="Open Tasks in All.")
     tags: list[SidebarTagOut] = Field(description="In the user's order.")
     people: list[PersonOut] = Field(description="A to Z.")

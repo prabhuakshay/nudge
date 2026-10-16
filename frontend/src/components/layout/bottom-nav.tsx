@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
-import { NAV_ITEMS } from "./nav-items";
+import { BOTTOM_NAV_ITEMS } from "./nav-items";
 
 /** Mobile navigation pinned to the bottom of the screen, within thumb reach. */
 export function BottomNav() {
@@ -10,7 +10,7 @@ export function BottomNav() {
       className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-surface/95 pb-[env(safe-area-inset-bottom)] backdrop-blur lg:hidden"
     >
       <ul className="mx-auto grid max-w-md grid-cols-3">
-        {NAV_ITEMS.map(({ to, label, icon: Icon }) => (
+        {BOTTOM_NAV_ITEMS.map(({ to, label, icon: Icon }) => (
           <li key={to}>
             <Link
               to={to}

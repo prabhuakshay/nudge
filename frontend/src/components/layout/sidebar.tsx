@@ -57,6 +57,7 @@ function navCount(sidebar: SidebarData, to: NavItem["to"]) {
     "/inbox": sidebar.inbox.open_count,
     "/": sidebar.today_count,
     "/upcoming": sidebar.upcoming_count,
+    "/all": sidebar.all_count,
   }[to];
 }
 

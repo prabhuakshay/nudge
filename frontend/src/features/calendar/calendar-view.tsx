@@ -11,9 +11,10 @@ import { TaskDetail } from "@/features/tasks/task-detail";
 import { isClosed } from "@/features/tasks/task-properties";
 import type { SidebarProject, Task } from "@/features/tasks/tasks";
 
-import { calendarQuery, MODES, useCalendarPlace, type CalendarMode } from "./calendar";
+import { calendarQuery, useCalendarPlace, usePhone, type CalendarMode } from "./calendar";
 import { CalendarDrag } from "./calendar-drag";
-import { monthWeeks, shiftDays, shiftMonths, weekDays } from "./layout";
+import { DayTasks } from "./day-tasks";
+import { monthWeeks, shiftDays, shiftMonths, tasksOn, weekDays } from "./layout";
 import { MonthGrid } from "./month-grid";
 import { useShowClosed } from "./show-closed";
 import { TimeGrid } from "./time-grid";
@@ -85,7 +86,8 @@ export function CalendarView({
 }) {
   const now = useWallClock(timeZone);
   const today = format(now, "yyyy-MM-dd");
-  const { mode, date, go } = useCalendarPlace(today);
+  const { mode, date, modes, go } = useCalendarPlace(today);
+  const phone = usePhone();
   const days = shownDays(mode, date);
   const { data } = useQuery(calendarQuery({ start: days[0] ?? date, end: days.at(-1) ?? date }));
   const [showClosed, setShowClosed] = useShowClosed();
@@ -105,20 +107,21 @@ export function CalendarView({
   return (
     // `data-wide` lets the app shell drop its reading width for the grid.
     <div data-wide className="mx-auto w-full max-w-6xl">
-      <header className="mb-4 flex items-center gap-2.5 sm:gap-3">
+      <header className="mb-4 flex flex-wrap items-center gap-2.5 sm:flex-nowrap sm:gap-3">
         <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-hue-teal-soft text-hue-teal">
           <CalendarRange className="size-5" aria-hidden />
         </span>
         <h1 className="min-w-0 truncate text-2xl font-extrabold tracking-tight sm:text-3xl">
           {title(mode, date)}
         </h1>
-        <div className="ml-auto flex shrink-0 items-center gap-1">
+        {/* On a phone the controls take a row of their own below the title. */}
+        <div className="flex w-full shrink-0 items-center gap-1 sm:ml-auto sm:w-auto">
           <div
             role="group"
             aria-label="Mode"
-            className="mr-1 flex rounded-lg bg-surface-muted p-0.5"
+            className="mr-auto flex rounded-lg bg-surface-muted p-0.5 sm:mr-1"
           >
-            {MODES.map((each) => (
+            {modes.map((each) => (
               <Button
                 key={each}
                 variant="ghost"
@@ -182,10 +185,19 @@ export function CalendarView({
             date={date}
             today={today}
             tasks={tasks}
+            compact={phone}
             onDateChange={moveFocus}
             onOpen={setOpenTask}
             onToggle={toggle}
           />
+          {phone && (
+            <DayTasks
+              day={date}
+              tasks={tasksOn(tasks, date)}
+              onOpen={setOpenTask}
+              onToggle={toggle}
+            />
+          )}
         </CalendarDrag>
       ) : (
         <TimeGrid

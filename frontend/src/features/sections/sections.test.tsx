@@ -1,90 +1,9 @@
-import { screen, waitFor, within } from "@testing-library/react";
+import { screen, waitFor } from "@testing-library/react";
 
-import type { Task } from "@/features/tasks/tasks";
-import { INBOX, WORK, json, renderTaskList } from "@/test/drawer";
+import { INBOX, WORK, renderTaskList } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
+import { DOING, DONE, TO_DO, groupNames, mockApi, titlesIn, writes } from "@/test/sections";
 import { makeTask } from "@/test/tasks";
-
-import type { Section } from "./sections";
-
-const TO_DO: Section = { id: 31, project_id: WORK.id, name: "To do", collapsed: false };
-const DOING: Section = { id: 32, project_id: WORK.id, name: "Doing", collapsed: false };
-const DONE: Section = { id: 33, project_id: WORK.id, name: "Done", collapsed: false };
-
-function changed(sections: Section[], id: number, fields: Partial<Section>) {
-  return sections.map((section) => (section.id === id ? { ...section, ...fields } : section));
-}
-
-function movedAfter(sections: Section[], id: number, afterId: number | null) {
-  const section = sections.find((other) => other.id === id);
-  const rest = sections.filter((other) => other !== section);
-  const at = afterId === null ? 0 : rest.findIndex((other) => other.id === afterId) + 1;
-  return section ? [...rest.slice(0, at), section, ...rest.slice(at)] : rest;
-}
-
-/**
- * A stand-in server holding one Project's Sections and open Tasks, which adds, changes and moves
- * Sections.
- */
-function mockApi({
-  sections = [TO_DO, DOING],
-  open = [],
-}: {
-  sections?: Section[];
-  open?: Task[];
-}) {
-  let nextId = 100;
-  return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
-    const request = requestOf(input);
-    const url = new URL(request.url);
-    if (url.pathname.endsWith("/sections") && request.method === "POST") {
-      const { name } = (await request.clone().json()) as { name: string };
-      const created = { id: nextId++, project_id: WORK.id, name, collapsed: false };
-      sections = [...sections, created];
-      return json(created, 201);
-    }
-    const one = /^\/api\/v1\/sections\/(\d+)$/.exec(url.pathname);
-    if (one && request.method === "PATCH") {
-      const id = Number(one[1]);
-      sections = changed(sections, id, (await request.clone().json()) as Partial<Section>);
-      return json(sections.find((section) => section.id === id));
-    }
-    const moved = /^\/api\/v1\/sections\/(\d+)\/move$/.exec(url.pathname);
-    if (moved) {
-      const { after_id } = (await request.clone().json()) as { after_id: number | null };
-      sections = movedAfter(sections, Number(moved[1]), after_id);
-      return new Response(null, { status: 204 });
-    }
-    if (url.pathname.endsWith("/sections")) return json(sections);
-    if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX, items: [WORK] });
-    if (url.searchParams.get("closed") === "true") return json({ items: [], next_cursor: null });
-    return json({ items: open, next_cursor: null });
-  });
-}
-
-async function writes(fetchSpy: ReturnType<typeof mockApi>) {
-  const requests = fetchSpy.mock.calls
-    .map(([input]) => requestOf(input))
-    .filter((request) => request.method !== "GET");
-  return Promise.all(
-    requests.map(async (request) => [
-      `${request.method} ${new URL(request.url).pathname}`,
-      (await request.json()) as unknown,
-    ]),
-  );
-}
-
-function groupNames() {
-  return within(screen.getByRole("treegrid"))
-    .getAllByRole("region")
-    .map((region) => region.getAttribute("aria-label"));
-}
-
-function titlesIn(group: string) {
-  return within(screen.getByRole("region", { name: group }))
-    .queryAllByRole("row")
-    .map((row) => row.querySelector("[data-task-title]")?.textContent);
-}
 
 describe("Sections in a Project", () => {
   it("groups root Tasks under No section, then each Section in order, Pinned first", async () => {
@@ -161,85 +80,30 @@ describe("Sections in a Project", () => {
     expect(await writes(fetchSpy)).toEqual([]);
   });
 
-  it("collapses and expands a Section from its header, keeping its open-Task count", async () => {
-    const fetchSpy = mockApi({
-      open: [
-        makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id }),
-        makeTask({ id: 2, project_id: WORK.id, title: "Plan launch", section_id: TO_DO.id }),
-      ],
-    });
-    const { user } = renderTaskList({ project: WORK });
-    const toggle = await screen.findByRole("button", { name: "To do", expanded: true });
-    const toDo = screen.getByRole("region", { name: "To do" });
-    expect(within(toDo).getByText("2")).toBeInTheDocument();
-
-    toggle.focus();
-    await user.keyboard("{Enter}");
-
-    expect(toggle).toHaveAttribute("aria-expanded", "false");
-    expect(titlesIn("To do")).toEqual([]);
-    expect(within(toDo).getByText("2")).toBeInTheDocument();
-
-    await user.keyboard("{Enter}");
-
-    expect(titlesIn("To do")).toEqual(["Write brief", "Plan launch"]);
-    await waitFor(async () => {
-      expect(await writes(fetchSpy)).toEqual([
-        [`PATCH /api/v1/sections/${String(TO_DO.id)}`, { collapsed: true }],
-        [`PATCH /api/v1/sections/${String(TO_DO.id)}`, { collapsed: false }],
-      ]);
-    });
-  });
-
-  it("shows a Section collapsed when the server remembers it so", async () => {
-    mockApi({
-      sections: [{ ...TO_DO, collapsed: true }, DOING],
-      open: [
-        makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id }),
-        makeTask({ id: 2, project_id: WORK.id, title: "Review copy", section_id: DOING.id }),
-      ],
-    });
-
-    renderTaskList({ project: WORK });
-
-    expect(await screen.findByText("Review copy")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "To do" })).toHaveAttribute("aria-expanded", "false");
-    expect(titlesIn("To do")).toEqual([]);
-  });
-
-  it("renames a Section from its header menu with the keyboard", async () => {
+  it("adds a Task inside a Section from its header", async () => {
     const fetchSpy = mockApi({});
     const { user } = renderTaskList({ project: WORK });
-    (await screen.findByRole("button", { name: "To do actions" })).focus();
 
-    await user.keyboard("{Enter}");
-    expect(await screen.findByRole("menuitem", { name: "Rename" })).toHaveFocus();
-    await user.keyboard("{Enter}");
-    const name = await screen.findByRole("textbox", { name: "Section name" });
-    expect(name).toHaveValue("To do");
-    expect(name).toHaveFocus();
-    await user.clear(name);
-    await user.keyboard("Next up{Enter}");
+    await user.click(await screen.findByRole("button", { name: "Add a task to Doing" }));
+    await user.keyboard("Review copy{Enter}");
 
-    expect(await screen.findByRole("region", { name: "Next up" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Next up actions" })).toHaveFocus();
-    await waitFor(async () => {
-      expect(await writes(fetchSpy)).toEqual([
-        [`PATCH /api/v1/sections/${String(TO_DO.id)}`, { name: "Next up" }],
-      ]);
+    await waitFor(() => {
+      expect(titlesIn("Doing")).toEqual(["Review copy"]);
     });
+    expect(screen.getByRole("combobox", { name: "Add a task to Doing" })).toHaveFocus();
+    expect(await writes(fetchSpy)).toEqual([
+      ["POST /api/v1/tasks", { title: "Review copy", project_id: WORK.id, section_id: DOING.id }],
+    ]);
   });
 
-  it("leaves a Section's name alone when renaming is cancelled with Escape", async () => {
+  it("closes a Section's add-Task field left empty", async () => {
     const fetchSpy = mockApi({});
     const { user } = renderTaskList({ project: WORK });
-    await user.click(await screen.findByRole("button", { name: "To do actions" }));
-    await user.click(await screen.findByRole("menuitem", { name: "Rename" }));
+    await user.click(await screen.findByRole("button", { name: "Add a task to Doing" }));
 
-    await user.keyboard("Other{Escape}");
+    await user.tab();
 
-    expect(screen.getByRole("region", { name: "To do" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "To do actions" })).toHaveFocus();
+    expect(screen.queryByRole("combobox", { name: "Add a task to Doing" })).not.toBeInTheDocument();
     expect(await writes(fetchSpy)).toEqual([]);
   });
 

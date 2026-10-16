@@ -8,7 +8,6 @@ import pytest
 from django.test import Client
 
 from apps.tasks import creation, project_trash, projects, sections, services
-from apps.tasks.models import Task
 
 if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse as Response
@@ -200,10 +199,8 @@ def test_create_after_another_users_section_is_not_found(
 def test_task_rows_carry_their_section(client: Client, ada: User) -> None:
     work = projects.create_project(ada, "Work")
     to_do = sections.create_section(work, "To do")
-    grouped = creation.create_task(work, "Grouped")
+    creation.create_task(work, "Grouped", creation.NewTask(section=to_do))
     creation.create_task(work, "Loose")
-    # No endpoint puts a Task in a Section yet, so the test places it directly.
-    Task.objects.filter(pk=grouped.pk).update(section=to_do)
 
     response = client.get("/api/v1/tasks", {"project": work.pk})
 

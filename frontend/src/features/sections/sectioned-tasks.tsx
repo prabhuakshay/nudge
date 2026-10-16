@@ -1,12 +1,15 @@
 import { ListTodo } from "lucide-react";
+import { useState } from "react";
 
 import { Group } from "@/features/tasks/task-groups";
 import { SortableTaskRows, type SortableRowContext } from "@/features/tasks/task-rows";
 import { rootCount } from "@/features/tasks/task-tree";
 
+import { AddSectionTask, AddSectionTaskButton } from "./add-section-task";
 import { MoveSectionItems } from "./move-section-items";
 import { SectionGroup } from "./section-group";
 import type { SectionTrees } from "./section-trees";
+import type { Section } from "./sections";
 
 /**
  * A Project's open Tasks grouped by Section: No section first, left out when it is empty, then
@@ -32,16 +35,58 @@ export function SectionedTasks({
         </Group>
       )}
       {trees.sections.map(({ section, tasks }) => (
-        <SectionGroup
+        <SectionTasks
           key={section.id}
           section={section}
-          count={rootCount(tasks)}
-          readOnly={!context.sortable}
-          menuItems={<MoveSectionItems section={section} order={order} />}
-        >
-          {tasks.length > 0 && <SortableTaskRows tasks={tasks} context={context} />}
-        </SectionGroup>
+          tasks={tasks}
+          order={order}
+          context={context}
+        />
       ))}
     </>
+  );
+}
+
+/** One Section's header and its Tasks, with the field for adding one when it's open. */
+function SectionTasks({
+  section,
+  tasks,
+  order,
+  context,
+}: {
+  section: Section;
+  tasks: SectionTrees["unsectioned"];
+  order: Section[];
+  context: SortableRowContext;
+}) {
+  const [adding, setAdding] = useState(false);
+  return (
+    <SectionGroup
+      section={section}
+      count={rootCount(tasks)}
+      readOnly={!context.sortable}
+      actions={
+        context.sortable && (
+          <AddSectionTaskButton
+            section={section}
+            open={adding}
+            onOpen={() => {
+              setAdding(true);
+            }}
+          />
+        )
+      }
+      menuItems={<MoveSectionItems section={section} order={order} />}
+    >
+      {adding && (
+        <AddSectionTask
+          section={section}
+          onClose={() => {
+            setAdding(false);
+          }}
+        />
+      )}
+      {tasks.length > 0 && <SortableTaskRows tasks={tasks} context={context} />}
+    </SectionGroup>
   );
 }

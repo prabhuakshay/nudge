@@ -61,12 +61,19 @@ export function Group({
         {icon}
         {label}
         {hint && <span className="font-normal text-muted-foreground">{hint}</span>}
-        <span className="rounded-full bg-surface px-1.5 py-px text-[11px] font-medium text-muted-foreground tabular-nums ring-1 ring-border">
-          {count}
-        </span>
+        <GroupCount count={count} />
       </h2>
       {children}
     </section>
+  );
+}
+
+/** The pill after a group's label that says how many Tasks it holds. */
+export function GroupCount({ count }: { count: number }) {
+  return (
+    <span className="rounded-full bg-surface px-1.5 py-px text-[11px] font-medium text-muted-foreground tabular-nums ring-1 ring-border">
+      {count}
+    </span>
   );
 }
 

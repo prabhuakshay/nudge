@@ -129,6 +129,7 @@ function lists(pathname: string, activity: TaskActivity[], comments: Comment[]) 
   }
   if (pathname.endsWith("/attachments")) return json([]);
   if (pathname.endsWith("/comments")) return json(comments);
+  if (pathname.endsWith("/sections")) return json([]);
   return undefined;
 }
 

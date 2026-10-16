@@ -5,6 +5,10 @@ import { Fragment, useCallback, useMemo, useState } from "react";
 import { Kbd } from "@/components/ui/kbd";
 import { ArchivedNotice } from "@/features/projects/archived-notice";
 import { ProjectHeader } from "@/features/projects/project-header";
+import { AddSection } from "@/features/sections/add-section";
+import { bySection } from "@/features/sections/section-trees";
+import { SectionedTasks } from "@/features/sections/sectioned-tasks";
+import { sectionsQuery } from "@/features/sections/sections";
 import { SHORTCUTS, keyCaps, type ShortcutId } from "@/features/shortcuts/registry";
 import { useMediaQuery } from "@/lib/use-media-query";
 
@@ -19,12 +23,13 @@ import { useMoveTask } from "./task-placement";
 import type { ToggleCollapsed } from "./task-row";
 import { ClosedGroup, Group, PinnedGroup, TaskTableHeader } from "./task-groups";
 import { SortableTaskRows, type SortableRowContext } from "./task-rows";
-import { parentsOf, treeRows, treesWhere } from "./task-tree";
+import { parentsOf, rootCount, treeRows, treesWhere } from "./task-tree";
 import { closedTasksQuery, openTasksQuery, type SidebarProject, type Task } from "./tasks";
 
 /**
  * A Project's Tasks as a table: the page header, Quick add, then the pinned Task trees, the other
- * open trees and a collapsed Closed group. Subtasks nest under their parent and fold away from
+ * open trees and a collapsed Closed group. A Project with Sections groups its open trees by
+ * Section instead, each keeping its Pinned trees at the top; the Inbox has none. Subtasks nest under their parent and fold away from
  * its chevron; dragging a row, or Tab and Alt+↑/↓, reorders and nests it. On phones the table
  * collapses into stacked rows. Clicking a row opens the Task in
  * the drawer, and the URL's `?task=` follows the open Task. An archived Project's list is
@@ -32,8 +37,16 @@ import { closedTasksQuery, openTasksQuery, type SidebarProject, type Task } from
  */
 export function TaskList({ project }: { project: SidebarProject }) {
   const { data: open = [] } = useQuery(openTasksQuery(project.id));
+  const { data: sections = [] } = useQuery({
+    ...sectionsQuery(project.id),
+    enabled: !project.is_inbox,
+  });
   const pinned = useMemo(() => treesWhere(open, (root) => root.pinned_at !== null), [open]);
   const unpinned = useMemo(() => treesWhere(open, (root) => root.pinned_at === null), [open]);
+  const sectioned = useMemo(
+    () => (sections.length > 0 ? bySection(open, sections) : null),
+    [open, sections],
+  );
   const [showClosed, setShowClosed] = useState(false);
   const closed = useInfiniteQuery({
     ...closedTasksQuery(project.id),
@@ -46,11 +59,12 @@ export function TaskList({ project }: { project: SidebarProject }) {
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set());
   const parents = useMemo(() => parentsOf([...open, ...closedTasks]), [open, closedTasks]);
   // J/K step through every Task in outline order, folded or not, as in the prototype.
-  const order = useMemo(
-    () =>
-      [pinned, unpinned, closedTasks].flatMap((rows) => treeRows(rows).map((row) => row.task.id)),
-    [pinned, unpinned, closedTasks],
-  );
+  const order = useMemo(() => {
+    const groups = sectioned
+      ? [sectioned.unsectioned, ...sectioned.sections.map(({ tasks }) => tasks)]
+      : [pinned, unpinned];
+    return [...groups, closedTasks].flatMap((rows) => treeRows(rows).map((row) => row.task.id));
+  }, [sectioned, pinned, unpinned, closedTasks]);
   const { openTaskId: openId, setOpenTask: setOpenId } = useOpenTask();
   const touch = useMediaQuery("(pointer: coarse)");
   const { mutate: move } = useMoveTask();
@@ -121,25 +135,13 @@ export function TaskList({ project }: { project: SidebarProject }) {
         >
           <TaskTableHeader />
 
-          {pinned.length > 0 && (
-            <PinnedGroup count={rootCount(pinned)}>
-              <SortableTaskRows tasks={pinned} context={context} />
-            </PinnedGroup>
+          {sectioned ? (
+            <SectionedTasks trees={sectioned} context={context} />
+          ) : (
+            <UnsectionedTasks pinned={pinned} unpinned={unpinned} context={context} />
           )}
 
-          <Group
-            icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
-            label="Tasks"
-            count={rootCount(unpinned)}
-          >
-            {unpinned.length === 0 ? (
-              <p className="px-4 py-8 text-center text-sm text-muted-foreground">
-                Nothing left here. Add a task above.
-              </p>
-            ) : (
-              <SortableTaskRows tasks={unpinned} context={context} />
-            )}
-          </Group>
+          {!project.is_inbox && !project.is_archived && <AddSection projectId={project.id} />}
 
           <ClosedGroup
             query={closed}
@@ -178,6 +180,41 @@ export function TaskList({ project }: { project: SidebarProject }) {
   );
 }
 
+/** The open Tasks of a list without Sections: the Pinned trees, then the rest. */
+function UnsectionedTasks({
+  pinned,
+  unpinned,
+  context,
+}: {
+  pinned: Task[];
+  unpinned: Task[];
+  context: SortableRowContext;
+}) {
+  return (
+    <>
+      {pinned.length > 0 && (
+        <PinnedGroup count={rootCount(pinned)}>
+          <SortableTaskRows tasks={pinned} context={context} />
+        </PinnedGroup>
+      )}
+
+      <Group
+        icon={<ListTodo className="size-3.5 text-muted-foreground" aria-hidden />}
+        label="Tasks"
+        count={rootCount(unpinned)}
+      >
+        {unpinned.length === 0 ? (
+          <p className="px-4 py-8 text-center text-sm text-muted-foreground">
+            Nothing left here. Add a task above.
+          </p>
+        ) : (
+          <SortableTaskRows tasks={unpinned} context={context} />
+        )}
+      </Group>
+    </>
+  );
+}
+
 /** One key in the list's footer, spelled from the shortcut registry, then what it does. */
 function KeyHint({ shortcut, children }: { shortcut: ShortcutId; children: string }) {
   const [binding = ""] = SHORTCUTS[shortcut].keys;
@@ -194,8 +231,4 @@ function KeyHint({ shortcut, children }: { shortcut: ShortcutId; children: strin
       {children}
     </span>
   );
-}
-
-function rootCount(tasks: Task[]) {
-  return tasks.filter((task) => task.parent_id === null).length;
 }

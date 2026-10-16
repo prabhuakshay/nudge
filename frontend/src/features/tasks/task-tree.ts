@@ -85,6 +85,11 @@ export function parentsOf(rows: Task[]): number[] {
   return rows.filter((row) => parents.has(row.id)).map((row) => row.id);
 }
 
+/** How many root Tasks are among the rows, which is what a group's count shows. */
+export function rootCount(rows: Task[]): number {
+  return rows.filter((row) => row.parent_id === null).length;
+}
+
 /** The rows of the trees whose root passes the test, in the order given. */
 export function treesWhere(rows: Task[], test: (root: Task) => boolean): Task[] {
   const byId = new Map(rows.map((row) => [row.id, row]));

@@ -1288,6 +1288,8 @@ export interface paths {
     /**
      * Edit a Habit
      * @description Change any of a Habit's settings; the ones left out stay as they are.
+     *
+     *     A null reminder time removes the Reminder, unlike the other settings.
      */
     patch: operations["apps_habits_api_update_habit"];
     trace?: never;
@@ -3846,6 +3848,11 @@ export interface components {
        */
       start_date: string;
       /**
+       * Reminder Time
+       * @description When to remind the user on days the Habit is still to do; null for never.
+       */
+      reminder_time: string | null;
+      /**
        * Today Count
        * @description Check-ins so far today, in the user's zone.
        */
@@ -3905,10 +3912,15 @@ export interface components {
        * @description Defaults to today.
        */
       start_date?: string | null;
+      /**
+       * Reminder Time
+       * @description A clock time in the user's zone to remind them at; none when null.
+       */
+      reminder_time?: string | null;
     };
     /**
      * HabitPatchIn
-     * @description The settings of a Habit to change; settings left out or null stay as they are.
+     * @description The settings of a Habit to change; ones left out or null stay, but a null Reminder goes.
      */
     HabitPatchIn: {
       /** Name */
@@ -3933,6 +3945,11 @@ export interface components {
       goal?: number | null;
       /** Start Date */
       start_date?: string | null;
+      /**
+       * Reminder Time
+       * @description A clock time in the user's zone to remind them at; null removes it.
+       */
+      reminder_time?: string | null;
     };
     /**
      * CheckInOut

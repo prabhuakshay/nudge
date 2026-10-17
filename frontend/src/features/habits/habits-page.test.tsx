@@ -75,6 +75,7 @@ describe("The Habits page", () => {
         goal: 1,
         ...EVERY_DAY,
         start_date: "2026-10-15",
+        reminder_time: null,
       },
     ]);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -103,6 +104,7 @@ describe("The Habits page", () => {
         goal: 1,
         ...EVERY_DAY,
         start_date: "2026-10-15",
+        reminder_time: null,
       },
     ]);
   });

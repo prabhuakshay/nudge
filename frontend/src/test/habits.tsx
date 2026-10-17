@@ -23,6 +23,7 @@ export function habit(overrides: Partial<Habit> = {}): Habit {
     times_per_week: null,
     goal: 1,
     start_date: "2026-10-15",
+    reminder_time: null,
     today_count: 0,
     is_archived: false,
     current_streak: 0,

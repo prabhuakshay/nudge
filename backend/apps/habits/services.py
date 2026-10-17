@@ -13,12 +13,13 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.core.errors import DomainRuleError, NotFoundError
 from apps.core.siblings import Siblings, by_key, row_lock
+from apps.habits import reminders
 from apps.habits.models import CheckIn, Habit
 from apps.habits.schedule import is_scheduled, is_week_met, today, week_of
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
-    from datetime import date
+    from datetime import date, time
 
     from django.db.models import QuerySet
 
@@ -97,6 +98,7 @@ def create_habit(  # noqa: PLR0913 - one keyword per setting the user picks in t
     times_per_week: int | None = None,
     goal: int = 1,
     start_date: date | None = None,
+    reminder_time: time | None = None,
 ) -> Habit:
     """Add a Habit last in the user's order, starting today in the user's time zone by default."""
     created = Habit(
@@ -106,11 +108,13 @@ def create_habit(  # noqa: PLR0913 - one keyword per setting the user picks in t
         color=color,
         goal=goal,
         start_date=start_date or today(user),
+        reminder_time=reminder_time,
     )
     _set_frequency(created, frequency, weekdays, times_per_week)
     with transaction.atomic():
         created.position = habit_siblings(user).last()
         created.save()
+        reminders.reschedule([created])
     return habit(user, created.pk)
 
 
@@ -126,10 +130,13 @@ def update_habit(  # noqa: PLR0913 - one keyword per setting the user can change
     times_per_week: int | None = None,
     goal: int | None = None,
     start_date: date | None = None,
+    reminder_time: time | None = None,
+    remove_reminder: bool = False,
 ) -> Habit:
     """Change any of a Habit's settings; None leaves a setting as it is.
 
-    A lower Goal lowers any day's Check-ins above it, so no day has more than the Goal.
+    `remove_reminder` turns the Reminder off, since None leaves it. A lower Goal lowers any day's
+    Check-ins above it, so no day has more than the Goal.
 
     Raises:
         NotFoundError: The Habit isn't one of the user's.
@@ -141,6 +148,10 @@ def update_habit(  # noqa: PLR0913 - one keyword per setting the user can change
     found.color = color if color is not None else found.color
     found.goal = goal if goal is not None else found.goal
     found.start_date = start_date if start_date is not None else found.start_date
+    if remove_reminder:
+        found.reminder_time = None
+    elif reminder_time is not None:
+        found.reminder_time = reminder_time
     _set_frequency(
         found,
         frequency if frequency is not None else Habit.Frequency(found.frequency),
@@ -150,6 +161,7 @@ def update_habit(  # noqa: PLR0913 - one keyword per setting the user can change
     with transaction.atomic():
         found.save()
         found.check_ins.filter(count__gt=found.goal).update(count=found.goal)
+        reminders.reschedule([found])
     return habit(user, habit_id)
 
 
@@ -191,10 +203,12 @@ def set_check_ins(user: User, habit_id: int, day: date, count: int) -> Habit:
     if count > found.goal:
         msg = f"A day can't have more Check-ins than the Goal of {found.goal}."
         raise HabitRuleError(msg)
-    if count == 0:
-        found.check_ins.filter(date=day).delete()
-    else:
-        CheckIn.objects.update_or_create(habit=found, date=day, defaults={"count": count})
+    with transaction.atomic():
+        if count == 0:
+            found.check_ins.filter(date=day).delete()
+        else:
+            CheckIn.objects.update_or_create(habit=found, date=day, defaults={"count": count})
+        reminders.reschedule([found])
     return habit(user, habit_id)
 
 
@@ -226,6 +240,7 @@ def _set_archived(user: User, habit_id: int, *, archived: bool) -> Habit:
     if archived != found.is_archived:
         found.archived_at = timezone.now() if archived else None
         found.save(update_fields=["archived_at", "updated_at"])
+        reminders.reschedule([found])
     return found
 
 

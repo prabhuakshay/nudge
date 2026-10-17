@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 from procrastinate.contrib.django import app
 
+from apps.habits import reminders as habit_reminders
 from apps.tasks import purge, reminders, tasks
 
 if TYPE_CHECKING:
@@ -18,18 +19,16 @@ def test_the_reminder_sweep_runs_every_minute() -> None:
     assert periodic.cron == "* * * * *"
 
 
-def test_the_reminder_sweep_sends_due_reminders(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_the_reminder_sweep_sends_due_task_and_habit_reminders(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     sweeps: list[str] = []
-
-    def sweep() -> int:
-        sweeps.append("swept")
-        return 0
-
-    monkeypatch.setattr(reminders, "send_due_reminders", sweep)
+    monkeypatch.setattr(reminders, "send_due_reminders", lambda: sweeps.append("tasks"))
+    monkeypatch.setattr(habit_reminders, "send_due_reminders", lambda: sweeps.append("habits"))
 
     tasks.send_due_reminders(timestamp=1_793_000_000)
 
-    assert sweeps == ["swept"]
+    assert sweeps == ["tasks", "habits"]
 
 
 def test_the_trash_purge_runs_daily() -> None:

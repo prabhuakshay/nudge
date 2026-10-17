@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import date  # noqa: TC003 - Pydantic needs the type at runtime
+from datetime import date, time  # noqa: TC003 - Pydantic needs the types at runtime
 from typing import Annotated
 
 from ninja import Field, Schema
@@ -30,6 +30,9 @@ class HabitOut(Schema):
     times_per_week: int | None = Field(description="How many times a week; else null.")
     goal: int = Field(description="How many Check-ins make a day done.")
     start_date: date = Field(description="The first day the Habit counts, in the user's zone.")
+    reminder_time: time | None = Field(
+        description="When to remind the user on days the Habit is still to do; null for never.",
+    )
     today_count: int = Field(description="Check-ins so far today, in the user's zone.")
     is_archived: bool = Field(
         description="Archived Habits keep their history but stay out of Today."
@@ -65,10 +68,14 @@ class HabitIn(Schema):
     )
     goal: Goal = 1
     start_date: date | None = Field(default=None, description="Defaults to today.")
+    reminder_time: time | None = Field(
+        default=None,
+        description="A clock time in the user's zone to remind them at; none when null.",
+    )
 
 
 class HabitPatchIn(Schema):
-    """The settings of a Habit to change; settings left out or null stay as they are."""
+    """The settings of a Habit to change; ones left out or null stay, but a null Reminder goes."""
 
     name: HabitName | None = None
     icon: HabitIcon | None = None
@@ -87,6 +94,10 @@ class HabitPatchIn(Schema):
         description="A lower Goal lowers any day's Check-ins above it to the new Goal.",
     )
     start_date: date | None = None
+    reminder_time: time | None = Field(
+        default=None,
+        description="A clock time in the user's zone to remind them at; null removes it.",
+    )
 
 
 class CheckInOut(Schema):

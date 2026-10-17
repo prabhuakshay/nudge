@@ -12,6 +12,7 @@ export type TaskPage = components["schemas"]["TaskListOut"];
 
 export const WORK_LIST = { project: 7 };
 export const OCTOBER: DayRange = { start: "2026-10-01", end: "2026-10-31" };
+export const NOVEMBER: DayRange = { start: "2026-11-01", end: "2026-11-30" };
 
 export const TRIP = makeTask({ id: 1, title: "Trip" });
 export const FLIGHTS = makeTask({ id: 2, title: "Flights", parent_id: 1 });
@@ -53,6 +54,22 @@ export function calendar(queryClient: QueryClient) {
   const range = queryClient.getQueryData<CalendarRange>(taskKeys.calendar(OCTOBER));
   if (!range) throw new Error("The Calendar range is gone.");
   return range;
+}
+
+/** Cache an empty Calendar range, as if it had loaded with nothing in it. */
+export function emptyRange(queryClient: QueryClient, range: DayRange) {
+  queryClient.setQueryData<CalendarRange>(taskKeys.calendar(range), {
+    items: [],
+    occurrences: [],
+    repeating: [],
+  });
+}
+
+/** The ids of the Tasks a Calendar range shows. */
+export function rangeIds(queryClient: QueryClient, range: DayRange) {
+  return queryClient
+    .getQueryData<CalendarRange>(taskKeys.calendar(range))
+    ?.items.map((task) => task.id);
 }
 
 /** The titles of the Closed Tasks of Project 7. */

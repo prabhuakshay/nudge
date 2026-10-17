@@ -7,26 +7,22 @@ import {
   calendar,
   closedTitles,
   detail,
+  emptyRange,
   FLIGHTS,
   GYM,
+  NOVEMBER,
   OCTOBER,
+  rangeIds,
   READ,
   seeded,
   titles,
   TRIP,
   WORK_LIST,
-  type CalendarRange,
   type TaskPage,
 } from "@/test/task-cache";
 import { makeTask } from "@/test/tasks";
 
-import {
-  showTaskChanges,
-  taskKeys,
-  useTaskMutation,
-  type DayRange,
-  type TaskChange,
-} from "./task-cache";
+import { showTaskChanges, taskKeys, useTaskMutation, type TaskChange } from "./task-cache";
 import type { Task, TaskDetail } from "./tasks";
 
 describe("showTaskChanges", () => {
@@ -222,12 +218,7 @@ describe("showTaskChanges", () => {
 
   it("inserts a new Task in the Calendar ranges its dates fall in", () => {
     const queryClient = seeded();
-    const november: DayRange = { start: "2026-11-01", end: "2026-11-30" };
-    queryClient.setQueryData<CalendarRange>(taskKeys.calendar(november), {
-      items: [],
-      occurrences: [],
-      repeating: [],
-    });
+    emptyRange(queryClient, NOVEMBER);
     const trip = makeTask({ id: 10, start_date: "2026-10-30", due_date: "2026-11-02" });
     const later = makeTask({ id: 11, due_date: "2026-12-01" });
 
@@ -236,10 +227,8 @@ describe("showTaskChanges", () => {
       { kind: "insert", task: later },
     ]);
 
-    const ids = (range: DayRange) =>
-      queryClient.getQueryData<CalendarRange>(taskKeys.calendar(range))?.items.map((t) => t.id);
-    expect(ids(OCTOBER)).toEqual([GYM.id, 10]);
-    expect(ids(november)).toEqual([10]);
+    expect(rangeIds(queryClient, OCTOBER)).toEqual([GYM.id, 10]);
+    expect(rangeIds(queryClient, NOVEMBER)).toEqual([10]);
   });
 });
 

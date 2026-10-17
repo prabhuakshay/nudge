@@ -216,17 +216,34 @@ function overlaps(task: Task, { start, end }: DayRange) {
 }
 
 /**
+ * The Tasks a Calendar range shows after a change. A new Task, or one whose dates changed, shows
+ * exactly when its dates overlap the range; `redated` is that Task after the patch, if any cached
+ * shape holds it.
+ */
+function itemsAfter(items: Task[], change: TaskChange, range: DayRange, redated?: Task) {
+  const after = rowsAfter(items, change, false);
+  if (change.kind === "insert")
+    return overlaps(change.task, range) ? [...after, change.task] : after;
+  if (!redated) return after;
+  if (!overlaps(redated, range)) return after.filter((row) => row.id !== redated.id);
+  return after.some((row) => row.id === redated.id) ? after : [...after, redated];
+}
+
+/**
  * A Calendar range after a change. It keeps Closed Tasks, so it drops nothing a patch closes, and
  * the Tasks its future Occurrences come from change with the Tasks it shows. A Task that stops
  * repeating, or is removed, loses its future Occurrences.
  */
-function calendarAfter(data: CalendarRange, change: TaskChange, range: DayRange): CalendarRange {
-  const items = rowsAfter(data.items, change, false);
-  const shows = change.kind === "insert" && overlaps(change.task, range);
+function calendarAfter(
+  data: CalendarRange,
+  change: TaskChange,
+  range: DayRange,
+  redated?: Task,
+): CalendarRange {
   const repeating = rowsAfter(data.repeating, change, false);
   const repeats = new Set(repeating.filter((task) => task.repeat_rule).map((task) => task.id));
   return {
-    items: shows ? [...items, change.task] : items,
+    items: itemsAfter(data.items, change, range, redated),
     occurrences: data.occurrences.filter((occurrence) => repeats.has(occurrence.task_id)),
     repeating,
   };
@@ -307,8 +324,36 @@ function showInOpenLists(queryClient: QueryClient, change: TaskChange) {
   );
 }
 
+/** Every Task row the cache holds, in any shape. */
+function cachedRows(queryClient: QueryClient): Task[] {
+  const lists = queryClient.getQueriesData<Task[]>({ queryKey: prefix("open") });
+  const searches = queryClient.getQueriesData<Task[]>({ queryKey: prefix("search") });
+  const closed = queryClient.getQueriesData<InfiniteData<TaskPage>>({ queryKey: prefix("closed") });
+  const ranges = queryClient.getQueriesData<CalendarRange>({ queryKey: prefix("calendar") });
+  const drawers = queryClient.getQueriesData<TaskDetail>({ queryKey: prefix("detail") });
+  return [
+    ...[...lists, ...searches].flatMap(([, rows]) => rows ?? []),
+    ...closed.flatMap(([, data]) => data?.pages.flatMap((page) => page.items) ?? []),
+    ...ranges.flatMap(([, data]) => data?.items ?? []),
+    // Last, since a drawer's Task carries fields a row doesn't; they're harmless in a Calendar
+    // range until it refetches.
+    ...drawers.flatMap(([, task]) => (task ? [...task.subtasks, task] : [])),
+  ];
+}
+
+/**
+ * The Task a patch gives new dates, as it will be after the patch. A patch carries only the
+ * changed fields, so the rest comes from a cached shape that holds the Task.
+ */
+function redatedTask(queryClient: QueryClient, change: TaskChange): Task | undefined {
+  if (change.kind !== "patch" || change.patch.dates === undefined) return undefined;
+  const row = cachedRows(queryClient).find((task) => task.id === change.patch.id);
+  return row && patched(row, change.patch);
+}
+
 /** Show one change in every cached query that holds Tasks. */
 function showChange(queryClient: QueryClient, change: TaskChange) {
+  const redated = redatedTask(queryClient, change);
   showInOpenLists(queryClient, change);
   queryClient.setQueriesData<InfiniteData<TaskPage>>(
     { queryKey: prefix("closed") },
@@ -322,7 +367,8 @@ function showChange(queryClient: QueryClient, change: TaskChange) {
     queryKey: prefix("calendar"),
   })) {
     const range = rangeOf(queryKey);
-    if (data && range) queryClient.setQueryData(queryKey, calendarAfter(data, change, range));
+    if (data && range)
+      queryClient.setQueryData(queryKey, calendarAfter(data, change, range, redated));
   }
   queryClient.setQueriesData<Task[]>(
     { queryKey: prefix("search") },

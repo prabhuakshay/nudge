@@ -16,8 +16,8 @@ import { cn } from "@/lib/utils";
 
 import { useDetailVerb } from "./detail-verbs";
 import { STATUS, STATUSES } from "./task-properties";
-import { useSetTaskStatus } from "./set-status";
 import { useUpdateTask, type Task, type TaskStatus } from "./tasks";
+import { useUndoableTaskChanges } from "./task-undo";
 
 /** A Task's Status as a small coloured label. */
 export function StatusBadge({ status }: { status: TaskStatus }) {
@@ -38,7 +38,7 @@ export function StatusBadge({ status }: { status: TaskStatus }) {
 
 /** The Status picker. Its trigger is `children`, so the list cell and the drawer chip share it. */
 export function StatusMenu({ task, children }: { task: Task; children: ReactNode }) {
-  const { mutate: setStatus } = useSetTaskStatus();
+  const { setStatus } = useUndoableTaskChanges();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
@@ -48,7 +48,7 @@ export function StatusMenu({ task, children }: { task: Task; children: ReactNode
           value={task.status}
           onValueChange={(value) => {
             const status = STATUSES.find((candidate) => candidate === value);
-            if (status && status !== task.status) setStatus({ task, status });
+            if (status && status !== task.status) setStatus([task], status);
           }}
         >
           {STATUSES.map((status) => {

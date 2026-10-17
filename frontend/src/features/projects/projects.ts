@@ -3,7 +3,7 @@ import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
 import { TASK_REFETCH, taskKeys } from "@/features/tasks/task-cache";
 import { sidebarQuery, type Sidebar, type SidebarProject } from "@/features/tasks/tasks";
-import { trashQuery, useRestoreProject } from "@/features/trash/trash";
+import { trashQuery, useRestoreFromTrash } from "@/features/trash/trash";
 import { editing, useCacheMutation } from "@/lib/cache-mutation";
 import { toastWithUndo } from "@/lib/undo-toast";
 
@@ -226,7 +226,7 @@ function withoutProject(sidebar: Sidebar, id: number): Sidebar {
  * before the server answers.
  */
 export function useDeleteProject() {
-  const { mutate: restore } = useRestoreProject();
+  const { mutate: restore } = useRestoreFromTrash();
   return useCacheMutation({
     mutationFn: async (project: SidebarProject) => {
       const { error } = await api.DELETE("/api/v1/projects/{project_id}", {
@@ -239,7 +239,7 @@ export function useDeleteProject() {
     ),
     onSuccess: (_, project) => {
       toastWithUndo(`Moved “${project.name}” to Trash`, () => {
-        restore(project.id);
+        restore([{ kind: "project", id: project.id }]);
       });
     },
     refetch: [...TASK_REFETCH, trashQuery.queryKey],

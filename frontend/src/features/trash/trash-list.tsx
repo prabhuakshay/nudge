@@ -17,9 +17,7 @@ import {
   trashQuery,
   useDeleteForever,
   useEmptyTrash,
-  useRestoreProject,
-  useRestoreRows,
-  useRestoreTask,
+  useRestoreFromTrash,
   type TrashedRow,
 } from "./trash";
 import { TrashSelectionBar } from "./trash-selection-bar";
@@ -66,9 +64,7 @@ type Confirm =
  */
 export function TrashList() {
   const { data: rows } = useQuery(trashQuery);
-  const { mutate: restoreTask } = useRestoreTask();
-  const { mutate: restoreProject } = useRestoreProject();
-  const { mutate: restoreRows } = useRestoreRows();
+  const { mutate: restore } = useRestoreFromTrash();
   const [confirm, setConfirm] = useState<Confirm | null>(null);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   // A selected row can leave the Trash from elsewhere, so the selection is what's still listed.
@@ -137,8 +133,7 @@ export function TrashList() {
                   variant="ghost"
                   aria-label={`Restore “${title}”`}
                   onClick={() => {
-                    if (row.kind === "project") restoreProject(row.id);
-                    else restoreTask(row.id);
+                    restore([row]);
                   }}
                 >
                   <RotateCcw className="size-4" aria-hidden />
@@ -163,7 +158,7 @@ export function TrashList() {
       <TrashSelectionBar
         count={chosen.length}
         onRestore={() => {
-          restoreRows(chosen);
+          restore(chosen);
           clearSelection();
         }}
         onDeleteForever={() => {

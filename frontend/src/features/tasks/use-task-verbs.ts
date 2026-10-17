@@ -3,11 +3,9 @@ import { toast } from "sonner";
 
 import { matchingBinding } from "@/features/shortcuts/registry";
 import type { ShortcutHandlers } from "@/features/shortcuts/use-shortcuts";
-import { useDeleteTask } from "@/features/trash/trash";
 
 import { requestDetailVerb } from "./detail-verbs";
 import { useSetOpenTask, useTaskLink } from "./open-task";
-import { useSetTaskStatus } from "./set-status";
 import { useDuplicateTask } from "./task-placement";
 import {
   completionToggled,
@@ -19,6 +17,7 @@ import {
   type TaskVerbId,
 } from "./task-verbs";
 import { useUpdateTask, type Task } from "./tasks";
+import { useUndoableTaskChanges } from "./task-undo";
 
 /** A Task verb with what it does. */
 export type RunnableTaskVerb = TaskVerb & { run: () => void };
@@ -42,10 +41,10 @@ async function copyLink(link: string) {
 
 /** Complete a Task, or reopen it when it is Closed, then offer Undo. */
 export function useToggleComplete() {
-  const { mutate: setStatus } = useSetTaskStatus();
+  const { setStatus } = useUndoableTaskChanges();
   return useCallback(
     (task: Task) => {
-      setStatus({ task, status: completionToggled(task.status) });
+      setStatus([task], completionToggled(task.status));
     },
     [setStatus],
   );
@@ -57,8 +56,7 @@ export function useToggleComplete() {
  */
 export function useTaskVerbs() {
   const { mutate: update } = useUpdateTask();
-  const { mutate: setStatus } = useSetTaskStatus();
-  const { mutate: deleteTask } = useDeleteTask();
+  const { setStatus, remove } = useUndoableTaskChanges();
   const { mutate: duplicate } = useDuplicateTask();
   const toggleComplete = useToggleComplete();
   const taskLink = useTaskLink();
@@ -82,12 +80,12 @@ export function useTaskVerbs() {
         addTag: inDetail("addTag"),
         moveToProject: inDetail("moveToProject"),
         markBlocked: () => {
-          if (task.status !== "blocked") setStatus({ task, status: "blocked" });
+          if (task.status !== "blocked") setStatus([task], "blocked");
           inDetail("markBlocked")();
         },
         editTitle: inDetail("editTitle"),
         markWontDo: () => {
-          setStatus({ task, status: wontDoToggled(task.status) });
+          setStatus([task], wontDoToggled(task.status));
         },
         togglePin: () => {
           update({ id: task.id, pinned: task.pinned_at === null });
@@ -97,7 +95,7 @@ export function useTaskVerbs() {
         },
         copyLink: () => void copyLink(taskLink(task.id)),
         deleteTask: () => {
-          deleteTask(task);
+          remove([task]);
           onDeleted?.();
         },
       };
@@ -109,7 +107,7 @@ export function useTaskVerbs() {
           : runs[verb.id];
       return taskVerbs(task, place).map((verb) => ({ ...verb, run: run(verb) }));
     },
-    [update, setStatus, deleteTask, duplicate, toggleComplete, taskLink, setOpenTask],
+    [update, setStatus, remove, duplicate, toggleComplete, taskLink, setOpenTask],
   );
 }
 

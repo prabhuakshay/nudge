@@ -36,12 +36,15 @@ import { useShortcuts } from "@/features/shortcuts/use-shortcuts";
 import { tagHue } from "@/features/tags/tags";
 import { cn } from "@/lib/utils";
 
-import { hasTag, useBulkActions } from "./bulk";
 import { PRIORITIES, PRIORITY, STATUS, STATUSES } from "./task-properties";
 import type { RowContext } from "./task-row";
+import { hasTag, useUndoableTaskChanges } from "./task-undo";
 import { sidebarQuery, type Task } from "./tasks";
 
-type Actions = ReturnType<typeof useBulkActions>;
+type Changes = ReturnType<typeof useUndoableTaskChanges>;
+
+/** The chosen Tasks and the changes to make to them. */
+type BarProps = { chosen: Task[]; changes: Changes };
 
 const isoDate = (day: Date) => format(day, "yyyy-MM-dd");
 
@@ -53,7 +56,7 @@ const isoDate = (day: Date) => format(day, "yyyy-MM-dd");
 export function SelectionBar({ tasks, context }: { tasks: Task[]; context: RowContext }) {
   const { selectedIds, clearSelection } = context;
   const chosen = tasks.filter((task) => selectedIds.has(task.id));
-  const actions = useBulkActions(chosen, tasks);
+  const changes = useUndoableTaskChanges();
   useShortcuts({ clearSelection }, chosen.length > 0);
   if (chosen.length === 0) return null;
   const projects = new Set(chosen.map((task) => task.project_id));
@@ -68,14 +71,25 @@ export function SelectionBar({ tasks, context }: { tasks: Task[]; context: RowCo
       <span role="status" className="mr-2 text-sm font-semibold tabular-nums">
         {chosen.length} selected
       </span>
-      <StatusMenu actions={actions} />
-      <PriorityMenu actions={actions} />
-      <DueMenu actions={actions} />
-      <TagMenu chosen={chosen} actions={actions} />
-      <ProjectPicker currentId={onlyProject} onSelect={actions.moveTo}>
+      <StatusMenu chosen={chosen} changes={changes} />
+      <PriorityMenu chosen={chosen} changes={changes} />
+      <DueMenu chosen={chosen} changes={changes} />
+      <TagMenu chosen={chosen} changes={changes} />
+      <ProjectPicker
+        currentId={onlyProject}
+        onSelect={(project) => {
+          changes.moveTo(chosen, project);
+        }}
+      >
         <BarButton icon={<FolderInput />}>Move</BarButton>
       </ProjectPicker>
-      <Button variant="ghost" onClick={actions.remove} className="text-danger hover:text-danger">
+      <Button
+        variant="ghost"
+        onClick={() => {
+          changes.remove(chosen, tasks);
+        }}
+        className="text-danger hover:text-danger"
+      >
         <Trash2 aria-hidden />
         Delete
       </Button>
@@ -102,7 +116,7 @@ function BarButton({
   );
 }
 
-function StatusMenu({ actions }: { actions: Actions }) {
+function StatusMenu({ chosen, changes }: BarProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -116,7 +130,7 @@ function StatusMenu({ actions }: { actions: Actions }) {
             <DropdownMenuItem
               key={status}
               onSelect={() => {
-                actions.setStatus(status);
+                changes.setStatus(chosen, status);
               }}
             >
               <Icon className={cn("size-4", text)} aria-hidden />
@@ -129,7 +143,7 @@ function StatusMenu({ actions }: { actions: Actions }) {
   );
 }
 
-function PriorityMenu({ actions }: { actions: Actions }) {
+function PriorityMenu({ chosen, changes }: BarProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -141,7 +155,7 @@ function PriorityMenu({ actions }: { actions: Actions }) {
           <DropdownMenuItem
             key={priority}
             onSelect={() => {
-              actions.setPriority(priority);
+              changes.setPriority(chosen, priority);
             }}
           >
             <Flag
@@ -157,12 +171,12 @@ function PriorityMenu({ actions }: { actions: Actions }) {
 }
 
 /** Quick days and a calendar; the Tasks become due that day, all-day. */
-function DueMenu({ actions }: { actions: Actions }) {
+function DueMenu({ chosen, changes }: BarProps) {
   const [open, setOpen] = useState(false);
   const today = new Date();
   const pick = (day: Date) => {
     setOpen(false);
-    actions.setDueDate(isoDate(day));
+    changes.setDueDate(chosen, isoDate(day));
   };
   const quick = [
     { label: "Today", day: today },
@@ -205,7 +219,7 @@ function DueMenu({ actions }: { actions: Actions }) {
  * The user's Tags, each ticked when every selected Task has it and dashed when only some do.
  * Picking a Tag that every Task has takes it off them all; any other puts it on them all.
  */
-function TagMenu({ chosen, actions }: { chosen: Task[]; actions: Actions }) {
+function TagMenu({ chosen, changes }: BarProps) {
   const [open, setOpen] = useState(false);
   const { data: sidebar } = useQuery(sidebarQuery);
   const tags = sidebar?.tags ?? [];
@@ -229,8 +243,8 @@ function TagMenu({ chosen, actions }: { chosen: Task[]; actions: Actions }) {
                     value={`${tag.name} ${String(tag.id)}`}
                     onSelect={() => {
                       setOpen(false);
-                      if (all) actions.removeTag(tag);
-                      else actions.addTag(tag);
+                      if (all) changes.removeTag(chosen, tag);
+                      else changes.addTag(chosen, tag);
                     }}
                   >
                     <span

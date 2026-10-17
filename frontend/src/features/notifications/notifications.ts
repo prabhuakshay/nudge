@@ -3,8 +3,9 @@ import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query
 import { api } from "@/api/client";
 import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
-import { offerStatusUndo, useRestoreStatuses } from "@/features/tasks/set-status";
+import { statusToast } from "@/features/tasks/repeat";
 import { useTaskMutation } from "@/features/tasks/task-cache";
+import { useOfferUndo } from "@/features/tasks/task-undo";
 
 export type Notification = components["schemas"]["NotificationOut"];
 export type NotificationList = components["schemas"]["NotificationListOut"];
@@ -82,7 +83,7 @@ export function useSendTestNotification() {
 
 /** Complete the Task a Reminder notification is about, then offer Undo in a toast. */
 export function useCompleteFromReminder() {
-  const { mutate: restore } = useRestoreStatuses();
+  const offerUndo = useOfferUndo();
   return useTaskMutation({
     mutationFn: async (id: number) => {
       const { data, error } = await api.POST("/api/v1/notifications/{notification_id}/complete", {
@@ -94,7 +95,10 @@ export function useCompleteFromReminder() {
       return data;
     },
     onSuccess: ({ task, affected }) => {
-      offerStatusUndo(restore, task, "completed", affected);
+      offerUndo(statusToast(task, "completed", affected.length - 1), {
+        kind: "statuses",
+        affected,
+      });
     },
     alsoRefetch: [notificationsQuery.queryKey],
   });

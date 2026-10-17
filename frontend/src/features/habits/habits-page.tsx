@@ -10,15 +10,9 @@ import { cn } from "@/lib/utils";
 import { DeleteHabitDialog } from "./delete-habit-dialog";
 import { HabitDetail } from "./habit-detail";
 import { HabitDialog } from "./habit-dialog";
-import { ArchivedHabits, HabitList } from "./habit-rows";
+import { ArchivedHabits, HabitList, type HabitActions } from "./habit-rows";
 import { habitsQuery, type Habit } from "./habits";
 import { useOpenHabit } from "./open-habit";
-
-type HabitActions = {
-  onOpen: (habit: Habit) => void;
-  onEdit: (habit: Habit) => void;
-  onDelete: (habit: Habit) => void;
-};
 
 /**
  * The Habits page: the user's Habits in their order, a button to add one, and the Archived ones
@@ -107,9 +101,7 @@ function HabitLists({
   habits,
   timeZone,
   onAdd,
-  onOpen,
-  onEdit,
-  onDelete,
+  ...actions
 }: HabitActions & { habits: Habit[] | undefined; timeZone: string; onAdd: () => void }) {
   const live = habits?.filter((habit) => !habit.is_archived) ?? [];
   const archived = habits?.filter((habit) => habit.is_archived) ?? [];
@@ -135,16 +127,8 @@ function HabitLists({
           description="Add something you want to do regularly, then check in whenever you do it."
         />
       )}
-      {live.length > 0 && (
-        <HabitList
-          habits={live}
-          timeZone={timeZone}
-          onOpen={onOpen}
-          onEdit={onEdit}
-          onDelete={onDelete}
-        />
-      )}
-      <ArchivedHabits habits={archived} onOpen={onOpen} onDelete={onDelete} />
+      {live.length > 0 && <HabitList habits={live} timeZone={timeZone} {...actions} />}
+      <ArchivedHabits habits={archived} {...actions} />
     </div>
   );
 }

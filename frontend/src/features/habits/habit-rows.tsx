@@ -15,6 +15,13 @@ import { HabitIcon } from "./habit-icon";
 import { RecentDays, StreakLine } from "./habit-progress";
 import { useMoveHabit, useSetArchived, type Habit } from "./habits";
 
+/** What a Habit's row can ask the page to do with it: open its details, edit or delete it. */
+export type HabitActions = {
+  onOpen: (habit: Habit) => void;
+  onEdit: (habit: Habit) => void;
+  onDelete: (habit: Habit) => void;
+};
+
 const LIST = "overflow-hidden rounded-xl border border-border bg-surface";
 const ROW = "group flex min-h-14 items-center gap-3 border-b border-border/60 px-4 py-2";
 
@@ -66,24 +73,15 @@ function DeleteItem({ onSelect }: { onSelect: () => void }) {
 
 /**
  * The user's live Habits in their order. Each row's name opens its details, and the row shows its
- * Streak and last 7 days, drags by its
- * grip (Space picks it up from the keyboard), checks in for today with its ring button, and its
- * menu edits it, undoes today's
- * latest Check-in, archives or deletes it. `timeZone` is the user's, which decides what today is.
+ * Streak and last 7 days, drags by its grip (Space picks it up from the keyboard) and checks in
+ * for today with its ring button. Its menu edits it, undoes today's latest Check-in, archives or
+ * deletes it. `timeZone` is the user's, which decides what today is.
  */
 export function HabitList({
   habits,
   timeZone,
-  onOpen,
-  onEdit,
-  onDelete,
-}: {
-  habits: Habit[];
-  timeZone: string;
-  onOpen: (habit: Habit) => void;
-  onEdit: (habit: Habit) => void;
-  onDelete: (habit: Habit) => void;
-}) {
+  ...actions
+}: HabitActions & { habits: Habit[]; timeZone: string }) {
   const sensors = useSidebarSensors();
   const move = useMoveHabit();
 
@@ -101,14 +99,7 @@ export function HabitList({
       >
         <ul aria-label="Habits" className={LIST}>
           {habits.map((habit) => (
-            <SortableHabitRow
-              key={habit.id}
-              habit={habit}
-              timeZone={timeZone}
-              onOpen={onOpen}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
+            <SortableHabitRow key={habit.id} habit={habit} timeZone={timeZone} {...actions} />
           ))}
         </ul>
       </SortableContext>
@@ -122,13 +113,7 @@ function SortableHabitRow({
   onOpen,
   onEdit,
   onDelete,
-}: {
-  habit: Habit;
-  timeZone: string;
-  onOpen: (habit: Habit) => void;
-  onEdit: (habit: Habit) => void;
-  onDelete: (habit: Habit) => void;
-}) {
+}: HabitActions & { habit: Habit; timeZone: string }) {
   const {
     setNodeRef,
     setActivatorNodeRef,
@@ -202,11 +187,7 @@ export function ArchivedHabits({
   habits,
   onOpen,
   onDelete,
-}: {
-  habits: Habit[];
-  onOpen: (habit: Habit) => void;
-  onDelete: (habit: Habit) => void;
-}) {
+}: Pick<HabitActions, "onOpen" | "onDelete"> & { habits: Habit[] }) {
   const [expanded, setExpanded] = useState(false);
   const setArchived = useSetArchived();
   if (habits.length === 0) return null;

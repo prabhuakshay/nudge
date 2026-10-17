@@ -62,6 +62,20 @@ describe("The Today strip", () => {
     });
   });
 
+  it("checks in with a tap anywhere on the chip, not only its ring", async () => {
+    const sent = mockApi([habit({ id: 1, name: "Read" })]);
+    const user = renderStrip();
+
+    await user.click(await screen.findByText("Read"));
+
+    expect(checkInButton("Read")).toHaveAccessibleDescription("Done today");
+    await waitFor(() => {
+      expect(changes(sent)).toEqual([
+        { method: "PUT", path: "/api/v1/habits/1/check-ins/2026-10-15", body: { count: 1 } },
+      ]);
+    });
+  });
+
   it("undoes a Check-in from the chip's menu", async () => {
     const sent = mockApi([habit({ id: 1, name: "Read", today_count: 1 })]);
     const user = renderStrip();

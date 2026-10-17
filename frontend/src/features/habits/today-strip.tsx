@@ -14,8 +14,9 @@ function HabitChip({ habit, timeZone }: { habit: Habit; timeZone: string }) {
         habit.today_count >= habit.goal && "opacity-60",
       )}
     >
-      <CheckInButton habit={habit} timeZone={timeZone} />
-      <span className="max-w-40 truncate text-sm font-medium">{habit.name}</span>
+      <CheckInButton habit={habit} timeZone={timeZone}>
+        <span className="max-w-40 truncate pr-1 pl-0.5 text-sm font-medium">{habit.name}</span>
+      </CheckInButton>
       <RowMenu label={`${habit.name} options`}>
         <UndoCheckInItem habit={habit} timeZone={timeZone} />
       </RowMenu>
@@ -24,7 +25,7 @@ function HabitChip({ habit, timeZone }: { habit: Habit; timeZone: string }) {
 }
 
 /**
- * Today's Habits as a strip of chips above Today's Tasks. A chip's ring checks in, its menu
+ * Today's Habits as a strip of chips above Today's Tasks. A tap on a chip checks in, its menu
  * undoes the latest Check-in, and a Habit done today fades but stays. The strip is absent while
  * no Habit is due. `timeZone` is the user's, which decides what today is.
  */

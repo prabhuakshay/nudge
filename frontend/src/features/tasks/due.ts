@@ -1,7 +1,7 @@
 import { differenceInCalendarDays, format, parseISO } from "date-fns";
 
 import { startsOn } from "./schedule";
-import type { Task } from "./tasks";
+import type { DatesIn, Task } from "./tasks";
 
 /**
  * A Task's due date, time and range as the API sends them: ISO dates and "HH:MM:SS" times, all
@@ -112,4 +112,10 @@ export function dueName(dates: Dates & Pick<Task, "is_overdue">, now: Date): str
   if (dates.due_date === null) return "none";
   const label = dueLabel(dates, now);
   return dates.is_overdue ? `${label}, overdue` : label;
+}
+
+/** A Task's dates as the API takes them; null when it has no due date. */
+export function datesOf(task: Dates): DatesIn {
+  const { due_date: dueDate, due_time, start_date, start_time } = task;
+  return dueDate === null ? null : { due_date: dueDate, due_time, start_date, start_time };
 }

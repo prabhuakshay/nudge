@@ -104,3 +104,18 @@ export function treesWhere(rows: Task[], test: (root: Task) => boolean): Task[] 
 export function openTrees(rows: Task[]): Task[] {
   return treesWhere(rows, (root) => !isClosed(root.status));
 }
+
+/**
+ * The chosen Tasks none of whose ancestors is also chosen, such as the units Trash takes. `rows`
+ * fill in the parents between a chosen Task and a chosen ancestor.
+ */
+export function chosenTops(chosen: Task[], rows: Task[]): Task[] {
+  const byId = new Map([...rows, ...chosen].map((task) => [task.id, task]));
+  const ids = new Set(chosen.map((task) => task.id));
+  return chosen.filter((task) => {
+    for (let above = task.parent_id; above !== null; above = byId.get(above)?.parent_id ?? null) {
+      if (ids.has(above)) return false;
+    }
+    return true;
+  });
+}

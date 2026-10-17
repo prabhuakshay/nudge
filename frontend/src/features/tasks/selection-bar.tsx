@@ -78,7 +78,7 @@ export function SelectionBar({ tasks, context }: { tasks: Task[]; context: RowCo
       <ProjectPicker
         currentId={onlyProject}
         onSelect={(project) => {
-          changes.moveTo(chosen, project);
+          changes.moveTo(chosen, project, tasks);
         }}
       >
         <BarButton icon={<FolderInput />}>Move</BarButton>

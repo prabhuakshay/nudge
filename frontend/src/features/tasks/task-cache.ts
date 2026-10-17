@@ -62,15 +62,20 @@ export type TaskPatch = { id: number; pinned?: boolean } & Partial<
  */
 export type TaskMove = Placement & { taskId: number; sectionId?: number | null };
 
+/** A Task moved, with its Subtasks, first into another Project as a root with no Section. */
+type ProjectChange = { kind: "project"; taskId: number; projectId: number };
+
 /**
- * A change to Tasks, as the cache shows it: fields patched, a Task moved, a Task removed with its
- * Subtasks, or a Task the server created inserted first or `last` in its Project.
+ * A change to Tasks, as the cache shows it: fields patched, a Task moved within its Project or to
+ * another, a Task removed with its Subtasks, or a Task the server created inserted right after
+ * `afterId`, or else first or `last` in its Project.
  */
 export type TaskChange =
   | { kind: "patch"; patch: TaskPatch }
   | { kind: "move"; move: TaskMove }
+  | ProjectChange
   | { kind: "remove"; taskId: number }
-  | { kind: "insert"; task: Task; last?: boolean };
+  | { kind: "insert"; task: Task; last?: boolean; afterId?: number };
 
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
@@ -110,16 +115,40 @@ function placed<T extends Task>(task: T, { taskId, parentId, sectionId }: TaskMo
   };
 }
 
-/** The rows without the Task and every Subtask under it. */
-function withoutTree<T extends Task>(rows: T[], taskId: number): T[] {
-  const gone = new Set([taskId]);
+/** The ids of the Task and every Subtask under it among the rows. */
+function treeIds(rows: Task[], taskId: number): Set<number> {
+  const tree = new Set([taskId]);
   // Rows come in sibling order, not tree order, so sweep until no more Subtasks join.
   let size = 0;
-  while (size !== gone.size) {
-    size = gone.size;
-    for (const row of rows) if (row.parent_id !== null && gone.has(row.parent_id)) gone.add(row.id);
+  while (size !== tree.size) {
+    size = tree.size;
+    for (const row of rows) if (row.parent_id !== null && tree.has(row.parent_id)) tree.add(row.id);
   }
-  return rows.filter((row) => !gone.has(row.id));
+  return tree;
+}
+
+/** The rows without the Task and every Subtask under it. */
+function withoutTree<T extends Task>(rows: T[], taskId: number): T[] {
+  const tree = treeIds(rows, taskId);
+  return rows.filter((row) => !tree.has(row.id));
+}
+
+/** The rows with the Task and its Subtasks in their new Project, the Task as a root there. */
+function inProject<T extends Task>(rows: T[], { taskId, projectId }: ProjectChange): T[] {
+  const tree = treeIds(rows, taskId);
+  const levelsUp = rows.find((row) => row.id === taskId)?.depth ?? 0;
+  return rows.map((row) => {
+    if (!tree.has(row.id)) return row;
+    const moved = { ...row, project_id: projectId, depth: row.depth - levelsUp };
+    if (row.id !== taskId) return moved;
+    return { ...moved, parent_id: null, section_id: null, parent_title: null };
+  });
+}
+
+/** The rows with the new Task right after `afterId`, or undefined when that isn't among them. */
+function insertedAfter<T extends Task>(rows: T[], task: T, afterId: number | undefined) {
+  const index = rows.findIndex((row) => row.id === afterId);
+  return index === -1 ? undefined : [...rows.slice(0, index + 1), task, ...rows.slice(index + 1)];
 }
 
 /**
@@ -135,6 +164,8 @@ function rowsAfter<T extends Task>(rows: T[], change: TaskChange, ordered: boole
       const moved = ordered ? moveRow(rows, move.taskId, move) : rows;
       return moved.map((row) => placed(row, move));
     }
+    case "project":
+      return inProject(rows, change);
     case "remove":
       return withoutTree(rows, change.taskId);
     case "insert":
@@ -153,12 +184,29 @@ function closedAfter(page: TaskPage, change: TaskChange): TaskPage {
   return { ...page, items: treesWhere(rows, (root) => isClosed(root.status)) };
 }
 
-/** A drawer's Task after a change, with its Subtasks; a new Subtask of it goes last. */
+/**
+ * A drawer's Task after a change, with its Subtasks. A new Subtask goes right after the one it
+ * follows, or last among its parent's; a Subtask moved to another Project leaves the drawer.
+ */
 function detailAfter(task: TaskDetail, change: TaskChange): TaskDetail {
+  if (change.kind === "project") return projectDetailAfter(task, change);
   const [changed = task] = rowsAfter([task], change, false);
   const subtasks = rowsAfter(task.subtasks, change, true);
-  const isChild = change.kind === "insert" && change.task.parent_id === task.id;
-  return { ...changed, subtasks: isChild ? [...subtasks, change.task] : subtasks };
+  if (change.kind !== "insert") return { ...changed, subtasks };
+  const isChild = change.task.parent_id === task.id;
+  const inserted =
+    insertedAfter(subtasks, change.task, change.afterId) ??
+    (isChild ? [...subtasks, change.task] : subtasks);
+  return { ...changed, subtasks: inserted };
+}
+
+/** A drawer's Task after a Task moved to another Project: it, or one of its Subtasks. */
+function projectDetailAfter(task: TaskDetail, change: ProjectChange): TaskDetail {
+  if (change.taskId !== task.id)
+    return { ...task, subtasks: withoutTree(task.subtasks, change.taskId) };
+  const [changed = task] = inProject([task], change);
+  const [, ...subtasks] = inProject([task, ...task.subtasks], change);
+  return { ...changed, ancestors: [], subtasks };
 }
 
 /** Whether a dated Task shows on any day of the range. */
@@ -193,21 +241,75 @@ function rangeOf(queryKey: QueryKey): DayRange | undefined {
   return typeof start === "string" && typeof end === "string" ? { start, end } : undefined;
 }
 
-/** Show one change in every cached query that holds Tasks. */
-function showChange(queryClient: QueryClient, change: TaskChange) {
+/** The Project an open list's key names, if it names one. */
+function projectOf(queryKey: QueryKey): number | undefined {
+  const source = queryKey[2];
+  if (typeof source !== "object" || source === null || !("project" in source)) return undefined;
+  return typeof source.project === "number" ? source.project : undefined;
+}
+
+/**
+ * The Task moved to another Project, with whatever of its Subtasks an open list holds. Its
+ * Project's lists hold all of them, so they come first.
+ */
+function movedTree(lists: [QueryKey, Task[] | undefined][], change: ProjectChange) {
+  const holding = lists.filter(([, rows]) => rows?.some((row) => row.id === change.taskId));
+  const own = holding.find(([queryKey]) => projectOf(queryKey) !== undefined);
+  const rows = (own ?? holding[0])?.[1];
+  if (!rows) return undefined;
+  const tree = treeIds(rows, change.taskId);
+  return inProject(
+    rows.filter((row) => tree.has(row.id)),
+    change,
+  );
+}
+
+/**
+ * Show a Task moved to another Project in the open lists. It leaves its old Project's lists and
+ * goes first in the new Project's; other lists keep it with its new Project. The new Project's
+ * Sections show it once they refetch.
+ */
+function showProjectMove(queryClient: QueryClient, change: ProjectChange) {
+  const lists = queryClient.getQueriesData<Task[]>({ queryKey: prefix("open") });
+  const moved = movedTree(lists, change);
+  for (const [queryKey, rows] of lists) {
+    const project = projectOf(queryKey);
+    if (!rows || project === change.projectId) continue;
+    const after =
+      project === undefined ? inProject(rows, change) : withoutTree(rows, change.taskId);
+    queryClient.setQueryData(queryKey, after);
+  }
+  if (!moved) return;
+  queryClient.setQueryData<Task[]>(
+    taskKeys.open({ project: change.projectId }),
+    (rows) => rows && [...moved, ...withoutTree(rows, change.taskId)],
+  );
+}
+
+/** Show a change in every open list. */
+function showInOpenLists(queryClient: QueryClient, change: TaskChange) {
+  if (change.kind === "project") {
+    showProjectMove(queryClient, change);
+    return;
+  }
   queryClient.setQueriesData<Task[]>(
     { queryKey: prefix("open") },
     (rows) => rows && openAfter(rows, change),
   );
-  if (change.kind === "insert") {
-    const { task, last = false } = change;
-    // A new root goes where the server put it; a new Subtask goes last among its siblings.
-    const atEnd = last || task.parent_id !== null;
-    queryClient.setQueryData<Task[]>(
-      taskKeys.open({ project: task.project_id }),
-      (rows) => rows && (atEnd ? [...rows, task] : [task, ...rows]),
-    );
-  }
+  if (change.kind !== "insert") return;
+  const { task, last = false, afterId } = change;
+  // A new root goes where the server put it; a new Subtask goes last among its siblings.
+  const atEnd = last || task.parent_id !== null;
+  queryClient.setQueryData<Task[]>(
+    taskKeys.open({ project: task.project_id }),
+    (rows) =>
+      rows && (insertedAfter(rows, task, afterId) ?? (atEnd ? [...rows, task] : [task, ...rows])),
+  );
+}
+
+/** Show one change in every cached query that holds Tasks. */
+function showChange(queryClient: QueryClient, change: TaskChange) {
+  showInOpenLists(queryClient, change);
   queryClient.setQueriesData<InfiniteData<TaskPage>>(
     { queryKey: prefix("closed") },
     (data) => data && { ...data, pages: data.pages.map((page) => closedAfter(page, change)) },

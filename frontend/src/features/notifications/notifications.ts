@@ -3,6 +3,7 @@ import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query
 import { api } from "@/api/client";
 import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
+import { datesOf } from "@/features/tasks/due";
 import { statusToast } from "@/features/tasks/repeat";
 import { useTaskMutation } from "@/features/tasks/task-cache";
 import { useOfferUndo } from "@/features/tasks/task-undo";
@@ -81,7 +82,11 @@ export function useSendTestNotification() {
   );
 }
 
-/** Complete the Task a Reminder notification is about, then offer Undo in a toast. */
+/**
+ * Complete the Task a Reminder notification is about, then offer Undo in a toast. The
+ * notification doesn't name its Task, so the Task shows completed, or on its next Occurrence,
+ * once the server answers.
+ */
 export function useCompleteFromReminder() {
   const offerUndo = useOfferUndo();
   return useTaskMutation({
@@ -94,6 +99,9 @@ export function useCompleteFromReminder() {
       }
       return data;
     },
+    answered: ({ task }) => [
+      { kind: "patch", patch: { id: task.id, status: task.status, dates: datesOf(task) } },
+    ],
     onSuccess: ({ task, affected }) => {
       offerUndo(statusToast(task, "completed", affected.length - 1), {
         kind: "statuses",

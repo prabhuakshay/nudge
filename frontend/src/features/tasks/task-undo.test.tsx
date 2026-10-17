@@ -1,16 +1,14 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, renderHook, screen } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { QueryClient } from "@tanstack/react-query";
+import { act, screen } from "@testing-library/react";
 
-import { Toaster } from "@/components/ui/sonner";
 import type { SidebarTag } from "@/features/tags/tags";
 import { INBOX, WORK, json } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
+import { renderChanges } from "@/test/task-undo";
 import { makeTask } from "@/test/tasks";
 import { undoLatestChange } from "@/lib/undo-toast";
 
 import { taskKeys } from "./task-cache";
-import { useUndoableTaskChanges } from "./task-undo";
 import type { Task } from "./tasks";
 
 const URGENT = makeTask({ id: 1, title: "Tea", priority: 3 });
@@ -41,17 +39,6 @@ function mockServer({ affected = [], movedFrom = [], failRestore = false }: Answ
     return json({ task: URGENT, affected });
   });
   return sent;
-}
-
-/** Render the Undoable changes over `queryClient`, with the toasts they show. */
-function renderChanges(queryClient = new QueryClient()) {
-  const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      {children}
-      <Toaster />
-    </QueryClientProvider>
-  );
-  return renderHook(() => useUndoableTaskChanges(), { wrapper }).result;
 }
 
 /** Wait for the change's toast, then press Mod+Z, and return what Undo sent. */

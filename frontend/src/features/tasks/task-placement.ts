@@ -28,7 +28,9 @@ export function useMoveTask() {
   });
 }
 
-/** Copy a Task to right after it, as the server places it. */
+/**
+ * Copy a Task to right after it, as the server places it. The copy shows once the server answers.
+ */
 export function useDuplicateTask() {
   return useTaskMutation({
     mutationFn: async (taskId: number) => {
@@ -40,6 +42,7 @@ export function useDuplicateTask() {
       }
       return data;
     },
+    answered: (task, taskId) => [{ kind: "insert", task, afterId: taskId }],
   });
 }
 

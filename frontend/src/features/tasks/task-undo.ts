@@ -14,10 +14,11 @@ import { hasTag, type Tag } from "@/features/tags/tags";
 import { trashQuery, useRestoreFromTrash } from "@/features/trash/trash";
 import { toastWithUndo } from "@/lib/undo-toast";
 
-import type { Dates } from "./due";
+import { datesOf, type Dates } from "./due";
 import { advances, statusToast } from "./repeat";
-import { useTaskMutation, type TaskChange } from "./task-cache";
+import { useTaskMutation, type TaskChange, type TaskPatch } from "./task-cache";
 import { STATUS_VERB } from "./task-properties";
+import { chosenTops } from "./task-tree";
 import {
   patchTask,
   type DatesIn,
@@ -86,24 +87,6 @@ function groupBy<T extends { id: number }, K>(items: T[], key: (item: T) => K) {
     groups.set(name, group);
   }
   return [...groups.values()];
-}
-
-/** The Tasks none of whose ancestors among `rows` is also chosen: what Trash takes as units. */
-function tops(chosen: Task[], rows: Task[]) {
-  const byId = new Map([...rows, ...chosen].map((task) => [task.id, task]));
-  const ids = new Set(idsOf(chosen));
-  return chosen.filter((task) => {
-    for (let above = task.parent_id; above !== null; above = byId.get(above)?.parent_id ?? null) {
-      if (ids.has(above)) return false;
-    }
-    return true;
-  });
-}
-
-/** A Task's dates as the API takes them; null when it has no due date. */
-function datesOf(task: Dates): DatesIn {
-  const { due_date: dueDate, due_time, start_date, start_time } = task;
-  return dueDate === null ? null : { due_date: dueDate, due_time, start_date, start_time };
 }
 
 /** Apply one action to several Tasks in one request. */
@@ -209,25 +192,36 @@ type Edit = { changes?: TaskChange[]; send: () => Promise<Offer> };
 
 const CHANGE_FAILED = "Could not change the tasks.";
 
-/** One action on several Tasks in one request, with what it says and what undoes it. */
-function bulkEdit(tasks: Task[], action: BulkAction, message: string, undo: TaskUndo): Edit {
+/** The same fields patched on each of the Tasks. */
+function patchEach(tasks: Task[], fields: Omit<TaskPatch, "id">): TaskChange[] {
+  return tasks.map(({ id }) => ({ kind: "patch", patch: { id, ...fields } }));
+}
+
+/** One action on several Tasks in one request: how it looks, what it says and what undoes it. */
+function bulkEdit(tasks: Task[], action: BulkAction, offer: Offer, changes: TaskChange[]): Edit {
   return {
+    changes,
     send: async () => {
       await bulk(idsOf(tasks), action, CHANGE_FAILED);
-      return { message, undo };
+      return offer;
     },
   };
 }
 
 /**
  * A Status change. One Task says what happened to it, such as a repeating Task moving on, which
- * stays where it is until the server says; several say how many changed.
+ * stays where it is until the server says; several say how many changed. The relatives it closes
+ * or reopens show once the lists refetch.
  */
 function statusEdit(tasks: Task[], status: TaskStatus): Edit {
+  const changes = patchEach(
+    tasks.filter((task) => !advances(task, status)),
+    { status },
+  );
   const [only] = tasks;
   if (only && tasks.length === 1) {
     return {
-      changes: advances(only, status) ? [] : [{ kind: "patch", patch: { id: only.id, status } }],
+      changes,
       send: async () => {
         const { task, affected } = await patchTask({ id: only.id, status });
         const message = statusToast(task, status, affected.length - 1);
@@ -236,6 +230,7 @@ function statusEdit(tasks: Task[], status: TaskStatus): Edit {
     };
   }
   return {
+    changes,
     send: async () => {
       const { affected } = await bulk(idsOf(tasks), { kind: "status", status }, CHANGE_FAILED);
       const message = `${STATUS_VERB[status]} ${named(tasks)}`;
@@ -268,13 +263,18 @@ function removeDatesEdit(task: UndatedTask, reminders: number[]): Edit {
   };
 }
 
-/** Moving Tasks first into a Project; the server says where each was, for Undo. */
-function moveEdit(tasks: Task[], project: SidebarProject): Edit {
+/**
+ * Moving Tasks first into a Project; the server says where each was, for Undo. A chosen Subtask
+ * of a chosen ancestor goes with it, as `rows` show.
+ */
+function moveEdit(tasks: Task[], { id: projectId, name }: SidebarProject, rows: Task[]): Edit {
+  const tops = chosenTops(tasks, rows);
   return {
+    changes: tops.map(({ id }) => ({ kind: "project", taskId: id, projectId })),
     send: async () => {
-      const action = { kind: "move", project_id: project.id } as const;
+      const action = { kind: "move", project_id: projectId } as const;
       const { moved_from: places } = await bulk(idsOf(tasks), action, CHANGE_FAILED);
-      const message = `Moved ${named(tasks)} to “${project.name}”`;
+      const message = `Moved ${named(tasks)} to “${name}”`;
       return { message, undo: { kind: "places", places } };
     },
   };
@@ -282,11 +282,13 @@ function moveEdit(tasks: Task[], project: SidebarProject): Edit {
 
 /** Moving Tasks to Trash, each with its Subtasks; Undo brings back each unit Trash took. */
 function removeEdit(tasks: Task[], rows: Task[]): Edit {
-  const units = idsOf(tops(tasks, rows));
+  const units = idsOf(chosenTops(tasks, rows));
   const undo = { kind: "trash", ids: units } as const;
   const [only] = tasks;
   if (!only || tasks.length > 1) {
-    return bulkEdit(tasks, { kind: "delete" }, `Moved ${named(tasks)} to Trash`, undo);
+    const offer = { message: `Moved ${named(tasks)} to Trash`, undo };
+    const changes = tasks.map(({ id }): TaskChange => ({ kind: "remove", taskId: id }));
+    return bulkEdit(tasks, { kind: "delete" }, offer, changes);
   }
   return {
     changes: [{ kind: "remove", taskId: only.id }],
@@ -306,14 +308,12 @@ function tagEdit(tasks: Task[], tag: Tag, add: boolean): Edit {
   const message = add ? `Added “${tag.name}” to ${them}` : `Removed “${tag.name}” from ${them}`;
   const undo = { kind: "tag", tag, tasks: tasks.map(({ id, tags }) => ({ id, tags })) } as const;
   const action = { kind: add ? "add_tag" : "remove_tag", tag_id: tag.id } as const;
-  const tagged = (task: Task) => {
+  const tagged = (task: Task): TaskChange => {
     const others = task.tags.filter((each) => each.id !== tag.id);
-    return add ? [...others, tag] : others;
+    return { kind: "patch", patch: { id: task.id, tags: add ? [...others, tag] : others } };
   };
-  return {
-    ...bulkEdit(tasks, action, message, undo),
-    changes: tasks.map((task) => ({ kind: "patch", patch: { id: task.id, tags: tagged(task) } })),
-  };
+  const changes = tasks.map(tagged);
+  return bulkEdit(tasks, action, { message, undo }, changes);
 }
 
 /**
@@ -344,10 +344,8 @@ export function useUndoableTaskChanges() {
           tasks: tasks.map(({ id, priority }) => ({ id, priority })),
         } as const;
         const message = `Changed the priority of ${named(tasks)}`;
-        change({
-          ...bulkEdit(tasks, { kind: "priority", priority }, message, undo),
-          changes: tasks.map(({ id }) => ({ kind: "patch", patch: { id, priority } })),
-        });
+        const changes = patchEach(tasks, { priority });
+        change(bulkEdit(tasks, { kind: "priority", priority }, { message, undo }, changes));
       },
       /** Give the Tasks a due date; Undo gives each its own dates back, or none. */
       setDueDate: (tasks: Task[], dueDate: string) => {
@@ -356,7 +354,9 @@ export function useUndoableTaskChanges() {
           tasks: tasks.map((task) => ({ id: task.id, dates: datesOf(task) })),
         } as const;
         const message = `Changed the date of ${named(tasks)}`;
-        change(bulkEdit(tasks, { kind: "dates", dates: { due_date: dueDate } }, message, undo));
+        const dates = { due_date: dueDate };
+        const changes = patchEach(tasks, { dates });
+        change(bulkEdit(tasks, { kind: "dates", dates }, { message, undo }, changes));
       },
       /** Take a Task's dates off; `reminders` are the offsets of the Reminders that go with them. */
       removeDates: (task: UndatedTask, reminders: number[]) => {
@@ -370,9 +370,12 @@ export function useUndoableTaskChanges() {
       removeTag: (tasks: Task[], tag: Tag) => {
         change(tagEdit(tasks, tag, false));
       },
-      /** Move the Tasks first into a Project; Undo puts each back in its old place. */
-      moveTo: (tasks: Task[], project: SidebarProject) => {
-        change(moveEdit(tasks, project));
+      /**
+       * Move the Tasks first into a Project; Undo puts each back in its old place. `rows` are the
+       * list's rows, to tell which go with a chosen ancestor.
+       */
+      moveTo: (tasks: Task[], project: SidebarProject, rows: Task[] = tasks) => {
+        change(moveEdit(tasks, project, rows));
       },
       /** Move Tasks to Trash. `rows` are the list's rows, to tell which go with a chosen parent. */
       remove: (tasks: Task[], rows: Task[] = tasks) => {

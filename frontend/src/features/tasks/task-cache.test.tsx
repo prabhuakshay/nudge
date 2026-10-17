@@ -1,9 +1,23 @@
-import { QueryClient, QueryClientProvider, type InfiniteData } from "@tanstack/react-query";
+import { QueryClientProvider, type InfiniteData, type QueryClient } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { describe, expect, it } from "vitest";
 
-import type { components } from "@/api/schema";
+import {
+  calendar,
+  closedTitles,
+  detail,
+  FLIGHTS,
+  GYM,
+  OCTOBER,
+  READ,
+  seeded,
+  titles,
+  TRIP,
+  WORK_LIST,
+  type CalendarRange,
+  type TaskPage,
+} from "@/test/task-cache";
 import { makeTask } from "@/test/tasks";
 
 import {
@@ -15,63 +29,13 @@ import {
 } from "./task-cache";
 import type { Task, TaskDetail } from "./tasks";
 
-type CalendarRange = components["schemas"]["CalendarOut"];
-type TaskPage = components["schemas"]["TaskListOut"];
-
-const WORK = { project: 7 };
-const OCTOBER: DayRange = { start: "2026-10-01", end: "2026-10-31" };
-
-const TRIP = makeTask({ id: 1, title: "Trip" });
-const FLIGHTS = makeTask({ id: 2, title: "Flights", parent_id: 1 });
-const GYM = makeTask({ id: 3, title: "Gym", due_date: "2026-10-16", repeat_rule: "FREQ=DAILY" });
-const READ = makeTask({ id: 4, title: "Read", status: "completed" });
-
-/** A cache holding every shape that holds Tasks, as if each view had loaded. */
-function seeded() {
-  const queryClient = new QueryClient();
-  queryClient.setQueryData<Task[]>(taskKeys.open(WORK), [TRIP, FLIGHTS, GYM]);
-  queryClient.setQueryData<Task[]>(taskKeys.open({ view: "today" }), [GYM]);
-  queryClient.setQueryData<TaskDetail>(taskKeys.detail(TRIP.id), { ...TRIP, subtasks: [FLIGHTS] });
-  queryClient.setQueryData<CalendarRange>(taskKeys.calendar(OCTOBER), {
-    items: [GYM],
-    occurrences: [{ task_id: GYM.id, date: "2026-10-17" }],
-    repeating: [GYM],
-  });
-  queryClient.setQueryData<InfiniteData<TaskPage>>(taskKeys.closed(WORK), {
-    pages: [{ items: [READ], next_cursor: null }],
-    pageParams: [null],
-  });
-  queryClient.setQueryData<Task[]>(taskKeys.search("gym"), [GYM]);
-  queryClient.setQueryData(taskKeys.sidebar, { counts: "open counts" });
-  return queryClient;
-}
-
-function titles(queryClient: QueryClient, key: readonly unknown[]) {
-  return queryClient.getQueryData<Task[]>(key)?.map((task) => task.title);
-}
-
-function calendar(queryClient: QueryClient) {
-  const range = queryClient.getQueryData<CalendarRange>(taskKeys.calendar(OCTOBER));
-  if (!range) throw new Error("The Calendar range is gone.");
-  return range;
-}
-
-function closedTitles(queryClient: QueryClient) {
-  const data = queryClient.getQueryData<InfiniteData<TaskPage>>(taskKeys.closed(WORK));
-  return data?.pages.flatMap((page) => page.items.map((task) => task.title));
-}
-
-function detail(queryClient: QueryClient) {
-  return queryClient.getQueryData<TaskDetail>(taskKeys.detail(TRIP.id));
-}
-
 describe("showTaskChanges", () => {
   it("patches the Task in every list, drawer, Calendar range and search", () => {
     const queryClient = seeded();
 
     showTaskChanges(queryClient, [{ kind: "patch", patch: { id: GYM.id, title: "Swim" } }]);
 
-    expect(titles(queryClient, taskKeys.open(WORK))).toEqual(["Trip", "Flights", "Swim"]);
+    expect(titles(queryClient, taskKeys.open(WORK_LIST))).toEqual(["Trip", "Flights", "Swim"]);
     expect(titles(queryClient, taskKeys.open({ view: "today" }))).toEqual(["Swim"]);
     expect(calendar(queryClient).items[0]?.title).toBe("Swim");
     expect(calendar(queryClient).repeating[0]?.title).toBe("Swim");
@@ -92,7 +56,7 @@ describe("showTaskChanges", () => {
     showTaskChanges(queryClient, [{ kind: "patch", patch: { id: TRIP.id, status: "completed" } }]);
     showTaskChanges(queryClient, [{ kind: "patch", patch: { id: GYM.id, status: "completed" } }]);
 
-    expect(titles(queryClient, taskKeys.open(WORK))).toEqual([]);
+    expect(titles(queryClient, taskKeys.open(WORK_LIST))).toEqual([]);
     expect(calendar(queryClient).items[0]?.status).toBe("completed");
   });
 
@@ -113,7 +77,7 @@ describe("showTaskChanges", () => {
 
     showTaskChanges(queryClient, [move]);
 
-    expect(queryClient.getQueryData<Task[]>(taskKeys.open(WORK))?.at(-1)).toMatchObject({
+    expect(queryClient.getQueryData<Task[]>(taskKeys.open(WORK_LIST))?.at(-1)).toMatchObject({
       id: GYM.id,
       parent_id: TRIP.id,
     });
@@ -127,7 +91,7 @@ describe("showTaskChanges", () => {
     showTaskChanges(queryClient, [{ kind: "remove", taskId: TRIP.id }]);
     showTaskChanges(queryClient, [{ kind: "remove", taskId: GYM.id }]);
 
-    expect(titles(queryClient, taskKeys.open(WORK))).toEqual([]);
+    expect(titles(queryClient, taskKeys.open(WORK_LIST))).toEqual([]);
     expect(calendar(queryClient).items).toEqual([]);
     expect(calendar(queryClient).repeating).toEqual([]);
     expect(titles(queryClient, taskKeys.search("gym"))).toEqual([]);
@@ -166,7 +130,7 @@ describe("showTaskChanges", () => {
   it("keeps the Closed list's order when a Task in it moves", () => {
     const queryClient = seeded();
     const done = makeTask({ id: 5, title: "Done", status: "completed" });
-    queryClient.setQueryData<InfiniteData<TaskPage>>(taskKeys.closed(WORK), {
+    queryClient.setQueryData<InfiniteData<TaskPage>>(taskKeys.closed(WORK_LIST), {
       pages: [{ items: [READ, done], next_cursor: null }],
       pageParams: [null],
     });
@@ -196,7 +160,7 @@ describe("showTaskChanges", () => {
       { kind: "insert", task: cake, last: true },
     ]);
 
-    expect(titles(queryClient, taskKeys.open(WORK))).toEqual([
+    expect(titles(queryClient, taskKeys.open(WORK_LIST))).toEqual([
       "Tea",
       "Trip",
       "Flights",
@@ -212,7 +176,48 @@ describe("showTaskChanges", () => {
     showTaskChanges(queryClient, [{ kind: "insert", task: hotel }]);
 
     expect(detail(queryClient)?.subtasks.map((task) => task.title)).toEqual(["Flights", "Hotel"]);
-    expect(titles(queryClient, taskKeys.open(WORK))?.at(-1)).toBe("Hotel");
+    expect(titles(queryClient, taskKeys.open(WORK_LIST))?.at(-1)).toBe("Hotel");
+  });
+
+  it("inserts a new Task right after the one it follows", () => {
+    const queryClient = seeded();
+    const copy = makeTask({ id: 10, title: "Flights copy", parent_id: TRIP.id });
+
+    showTaskChanges(queryClient, [{ kind: "insert", task: copy, afterId: FLIGHTS.id }]);
+
+    expect(titles(queryClient, taskKeys.open(WORK_LIST))).toEqual([
+      "Trip",
+      "Flights",
+      "Flights copy",
+      "Gym",
+    ]);
+    expect(detail(queryClient)?.subtasks.map((task) => task.title)).toEqual([
+      "Flights",
+      "Flights copy",
+    ]);
+    expect(closedTitles(queryClient)).toEqual(["Read"]);
+    expect(calendar(queryClient).items.map((task) => task.id)).toEqual([GYM.id]);
+    expect(titles(queryClient, taskKeys.search("gym"))).toEqual(["Gym"]);
+  });
+
+  it("inserts a new Task right after the one it follows in a nested drawer", () => {
+    const queryClient = seeded();
+    const seats = makeTask({ id: 12, title: "Seats", parent_id: FLIGHTS.id });
+    const meals = makeTask({ id: 13, title: "Meals", parent_id: FLIGHTS.id });
+    queryClient.setQueryData<TaskDetail>(taskKeys.detail(TRIP.id), {
+      ...TRIP,
+      subtasks: [FLIGHTS, seats, meals],
+    });
+    const copy = makeTask({ id: 10, title: "Seats copy", parent_id: FLIGHTS.id });
+
+    showTaskChanges(queryClient, [{ kind: "insert", task: copy, afterId: seats.id }]);
+
+    expect(detail(queryClient)?.subtasks.map((task) => task.title)).toEqual([
+      "Flights",
+      "Seats",
+      "Seats copy",
+      "Meals",
+    ]);
   });
 
   it("inserts a new Task in the Calendar ranges its dates fall in", () => {
@@ -281,7 +286,12 @@ describe("useTaskMutation", () => {
     await waitFor(() => {
       expect(result.current.isSuccess).toBe(true);
     });
-    expect(titles(queryClient, taskKeys.open(WORK))).toEqual(["Tea", "Trip", "Flights", "Swim"]);
+    expect(titles(queryClient, taskKeys.open(WORK_LIST))).toEqual([
+      "Tea",
+      "Trip",
+      "Flights",
+      "Swim",
+    ]);
     const queries = queryClient.getQueryCache().getAll();
     expect(queries.map((query) => query.queryKey)).toContainEqual(taskKeys.sidebar);
     expect(queries.every((query) => query.state.isInvalidated)).toBe(true);

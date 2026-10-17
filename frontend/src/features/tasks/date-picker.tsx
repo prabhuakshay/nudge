@@ -7,6 +7,7 @@ import {
   CalendarRange,
   CalendarX,
   Clock,
+  Hourglass,
   Repeat,
   Sun,
   Sunrise,
@@ -16,6 +17,7 @@ import { useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ResponsivePopover } from "@/components/ui/responsive-popover";
 import { cn } from "@/lib/utils";
 
@@ -38,9 +40,9 @@ const isoDate = (day: Date) => format(day, "yyyy-MM-dd");
 
 /**
  * A Task's dates in one popover, like TickTick's: quick days, a calendar for the due date, its
- * time (none = all-day), an optional start for ranges, the Repeat and the Reminders. Each change
- * saves straight away. The trigger is `children`, so the Due cell and the drawer's Date chip style
- * it their own way.
+ * time (none = all-day), an optional start for ranges, the Countdown mark, the Repeat and the
+ * Reminders. Each change saves straight away. The trigger is `children`, so the Due cell and the
+ * drawer's Date chip style it their own way.
  */
 export function DatePicker({
   task,
@@ -95,6 +97,7 @@ export function DatePicker({
         className="mx-auto"
       />
       <TimeFields dates={task} onChange={save} />
+      <CountdownRow task={task} />
       <RepeatRows task={task} today={today} />
       <RemindRow task={task} />
     </ResponsivePopover>
@@ -183,6 +186,27 @@ function TimeFields({ dates, onChange }: DatesFieldProps) {
             </select>
           )}
         </div>
+      </Row>
+    </div>
+  );
+}
+
+/** Whether the Task shows how many days are left; only a dated Task can. */
+function CountdownRow({ task }: { task: DatedTask }) {
+  const { mutate: update } = useUpdateTask();
+  const undated = task.due_date === null;
+  return (
+    <div className="border-t border-border p-2">
+      <Row icon={Hourglass} label="Countdown" hint={undated ? "Needs a due date" : "Days left"}>
+        <Checkbox
+          aria-label="Countdown"
+          checked={task.countdown}
+          disabled={undated}
+          onCheckedChange={(checked) => {
+            update({ id: task.id, countdown: checked === true });
+          }}
+          className="mr-2"
+        />
       </Row>
     </div>
   );

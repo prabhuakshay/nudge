@@ -2,14 +2,21 @@
  * The user's time zone. Every clock time in Nudge is floating in this zone, so it is set once
  * from the browser and afterwards only changes when the user says so.
  */
-import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
 import { sessionQuery, type User } from "@/features/auth/session";
+import { todayIn } from "@/features/tasks/schedule";
 
 /** The IANA zone this browser is in, such as `Europe/London`. */
 export function browserTimeZone(): string {
   return Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
+/** Today's ISO date on the user's clock, or the browser's until their time zone is known. */
+export function useToday(): string {
+  const { data: user } = useQuery(sessionQuery);
+  return user?.time_zone ? todayIn(user.time_zone) : todayIn(browserTimeZone());
 }
 
 /** Every IANA zone the browser knows, for picking one in Settings. */

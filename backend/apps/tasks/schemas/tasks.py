@@ -43,6 +43,7 @@ class TaskOut(Schema):
     due_time: time | None = Field(description="Null for an all-day Task.")
     start_date: date | None = Field(description="Set for a range, which ends on the due date.")
     start_time: time | None
+    countdown: bool = Field(description="Whether the Task shows how many days are left.")
     repeat_rule: str = Field(description="An RFC 5545 RRULE; empty when the Task doesn't repeat.")
     repeat_from: Task.RepeatFrom = Field(
         description="What the next Occurrence counts from: the due date, the completion date, or "
@@ -182,6 +183,10 @@ class TaskIn(Schema):
         default=None,
         description="1 (P1) is the most urgent; left out, the Task has no Priority.",
     )
+    countdown: bool | None = Field(
+        default=None,
+        description="Marks the Task as a Countdown, which shows the days left. Needs dates.",
+    )
     tags: list[TagName] = Field(
         default_factory=list,
         description="Tag names, in any case; Tags the user doesn't have yet are created.",
@@ -224,6 +229,11 @@ class TaskPatchIn(Schema):
     dates: TaskDatesIn | None = Field(
         default=None,
         description="Replaces all of the Task's dates; null removes them and its Reminders.",
+    )
+    countdown: bool | None = Field(
+        default=None,
+        description="Marks a dated Task as a Countdown, or unmarks it. Removing the Task's "
+        "dates unmarks it too.",
     )
     move_occurrence: bool | None = Field(
         default=None,

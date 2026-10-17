@@ -33,15 +33,16 @@ type TaskPlace = components["schemas"]["TaskPlace"];
 type BulkAction = components["schemas"]["TaskBulkIn"]["action"];
 type Repeat = Pick<Task, "repeat_rule" | "repeat_from">;
 
-/** A Task's dates before a change, with the Reminders and Repeat that went when it lost them. */
-type PriorDates = { id: number; dates: DatesIn; reminders?: number[]; repeat?: Repeat };
+/** A Task's dates before a change, with the Reminders, Repeat and Countdown that went with them. */
+type PriorDates = { id: number; dates: DatesIn; reminders?: number[] } & Went;
+type Went = { repeat?: Repeat; countdown?: boolean };
 
-/** A Task whose dates come off, with the Repeat that goes with them. */
-type UndatedTask = Dates & Repeat & { id: number };
+/** A Task whose dates come off, with the Repeat and Countdown mark that go with them. */
+type UndatedTask = Dates & Repeat & Pick<Task, "id" | "countdown">;
 
-/** The PATCH that gives a Task back its dates, and the Reminders and Repeat that went with them. */
-function datesBack({ id, dates, reminders, repeat }: PriorDates) {
-  return { id, dates, ...(reminders && { reminders }), ...repeat };
+/** The PATCH that gives a Task back its dates, and what went with them. */
+function datesBack({ id, dates, reminders, repeat, countdown }: PriorDates) {
+  return { id, dates, ...(reminders && { reminders }), ...repeat, ...(countdown && { countdown }) };
 }
 
 /**
@@ -49,7 +50,7 @@ function datesBack({ id, dates, reminders, repeat }: PriorDates) {
  * The rest go back one PATCH each.
  */
 function bulkDatable(prior: PriorDates): prior is PriorDates & { dates: NonNullable<DatesIn> } {
-  return prior.dates !== null && !prior.reminders && !prior.repeat;
+  return prior.dates !== null && !prior.reminders && !prior.repeat && !prior.countdown;
 }
 
 /** What puts Tasks back as they were before a change. */
@@ -250,12 +251,13 @@ function removedMessage(reminders: boolean, repeat: boolean): string {
   return `${removed.length > 0 ? `${removed.join(", ")} and ${last}` : last} removed`;
 }
 
-/** Taking a Task's dates off, which takes its Reminders and Repeat with them on the server. */
+/** Taking a Task's dates off, which takes its Reminders, Repeat and Countdown on the server. */
 function removeDatesEdit(task: UndatedTask, reminders: number[]): Edit {
   const repeat = task.repeat_rule
     ? { repeat_rule: task.repeat_rule, repeat_from: task.repeat_from }
     : undefined;
-  const prior = { id: task.id, dates: datesOf(task), reminders, ...(repeat && { repeat }) };
+  const { id, countdown } = task;
+  const prior = { id, dates: datesOf(task), reminders, countdown, ...(repeat && { repeat }) };
   return {
     changes: [{ kind: "patch", patch: { id: task.id, dates: null } }],
     send: async () => {

@@ -43,6 +43,8 @@ const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string }
     `Changed priority from ${PRIORITY[data.old].short} to ${PRIORITY[data.new].short}`,
   pinned: () => "Pinned to the top",
   unpinned: () => "Unpinned",
+  countdown_marked: () => "Marked as a countdown",
+  countdown_unmarked: () => "Unmarked as a countdown",
   attachment_added: (data) => `Attached “${data.name}”`,
   attachment_removed: (data) => `Deleted the attachment “${data.name}”`,
   dates_changed: (data) => describeDatesChange(data),

@@ -28,6 +28,8 @@ class TaskActivity(models.Model):
         PRIORITY_CHANGED = "priority_changed", "Priority changed"
         PINNED = "pinned", "Pinned"
         UNPINNED = "unpinned", "Unpinned"
+        COUNTDOWN_MARKED = "countdown_marked", "Marked as a Countdown"
+        COUNTDOWN_UNMARKED = "countdown_unmarked", "Unmarked as a Countdown"
         ATTACHMENT_ADDED = "attachment_added", "Attachment added"
         ATTACHMENT_REMOVED = "attachment_removed", "Attachment removed"
         MOVED = "moved", "Moved"

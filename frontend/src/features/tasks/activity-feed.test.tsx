@@ -164,8 +164,10 @@ describe("ActivityFeed", () => {
     ]);
   });
 
-  it("describes pinning and unpinning", async () => {
+  it("describes pinning and marking a Countdown, and undoing each", async () => {
     const events = [
+      { id: 4, kind: "countdown_unmarked", at: at(17), data: {} },
+      { id: 3, kind: "countdown_marked", at: at(16), data: {} },
       { id: 2, kind: "unpinned", at: at(15), data: {} },
       { id: 1, kind: "pinned", at: at(14), data: {} },
     ];
@@ -175,6 +177,8 @@ describe("ActivityFeed", () => {
 
     const items = await screen.findAllByRole("listitem");
     expect(items.map((item) => item.querySelector("p")?.textContent)).toEqual([
+      "Unmarked as a countdown",
+      "Marked as a countdown",
       "Unpinned",
       "Pinned to the top",
     ]);

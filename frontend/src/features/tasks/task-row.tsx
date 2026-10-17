@@ -7,6 +7,7 @@ import { plainMentions } from "@/features/people/mentions";
 import { cn } from "@/lib/utils";
 
 import { CountIcon } from "./count-icon";
+import { CountdownBadge } from "./countdown-badge";
 import { DueBadge } from "./due-badge";
 import { rowActivator, type MoveByKey } from "./row-drag";
 import type { RowKeyDown } from "./row-keys";
@@ -249,6 +250,7 @@ function RowTitle({ task, level }: { task: Task; level: number }) {
         >
           <MentionText text={task.title} />
         </span>
+        <CountdownBadge task={task} />
         {firstTag && <TagBadge tag={firstTag} className="hidden shrink-0 lg:flex xl:hidden" />}
       </span>
       {level === 0 && task.parent_title !== null && (

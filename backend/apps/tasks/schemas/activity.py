@@ -178,6 +178,24 @@ class UnpinnedActivityOut(Schema):
     data: NoActivityData
 
 
+class CountdownMarkedActivityOut(Schema):
+    """The Task was marked as a Countdown."""
+
+    id: int
+    kind: Literal["countdown_marked"]
+    at: datetime
+    data: NoActivityData
+
+
+class CountdownUnmarkedActivityOut(Schema):
+    """The Task stopped being a Countdown."""
+
+    id: int
+    kind: Literal["countdown_unmarked"]
+    at: datetime
+    data: NoActivityData
+
+
 class AttachmentData(Schema):
     """The Attachment an event is about, by the name it had."""
 
@@ -228,6 +246,8 @@ TaskActivityOut = Annotated[
     | PriorityChangedActivityOut
     | PinnedActivityOut
     | UnpinnedActivityOut
+    | CountdownMarkedActivityOut
+    | CountdownUnmarkedActivityOut
     | AttachmentAddedActivityOut
     | AttachmentRemovedActivityOut
     | DatesChangedActivityOut

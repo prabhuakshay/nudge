@@ -66,6 +66,7 @@ def test_create_adds_a_trimmed_task_to_the_inbox(client: Client, ada: User) -> N
         "due_time": None,
         "start_date": None,
         "start_time": None,
+        "countdown": False,
         "repeat_rule": "",
         "repeat_from": "calendar",
         "is_overdue": False,

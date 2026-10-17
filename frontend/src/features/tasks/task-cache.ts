@@ -53,7 +53,7 @@ type Editable = "title" | "description" | "status" | "priority" | "blocked_reaso
  * replaces the Reminders, as offsets in minutes, and `tags` all of its Tags.
  */
 export type TaskPatch = { id: number; pinned?: boolean } & Partial<
-  Pick<TaskDetail, Editable | "tags" | "repeat_rule" | "repeat_from">
+  Pick<TaskDetail, Editable | "tags" | "countdown" | "repeat_rule" | "repeat_from">
 > & { dates?: DatesIn; reminders?: number[]; move_occurrence?: boolean };
 
 /**
@@ -86,8 +86,8 @@ function patched<T extends Task>(task: T, patch: TaskPatch): T {
     pinned_at: pinnedAt(task, pinned),
     ...fields,
     ...(dates !== undefined && { ...UNDATED, ...dates }),
-    // An undated Task can't repeat, so the server drops the Repeat with the dates.
-    ...(dates === null && { repeat_rule: "" }),
+    // An undated Task can't repeat or count down, so the server drops both with the dates.
+    ...(dates === null && { repeat_rule: "", countdown: false }),
     // Only the drawer's Task carries its Reminders; list rows don't.
     ...("reminders" in task && remindersAfter(reminders, dates)),
   };

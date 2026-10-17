@@ -103,6 +103,7 @@ Offline mode is not planned.
 - Calendar view
 - Habits (planned: #114), Pomodoro
 - Matrix view, an Eisenhower matrix (done: #103)
+- Countdown, a dated Task showing the days left (done: #113)
 - Shared Projects and collaboration
 - Native mobile apps
 

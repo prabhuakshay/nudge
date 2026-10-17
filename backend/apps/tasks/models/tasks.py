@@ -34,6 +34,9 @@ class Task(models.Model):
     so 09:00 stays 09:00 when the user travels. A due date without a time is all-day; a start
     date turns the Task into a range that ends on the due date.
 
+    A dated Task can be a Countdown, which shows how many days are left until its date. A Task
+    that loses its date stops being one.
+
     A dated root Task can Repeat: closing it moves the same row on to its next Occurrence rather
     than closing it; see `apps.tasks.repeat`.
 
@@ -101,6 +104,7 @@ class Task(models.Model):
     due_time = models.TimeField(null=True, blank=True, help_text="Empty for an all-day Task.")
     start_date = models.DateField(null=True, blank=True, help_text="Set for a range.")
     start_time = models.TimeField(null=True, blank=True)
+    countdown = models.BooleanField(default=False)
     repeat_rule = models.CharField(
         max_length=500,
         blank=True,
@@ -163,6 +167,10 @@ class Task(models.Model):
                 | Q(start_date=F("due_date"), start_time__isnull=True)
                 | Q(start_date=F("due_date"), start_time__lte=F("due_time")),
                 name="tasks_task_range_starts_by_due",
+            ),
+            models.CheckConstraint(
+                condition=Q(countdown=False) | Q(due_date__isnull=False),
+                name="tasks_task_countdown_needs_due",
             ),
             models.CheckConstraint(
                 condition=Q(status="blocked") | Q(blocked_reason=""),

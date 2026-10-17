@@ -54,7 +54,7 @@
 
 ## Low impact
 
-- [ ] Add Countdown (#113)
+- [x] Add Countdown (#113)
 - [ ] Add Share to Nudge on phones
   - The installed PWA registers a share target. Sharing a link or text opens Quick add with the
     shared title, and the URL goes into the Description.

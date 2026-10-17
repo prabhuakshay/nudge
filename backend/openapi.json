@@ -4301,6 +4301,11 @@
             ],
             "title": "Start Time"
           },
+          "countdown": {
+            "description": "Whether the Task shows how many days are left.",
+            "title": "Countdown",
+            "type": "boolean"
+          },
           "repeat_rule": {
             "description": "An RFC 5545 RRULE; empty when the Task doesn't repeat.",
             "title": "Repeat Rule",
@@ -4393,6 +4398,7 @@
           "due_time",
           "start_date",
           "start_time",
+          "countdown",
           "repeat_rule",
           "repeat_from",
           "is_overdue",
@@ -4556,6 +4562,11 @@
             ],
             "title": "Start Time"
           },
+          "countdown": {
+            "description": "Whether the Task shows how many days are left.",
+            "title": "Countdown",
+            "type": "boolean"
+          },
           "repeat_rule": {
             "description": "An RFC 5545 RRULE; empty when the Task doesn't repeat.",
             "title": "Repeat Rule",
@@ -4619,6 +4630,7 @@
           "due_time",
           "start_date",
           "start_time",
+          "countdown",
           "repeat_rule",
           "repeat_from",
           "is_overdue",
@@ -6103,6 +6115,18 @@
             ],
             "description": "1 (P1) is the most urgent; left out, the Task has no Priority."
           },
+          "countdown": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Marks the Task as a Countdown, which shows the days left. Needs dates.",
+            "title": "Countdown"
+          },
           "tags": {
             "description": "Tag names, in any case; Tags the user doesn't have yet are created.",
             "items": {
@@ -6249,6 +6273,18 @@
               }
             ],
             "description": "Replaces all of the Task's dates; null removes them and its Reminders."
+          },
+          "countdown": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Marks a dated Task as a Countdown, or unmarks it. Removing the Task's dates unmarks it too.",
+            "title": "Countdown"
           },
           "move_occurrence": {
             "anyOf": [
@@ -6565,6 +6601,11 @@
             ],
             "title": "Start Time"
           },
+          "countdown": {
+            "description": "Whether the Task shows how many days are left.",
+            "title": "Countdown",
+            "type": "boolean"
+          },
           "repeat_rule": {
             "description": "An RFC 5545 RRULE; empty when the Task doesn't repeat.",
             "title": "Repeat Rule",
@@ -6637,6 +6678,7 @@
           "due_time",
           "start_date",
           "start_time",
+          "countdown",
           "repeat_rule",
           "repeat_from",
           "is_overdue",
@@ -6721,6 +6763,66 @@
           "data"
         ],
         "title": "AttachmentRemovedActivityOut",
+        "type": "object"
+      },
+      "CountdownMarkedActivityOut": {
+        "description": "The Task was marked as a Countdown.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "countdown_marked",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "CountdownMarkedActivityOut",
+        "type": "object"
+      },
+      "CountdownUnmarkedActivityOut": {
+        "description": "The Task stopped being a Countdown.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "countdown_unmarked",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "CountdownUnmarkedActivityOut",
         "type": "object"
       },
       "CreatedActivityOut": {
@@ -7603,6 +7705,8 @@
                 "mapping": {
                   "attachment_added": "#/components/schemas/AttachmentAddedActivityOut",
                   "attachment_removed": "#/components/schemas/AttachmentRemovedActivityOut",
+                  "countdown_marked": "#/components/schemas/CountdownMarkedActivityOut",
+                  "countdown_unmarked": "#/components/schemas/CountdownUnmarkedActivityOut",
                   "created": "#/components/schemas/CreatedActivityOut",
                   "dates_changed": "#/components/schemas/DatesChangedActivityOut",
                   "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
@@ -7646,6 +7750,12 @@
                 },
                 {
                   "$ref": "#/components/schemas/UnpinnedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/CountdownMarkedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/CountdownUnmarkedActivityOut"
                 },
                 {
                   "$ref": "#/components/schemas/AttachmentAddedActivityOut"

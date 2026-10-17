@@ -14,8 +14,12 @@ function mockApi(saved: TaskDetail) {
     const request = requestOf(input);
     const url = new URL(request.url);
     if (request.method === "PATCH") {
-      const { dates } = (await request.clone().json()) as { dates: Partial<TaskDetail> | null };
-      Object.assign(saved, dates ?? {});
+      const body = (await request.clone().json()) as {
+        dates?: Partial<TaskDetail> | null;
+        countdown?: boolean;
+      };
+      Object.assign(saved, body.dates ?? {});
+      if (body.countdown !== undefined) saved.countdown = body.countdown;
       return json({ task: saved, affected: [] });
     }
     if (url.pathname.endsWith("/sidebar")) return json({ inbox: INBOX, items: [], archived: [] });
@@ -134,6 +138,41 @@ describe("Due dates", () => {
     await user.click(await screen.findByRole("button", { name: "No date" }));
 
     expect(await patchedDates(fetchSpy)).toEqual([{ dates: null }]);
+  });
+});
+
+describe("Countdown", () => {
+  it("marks a dated Task as a Countdown from the picker", async () => {
+    const fetchSpy = mockApi(task({ due_date: "2026-10-27" }));
+    const user = renderList();
+
+    await user.click(await screen.findByRole("button", { name: /^Due: / }));
+    const picker = await screen.findByRole("dialog", { name: "Date" });
+    await user.click(within(picker).getByRole("checkbox", { name: "Countdown" }));
+
+    expect(await patchedDates(fetchSpy)).toEqual([{ countdown: true }]);
+    expect(within(picker).getByRole("checkbox", { name: "Countdown" })).toBeChecked();
+  });
+
+  it("unmarks a Countdown", async () => {
+    const fetchSpy = mockApi(task({ due_date: "2026-10-27", countdown: true }));
+    const user = renderList();
+
+    await user.click(await screen.findByRole("button", { name: /^Due: / }));
+    const picker = await screen.findByRole("dialog", { name: "Date" });
+    await user.click(within(picker).getByRole("checkbox", { name: "Countdown" }));
+
+    expect(await patchedDates(fetchSpy)).toEqual([{ countdown: false }]);
+  });
+
+  it("can't mark a Task without a date", async () => {
+    mockApi(task({}));
+    const user = renderList();
+
+    await user.click(await screen.findByRole("button", { name: "Due: none" }));
+    const picker = await screen.findByRole("dialog", { name: "Date" });
+
+    expect(within(picker).getByRole("checkbox", { name: "Countdown" })).toBeDisabled();
   });
 });
 

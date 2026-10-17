@@ -5,11 +5,12 @@ import { useUndoableTaskChanges } from "./task-undo";
 import { taskQuery, useUpdateTask, type Task } from "./tasks";
 
 /** A Task's dates and what goes with them, which the date picker changes. */
-export type DatedTask = Dates & Pick<Task, "id" | "parent_id" | "repeat_rule" | "repeat_from">;
+export type DatedTask = Dates &
+  Pick<Task, "id" | "parent_id" | "countdown" | "repeat_rule" | "repeat_from">;
 
 /**
- * Save changes to a Task's dates. Removing the due date removes the Reminders and Repeat on the
- * server too, so it offers Undo, which puts back the dates, the Reminders and the Repeat.
+ * Save changes to a Task's dates. Removing the due date removes the Reminders, Repeat and
+ * Countdown mark on the server too, so it offers Undo, which puts all of them back.
  */
 export function useSaveDates(task: DatedTask) {
   const queryClient = useQueryClient();

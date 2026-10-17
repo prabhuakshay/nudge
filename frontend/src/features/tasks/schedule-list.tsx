@@ -12,6 +12,7 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
+import { CountdownHeadline } from "./countdown-headline";
 import { useOpenTask } from "./open-task";
 import { QuickAddCard } from "./quick-add-card";
 import { useRowContext } from "./row-context";
@@ -35,9 +36,9 @@ const ignoreFold = () => undefined;
 
 /**
  * Today, Upcoming or All as a table, its Tasks picked by date on the server. Each shows Pinned
- * Tasks first. Today then shows Overdue, then Today, then a collapsed Closed today group; Upcoming
- * shows a group per day for the coming week, then per month; All shows Overdue, Today, then
- * Upcoming's groups, then No date. Rows are flat, a Subtask naming its parent above its title,
+ * Tasks first. Today names the soonest Countdown to come under its title, then shows Overdue,
+ * then Today, then a collapsed Closed today group; Upcoming shows a group per day for the coming
+ * week, then per month; All shows Overdue, Today, then Upcoming's groups, then No date. Rows are flat, a Subtask naming its parent above its title,
  * and each row names its Project. Quick add puts new Tasks in the Inbox, due today in Today,
  * tomorrow in Upcoming and undated in All.
  */
@@ -84,6 +85,7 @@ export function ScheduleList({
         <div className="min-w-0">
           <h1 className="truncate text-2xl font-extrabold tracking-tight sm:text-3xl">{title}</h1>
           {description && <p className="truncate text-sm text-muted-foreground">{description}</p>}
+          {view === "today" && <CountdownHeadline today={today} onOpen={setOpenTask} />}
         </div>
         <Badge variant="secondary" className="shrink-0 tabular-nums">
           {tasks.length} open

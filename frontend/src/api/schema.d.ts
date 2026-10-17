@@ -1583,6 +1583,11 @@ export interface components {
       /** Start Time */
       start_time: string | null;
       /**
+       * Countdown
+       * @description Whether the Task shows how many days are left.
+       */
+      countdown: boolean;
+      /**
        * Repeat Rule
        * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
        */
@@ -1710,6 +1715,11 @@ export interface components {
       start_date: string | null;
       /** Start Time */
       start_time: string | null;
+      /**
+       * Countdown
+       * @description Whether the Task shows how many days are left.
+       */
+      countdown: boolean;
       /**
        * Repeat Rule
        * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
@@ -2451,6 +2461,11 @@ export interface components {
       /** @description 1 (P1) is the most urgent; left out, the Task has no Priority. */
       priority?: components["schemas"]["Priority"] | null;
       /**
+       * Countdown
+       * @description Marks the Task as a Countdown, which shows the days left. Needs dates.
+       */
+      countdown?: boolean | null;
+      /**
        * Tags
        * @description Tag names, in any case; Tags the user doesn't have yet are created.
        */
@@ -2500,6 +2515,11 @@ export interface components {
       pinned?: boolean | null;
       /** @description Replaces all of the Task's dates; null removes them and its Reminders. */
       dates?: components["schemas"]["TaskDatesIn"] | null;
+      /**
+       * Countdown
+       * @description Marks a dated Task as a Countdown, or unmarks it. Removing the Task's dates unmarks it too.
+       */
+      countdown?: boolean | null;
       /**
        * Move Occurrence
        * @description With `dates`, moves only a repeating Task's current Occurrence, as a Calendar drag does: its later Occurrences stay where they were. Otherwise new dates restart the series at the new due date.
@@ -2639,6 +2659,11 @@ export interface components {
       /** Start Time */
       start_time: string | null;
       /**
+       * Countdown
+       * @description Whether the Task shows how many days are left.
+       */
+      countdown: boolean;
+      /**
        * Repeat Rule
        * @description An RFC 5545 RRULE; empty when the Task doesn't repeat.
        */
@@ -2730,6 +2755,44 @@ export interface components {
        */
       at: string;
       data: components["schemas"]["AttachmentData"];
+    };
+    /**
+     * CountdownMarkedActivityOut
+     * @description The Task was marked as a Countdown.
+     */
+    CountdownMarkedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "countdown_marked";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * CountdownUnmarkedActivityOut
+     * @description The Task stopped being a Countdown.
+     */
+    CountdownUnmarkedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "countdown_unmarked";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
     };
     /**
      * CreatedActivityOut
@@ -3231,6 +3294,8 @@ export interface components {
         | components["schemas"]["PriorityChangedActivityOut"]
         | components["schemas"]["PinnedActivityOut"]
         | components["schemas"]["UnpinnedActivityOut"]
+        | components["schemas"]["CountdownMarkedActivityOut"]
+        | components["schemas"]["CountdownUnmarkedActivityOut"]
         | components["schemas"]["AttachmentAddedActivityOut"]
         | components["schemas"]["AttachmentRemovedActivityOut"]
         | components["schemas"]["DatesChangedActivityOut"]

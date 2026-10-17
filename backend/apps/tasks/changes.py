@@ -19,6 +19,9 @@ class TaskRuleError(DomainRuleError):
     """A change that would break a Task rule. The message says which, in the user's words."""
 
 
+UNDATED_COUNTDOWN = "Only a dated task can be a countdown."
+
+
 @dataclass(frozen=True)
 class TaskChange:
     """A Task after a change, and the Tasks whose Status it changed."""

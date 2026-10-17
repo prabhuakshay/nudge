@@ -23,6 +23,7 @@ export function makeTask(overrides: Partial<TaskDetail> = {}): TaskDetail {
     due_time: null,
     start_date: null,
     start_time: null,
+    countdown: false,
     repeat_rule: "",
     repeat_from: "calendar",
     is_overdue: false,

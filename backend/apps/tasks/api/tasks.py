@@ -91,6 +91,7 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut]:
     new = creation.NewTask(
         dates=_dates(task) or TaskDates(),
         priority=task.priority or Task.Priority.NONE,
+        countdown=bool(task.countdown),
         tags=task.tags,
         repeat=_repeat(task),
         last=bool(task.last),
@@ -223,6 +224,7 @@ def _edit(patch: TaskPatchIn) -> services.TaskEdit:
         priority=patch.priority,
         pinned=patch.pinned,
         dates=_dates(patch),
+        countdown=patch.countdown,
         reminders=None
         if patch.reminders is None
         else [timedelta(minutes=offset) for offset in patch.reminders],

@@ -19,7 +19,7 @@ from django.utils import timezone
 from apps.core.palette import PaletteColor
 from apps.tasks import live, placement, reminders, repeat
 from apps.tasks.archive import ensure_writable
-from apps.tasks.changes import TaskChange, TaskRuleError
+from apps.tasks.changes import UNDATED_COUNTDOWN, TaskChange, TaskRuleError
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import TEXT_FIELDS, check_mentions, sync_mentions
 from apps.tasks.models import (
@@ -56,7 +56,8 @@ class TaskEdit:
 
     `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them, and the
     Reminders with them. `reminders` replaces the Reminders, as offsets, and `tag_ids` the Tags.
-    `project_id` moves the Task to another Project.
+    `project_id` moves the Task to another Project. Removing the dates also unmarks a
+    Countdown.
     New dates restart a repeating Task's series there, unless `move_occurrence` says they move
     only its current Occurrence.
     """
@@ -68,6 +69,7 @@ class TaskEdit:
     priority: Task.Priority | None = None
     pinned: bool | None = None
     dates: TaskDates | None = None
+    countdown: bool | None = None
     reminders: list[timedelta] | None = None
     project_id: int | None = None
     repeat_rule: str | None = None
@@ -167,6 +169,7 @@ _EDITABLE_FIELDS = (
     "due_time",
     "start_date",
     "start_time",
+    "countdown",
     "repeat_rule",
     "repeat_anchor",
     "occurrence_date",
@@ -187,8 +190,8 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange:
 
     Raises:
         NotFoundError: The Task, the Project or a Tag isn't one of the user's.
-        TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked, or pins a
-            Subtask.
+        TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked, pins a
+            Subtask, or marks an undated Task as a Countdown.
         ReminderRuleError: The edit's Reminders break a Reminder rule.
         RepeatRuleError: The edit's Repeat breaks a Repeat rule, or closes an Occurrence early.
         ArchivedProjectError: The Task is in an archived Project, or would move into one.
@@ -263,6 +266,16 @@ def _apply(task: Task, edit: TaskEdit) -> None:
     if edit.dates is not None:
         task.due_date, task.due_time = edit.dates.due_date, edit.dates.due_time
         task.start_date, task.start_time = edit.dates.start_date, edit.dates.start_time
+    _apply_countdown(task, edit)
+
+
+def _apply_countdown(task: Task, edit: TaskEdit) -> None:
+    if edit.countdown and task.due_date is None:
+        raise TaskRuleError(UNDATED_COUNTDOWN)
+    if edit.countdown is not None:
+        task.countdown = edit.countdown
+    if task.due_date is None:
+        task.countdown = False
 
 
 def _apply_status(task: Task, edit: TaskEdit) -> None:
@@ -299,14 +312,26 @@ def _activity(
     if task.priority != before["priority"]:
         data = {"old": before["priority"], "new": task.priority}
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.PRIORITY_CHANGED, data=data))
-    if (task.pinned_at is None) != (before["pinned_at"] is None):
-        kind = TaskActivity.Kind.UNPINNED if task.pinned_at is None else TaskActivity.Kind.PINNED
-        events.append(TaskActivity(task=task, kind=kind))
+    events.extend(_mark_events(task, before))
     dates = TaskDates.of(task)
     if dates != dates_before:
         data = {"old": dates_before.as_activity(), "new": dates.as_activity()}
         events.append(TaskActivity(task=task, kind=TaskActivity.Kind.DATES_CHANGED, data=data))
     return events
+
+
+def _mark_events(task: Task, before: dict[str, object]) -> list[TaskActivity]:
+    """Return the history events for the Task being pinned and marked as a Countdown, or not."""
+    kinds = []
+    pinned = task.pinned_at is not None
+    if pinned != (before["pinned_at"] is not None):
+        kinds.append(TaskActivity.Kind.PINNED if pinned else TaskActivity.Kind.UNPINNED)
+    if task.countdown != before["countdown"]:
+        marked = task.countdown
+        kinds.append(
+            TaskActivity.Kind.COUNTDOWN_MARKED if marked else TaskActivity.Kind.COUNTDOWN_UNMARKED,
+        )
+    return [TaskActivity(task=task, kind=kind) for kind in kinds]
 
 
 @dataclass(frozen=True)

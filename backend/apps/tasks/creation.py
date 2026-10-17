@@ -12,7 +12,7 @@ from typing import TYPE_CHECKING
 from django.db import transaction
 
 from apps.tasks import live, placement, repeat
-from apps.tasks.changes import TaskChange
+from apps.tasks.changes import UNDATED_COUNTDOWN, TaskChange, TaskRuleError
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import check_mentions, sync_mentions
 from apps.tasks.models import Tag, Task, TaskActivity
@@ -34,13 +34,14 @@ class NewTask:
     """What a new Task starts with besides its title; all of it is optional.
 
     `tags` holds Tags, or names of the owner's Tags, which are created if they're new. Only a
-    root Task can repeat or sit in a Section. `last` adds a root Task after its Project's other
-    roots rather than before them.
+    root Task can repeat or sit in a Section, and only a dated one can be a Countdown. `last`
+    adds a root Task after its Project's other roots rather than before them.
     """
 
     description: str = ""
     dates: TaskDates = field(default_factory=TaskDates)
     priority: Task.Priority = Task.Priority.NONE
+    countdown: bool = False
     tags: Sequence[Tag | str] = ()
     repeat: Repeat | None = None
     section: Section | None = None
@@ -91,6 +92,7 @@ def create_task(project: Project, title: str, new: NewTask | None = None) -> Tas
         MentionError: The title mentions a Person the owner doesn't have.
         RepeatRuleError: The Repeat's rule is unreadable, or the Task has no due date.
         SectionRuleError: The Section is in another Project.
+        TaskRuleError: The Task would be an undated Countdown.
     """
     new = new or NewTask()
     with transaction.atomic():
@@ -108,7 +110,8 @@ def create_subtask(parent: Task, title: str, new: NewTask | None = None) -> Task
     A Closed Task can't hold open work, so adding under one reopens it and its Closed ancestors.
 
     Raises:
-        TaskRuleError: The parent is already at the deepest level.
+        TaskRuleError: The parent is already at the deepest level, or the Subtask would be an
+            undated Countdown.
         RepeatRuleError: The Subtask would repeat.
         ArchivedProjectError: The parent is in an archived Project.
         MentionError: The title mentions a Person the owner doesn't have.
@@ -148,6 +151,8 @@ def duplicate_task(user: User, task_id: int) -> Task:
 
 def _insert(title: str, new: NewTask, spot: placement.Spot) -> Task:
     """Save a new Task in the spot, with its Activity, Mentions and Tags."""
+    if new.countdown and new.dates.due_date is None:
+        raise TaskRuleError(UNDATED_COUNTDOWN)
     project = spot.project
     task = Task.objects.create(
         owner_id=project.owner_id,
@@ -157,6 +162,7 @@ def _insert(title: str, new: NewTask, spot: placement.Spot) -> Task:
         title=title,
         description=new.description,
         priority=new.priority,
+        countdown=new.countdown,
         position=spot.position,
         **asdict(new.dates),
     )

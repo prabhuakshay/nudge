@@ -187,6 +187,21 @@ describe("Undo of a date change", () => {
       },
     ]);
   });
+
+  it("marks a removed due date's Task as a Countdown again", async () => {
+    const sent = mockServer();
+    const changes = renderChanges();
+
+    changes.current.removeDates({ ...LOW, countdown: true }, []);
+
+    expect((await undo(sent, "Date removed")).map((each) => each.body)).toEqual([
+      {
+        dates: { due_date: "2026-10-20", due_time: null, start_date: null, start_time: null },
+        reminders: [],
+        countdown: true,
+      },
+    ]);
+  });
 });
 
 describe("Undo of a Tag change", () => {

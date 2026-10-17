@@ -138,6 +138,22 @@ def test_check_in_stops_at_the_goal(
 
 
 @pytest.mark.django_db
+def test_check_in_keeps_a_count_above_a_lowered_goal(
+    client: Client,
+    ada: User,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    notification = _fired_reminder(ada, freeze_time, goal=3)
+    habit = _habit(notification)
+    services.set_check_ins(ada, habit.pk, date(2026, 3, 10), 3)
+    services.update_habit(ada, habit.pk, goal=2)
+
+    response = _check_in(client, notification)
+
+    assert response.json()["today_count"] == 3
+
+
+@pytest.mark.django_db
 def test_a_snoozed_habit_reminder_fires_again_once(
     client: Client,
     ada: User,

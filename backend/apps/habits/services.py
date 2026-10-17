@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from django.db import transaction
 from django.db.models import F, OuterRef, Subquery
 from django.db.models.functions import Coalesce
 from django.utils import timezone
+from django_stubs_ext import WithAnnotations
 
 from apps.accounts.models import User
 from apps.core.errors import DomainRuleError, NotFoundError
@@ -33,7 +34,15 @@ class HabitRuleError(DomainRuleError):
     """A change to a Habit or its Check-ins breaks one of the rules Habits follow."""
 
 
-def habits(user: User) -> QuerySet[Habit]:
+class _TodayCount(TypedDict):
+    today_count: int
+
+
+type HabitWithToday = WithAnnotations[Habit, _TodayCount]
+"""A Habit with `today_count`, how many Check-ins it has today on its owner's clock."""
+
+
+def habits(user: User) -> QuerySet[HabitWithToday]:
     """Return the user's Habits in their order, each with its `today_count` of Check-ins.
 
     The owner and Check-ins come along, since every Habit's Streak is derived from them.
@@ -46,7 +55,7 @@ def habits(user: User) -> QuerySet[Habit]:
     )
 
 
-def habit(user: User, habit_id: int) -> Habit:
+def habit(user: User, habit_id: int) -> HabitWithToday:
     """Return the user's Habit with this id, with its `today_count`.
 
     Raises:
@@ -99,7 +108,7 @@ def create_habit(  # noqa: PLR0913 - one keyword per setting the user picks in t
     goal: int = 1,
     start_date: date | None = None,
     reminder_time: time | None = None,
-) -> Habit:
+) -> HabitWithToday:
     """Add a Habit last in the user's order, starting today in the user's time zone by default."""
     created = Habit(
         owner=user,
@@ -132,7 +141,7 @@ def update_habit(  # noqa: PLR0913 - one keyword per setting the user can change
     start_date: date | None = None,
     reminder_time: time | None = None,
     remove_reminder: bool = False,
-) -> Habit:
+) -> HabitWithToday:
     """Change any of a Habit's settings; None leaves a setting as it is.
 
     `remove_reminder` turns the Reminder off, since None leaves it. A lower Goal keeps every
@@ -184,7 +193,7 @@ def _set_frequency(
     habit.times_per_week = per_week
 
 
-def set_check_ins(user: User, habit_id: int, day: date, count: int) -> Habit:
+def set_check_ins(user: User, habit_id: int, day: date, count: int) -> HabitWithToday:
     """Set how many times the user did a Habit on a day; zero clears the day.
 
     Raises:
@@ -234,7 +243,7 @@ def move_habit(user: User, habit_id: int, after_id: int | None) -> None:
         found.save(update_fields=["position", "updated_at"])
 
 
-def _set_archived(user: User, habit_id: int, *, archived: bool) -> Habit:
+def _set_archived(user: User, habit_id: int, *, archived: bool) -> HabitWithToday:
     found = habit(user, habit_id)
     if archived != found.is_archived:
         found.archived_at = timezone.now() if archived else None
@@ -243,7 +252,7 @@ def _set_archived(user: User, habit_id: int, *, archived: bool) -> Habit:
     return found
 
 
-def archive_habit(user: User, habit_id: int) -> Habit:
+def archive_habit(user: User, habit_id: int) -> HabitWithToday:
     """Archive one of the user's Habits, keeping its Check-ins and place. Twice is harmless.
 
     Raises:
@@ -252,7 +261,7 @@ def archive_habit(user: User, habit_id: int) -> Habit:
     return _set_archived(user, habit_id, archived=True)
 
 
-def unarchive_habit(user: User, habit_id: int) -> Habit:
+def unarchive_habit(user: User, habit_id: int) -> HabitWithToday:
     """Bring one of the user's archived Habits back in its place, history intact.
 
     Raises:

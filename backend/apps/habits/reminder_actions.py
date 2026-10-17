@@ -36,7 +36,7 @@ def _habit_id(user: User, notification_id: int) -> int:
 
 
 def check_in(user: User, notification_id: int) -> Habit:
-    """Add one Check-in today to the notification's Habit, never past its Goal.
+    """Add one Check-in today to the notification's Habit, unless today's Goal is already met.
 
     The notification counts as read, since the user has acted on it.
 
@@ -45,11 +45,10 @@ def check_in(user: User, notification_id: int) -> Habit:
         HabitRuleError: Today is before the Habit started.
     """
     habit = services.habit(user, _habit_id(user, notification_id))
-    day = today(user)
-    done = habit.check_ins.filter(date=day).values_list("count", flat=True).first() or 0
-    checked_in = services.set_check_ins(user, habit.pk, day, min(done + 1, habit.goal))
+    if habit.today_count < habit.goal:
+        habit = services.set_check_ins(user, habit.pk, today(user), habit.today_count + 1)
     mark_read(user, notification_id)
-    return checked_in
+    return habit
 
 
 def snooze(user: User, notification_id: int, until: Snooze) -> None:

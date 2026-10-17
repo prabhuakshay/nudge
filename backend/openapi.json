@@ -3730,6 +3730,192 @@
             "SessionAuth": []
           }
         ]
+      },
+      "delete": {
+        "operationId": "apps_habits_api_delete_habit",
+        "summary": "Delete a Habit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "habit_id",
+            "schema": {
+              "title": "Habit Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Delete a Habit and its Check-ins for good. Habits don't go to Trash.",
+        "tags": [
+          "habits"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/habits/{habit_id}/move": {
+      "post": {
+        "operationId": "apps_habits_api_move_habit",
+        "summary": "Move a Habit in the user's order",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "habit_id",
+            "schema": {
+              "title": "Habit Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Put a Habit right after another, or first.",
+        "tags": [
+          "habits"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HabitMoveIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/habits/{habit_id}/archive": {
+      "post": {
+        "operationId": "apps_habits_api_archive_habit",
+        "summary": "Archive a Habit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "habit_id",
+            "schema": {
+              "title": "Habit Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Move a Habit to the Archived section, keeping its Check-ins.",
+        "tags": [
+          "habits"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/habits/{habit_id}/unarchive": {
+      "post": {
+        "operationId": "apps_habits_api_unarchive_habit",
+        "summary": "Unarchive a Habit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "habit_id",
+            "schema": {
+              "title": "Habit Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Bring an archived Habit back to its place, with its Check-ins.",
+        "tags": [
+          "habits"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
       }
     }
   },
@@ -8507,6 +8693,11 @@
             "format": "date",
             "title": "Start Date",
             "type": "string"
+          },
+          "is_archived": {
+            "description": "Archived Habits keep their history but stay out of Today.",
+            "title": "Is Archived",
+            "type": "boolean"
           }
         },
         "required": [
@@ -8517,7 +8708,8 @@
           "frequency",
           "weekdays",
           "times_per_week",
-          "start_date"
+          "start_date",
+          "is_archived"
         ],
         "title": "HabitOut",
         "type": "object"
@@ -8684,6 +8876,25 @@
           }
         },
         "title": "HabitPatchIn",
+        "type": "object"
+      },
+      "HabitMoveIn": {
+        "description": "Where a Habit goes in the user's order.",
+        "properties": {
+          "after_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Habit it now follows; first when null, last when it isn't there.",
+            "title": "After Id"
+          }
+        },
+        "title": "HabitMoveIn",
         "type": "object"
       }
     },

@@ -49,7 +49,8 @@ class Habit(models.Model):
     than an RRULE: `weekdays` (ISO numbers, 1 is Monday) only for chosen weekdays and
     `times_per_week` only for a number of times a week. `start_date` is the first day the Habit
     counts, in the user's time zone. `position` is a fractional-indexing key in the user's manual
-    order.
+    order. An archived Habit keeps its Check-ins and its place, so unarchiving puts it back as it
+    was.
     """
 
     class Frequency(models.TextChoices):
@@ -72,6 +73,7 @@ class Habit(models.Model):
     times_per_week = models.PositiveSmallIntegerField(null=True, blank=True)
     start_date = models.DateField()
     position = models.CharField(max_length=255, db_collation="C")
+    archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -97,3 +99,8 @@ class Habit(models.Model):
     def __str__(self) -> str:
         """Return the name, which is how the user tells Habits apart."""
         return self.name
+
+    @property
+    def is_archived(self) -> bool:
+        """Whether the user has put the Habit away, keeping its history."""
+        return self.archived_at is not None

@@ -1,4 +1,4 @@
-"""Tests for the Habit endpoints: list the user's Habits and add one."""
+"""Tests for the Habit endpoints: list, add, move, archive, unarchive and delete Habits."""
 
 from __future__ import annotations
 
@@ -20,10 +20,6 @@ if TYPE_CHECKING:
 
 def _create(client: Client, data: object) -> Response:
     return client.post("/api/v1/habits", data, content_type="application/json")
-
-
-def _patch(client: Client, habit_id: int, data: object) -> Response:
-    return client.patch(f"/api/v1/habits/{habit_id}", data, content_type="application/json")
 
 
 def _habit(name: str = "Read") -> dict[str, str]:
@@ -123,172 +119,138 @@ def test_the_list_never_shows_another_users_habits(client: Client, grace: User) 
     assert _names(other) == ["Grace's"]
 
 
-@pytest.mark.django_db
-def test_create_adds_a_habit_done_on_chosen_weekdays(client: Client) -> None:
-    created = _create(client, {**_habit(), "frequency": "weekdays", "weekdays": [5, 1, 3]})
-
-    assert created.status_code == 201
-    assert created.json()["frequency"] == "weekdays"
-    assert created.json()["weekdays"] == [1, 3, 5]
+def _post(client: Client, path: str, data: object = None) -> Response:
+    return client.post(path, data, content_type="application/json")
 
 
 @pytest.mark.django_db
-def test_create_adds_a_habit_done_a_number_of_times_a_week(client: Client) -> None:
-    created = _create(client, {**_habit(), "frequency": "times_per_week", "times_per_week": 3})
+def test_archive_keeps_the_habit_in_the_list_marked_archived(client: Client) -> None:
+    habit = _create(client, _habit()).json()
+    assert habit["is_archived"] is False
 
-    assert created.status_code == 201
-    assert created.json()["frequency"] == "times_per_week"
-    assert created.json()["times_per_week"] == 3
-    assert created.json()["weekdays"] == []
+    archived = _post(client, f"/api/v1/habits/{habit['id']}/archive")
 
-
-@pytest.mark.django_db
-def test_a_daily_habit_has_no_weekdays_or_times_a_week(client: Client) -> None:
-    created = _create(client, {**_habit(), "weekdays": [1], "times_per_week": 2})
-
-    assert created.json()["frequency"] == "daily"
-    assert created.json()["weekdays"] == []
-    assert created.json()["times_per_week"] is None
+    assert archived.status_code == 200
+    assert archived.json()["is_archived"] is True
+    assert client.get("/api/v1/habits").json() == [archived.json()]
 
 
 @pytest.mark.django_db
-@pytest.mark.parametrize(
-    "frequency",
-    [
-        {"frequency": "weekdays"},
-        {"frequency": "weekdays", "weekdays": []},
-        {"frequency": "weekdays", "weekdays": [0]},
-        {"frequency": "weekdays", "weekdays": [8]},
-        {"frequency": "times_per_week"},
-        {"frequency": "times_per_week", "times_per_week": 0},
-        {"frequency": "times_per_week", "times_per_week": 7},
-        {"frequency": "monthly"},
-    ],
-)
-def test_create_refuses_a_frequency_that_makes_no_sense(
-    client: Client,
-    frequency: dict[str, object],
-) -> None:
-    response = _create(client, {**_habit(), **frequency})
-
-    assert response.status_code == 422
-    assert _names(client) == []
-
-
-@pytest.mark.django_db
-@pytest.mark.parametrize("times_per_week", [1, 6])
-def test_create_accepts_one_to_six_times_a_week(client: Client, times_per_week: int) -> None:
-    response = _create(
-        client,
-        {**_habit(), "frequency": "times_per_week", "times_per_week": times_per_week},
-    )
-
-    assert response.status_code == 201
-
-
-@pytest.mark.django_db
-def test_create_takes_a_chosen_start_date(client: Client) -> None:
-    created = _create(client, {**_habit(), "start_date": "2026-01-05"})
-
-    assert created.json()["start_date"] == "2026-01-05"
-
-
-@pytest.mark.django_db
-def test_edit_changes_every_setting_the_list_then_shows(client: Client) -> None:
+def test_archiving_twice_is_harmless(client: Client) -> None:
     habit_id = _create(client, _habit()).json()["id"]
+    _post(client, f"/api/v1/habits/{habit_id}/archive")
 
-    edited = _patch(
-        client,
-        habit_id,
-        {
-            "name": " Run ",
-            "icon": "footprints",
-            "color": "orange",
-            "frequency": "weekdays",
-            "weekdays": [2, 4],
-            "start_date": "2026-02-01",
-        },
-    )
+    again = _post(client, f"/api/v1/habits/{habit_id}/archive")
 
-    assert edited.status_code == 200
-    assert edited.json() == {
-        "id": habit_id,
-        "name": "Run",
-        "icon": "footprints",
-        "color": "orange",
-        "frequency": "weekdays",
-        "weekdays": [2, 4],
-        "times_per_week": None,
-        "start_date": "2026-02-01",
-    }
-    assert client.get("/api/v1/habits").json() == [edited.json()]
+    assert again.status_code == 200
+    assert again.json()["is_archived"] is True
 
 
 @pytest.mark.django_db
-def test_edit_leaves_settings_it_is_not_given(client: Client) -> None:
-    created = _create(client, {**_habit(), "frequency": "weekdays", "weekdays": [1]}).json()
+def test_unarchive_brings_the_habit_back_in_its_place(client: Client) -> None:
+    ids = [_create(client, _habit(name)).json()["id"] for name in ["Read", "Run", "Meditate"]]
+    _post(client, f"/api/v1/habits/{ids[1]}/archive")
 
-    edited = _patch(client, created["id"], {"name": "Study"})
+    unarchived = _post(client, f"/api/v1/habits/{ids[1]}/unarchive")
 
-    assert edited.json() == {**created, "name": "Study"}
-
-
-@pytest.mark.django_db
-def test_edit_switches_a_habit_to_a_number_of_times_a_week(client: Client) -> None:
-    created = _create(client, {**_habit(), "frequency": "weekdays", "weekdays": [1]}).json()
-
-    edited = _patch(
-        client,
-        created["id"],
-        {"frequency": "times_per_week", "times_per_week": 4},
-    )
-
-    assert edited.json()["frequency"] == "times_per_week"
-    assert edited.json()["times_per_week"] == 4
-    assert edited.json()["weekdays"] == []
-
-
-@pytest.mark.django_db
-def test_edit_changes_the_weekdays_of_a_weekday_habit(client: Client) -> None:
-    created = _create(client, {**_habit(), "frequency": "weekdays", "weekdays": [1]}).json()
-
-    edited = _patch(client, created["id"], {"weekdays": [6, 7]})
-
-    assert edited.json()["weekdays"] == [6, 7]
+    assert unarchived.status_code == 200
+    assert unarchived.json()["is_archived"] is False
+    assert _names(client) == ["Read", "Run", "Meditate"]
 
 
 @pytest.mark.django_db
 @pytest.mark.parametrize(
-    "patch",
+    ("moving", "after", "order"),
     [
-        {"name": ""},
-        {"name": "x" * 101},
-        {"frequency": "weekdays"},
-        {"frequency": "weekdays", "weekdays": []},
-        {"frequency": "times_per_week"},
-        {"frequency": "times_per_week", "times_per_week": 7},
-        {"icon": "sparkles"},
+        ("Meditate", "Read", ["Read", "Meditate", "Run"]),
+        ("Meditate", None, ["Meditate", "Read", "Run"]),
+        ("Read", "Meditate", ["Run", "Meditate", "Read"]),
+        ("Run", "Run", ["Read", "Run", "Meditate"]),
     ],
 )
-def test_edit_refuses_a_setting_that_makes_no_sense(
+def test_move_puts_a_habit_right_after_another_or_first(
     client: Client,
-    patch: dict[str, object],
+    moving: str,
+    after: str | None,
+    order: list[str],
 ) -> None:
-    created = _create(client, _habit()).json()
+    ids = {name: _create(client, _habit(name)).json()["id"] for name in ["Read", "Run", "Meditate"]}
 
-    response = _patch(client, created["id"], patch)
+    response = _post(
+        client,
+        f"/api/v1/habits/{ids[moving]}/move",
+        {"after_id": None if after is None else ids[after]},
+    )
 
-    assert response.status_code == 422
-    assert client.get("/api/v1/habits").json() == [created]
+    assert response.status_code == 204
+    assert _names(client) == order
 
 
 @pytest.mark.django_db
-def test_edit_cannot_reach_another_users_habit(client: Client, grace: User) -> None:
+def test_move_after_a_habit_that_isnt_there_puts_it_last(client: Client) -> None:
+    ids = [_create(client, _habit(name)).json()["id"] for name in ["Read", "Run"]]
+
+    _post(client, f"/api/v1/habits/{ids[0]}/move", {"after_id": 999_999})
+
+    assert _names(client) == ["Run", "Read"]
+
+
+@pytest.mark.django_db
+def test_delete_removes_the_habit_for_good(client: Client) -> None:
+    ids = [_create(client, _habit(name)).json()["id"] for name in ["Read", "Run"]]
+
+    response = client.delete(f"/api/v1/habits/{ids[0]}")
+
+    assert response.status_code == 204
+    assert _names(client) == ["Run"]
+    assert client.delete(f"/api/v1/habits/{ids[0]}").status_code == 404
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("method", "action", "data"),
+    [
+        ("post", "/move", {"after_id": None}),
+        ("post", "/archive", None),
+        ("post", "/unarchive", None),
+        ("delete", "", None),
+    ],
+)
+def test_actions_cannot_reach_another_users_habit(
+    client: Client,
+    grace: User,
+    method: str,
+    action: str,
+    data: object,
+) -> None:
     other = Client()
     other.force_login(grace)
-    created = _create(other, _habit("Grace's")).json()
+    _create(other, _habit("Grace's first"))
+    habit_id = _create(other, _habit("Grace's second")).json()["id"]
+    before = other.get("/api/v1/habits").json()
 
-    response = _patch(client, created["id"], {"name": "Mine now"})
+    response = getattr(client, method)(
+        f"/api/v1/habits/{habit_id}{action}",
+        data,
+        content_type="application/json",
+    )
 
     assert response.status_code == 404
-    assert other.get("/api/v1/habits").json() == [created]
+    assert response.json() == {"detail": "Habit not found."}
+    assert other.get("/api/v1/habits").json() == before
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    ("method", "path"),
+    [
+        ("post", "/api/v1/habits/1/move"),
+        ("post", "/api/v1/habits/1/archive"),
+        ("post", "/api/v1/habits/1/unarchive"),
+        ("delete", "/api/v1/habits/1"),
+    ],
+)
+def test_actions_require_a_session(method: str, path: str) -> None:
+    response = getattr(Client(), method)(path, None, content_type="application/json")
+
+    assert response.status_code == 401

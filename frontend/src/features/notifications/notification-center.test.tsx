@@ -5,6 +5,7 @@ import userEvent from "@testing-library/user-event";
 import { NotificationCenter } from "./notification-center";
 import type { Notification } from "./notifications";
 
+import { habit } from "@/test/habits";
 import { makeTask } from "@/test/tasks";
 import { requestOf } from "@/test/fetch";
 
@@ -18,6 +19,7 @@ function notification(overrides: Partial<Notification>): Notification {
     body: "Due today",
     url: "/inbox",
     is_reminder: false,
+    is_habit_reminder: false,
     created_at: new Date().toISOString(),
     read_at: null,
     ...overrides,
@@ -39,6 +41,13 @@ function mockApi(items: Notification[]) {
       const change = { task: makeTask({ status: "completed" }), affected: [] };
       return Promise.resolve(
         new Response(JSON.stringify(change), { headers: { "Content-Type": "application/json" } }),
+      );
+    }
+    if (request.url.endsWith("/check-in")) {
+      return Promise.resolve(
+        new Response(JSON.stringify(habit({ today_count: 1 })), {
+          headers: { "Content-Type": "application/json" },
+        }),
       );
     }
     return Promise.resolve(new Response(null, { status: 204 }));
@@ -184,5 +193,51 @@ describe("NotificationCenter", () => {
     });
     const [request] = sentRequests(fetchSpy);
     expect(await request?.json()).toEqual({ until });
+  });
+
+  it("offers no Habit Reminder actions on a Task Reminder", async () => {
+    mockApi([notification({ id: 7, is_reminder: true })]);
+
+    await openCenter();
+
+    await screen.findByRole("button", { name: "Complete Pay rent" });
+    expect(screen.queryByRole("button", { name: /^Check in/ })).not.toBeInTheDocument();
+  });
+
+  it("checks in to the Habit of a Habit Reminder", async () => {
+    const fetchSpy = mockApi([
+      notification({ id: 9, title: "Drink water", body: "", is_habit_reminder: true }),
+    ]);
+    const user = await openCenter();
+
+    await user.click(await screen.findByRole("button", { name: "Check in Drink water" }));
+
+    await waitFor(() => {
+      expect(sent(fetchSpy)).toEqual(["POST /api/v1/notifications/9/check-in"]);
+    });
+    expect(screen.queryByRole("button", { name: "Complete Drink water" })).not.toBeInTheDocument();
+  });
+
+  it("snoozes a Habit Reminder with the same snooze times", async () => {
+    const fetchSpy = mockApi([
+      notification({ id: 9, title: "Drink water", body: "", is_habit_reminder: true }),
+    ]);
+    const user = await openCenter();
+
+    await user.click(await screen.findByRole("button", { name: "Snooze Drink water" }));
+    const items = await screen.findAllByRole("menuitem");
+    expect(items.map((item) => item.textContent)).toEqual([
+      "15 minutes",
+      "1 hour",
+      "3 hours",
+      "Tomorrow 09:00",
+    ]);
+    await user.click(screen.getByRole("menuitem", { name: "1 hour" }));
+
+    await waitFor(() => {
+      expect(sent(fetchSpy)).toEqual(["POST /api/v1/notifications/9/snooze-habit"]);
+    });
+    const [request] = sentRequests(fetchSpy);
+    expect(await request?.json()).toEqual({ until: "in_1_hour" });
   });
 });

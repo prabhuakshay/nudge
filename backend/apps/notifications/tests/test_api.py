@@ -68,6 +68,7 @@ def test_list_returns_only_the_users_notifications(
         "body": "Due today",
         "url": "/inbox",
         "is_reminder": False,
+        "is_habit_reminder": False,
         "created_at": body["items"][0]["created_at"],
         "read_at": None,
     }

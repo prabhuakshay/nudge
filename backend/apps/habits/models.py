@@ -56,7 +56,8 @@ class Habit(models.Model):
     a fractional-indexing key in the user's manual order. An archived Habit keeps its Check-ins
     and its place, so unarchiving puts it back as it was. `reminder_time` is a clock time in the
     user's zone; `next_reminder_at` (UTC) is when the Reminder next fires, kept by
-    `apps.habits.reminders` so the sweep is one indexed query.
+    `apps.habits.reminders` so the sweep is one indexed query. `snoozed_until` is a one-off
+    extra firing the user asked for from a Reminder's notification.
     """
 
     class Frequency(models.TextChoices):
@@ -81,6 +82,7 @@ class Habit(models.Model):
     start_date = models.DateField()
     reminder_time = models.TimeField(null=True, blank=True)
     next_reminder_at = models.DateTimeField(null=True, blank=True)
+    snoozed_until = models.DateTimeField(null=True, blank=True)
     position = models.CharField(max_length=255, db_collation="C")
     archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -95,6 +97,11 @@ class Habit(models.Model):
                 fields=["next_reminder_at"],
                 condition=Q(next_reminder_at__isnull=False),
                 name="habit_pending_reminder_idx",
+            ),
+            models.Index(
+                fields=["snoozed_until"],
+                condition=Q(snoozed_until__isnull=False),
+                name="habit_snoozed_until_idx",
             ),
         ]
         constraints: ClassVar = [

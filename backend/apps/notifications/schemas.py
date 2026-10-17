@@ -18,6 +18,10 @@ class NotificationOut(Schema):
     is_reminder: bool = Field(
         description="Whether a Reminder sent it, so its Task can be completed or snoozed from it.",
     )
+    is_habit_reminder: bool = Field(
+        description="Whether a Habit Reminder sent it, so its Habit can be checked in to or "
+        "snoozed from it.",
+    )
     created_at: datetime
     read_at: datetime | None
 

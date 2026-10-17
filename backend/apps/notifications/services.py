@@ -51,9 +51,9 @@ def notify(  # noqa: PLR0913 - one optional link per kind of Reminder that sends
 ) -> Notification:
     """Add a notification to the user's notification center and push it to their devices.
 
-    A notification from a Reminder offers to complete or snooze its Task; `habit` links one to
-    the Habit whose Reminder sent it. Pushing happens in the
-    background worker, so a slow push service never delays the caller.
+    A notification from a Reminder offers to complete or snooze its Task, and one from a Habit
+    Reminder to check in or snooze. Pushing happens in the background worker, so a slow push
+    service never delays the caller.
     """
     from apps.notifications.tasks import push_notification  # noqa: PLC0415 - it imports this module
 
@@ -146,6 +146,7 @@ def push_to_devices(notification_id: int) -> None:
             "body": notification.body,
             "url": notification.url,
             "is_reminder": notification.is_reminder,
+            "is_habit_reminder": notification.is_habit_reminder,
         },
     )
     for subscription in notification.user.push_subscriptions.all():

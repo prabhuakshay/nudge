@@ -68,12 +68,13 @@ def snooze(user: User, notification_id: int, until: Snooze) -> None:
         NotFoundError: The notification isn't one of the user's Reminder notifications.
     """
     reminder = _reminder(user, notification_id)
-    reminder.snoozed_until = _snooze_end(user, until)
+    reminder.snoozed_until = snooze_end(user, until)
     reminder.save(update_fields=["snoozed_until"])
     mark_read(user, notification_id)
 
 
-def _snooze_end(user: User, until: Snooze) -> datetime:
+def snooze_end(user: User, until: Snooze) -> datetime:
+    """Return when a snooze the user picks now ends; tomorrow morning is 09:00 in their zone."""
     now = timezone.now()
     if until in _DELAYS:
         return now + _DELAYS[until]

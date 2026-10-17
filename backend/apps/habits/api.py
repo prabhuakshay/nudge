@@ -1,4 +1,7 @@
-"""Habit endpoints: list all or today's Habits, add, edit, order, archive, delete, Check-ins."""
+"""Habit endpoints: list all or today's Habits, add, edit, order, archive, delete, Check-ins.
+
+Also the actions on a Habit Reminder's notification: check in and snooze.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +13,7 @@ from ninja import Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
-from apps.habits import services
+from apps.habits import reminder_actions, services
 from apps.habits.schemas import (
     CheckInOut,
     CheckInsIn,
@@ -19,11 +22,14 @@ from apps.habits.schemas import (
     HabitOut,
     HabitPatchIn,
 )
+from apps.tasks.schemas.reminders import SnoozeIn  # noqa: TC001 - Ninja reads the type at runtime
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
 
 router = Router()
+# Mounted under /notifications, beside the Task Reminder actions.
+reminder_actions_router = Router()
 
 
 @router.get("", response={HTTPStatus.OK: list[HabitOut]}, summary="List Habits")
@@ -170,4 +176,34 @@ def unarchive_habit(request: HttpRequest, habit_id: int) -> Status[HabitOut]:
 def delete_habit(request: HttpRequest, habit_id: int) -> Status[None]:
     """Delete a Habit and its Check-ins for good. Habits don't go to Trash."""
     services.delete_habit(signed_in_user(request), habit_id)
+    return Status(HTTPStatus.NO_CONTENT, None)
+
+
+@reminder_actions_router.post(
+    "/{int:notification_id}/check-in",
+    response={
+        HTTPStatus.OK: HabitOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
+    summary="Check in to a Habit from its Reminder",
+)
+def check_in_from_reminder(request: HttpRequest, notification_id: int) -> Status[HabitOut]:
+    """Add one Check-in today to the Habit a Reminder notification is about, up to its Goal."""
+    habit = reminder_actions.check_in(signed_in_user(request), notification_id)
+    return Status(HTTPStatus.OK, HabitOut.from_orm(habit))
+
+
+@reminder_actions_router.post(
+    "/{int:notification_id}/snooze-habit",
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
+    summary="Snooze a Habit Reminder",
+)
+def snooze_from_reminder(
+    request: HttpRequest,
+    notification_id: int,
+    body: SnoozeIn,
+) -> Status[None]:
+    """Fire a Habit Reminder notification once more later, leaving the Habit's schedule as it is."""
+    reminder_actions.snooze(signed_in_user(request), notification_id, body.until)
     return Status(HTTPStatus.NO_CONTENT, None)

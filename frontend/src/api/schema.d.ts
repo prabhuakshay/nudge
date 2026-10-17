@@ -368,6 +368,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/notifications/{notification_id}/check-in": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Check in to a Habit from its Reminder
+     * @description Add one Check-in today to the Habit a Reminder notification is about, up to its Goal.
+     */
+    post: operations["apps_habits_api_check_in_from_reminder"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/{notification_id}/snooze-habit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Snooze a Habit Reminder
+     * @description Fire a Habit Reminder notification once more later, leaving the Habit's schedule as it is.
+     */
+    post: operations["apps_habits_api_snooze_from_reminder"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/folders": {
     parameters: {
       query?: never;
@@ -1557,6 +1597,11 @@ export interface components {
        */
       is_reminder: boolean;
       /**
+       * Is Habit Reminder
+       * @description Whether a Habit Reminder sent it, so its Habit can be checked in to or snoozed from it.
+       */
+      is_habit_reminder: boolean;
+      /**
        * Created At
        * Format: date-time
        */
@@ -1944,6 +1989,109 @@ export interface components {
       /** @description Tomorrow morning is 09:00 in the user's time zone. */
       until: components["schemas"]["Snooze"];
     };
+    /**
+     * Frequency
+     * @description When a Habit is meant to be done.
+     * @enum {string}
+     */
+    Frequency: "daily" | "weekdays" | "times_per_week";
+    /**
+     * HabitIcon
+     * @description The Lucide icons a Habit can show. Not `Habit.Icon`: the API schema names enums by class.
+     * @enum {string}
+     */
+    HabitIcon:
+      | "circle-check"
+      | "droplet"
+      | "book-open"
+      | "dumbbell"
+      | "footprints"
+      | "bike"
+      | "apple"
+      | "salad"
+      | "pill"
+      | "bed"
+      | "moon"
+      | "sun"
+      | "brain"
+      | "heart-pulse"
+      | "music"
+      | "pencil"
+      | "languages"
+      | "code"
+      | "sprout"
+      | "coffee"
+      | "cigarette-off"
+      | "wallet"
+      | "smile"
+      | "star";
+    /**
+     * HabitOut
+     * @description A Habit's own fields.
+     */
+    HabitOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      icon: components["schemas"]["HabitIcon"];
+      color: components["schemas"]["PaletteColor"];
+      frequency: components["schemas"]["Frequency"];
+      /**
+       * Weekdays
+       * @description The chosen weekdays, 1 is Monday; else empty.
+       */
+      weekdays: number[];
+      /**
+       * Times Per Week
+       * @description How many times a week; else null.
+       */
+      times_per_week: number | null;
+      /**
+       * Goal
+       * @description How many Check-ins make a day done.
+       */
+      goal: number;
+      /**
+       * Start Date
+       * Format: date
+       * @description The first day the Habit counts, in the user's zone.
+       */
+      start_date: string;
+      /**
+       * Reminder Time
+       * @description When to remind the user on days the Habit is still to do; null for never.
+       */
+      reminder_time: string | null;
+      /**
+       * Today Count
+       * @description Check-ins so far today, in the user's zone.
+       */
+      today_count: number;
+      /**
+       * Is Archived
+       * @description Archived Habits keep their history but stay out of Today.
+       */
+      is_archived: boolean;
+      /**
+       * Current Streak
+       * @description The current run of done days or met weeks.
+       */
+      current_streak: number;
+      /**
+       * Best Streak
+       * @description The longest run of done days or met weeks ever.
+       */
+      best_streak: number;
+      /** @description Weeks for a times-a-week Habit, else days. */
+      streak_unit: components["schemas"]["StreakUnit"];
+    };
+    /**
+     * StreakUnit
+     * @description What a Streak counts: done days, or weeks that met a times-a-week Habit's number.
+     * @enum {string}
+     */
+    StreakUnit: "days" | "weeks";
     /**
      * FolderOut
      * @description A Folder's own fields.
@@ -3779,109 +3927,6 @@ export interface components {
       project_ids: number[];
     };
     /**
-     * Frequency
-     * @description When a Habit is meant to be done.
-     * @enum {string}
-     */
-    Frequency: "daily" | "weekdays" | "times_per_week";
-    /**
-     * HabitIcon
-     * @description The Lucide icons a Habit can show. Not `Habit.Icon`: the API schema names enums by class.
-     * @enum {string}
-     */
-    HabitIcon:
-      | "circle-check"
-      | "droplet"
-      | "book-open"
-      | "dumbbell"
-      | "footprints"
-      | "bike"
-      | "apple"
-      | "salad"
-      | "pill"
-      | "bed"
-      | "moon"
-      | "sun"
-      | "brain"
-      | "heart-pulse"
-      | "music"
-      | "pencil"
-      | "languages"
-      | "code"
-      | "sprout"
-      | "coffee"
-      | "cigarette-off"
-      | "wallet"
-      | "smile"
-      | "star";
-    /**
-     * HabitOut
-     * @description A Habit's own fields.
-     */
-    HabitOut: {
-      /** Id */
-      id: number;
-      /** Name */
-      name: string;
-      icon: components["schemas"]["HabitIcon"];
-      color: components["schemas"]["PaletteColor"];
-      frequency: components["schemas"]["Frequency"];
-      /**
-       * Weekdays
-       * @description The chosen weekdays, 1 is Monday; else empty.
-       */
-      weekdays: number[];
-      /**
-       * Times Per Week
-       * @description How many times a week; else null.
-       */
-      times_per_week: number | null;
-      /**
-       * Goal
-       * @description How many Check-ins make a day done.
-       */
-      goal: number;
-      /**
-       * Start Date
-       * Format: date
-       * @description The first day the Habit counts, in the user's zone.
-       */
-      start_date: string;
-      /**
-       * Reminder Time
-       * @description When to remind the user on days the Habit is still to do; null for never.
-       */
-      reminder_time: string | null;
-      /**
-       * Today Count
-       * @description Check-ins so far today, in the user's zone.
-       */
-      today_count: number;
-      /**
-       * Is Archived
-       * @description Archived Habits keep their history but stay out of Today.
-       */
-      is_archived: boolean;
-      /**
-       * Current Streak
-       * @description The current run of done days or met weeks.
-       */
-      current_streak: number;
-      /**
-       * Best Streak
-       * @description The longest run of done days or met weeks ever.
-       */
-      best_streak: number;
-      /** @description Weeks for a times-a-week Habit, else days. */
-      streak_unit: components["schemas"]["StreakUnit"];
-    };
-    /**
-     * StreakUnit
-     * @description What a Streak counts: done days, or weeks that met a times-a-week Habit's number.
-     * @enum {string}
-     */
-    StreakUnit: "days" | "weeks";
-    /**
      * HabitIn
      * @description A new Habit. Unless told otherwise it's done once every day, starting today.
      */
@@ -4440,6 +4485,79 @@ export interface operations {
     };
   };
   apps_tasks_api_reminder_actions_snooze: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SnoozeIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_check_in_from_reminder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_snooze_from_reminder: {
     parameters: {
       query?: never;
       header?: never;

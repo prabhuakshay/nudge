@@ -4,7 +4,8 @@ A Habit stores its next fire time (`next_reminder_at`, UTC) so the sweep is one 
 Every change that can move that time (reminder time, Frequency, Goal, start date, archiving,
 Check-ins, the user's time zone) calls `reschedule`. The sweep, run by the every-minute Reminder
 job, checks again that the day still needs the Habit before it fires, then moves on to the next
-day that does.
+day that does. A snooze (`snoozed_until`) fires once more on top, unless the day's Goal or week
+is met or the Habit is archived by then.
 """
 
 from __future__ import annotations
@@ -13,6 +14,7 @@ from datetime import UTC, date, datetime, timedelta
 from typing import TYPE_CHECKING
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.accounts.services import local_zone
@@ -62,45 +64,59 @@ def _counts(habit: Habit, since: date) -> dict[date, int]:
 
 def _needs(habit: Habit, day: date, counts: Mapping[date, int]) -> bool:
     """Whether the day asks for the Habit and neither its Goal nor its week is met yet."""
+    return is_scheduled(habit, day) and _still_to_do(habit, day, counts)
+
+
+def _still_to_do(habit: Habit, day: date, counts: Mapping[date, int]) -> bool:
+    """Whether neither the day's Goal nor its week's number is met yet."""
     monday = week_of(day)
     week = (monday + timedelta(days=offset) for offset in range(DAYS_IN_WEEK))
     days_done = sum(1 for each in week if is_done(habit, counts.get(each, 0)))
-    return (
-        is_scheduled(habit, day)
-        and not is_done(habit, counts.get(day, 0))
-        and not is_week_met(habit, days_done)
-    )
+    return not is_done(habit, counts.get(day, 0)) and not is_week_met(habit, days_done)
 
 
 def send_due_reminders() -> int:
-    """Fire every Habit Reminder that is due, as a Notification, and move each to its next day.
+    """Fire every Habit Reminder or snooze that is due, as a Notification, and clear it.
 
-    Returns how many fired. Firings more than `CATCH_UP` late are dropped instead. Rows are
-    locked and skipped when already locked, so two sweeps running at once never send twice.
+    A fired Reminder moves on to its next day. Returns how many fired. Firings more than
+    `CATCH_UP` late are dropped instead. Rows are locked and skipped when already locked, so two
+    sweeps running at once never send twice.
     """
     now = timezone.now()
     fired = 0
     with transaction.atomic():
         due = (
-            Habit.objects.filter(next_reminder_at__lte=now)
+            Habit.objects.filter(Q(next_reminder_at__lte=now) | Q(snoozed_until__lte=now))
             .select_related("owner")
             .select_for_update(skip_locked=True, of=("self",))
         )
         for habit in due:
-            if _may_fire(habit, now):
+            if _may_fire(habit, now) or _may_fire_snooze(habit, now):
                 _notify(habit)
                 fired += 1
-            habit.next_reminder_at = next_reminder(habit, now)
-            habit.save(update_fields=["next_reminder_at"])
+            if habit.next_reminder_at is not None and habit.next_reminder_at <= now:
+                habit.next_reminder_at = next_reminder(habit, now)
+            if habit.snoozed_until is not None and habit.snoozed_until <= now:
+                habit.snoozed_until = None
+            habit.save(update_fields=["next_reminder_at", "snoozed_until"])
     return fired
 
 
 def _may_fire(habit: Habit, now: datetime) -> bool:
     """Whether the due time is recent and its day still needs the Habit, in case one slipped by."""
     due_at = habit.next_reminder_at
-    if due_at is None or due_at <= now - CATCH_UP:
+    if due_at is None or due_at > now or due_at <= now - CATCH_UP:
         return False
     return next_reminder(habit, due_at - timedelta(microseconds=1)) == due_at
+
+
+def _may_fire_snooze(habit: Habit, now: datetime) -> bool:
+    """Whether a snooze is due and recent, and the Habit is still live and to do that day."""
+    due_at = habit.snoozed_until
+    if due_at is None or due_at > now or due_at <= now - CATCH_UP or habit.is_archived:
+        return False
+    day = due_at.astimezone(local_zone(habit.owner)).date()
+    return _still_to_do(habit, day, _counts(habit, week_of(day)))
 
 
 def _notify(habit: Habit) -> None:

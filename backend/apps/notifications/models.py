@@ -62,6 +62,11 @@ class Notification(models.Model):
         """Whether a Reminder sent it, so its Task can still be completed or snoozed from it."""
         return self.reminder_id is not None
 
+    @property
+    def is_habit_reminder(self) -> bool:
+        """Whether a Habit Reminder sent it, so the user can check in or snooze from it."""
+        return self.habit_id is not None
+
 
 class PushSubscription(models.Model):
     """One browser's Web Push endpoint, registered by the user to receive notifications.

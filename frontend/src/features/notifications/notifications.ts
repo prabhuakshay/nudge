@@ -3,6 +3,7 @@ import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query
 import { api } from "@/api/client";
 import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
+import { habitsQuery } from "@/features/habits/habits";
 import { datesOf } from "@/features/tasks/due";
 import { statusToast } from "@/features/tasks/repeat";
 import { useTaskMutation } from "@/features/tasks/task-cache";
@@ -118,6 +119,39 @@ export function useSnoozeReminder() {
     async ({ id, until }: { id: number; until: Snooze }) =>
       (
         await api.POST("/api/v1/notifications/{notification_id}/snooze", {
+          params: { path: { notification_id: id } },
+          body: { until },
+        })
+      ).response,
+  );
+}
+
+/** Add one Check-in today to a Habit Reminder's Habit, up to its Goal; Habits show it once saved. */
+export function useCheckInFromReminder() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: number) => {
+      const { data, error } = await api.POST("/api/v1/notifications/{notification_id}/check-in", {
+        params: { path: { notification_id: id } },
+      });
+      if (!data) throw new Error(failureReason(error, "Could not check in."));
+      return data;
+    },
+    onSettled: () =>
+      Promise.all([
+        queryClient.invalidateQueries(notificationsQuery),
+        // ["habits"] is the prefix of every Habits query, Today's strip included.
+        queryClient.invalidateQueries({ queryKey: habitsQuery.queryKey }),
+      ]),
+  });
+}
+
+/** Fire a Habit Reminder notification once more later; the Habit's own Reminder stays as it is. */
+export function useSnoozeHabitReminder() {
+  return useNotificationsMutation(
+    async ({ id, until }: { id: number; until: Snooze }) =>
+      (
+        await api.POST("/api/v1/notifications/{notification_id}/snooze-habit", {
           params: { path: { notification_id: id } },
           body: { until },
         })

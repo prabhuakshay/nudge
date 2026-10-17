@@ -341,5 +341,6 @@ def test_a_habit_reminder_is_pushed_to_devices(
             "body": "",
             "url": "/habits",
             "is_reminder": False,
+            "is_habit_reminder": True,
         },
     ]

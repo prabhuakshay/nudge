@@ -675,6 +675,115 @@
         ]
       }
     },
+    "/api/v1/notifications/{notification_id}/check-in": {
+      "post": {
+        "operationId": "apps_habits_api_check_in_from_reminder",
+        "summary": "Check in to a Habit from its Reminder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "schema": {
+              "title": "Notification Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add one Check-in today to the Habit a Reminder notification is about, up to its Goal.",
+        "tags": [
+          "notifications"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/notifications/{notification_id}/snooze-habit": {
+      "post": {
+        "operationId": "apps_habits_api_snooze_from_reminder",
+        "summary": "Snooze a Habit Reminder",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "notification_id",
+            "schema": {
+              "title": "Notification Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Fire a Habit Reminder notification once more later, leaving the Habit's schedule as it is.",
+        "tags": [
+          "notifications"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SnoozeIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/folders": {
       "post": {
         "operationId": "apps_tasks_api_folders_create_folder",
@@ -4387,6 +4496,11 @@
             "title": "Is Reminder",
             "type": "boolean"
           },
+          "is_habit_reminder": {
+            "description": "Whether a Habit Reminder sent it, so its Habit can be checked in to or snoozed from it.",
+            "title": "Is Habit Reminder",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -4411,6 +4525,7 @@
           "body",
           "url",
           "is_reminder",
+          "is_habit_reminder",
           "created_at",
           "read_at"
         ],
@@ -5179,6 +5294,165 @@
         ],
         "title": "SnoozeIn",
         "type": "object"
+      },
+      "Frequency": {
+        "description": "When a Habit is meant to be done.",
+        "enum": [
+          "daily",
+          "weekdays",
+          "times_per_week"
+        ],
+        "title": "Frequency",
+        "type": "string"
+      },
+      "HabitIcon": {
+        "description": "The Lucide icons a Habit can show. Not `Habit.Icon`: the API schema names enums by class.",
+        "enum": [
+          "circle-check",
+          "droplet",
+          "book-open",
+          "dumbbell",
+          "footprints",
+          "bike",
+          "apple",
+          "salad",
+          "pill",
+          "bed",
+          "moon",
+          "sun",
+          "brain",
+          "heart-pulse",
+          "music",
+          "pencil",
+          "languages",
+          "code",
+          "sprout",
+          "coffee",
+          "cigarette-off",
+          "wallet",
+          "smile",
+          "star"
+        ],
+        "title": "HabitIcon",
+        "type": "string"
+      },
+      "HabitOut": {
+        "description": "A Habit's own fields.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/HabitIcon"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          },
+          "frequency": {
+            "$ref": "#/components/schemas/Frequency"
+          },
+          "weekdays": {
+            "description": "The chosen weekdays, 1 is Monday; else empty.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weekdays",
+            "type": "array"
+          },
+          "times_per_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many times a week; else null.",
+            "title": "Times Per Week"
+          },
+          "goal": {
+            "description": "How many Check-ins make a day done.",
+            "title": "Goal",
+            "type": "integer"
+          },
+          "start_date": {
+            "description": "The first day the Habit counts, in the user's zone.",
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          },
+          "reminder_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When to remind the user on days the Habit is still to do; null for never.",
+            "title": "Reminder Time"
+          },
+          "today_count": {
+            "description": "Check-ins so far today, in the user's zone.",
+            "title": "Today Count",
+            "type": "integer"
+          },
+          "is_archived": {
+            "description": "Archived Habits keep their history but stay out of Today.",
+            "title": "Is Archived",
+            "type": "boolean"
+          },
+          "current_streak": {
+            "description": "The current run of done days or met weeks.",
+            "title": "Current Streak",
+            "type": "integer"
+          },
+          "best_streak": {
+            "description": "The longest run of done days or met weeks ever.",
+            "title": "Best Streak",
+            "type": "integer"
+          },
+          "streak_unit": {
+            "$ref": "#/components/schemas/StreakUnit",
+            "description": "Weeks for a times-a-week Habit, else days."
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "icon",
+          "color",
+          "frequency",
+          "weekdays",
+          "times_per_week",
+          "goal",
+          "start_date",
+          "reminder_time",
+          "today_count",
+          "is_archived",
+          "current_streak",
+          "best_streak",
+          "streak_unit"
+        ],
+        "title": "HabitOut",
+        "type": "object"
+      },
+      "StreakUnit": {
+        "description": "What a Streak counts: done days, or weeks that met a times-a-week Habit's number.",
+        "enum": [
+          "days",
+          "weeks"
+        ],
+        "title": "StreakUnit",
+        "type": "string"
       },
       "FolderOut": {
         "description": "A Folder's own fields.",
@@ -8788,165 +9062,6 @@
         },
         "title": "TrashDeleteIn",
         "type": "object"
-      },
-      "Frequency": {
-        "description": "When a Habit is meant to be done.",
-        "enum": [
-          "daily",
-          "weekdays",
-          "times_per_week"
-        ],
-        "title": "Frequency",
-        "type": "string"
-      },
-      "HabitIcon": {
-        "description": "The Lucide icons a Habit can show. Not `Habit.Icon`: the API schema names enums by class.",
-        "enum": [
-          "circle-check",
-          "droplet",
-          "book-open",
-          "dumbbell",
-          "footprints",
-          "bike",
-          "apple",
-          "salad",
-          "pill",
-          "bed",
-          "moon",
-          "sun",
-          "brain",
-          "heart-pulse",
-          "music",
-          "pencil",
-          "languages",
-          "code",
-          "sprout",
-          "coffee",
-          "cigarette-off",
-          "wallet",
-          "smile",
-          "star"
-        ],
-        "title": "HabitIcon",
-        "type": "string"
-      },
-      "HabitOut": {
-        "description": "A Habit's own fields.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "icon": {
-            "$ref": "#/components/schemas/HabitIcon"
-          },
-          "color": {
-            "$ref": "#/components/schemas/PaletteColor"
-          },
-          "frequency": {
-            "$ref": "#/components/schemas/Frequency"
-          },
-          "weekdays": {
-            "description": "The chosen weekdays, 1 is Monday; else empty.",
-            "items": {
-              "type": "integer"
-            },
-            "title": "Weekdays",
-            "type": "array"
-          },
-          "times_per_week": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "How many times a week; else null.",
-            "title": "Times Per Week"
-          },
-          "goal": {
-            "description": "How many Check-ins make a day done.",
-            "title": "Goal",
-            "type": "integer"
-          },
-          "start_date": {
-            "description": "The first day the Habit counts, in the user's zone.",
-            "format": "date",
-            "title": "Start Date",
-            "type": "string"
-          },
-          "reminder_time": {
-            "anyOf": [
-              {
-                "format": "time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "When to remind the user on days the Habit is still to do; null for never.",
-            "title": "Reminder Time"
-          },
-          "today_count": {
-            "description": "Check-ins so far today, in the user's zone.",
-            "title": "Today Count",
-            "type": "integer"
-          },
-          "is_archived": {
-            "description": "Archived Habits keep their history but stay out of Today.",
-            "title": "Is Archived",
-            "type": "boolean"
-          },
-          "current_streak": {
-            "description": "The current run of done days or met weeks.",
-            "title": "Current Streak",
-            "type": "integer"
-          },
-          "best_streak": {
-            "description": "The longest run of done days or met weeks ever.",
-            "title": "Best Streak",
-            "type": "integer"
-          },
-          "streak_unit": {
-            "$ref": "#/components/schemas/StreakUnit",
-            "description": "Weeks for a times-a-week Habit, else days."
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "icon",
-          "color",
-          "frequency",
-          "weekdays",
-          "times_per_week",
-          "goal",
-          "start_date",
-          "reminder_time",
-          "today_count",
-          "is_archived",
-          "current_streak",
-          "best_streak",
-          "streak_unit"
-        ],
-        "title": "HabitOut",
-        "type": "object"
-      },
-      "StreakUnit": {
-        "description": "What a Streak counts: done days, or weeks that met a times-a-week Habit's number.",
-        "enum": [
-          "days",
-          "weeks"
-        ],
-        "title": "StreakUnit",
-        "type": "string"
       },
       "HabitIn": {
         "description": "A new Habit. Unless told otherwise it's done once every day, starting today.",

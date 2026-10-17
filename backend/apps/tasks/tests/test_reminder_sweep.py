@@ -185,6 +185,7 @@ def test_a_reminder_push_offers_its_actions(
             "body": "Today 14:00 · Inbox",
             "url": notification.url,
             "is_reminder": True,
+            "is_habit_reminder": False,
         },
     ]
 

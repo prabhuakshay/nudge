@@ -10,6 +10,7 @@ import { TagPicker } from "@/features/tags/tag-picker";
 import { cn } from "@/lib/utils";
 
 import { DatePicker } from "./date-picker";
+import { useDetailPicker } from "./detail-verbs";
 import { dueName } from "./due";
 import { DueBadge } from "./due-badge";
 import { PriorityMenu } from "./task-priority";
@@ -33,6 +34,7 @@ function Chip({ className, ...props }: ComponentProps<"button">) {
 
 /** The drawer's row of property chips under the title, each coloured by its value and opening its picker. */
 export function PropertyChips({ task, project }: { task: Task; project: SidebarProject }) {
+  const datePicker = useDetailPicker("setDate");
   const status = STATUS[task.status];
   const StatusIcon = status.icon;
   const priority = PRIORITY[task.priority];
@@ -67,10 +69,9 @@ export function PropertyChips({ task, project }: { task: Task; project: SidebarP
         </ShortcutTooltip>
       </PriorityMenu>
 
-      <DatePicker task={task}>
+      <DatePicker task={task} {...datePicker}>
         <ShortcutTooltip label="Set date" shortcut="setDate">
           <Chip
-            data-shortcut="setDate"
             aria-label={`Date: ${dueName(task, new Date())}`}
             className={
               task.due_date === null
@@ -95,6 +96,7 @@ export function PropertyChips({ task, project }: { task: Task; project: SidebarP
 /** The Task's Tags, each with a × to take it off, then a chip that opens the Tag picker. */
 function TagChips({ task }: { task: Task }) {
   const { mutate: updateTask } = useUpdateTask();
+  const tagPicker = useDetailPicker("addTag");
   return (
     <>
       {task.tags.map((tag) => (
@@ -107,12 +109,9 @@ function TagChips({ task }: { task: Task }) {
           }}
         />
       ))}
-      <TagPicker task={task}>
+      <TagPicker task={task} {...tagPicker}>
         <ShortcutTooltip label="Add tag" shortcut="addTag">
-          <Chip
-            data-shortcut="addTag"
-            className="border-dashed border-border text-muted-foreground hover:bg-surface-muted"
-          >
+          <Chip className="border-dashed border-border text-muted-foreground hover:bg-surface-muted">
             <Hash className="size-3.5" aria-hidden />
             {task.tags.length ? "Tag" : "Add tag"}
           </Chip>
@@ -125,8 +124,10 @@ function TagChips({ task }: { task: Task }) {
 /** The Task's Project; picking another Project moves the Task there. */
 function ProjectChip({ task, project }: { task: Task; project: SidebarProject }) {
   const { mutate: moveTask } = useMoveTaskToProject();
+  const projectPicker = useDetailPicker("moveToProject");
   return (
     <ProjectPicker
+      {...projectPicker}
       currentId={task.project_id}
       onSelect={(target) => {
         moveTask(
@@ -137,7 +138,6 @@ function ProjectChip({ task, project }: { task: Task; project: SidebarProject })
     >
       <ShortcutTooltip label="Move to project" shortcut="moveToProject">
         <Chip
-          data-shortcut="moveToProject"
           aria-label={`Project: ${project.name}. Move to another project`}
           className="border-border bg-surface text-foreground hover:bg-surface-muted"
         >

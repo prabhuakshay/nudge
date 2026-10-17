@@ -129,16 +129,7 @@ export const TaskRow = memo(function TaskRow({
 }) {
   const blocked = task.status === "blocked";
   return (
-    <TaskContextMenu
-      task={task}
-      disabled={!contextMenu}
-      onOpen={() => {
-        onOpen(task.id);
-      }}
-      onToggle={() => {
-        onToggle(task);
-      }}
-    >
+    <TaskContextMenu task={task} disabled={!contextMenu} onOpen={onOpen}>
       <div
         role="row"
         tabIndex={0}

@@ -1,6 +1,5 @@
-import { Ban, Copy, Ellipsis, Link2, Pin, PinOff, Trash2, type LucideIcon } from "lucide-react";
+import { Ellipsis } from "lucide-react";
 import { Fragment, type ReactNode } from "react";
-import { toast } from "sonner";
 
 import {
   ContextMenu,
@@ -19,97 +18,75 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { MoveToSectionSub } from "@/features/sections/move-to-section";
-import { ariaKeyShortcuts, shortcutText, type ShortcutId } from "@/features/shortcuts/registry";
-import { useDeleteTask } from "@/features/trash/trash";
+import { ariaKeyShortcuts, shortcutText } from "@/features/shortcuts/registry";
 import { cn } from "@/lib/utils";
 
-import { useTaskLink } from "./open-task";
-import { isClosed } from "./task-properties";
-import { useDuplicateTask } from "./task-placement";
-import { useSetTaskStatus } from "./set-status";
-import { useUpdateTask, type Task } from "./tasks";
+import type { Task } from "./tasks";
+import { useTaskVerbs, type RunnableTaskVerb } from "./use-task-verbs";
 
-type TaskAction = {
-  label: string;
-  icon: LucideIcon;
-  run: () => void;
-  /** Destructive actions come last and show in the danger colour. */
-  danger?: boolean;
-  /** The shortcut that does the same on a focused row or in the drawer, shown in the menus. */
-  shortcut?: ShortcutId;
+/** The parts each kind of menu builds its items from. */
+const MENU_PARTS = {
+  dropdown: {
+    Item: DropdownMenuItem,
+    Separator: DropdownMenuSeparator,
+    Shortcut: DropdownMenuShortcut,
+  },
+  context: {
+    Item: ContextMenuItem,
+    Separator: ContextMenuSeparator,
+    Shortcut: ContextMenuShortcut,
+  },
 };
 
-async function copyLink(link: string) {
-  try {
-    await navigator.clipboard.writeText(link);
-    toast("Link copied");
-  } catch {
-    toast.error("Could not copy the link.");
-  }
-}
-
 /**
- * The less common actions on a Task, in the order its menus list them. A read-only Task, in an
- * archived Project, only offers its link. `onDeleted` runs once the Task is on its way to Trash.
+ * A Task menu's items: on right-click the verbs only it lists, such as Open, then Move to section
+ * and the verbs both menus list, the destructive ones last. A read-only Task can't change Section.
  */
-function useTaskActions(task: Task, readOnly = false, onDeleted?: () => void): TaskAction[] {
-  const { mutate: update } = useUpdateTask();
-  const { mutate: deleteTask } = useDeleteTask();
-  const { mutate: setStatus } = useSetTaskStatus();
-  const { mutate: duplicate } = useDuplicateTask();
-  const taskLink = useTaskLink();
-  const pinned = task.pinned_at !== null;
-  const wontDo = task.status === "wont_do";
-  const pin: TaskAction = {
-    label: pinned ? "Unpin" : "Pin to top",
-    icon: pinned ? PinOff : Pin,
-    shortcut: "togglePin",
-    run: () => {
-      update({ id: task.id, pinned: !pinned });
-    },
-  };
-  const copy: TaskAction = {
-    label: "Copy link",
-    icon: Link2,
-    run: () => void copyLink(taskLink(task.id)),
-  };
-  if (readOnly) return [copy];
-  return [
-    // Only a root can be pinned: a Subtask shows under its parent.
-    ...(task.parent_id === null ? [pin] : []),
-    {
-      label: wontDo ? "Reopen" : "Won't do",
-      shortcut: "markWontDo",
-      icon: Ban,
-      run: () => {
-        setStatus({ task, status: wontDo ? "open" : "wont_do" });
-      },
-    },
-    {
-      label: "Duplicate",
-      icon: Copy,
-      run: () => {
-        duplicate(task.id);
-      },
-    },
-    copy,
-    {
-      label: "Delete",
-      icon: Trash2,
-      danger: true,
-      shortcut: "deleteTask",
-      run: () => {
-        deleteTask(task);
-        onDeleted?.();
-      },
-    },
-  ];
+function TaskMenuItems({
+  task,
+  verbs,
+  menu,
+  readOnly,
+}: {
+  task: Task;
+  verbs: RunnableTaskVerb[];
+  menu: keyof typeof MENU_PARTS;
+  readOnly: boolean;
+}) {
+  const { Item, Separator, Shortcut } = MENU_PARTS[menu];
+  const contextOnly = menu === "context" ? verbs.filter((verb) => verb.menu === "context") : [];
+  const item = ({ id, label, icon: Icon, shortcut, danger, run }: RunnableTaskVerb) => (
+    <Fragment key={id}>
+      {danger && <Separator />}
+      <Item
+        onSelect={run}
+        variant={danger ? "danger" : "default"}
+        aria-keyshortcuts={shortcut && ariaKeyShortcuts(shortcut)}
+      >
+        {Icon && <Icon aria-hidden />}
+        {label}
+        {shortcut && <Shortcut aria-hidden>{shortcutText(shortcut)}</Shortcut>}
+      </Item>
+    </Fragment>
+  );
+  return (
+    <>
+      {contextOnly.length > 0 && (
+        <>
+          {contextOnly.map(item)}
+          <Separator />
+        </>
+      )}
+      {!readOnly && <MoveToSectionSub task={task} menu={menu} />}
+      {verbs.filter((verb) => verb.menu === "all").map(item)}
+    </>
+  );
 }
 
 /** The ⋯ menu of a Task, in the drawer's header and at the end of its row. */
 export function TaskActionsMenu({
   task,
-  readOnly,
+  readOnly = false,
   onDeleted,
   className,
 }: {
@@ -119,7 +96,7 @@ export function TaskActionsMenu({
   onDeleted?: () => void;
   className?: string;
 }) {
-  const actions = useTaskActions(task, readOnly, onDeleted);
+  const verbs = useTaskVerbs()(task, { readOnly, inDrawer: false }, { onDeleted });
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -139,79 +116,35 @@ export function TaskActionsMenu({
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-52">
-        {!readOnly && <MoveToSectionSub task={task} menu="dropdown" />}
-        {actions.map(({ label, icon: Icon, run, danger, shortcut }) => (
-          <Fragment key={label}>
-            {danger && <DropdownMenuSeparator />}
-            <DropdownMenuItem
-              onSelect={run}
-              variant={danger ? "danger" : "default"}
-              aria-keyshortcuts={shortcut && ariaKeyShortcuts(shortcut)}
-            >
-              <Icon aria-hidden />
-              {label}
-              {shortcut && (
-                <DropdownMenuShortcut aria-hidden>{shortcutText(shortcut)}</DropdownMenuShortcut>
-              )}
-            </DropdownMenuItem>
-          </Fragment>
-        ))}
+        <TaskMenuItems task={task} verbs={verbs} menu="dropdown" readOnly={readOnly} />
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
 
 /**
- * A row's right-click menu: open and complete the Task, then the actions of its ⋯ menu. Off on
+ * A row's right-click menu: open and complete the Task, then the verbs of its ⋯ menu. Off on
  * touch screens, where a long press starts a drag instead, and in archived Projects.
  */
 export function TaskContextMenu({
   task,
   disabled,
   onOpen,
-  onToggle,
   children,
 }: {
   task: Task;
   disabled: boolean;
-  onOpen: () => void;
-  /** Complete the Task, or reopen it when it is Closed. */
-  onToggle: () => void;
+  onOpen: (taskId: number) => void;
   children: ReactNode;
 }) {
-  const actions = useTaskActions(task);
+  const verbs = useTaskVerbs()(task, { readOnly: false, inDrawer: false }, { onOpen });
   return (
     <ContextMenu>
       <ContextMenuTrigger asChild disabled={disabled}>
         {children}
       </ContextMenuTrigger>
       <ContextMenuContent className="w-52">
-        <ContextMenuItem onSelect={onOpen} aria-keyshortcuts={ariaKeyShortcuts("openTask")}>
-          Open
-          <ContextMenuShortcut aria-hidden>{shortcutText("openTask")}</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuItem onSelect={onToggle} aria-keyshortcuts={ariaKeyShortcuts("completeTask")}>
-          {isClosed(task.status) ? "Reopen" : "Complete"}
-          <ContextMenuShortcut aria-hidden>{shortcutText("completeTask")}</ContextMenuShortcut>
-        </ContextMenuItem>
-        <ContextMenuSeparator />
-        <MoveToSectionSub task={task} menu="context" />
-        {actions.map(({ label, icon: Icon, run, danger, shortcut }) => (
-          <Fragment key={label}>
-            {danger && <ContextMenuSeparator />}
-            <ContextMenuItem
-              onSelect={run}
-              variant={danger ? "danger" : "default"}
-              aria-keyshortcuts={shortcut && ariaKeyShortcuts(shortcut)}
-            >
-              <Icon aria-hidden />
-              {label}
-              {shortcut && (
-                <ContextMenuShortcut aria-hidden>{shortcutText(shortcut)}</ContextMenuShortcut>
-              )}
-            </ContextMenuItem>
-          </Fragment>
-        ))}
+        <TaskMenuItems task={task} verbs={verbs} menu="context" readOnly={false} />
       </ContextMenuContent>
     </ContextMenu>
   );

@@ -1,10 +1,11 @@
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
 import { AutosizeTextarea } from "@/components/ui/textarea";
 import { plainMentions } from "@/features/people/mentions";
 import { useWithMentions } from "@/features/people/people";
 import { cn } from "@/lib/utils";
 
+import { useDetailVerb } from "./detail-verbs";
 import { Markdown } from "./markdown";
 import { isClosed } from "./task-properties";
 import { useUpdateTask, type TaskDetail } from "./tasks";
@@ -16,12 +17,16 @@ import { useUpdateTask, type TaskDetail } from "./tasks";
 export function TitleField({ task, className }: { task: TaskDetail; className?: string }) {
   const { mutate: update } = useUpdateTask();
   const withMentions = useWithMentions();
+  const field = useRef<HTMLTextAreaElement>(null);
+  useDetailVerb("editTitle", () => {
+    field.current?.focus();
+  });
   return (
     <AutosizeTextarea
+      ref={field}
       // A new key whenever the saved title changes resets the field to it.
       key={`${String(task.id)}-${task.title}`}
       aria-label="Title"
-      data-shortcut="editTitle"
       defaultValue={plainMentions(task.title)}
       rows={1}
       maxLength={500}

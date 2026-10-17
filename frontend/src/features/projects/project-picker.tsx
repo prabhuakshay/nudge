@@ -22,14 +22,25 @@ type ProjectPickerProps = {
   onSelect: (project: SidebarProject) => void;
   /** The element that opens the picker; it must accept a ref, like a button. */
   children: ReactNode;
+  /** Whether the picker shows, when its owner opens it, as the drawer does on M. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 };
 
 /**
  * A searchable list of the user's Projects, grouped as the sidebar groups them: the Inbox,
  * ungrouped Projects, then each Folder.
  */
-export function ProjectPicker({ currentId, onSelect, children }: ProjectPickerProps) {
-  const [open, setOpen] = useState(false);
+export function ProjectPicker({
+  currentId,
+  onSelect,
+  children,
+  open: openProp,
+  onOpenChange,
+}: ProjectPickerProps) {
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = openProp ?? ownOpen;
+  const setOpen = onOpenChange ?? setOwnOpen;
   const { data: sidebar } = useQuery(sidebarQuery);
   if (!sidebar) return children;
   const ungrouped = sidebar.items.filter((item) => item.kind === "project");

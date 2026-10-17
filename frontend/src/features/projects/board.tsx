@@ -1,16 +1,15 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import { AddSection } from "@/features/sections/add-section";
 import { bySection } from "@/features/sections/section-trees";
 import { sectionsQuery, type Section } from "@/features/sections/sections";
 import { useOpenTask } from "@/features/tasks/open-task";
 import { QuickAddCard } from "@/features/tasks/quick-add-card";
-import { useSetTaskStatus } from "@/features/tasks/set-status";
 import { TaskDetail } from "@/features/tasks/task-detail";
-import { isClosed } from "@/features/tasks/task-properties";
 import { treeRows } from "@/features/tasks/task-tree";
 import { openTasksQuery, sectionClosedQuery, type Task } from "@/features/tasks/tasks";
+import { useToggleComplete } from "@/features/tasks/use-task-verbs";
 
 import { ArchivedNotice } from "./archived-notice";
 import { BoardColumn, type BoardColumnCards } from "./board-column";
@@ -39,13 +38,7 @@ export function ProjectBoard({ project }: { project: SidebarProject }) {
     [columns],
   );
   const { openTaskId, setOpenTask } = useOpenTask();
-  const { mutate: setStatus } = useSetTaskStatus();
-  const toggle = useCallback(
-    (task: Task) => {
-      setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
-    },
-    [setStatus],
-  );
+  const toggle = useToggleComplete();
 
   return (
     // `data-wide` lets the app shell drop its reading width for the Board.

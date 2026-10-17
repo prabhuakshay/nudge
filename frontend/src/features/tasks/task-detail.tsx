@@ -17,16 +17,16 @@ import { Attachments } from "./attachments";
 import { CommentFooter, Comments } from "./comment-section";
 import { backOutOfField, useDetailKeys } from "./detail-keys";
 import { DetailTabsList } from "./detail-tabs";
+import { DetailVerbsContext, useDetailVerbs } from "./detail-verbs";
 import { PropertyChips } from "./property-chips";
 import { rememberTask } from "./recent-tasks";
-import { useSetTaskStatus } from "./set-status";
 import { SubtaskSection } from "./subtask-section";
 import { TaskActionsMenu } from "./task-actions";
 import { TaskCheckbox } from "./task-checkbox";
 import { DescriptionField, TitleField } from "./task-fields";
-import { isClosed } from "./task-properties";
 import { BlockedReasonField } from "./task-status";
 import { sidebarQuery, taskQuery, type SidebarProject, type TaskDetail as Task } from "./tasks";
+import { useToggleComplete } from "./use-task-verbs";
 
 /** The bottom sheet opens at 60% of the screen and drags up to all of it. */
 const PEEK = 0.6;
@@ -123,7 +123,7 @@ export function TaskDetail(props: TaskDetailProps) {
 }
 
 function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps & { task: Task }) {
-  const { mutate: setStatus } = useSetTaskStatus();
+  const toggleComplete = useToggleComplete();
   const { data: sidebar } = useQuery(sidebarQuery);
   const taskProject = (sidebar && findProject(sidebar, task.project_id)) ?? project;
   const readOnly = taskProject.is_archived;
@@ -131,93 +131,96 @@ function DetailBody({ task, project, order, onOpen, onClose }: TaskDetailProps &
   const index = order.indexOf(task.id);
   const previous = index > 0 ? order[index - 1] : undefined;
   const next = index >= 0 ? order[index + 1] : undefined;
-  const body = useDetailKeys({ task, readOnly, previous, next, onOpen, onClose });
+  useDetailKeys({ task, readOnly, previous, next, onOpen, onClose });
+  const detailVerbs = useDetailVerbs(task.id);
   // On every change too, so a renamed Task is listed by its new title.
   useEffect(() => {
     rememberTask(task);
   }, [task]);
 
   return (
-    <div ref={body} className="flex min-h-0 flex-1 flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-1 border-b border-border px-3 sm:px-4">
-        <Breadcrumb task={task} project={taskProject} onOpen={onOpen} />
-        <HeaderButton
-          label="Previous task"
-          shortcut="previousTask"
-          disabled={previous === undefined}
-          onClick={() => {
-            if (previous !== undefined) onOpen(previous);
-          }}
-        >
-          <ChevronUp className="size-4" aria-hidden />
-        </HeaderButton>
-        <HeaderButton
-          label="Next task"
-          shortcut="nextTask"
-          disabled={next === undefined}
-          onClick={() => {
-            if (next !== undefined) onOpen(next);
-          }}
-        >
-          <ChevronDown className="size-4" aria-hidden />
-        </HeaderButton>
-        <TaskActionsMenu task={task} readOnly={readOnly} onDeleted={onClose} />
-        <span className="mx-1 h-5 w-px bg-border" aria-hidden />
-        <HeaderButton label="Close" shortcut="back" onClick={onClose}>
-          <X className="size-4" aria-hidden />
-        </HeaderButton>
-      </header>
+    <DetailVerbsContext.Provider value={detailVerbs}>
+      <div className="flex min-h-0 flex-1 flex-col">
+        <header className="flex h-14 shrink-0 items-center gap-1 border-b border-border px-3 sm:px-4">
+          <Breadcrumb task={task} project={taskProject} onOpen={onOpen} />
+          <HeaderButton
+            label="Previous task"
+            shortcut="previousTask"
+            disabled={previous === undefined}
+            onClick={() => {
+              if (previous !== undefined) onOpen(previous);
+            }}
+          >
+            <ChevronUp className="size-4" aria-hidden />
+          </HeaderButton>
+          <HeaderButton
+            label="Next task"
+            shortcut="nextTask"
+            disabled={next === undefined}
+            onClick={() => {
+              if (next !== undefined) onOpen(next);
+            }}
+          >
+            <ChevronDown className="size-4" aria-hidden />
+          </HeaderButton>
+          <TaskActionsMenu task={task} readOnly={readOnly} onDeleted={onClose} />
+          <span className="mx-1 h-5 w-px bg-border" aria-hidden />
+          <HeaderButton label="Close" shortcut="back" onClick={onClose}>
+            <X className="size-4" aria-hidden />
+          </HeaderButton>
+        </header>
 
-      {/* Scrolling the body mustn't drag the bottom sheet. */}
-      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-vaul-no-drag>
-        {/* A disabled fieldset makes an archived Project's Task read-only in one place. */}
-        <fieldset disabled={readOnly} className="min-w-0 px-5 pt-5 sm:px-6">
-          <div className="flex items-start gap-3">
-            <TaskCheckbox
-              task={task}
-              onToggle={() => {
-                setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
-              }}
-              className="mt-1 size-[22px] rounded-md"
-            />
-            <TitleField task={task} className="flex-1 sm:text-[22px] sm:leading-snug" />
-          </div>
-          <PropertyChips task={task} project={taskProject} />
-          {task.status === "blocked" && <BlockedReasonField task={task} className="mt-4" />}
-        </fieldset>
+        {/* Scrolling the body mustn't drag the bottom sheet. */}
+        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain" data-vaul-no-drag>
+          {/* A disabled fieldset makes an archived Project's Task read-only in one place. */}
+          <fieldset disabled={readOnly} className="min-w-0 px-5 pt-5 sm:px-6">
+            <div className="flex items-start gap-3">
+              <TaskCheckbox
+                task={task}
+                onToggle={() => {
+                  toggleComplete(task);
+                }}
+                className="mt-1 size-[22px] rounded-md"
+              />
+              <TitleField task={task} className="flex-1 sm:text-[22px] sm:leading-snug" />
+            </div>
+            <PropertyChips task={task} project={taskProject} />
+            {task.status === "blocked" && <BlockedReasonField task={task} className="mt-4" />}
+          </fieldset>
 
-        <Tabs value={tab} onValueChange={setTab} className="mt-5">
-          <div className="sticky top-0 z-10 bg-surface px-5 sm:px-6">
-            <DetailTabsList taskId={task.id} tab={tab} />
-          </div>
+          <Tabs value={tab} onValueChange={setTab} className="mt-5">
+            <div className="sticky top-0 z-10 bg-surface px-5 sm:px-6">
+              <DetailTabsList taskId={task.id} tab={tab} />
+            </div>
 
-          <TabsContent value="details" className="px-5 py-5 sm:px-6">
-            <fieldset disabled={readOnly} className="min-w-0 space-y-7">
-              <section aria-labelledby="task-description">
-                <h3
-                  id="task-description"
-                  className="mb-2 text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
-                >
-                  Description
-                </h3>
-                <div className="rounded-xl border border-border bg-surface-muted/40 px-3.5 py-3">
-                  <DescriptionField task={task} />
-                </div>
-              </section>
-              <SubtaskSection task={task} readOnly={readOnly} onOpen={onOpen} />
-              <Attachments taskId={task.id} />
-              <Comments taskId={task.id} />
-            </fieldset>
-          </TabsContent>
+            <TabsContent value="details" className="px-5 py-5 sm:px-6">
+              <fieldset disabled={readOnly} className="min-w-0 space-y-7">
+                <section aria-labelledby="task-description">
+                  <h3
+                    id="task-description"
+                    className="mb-2 text-[11px] font-bold tracking-wider text-muted-foreground uppercase"
+                  >
+                    Description
+                  </h3>
+                  <div className="rounded-xl border border-border bg-surface-muted/40 px-3.5 py-3">
+                    <DescriptionField task={task} />
+                  </div>
+                </section>
+                <SubtaskSection task={task} readOnly={readOnly} onOpen={onOpen} />
+                <Attachments taskId={task.id} />
+                <Comments taskId={task.id} />
+              </fieldset>
+            </TabsContent>
 
-          <TabsContent value="activity" className="px-5 py-5 sm:px-6">
-            <ActivityFeed taskId={task.id} />
-          </TabsContent>
-        </Tabs>
+            <TabsContent value="activity" className="px-5 py-5 sm:px-6">
+              <ActivityFeed taskId={task.id} />
+            </TabsContent>
+          </Tabs>
+        </div>
+
+        {tab === "details" && !readOnly && <CommentFooter taskId={task.id} />}
       </div>
-
-      {tab === "details" && !readOnly && <CommentFooter taskId={task.id} />}
-    </div>
+    </DetailVerbsContext.Provider>
   );
 }
 

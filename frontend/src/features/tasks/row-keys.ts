@@ -7,8 +7,8 @@ import {
 } from "@/features/shortcuts/use-shortcuts";
 
 import type { MoveByKey } from "./row-drag";
-import { requestDetailAction, useTaskKeys } from "./task-keys";
 import type { Task } from "./tasks";
+import { useTaskVerbs, verbShortcuts } from "./use-task-verbs";
 
 /** A focused row's key handler; `onMoveByKey` is left out where rows don't move. */
 export type RowKeyDown = (
@@ -27,25 +27,23 @@ function focusRow(row: HTMLElement, step: number) {
 }
 
 /**
- * The keys of a focused row: ↑/↓ (or K/J) move between rows, Enter opens the Task, Space
- * completes it, Tab, Shift+Tab and Alt+↑/↓ move it where rows move, and the Task keys change it.
- * Task keys that need the drawer, such as D for the date, open it and do it there. Where Tasks
+ * The keys of a focused row: ↑/↓ (or K/J) move between rows, Tab, Shift+Tab and Alt+↑/↓ move it
+ * where rows move, and the keys of the Task's verbs, such as Enter, Space and W, run them.
+ * Verbs that need the drawer, such as D for the date, open it and do it there. Where Tasks
  * can't change, in an archived Project, rows only move focus and open. Given `onSelectRange`,
  * Shift+↑/↓ select the row above or below as well, and move to it.
  */
 export function useRowKeyDown({
   readOnly,
   onOpen,
-  onToggle,
   onSelectRange,
 }: {
   readOnly: boolean;
   onOpen: (taskId: number) => void;
-  onToggle: (task: Task) => void;
   onSelectRange?: (from: number, to: number) => void;
 }): RowKeyDown {
   const singleKey = useSingleKeyShortcuts();
-  const taskKeys = useTaskKeys();
+  const taskVerbs = useTaskVerbs();
   return useCallback<RowKeyDown>(
     (event, task, onMoveByKey) => {
       // Keys on a cell's picker button are the button's.
@@ -66,29 +64,16 @@ export function useRowKeyDown({
         previousRow: () => {
           focusRow(row, -1);
         },
-        openTask: () => {
-          onOpen(task.id);
-        },
         ...(onMoveByKey && {
           indent: move("indent"),
           outdent: move("outdent"),
           moveUp: move("up"),
           moveDown: move("down"),
         }),
-        ...(!readOnly && {
-          completeTask: () => {
-            onToggle(task);
-          },
-          ...taskKeys(task, {
-            inDetail: (action) => {
-              requestDetailAction(task.id, action);
-              onOpen(task.id);
-            },
-          }),
-        }),
+        ...verbShortcuts(taskVerbs(task, { readOnly, inDrawer: false }, { onOpen })),
       };
       runShortcut(event.nativeEvent, handlers, singleKey);
     },
-    [readOnly, onOpen, onToggle, onSelectRange, singleKey, taskKeys],
+    [readOnly, onOpen, onSelectRange, singleKey, taskVerbs],
   );
 }

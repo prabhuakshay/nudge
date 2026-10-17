@@ -1,13 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { LayoutGrid } from "lucide-react";
-import { useCallback, useMemo } from "react";
+import { useMemo } from "react";
 
 import { useOpenTask } from "@/features/tasks/open-task";
 import { todayIn } from "@/features/tasks/schedule";
-import { useSetTaskStatus } from "@/features/tasks/set-status";
 import { TaskDetail } from "@/features/tasks/task-detail";
-import { isClosed } from "@/features/tasks/task-properties";
-import { viewTasksQuery, type SidebarProject, type Task } from "@/features/tasks/tasks";
+import { viewTasksQuery, type SidebarProject } from "@/features/tasks/tasks";
+import { useToggleComplete } from "@/features/tasks/use-task-verbs";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 import { useCollapsedQuadrants } from "./collapsed-quadrants";
@@ -36,13 +35,7 @@ export function MatrixView({
   const wide = useMediaQuery("(min-width: 1024px)");
   const collapsedQuadrants = useCollapsedQuadrants();
   const { openTaskId, setOpenTask } = useOpenTask();
-  const { mutate: setStatus } = useSetTaskStatus();
-  const toggle = useCallback(
-    (task: Task) => {
-      setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
-    },
-    [setStatus],
-  );
+  const toggle = useToggleComplete();
   // Phones fold the Quadrants instead of dragging between them.
   const quadrantSections = (target: Quadrant | null) => (
     <div className="flex flex-col gap-3 lg:grid lg:grid-cols-2">

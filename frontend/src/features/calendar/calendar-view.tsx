@@ -7,9 +7,9 @@ import { Button } from "@/components/ui/button";
 import { QuickAddDialog } from "@/features/tasks/global-quick-add";
 import { useOpenTask } from "@/features/tasks/open-task";
 import { wallClock } from "@/features/tasks/schedule";
-import { useSetTaskStatus } from "@/features/tasks/set-status";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { isClosed } from "@/features/tasks/task-properties";
+import { useToggleComplete } from "@/features/tasks/use-task-verbs";
 import type { SidebarProject } from "@/features/tasks/tasks";
 
 import { calendarQuery, useCalendarPlace, usePhone, type CalendarMode } from "./calendar";
@@ -101,13 +101,8 @@ export function CalendarView({
   const tasks = data ? [...shown, ...futureOccurrences(data)] : shown;
   const { openTaskId, setOpenTask } = useOpenTask();
   const [adding, setAdding] = useState<Slot | null>(null);
-  const { mutate: setStatus } = useSetTaskStatus();
-  const actions: TaskActions = {
-    onOpen: setOpenTask,
-    onToggle: (task) => {
-      setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
-    },
-  };
+  const toggleComplete = useToggleComplete();
+  const actions: TaskActions = { onOpen: setOpenTask, onToggle: toggleComplete };
   const moveFocus = (day: string) => {
     go(day, { replace: true });
   };

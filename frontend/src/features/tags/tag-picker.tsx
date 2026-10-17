@@ -25,11 +25,16 @@ export function TagPicker({
   task,
   children,
   align = "start",
+  open,
+  onOpenChange,
 }: {
   task: Task;
   /** The element that opens the picker; it must accept a ref, like a button. */
   children: ReactNode;
   align?: "start" | "center" | "end";
+  /** Whether the picker shows, when its owner opens it, as the drawer does on T. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
   const { data: sidebar } = useQuery(sidebarQuery);
@@ -54,8 +59,10 @@ export function TagPicker({
       trigger={children}
       align={align}
       className="w-60"
-      onOpenChange={() => {
+      open={open}
+      onOpenChange={(next) => {
         setQuery("");
+        onOpenChange?.(next);
       }}
     >
       <Command>

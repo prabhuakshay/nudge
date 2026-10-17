@@ -1,5 +1,5 @@
 import { Ban } from "lucide-react";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 
 import {
   DropdownMenu,
@@ -14,6 +14,7 @@ import { plainMentions } from "@/features/people/mentions";
 import { useWithMentions } from "@/features/people/people";
 import { cn } from "@/lib/utils";
 
+import { useDetailVerb } from "./detail-verbs";
 import { STATUS, STATUSES } from "./task-properties";
 import { useSetTaskStatus } from "./set-status";
 import { useUpdateTask, type Task, type TaskStatus } from "./tasks";
@@ -81,6 +82,10 @@ export function BlockedNote({ task, className }: { task: Task; className?: strin
 export function BlockedReasonField({ task, className }: { task: Task; className?: string }) {
   const { mutate: update } = useUpdateTask();
   const withMentions = useWithMentions();
+  const field = useRef<HTMLInputElement>(null);
+  useDetailVerb("markBlocked", () => {
+    field.current?.focus();
+  });
   return (
     <div
       className={cn(
@@ -94,8 +99,8 @@ export function BlockedReasonField({ task, className }: { task: Task; className?
         <input
           // A new key whenever the saved reason changes, such as on Undo, resets the field to it.
           key={`${String(task.id)}-${task.blocked_reason}`}
+          ref={field}
           aria-label="Blocked reason"
-          data-shortcut="markBlocked"
           defaultValue={plainMentions(task.blocked_reason)}
           maxLength={500}
           placeholder="What is it waiting on? Type @ and a name to mention someone"

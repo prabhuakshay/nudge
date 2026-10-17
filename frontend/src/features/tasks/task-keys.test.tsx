@@ -125,6 +125,26 @@ describe("Task keys in the drawer", () => {
     expect(await screen.findByRole("option", { name: "work" })).toBeInTheDocument();
   });
 
+  it("open the Project picker with M", async () => {
+    mockApi([MILK()]);
+    const user = renderList();
+    await openTask(user, "Buy milk");
+
+    await user.keyboard("m");
+
+    expect(await screen.findByRole("dialog", { name: "Move to project" })).toBeInTheDocument();
+  });
+
+  it("don't move a Subtask to another Project with M", async () => {
+    mockApi([MILK(), task({ id: 3, title: "Skimmed", parent_id: 1, position: "a2" })]);
+    const user = renderList();
+    await openTask(user, "Skimmed");
+
+    await user.keyboard("m");
+
+    expect(screen.queryByRole("dialog", { name: "Move to project" })).not.toBeInTheDocument();
+  });
+
   it("mark it Blocked and focus the reason with B", async () => {
     const fetchSpy = mockApi([MILK()]);
     const user = renderList();

@@ -13,7 +13,7 @@ import { useOpenTask } from "@/features/tasks/open-task";
 import { TaskCheckbox } from "@/features/tasks/task-checkbox";
 import { TaskDetail } from "@/features/tasks/task-detail";
 import { isClosed } from "@/features/tasks/task-properties";
-import { useSetTaskStatus } from "@/features/tasks/set-status";
+import { useToggleComplete } from "@/features/tasks/use-task-verbs";
 import { sidebarQuery, type SidebarProject } from "@/features/tasks/tasks";
 import { useDebouncedValue } from "@/lib/use-debounced-value";
 import { cn } from "@/lib/utils";
@@ -194,7 +194,7 @@ function ResultRow({
   onOpen: (taskId: number) => void;
 }) {
   const { data: sidebar } = useQuery(sidebarQuery);
-  const { mutate: setStatus } = useSetTaskStatus();
+  const toggleComplete = useToggleComplete();
   const project = sidebar && findProject(sidebar, result.project_id);
   const closed = isClosed(result.status);
   const title = plainMentions(result.title);
@@ -212,7 +212,7 @@ function ResultRow({
           <TaskCheckbox
             task={result}
             onToggle={() => {
-              setStatus({ task: result, status: closed ? "open" : "completed" });
+              toggleComplete(result);
             }}
           />
         )}

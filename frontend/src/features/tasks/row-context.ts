@@ -5,9 +5,8 @@ import { useMediaQuery } from "@/lib/use-media-query";
 import { useOpenTask } from "./open-task";
 import { useRowKeyDown } from "./row-keys";
 import { NO_SELECTION, selectRange, toggleSelected } from "./selection";
-import { isClosed } from "./task-properties";
-import type { RowContext, SelectTask, ToggleCollapsed, ToggleStatus } from "./task-row";
-import { useSetTaskStatus } from "./set-status";
+import type { RowContext, SelectTask, ToggleCollapsed } from "./task-row";
+import { useToggleComplete } from "./use-task-verbs";
 
 /** How far each level of Subtasks steps in, in pixels; nesting eats width, so less on phones. */
 const INDENT = 22;
@@ -40,14 +39,8 @@ export function useRowContext({
   const { openTaskId: openId, setOpenTask } = useOpenTask();
   const wide = useMediaQuery("(min-width: 1024px)");
   const touch = useMediaQuery("(pointer: coarse)");
-  const { mutate: setStatus } = useSetTaskStatus();
   const [selection, setSelection] = useState(NO_SELECTION);
-  const toggle = useCallback<ToggleStatus>(
-    (task) => {
-      setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
-    },
-    [setStatus],
-  );
+  const toggle = useToggleComplete();
   const open = useCallback(
     (taskId: number) => {
       setSelection(NO_SELECTION);
@@ -80,7 +73,6 @@ export function useRowContext({
   const onKeyDown = useRowKeyDown({
     readOnly,
     onOpen: open,
-    onToggle: toggle,
     ...(multiSelect && { onSelectRange: selectFromTo }),
   });
   return useMemo<RowContext>(

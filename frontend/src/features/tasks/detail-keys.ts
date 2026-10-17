@@ -1,20 +1,11 @@
-import { useEffect, useRef, useState } from "react";
-
 import { inTextField, useShortcuts } from "@/features/shortcuts/use-shortcuts";
 
-import {
-  forgetDetailAction,
-  onDetailActionRequest,
-  requestedDetailAction,
-  useTaskKeys,
-} from "./task-keys";
 import type { TaskDetail } from "./tasks";
+import { useTaskVerbs, verbShortcuts } from "./use-task-verbs";
 
 /**
- * The open drawer's keys: J/K or ↑/↓ step to the previous or next Task, and the Task keys change
- * this one. Returns the ref for the drawer's body, where the keys find the chips and fields they
- * open. A Task key pressed on a row before the drawer opened, such as D, is done here once the
- * Task shows.
+ * The open drawer's keys: J/K or ↑/↓ step to the previous or next Task, and the keys of the
+ * Task's verbs change this one.
  */
 export function useDetailKeys({
   task,
@@ -31,36 +22,10 @@ export function useDetailKeys({
   onOpen: (taskId: number) => void;
   onClose: () => void;
 }) {
-  const body = useRef<HTMLDivElement>(null);
-  const taskKeys = useTaskKeys();
-  // A new object for every request, so pressing the same key twice runs it twice.
-  const [request, setRequest] = useState(() => {
-    const action = requestedDetailAction(task.id);
-    return action && { action };
-  });
-  const done = useRef<typeof request>(null);
-
-  useEffect(forgetDetailAction, []);
-  useEffect(
-    () =>
-      onDetailActionRequest(() => {
-        const action = requestedDetailAction(task.id);
-        if (!action) return;
-        forgetDetailAction();
-        setRequest({ action });
-      }),
-    [task.id],
-  );
-
-  // The chip or field may only show once the Task changes, as the Blocked reason does after B.
-  useEffect(() => {
-    if (!request || done.current === request) return;
-    const target = body.current?.querySelector<HTMLElement>(`[data-shortcut="${request.action}"]`);
-    if (!target) return;
-    done.current = request;
-    if (inTextField(target)) target.focus();
-    else target.click();
-  }, [request, task]);
+  const taskVerbs = useTaskVerbs();
+  const verbs = taskVerbs(task, { readOnly, inDrawer: true }, { onOpen, onDeleted: onClose })
+    // Space in the drawer is for its buttons and checkboxes.
+    .filter((verb) => verb.id !== "completeTask");
 
   useShortcuts({
     previousTask: () => {
@@ -69,16 +34,8 @@ export function useDetailKeys({
     nextTask: () => {
       if (next !== undefined) onOpen(next);
     },
-    ...(!readOnly &&
-      taskKeys(task, {
-        inDetail: (action) => {
-          setRequest({ action });
-        },
-        onDeleted: onClose,
-      })),
+    ...verbShortcuts(verbs),
   });
-
-  return body;
 }
 
 /**

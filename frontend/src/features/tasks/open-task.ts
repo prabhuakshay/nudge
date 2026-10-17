@@ -20,9 +20,17 @@ export function validateTaskSearch(search: Record<string, unknown>): TaskSearch 
 export function useOpenTask() {
   // Without a route to tie it to, the search comes unvalidated, so validate it here too.
   const { task } = validateTaskSearch(useSearch({ strict: false }));
-  const navigate = useNavigate();
+  const setOpenTask = useSetOpenTask();
+  return { openTaskId: task ?? null, setOpenTask };
+}
 
-  const setOpenTask = useCallback(
+/**
+ * Open a Task in the drawer, or close it with null. Unlike `useOpenTask` it doesn't follow the
+ * URL, so the rows that use it don't re-render whenever another Task opens.
+ */
+export function useSetOpenTask() {
+  const navigate = useNavigate();
+  return useCallback(
     (taskId: number | null) => {
       // Stepping between Tasks shouldn't fill the browser history.
       void navigate({
@@ -33,8 +41,6 @@ export function useOpenTask() {
     },
     [navigate],
   );
-
-  return { openTaskId: task ?? null, setOpenTask };
 }
 
 /**

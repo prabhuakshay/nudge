@@ -14,8 +14,8 @@ import type { Placement } from "./task-drag";
 import { isClosed } from "./task-properties";
 import { MAX_DEPTH, treeRows, type SubtaskProgress } from "./task-tree";
 import { useMoveTask } from "./task-placement";
-import { useSetTaskStatus } from "./set-status";
 import type { Task, TaskDetail } from "./tasks";
+import { useToggleComplete } from "./use-task-verbs";
 
 /** How far each level of Subtasks steps in inside the drawer, in pixels. */
 const INDENT = 22;
@@ -121,7 +121,7 @@ function SubtaskItem({
   touch: boolean;
   onOpen: (taskId: number) => void;
 }) {
-  const { mutate: setStatus } = useSetTaskStatus();
+  const toggleComplete = useToggleComplete();
   return (
     <div
       role="listitem"
@@ -148,7 +148,7 @@ function SubtaskItem({
       <TaskCheckbox
         task={task}
         onToggle={() => {
-          setStatus({ task, status: isClosed(task.status) ? "open" : "completed" });
+          toggleComplete(task);
         }}
       />
       <button

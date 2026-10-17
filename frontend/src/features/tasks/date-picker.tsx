@@ -46,12 +46,19 @@ export function DatePicker({
   task,
   children,
   align = "start",
+  open: openProp,
+  onOpenChange,
 }: {
   task: DatedTask;
   children: ReactNode;
   align?: "start" | "center" | "end";
+  /** Whether the picker shows, when its owner opens it, as the drawer does on D. */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
+  const [ownOpen, setOwnOpen] = useState(false);
+  const open = openProp ?? ownOpen;
+  const setOpen = onOpenChange ?? setOwnOpen;
   const save = useSaveDates(task);
   const today = new Date();
   const due = task.due_date === null ? undefined : parseISO(task.due_date);

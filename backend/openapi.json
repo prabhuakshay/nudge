@@ -3743,7 +3743,7 @@
             }
           }
         },
-        "description": "Change any of a Habit's settings; the ones left out stay as they are.",
+        "description": "Change any of a Habit's settings; the ones left out stay as they are.\n\nA null reminder time removes the Reminder, unlike the other settings.",
         "tags": [
           "habits"
         ],
@@ -8809,6 +8809,19 @@
             "title": "Start Date",
             "type": "string"
           },
+          "reminder_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When to remind the user on days the Habit is still to do; null for never.",
+            "title": "Reminder Time"
+          },
           "today_count": {
             "description": "Check-ins so far today, in the user's zone.",
             "title": "Today Count",
@@ -8830,6 +8843,7 @@
           "times_per_week",
           "goal",
           "start_date",
+          "reminder_time",
           "today_count",
           "is_archived"
         ],
@@ -8903,6 +8917,19 @@
             ],
             "description": "Defaults to today.",
             "title": "Start Date"
+          },
+          "reminder_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A clock time in the user's zone to remind them at; none when null.",
+            "title": "Reminder Time"
           }
         },
         "required": [
@@ -8914,7 +8941,7 @@
         "type": "object"
       },
       "HabitPatchIn": {
-        "description": "The settings of a Habit to change; settings left out or null stay as they are.",
+        "description": "The settings of a Habit to change; ones left out or null stay, but a null Reminder goes.",
         "properties": {
           "name": {
             "anyOf": [
@@ -9016,6 +9043,19 @@
               }
             ],
             "title": "Start Date"
+          },
+          "reminder_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A clock time in the user's zone to remind them at; null removes it.",
+            "title": "Reminder Time"
           }
         },
         "title": "HabitPatchIn",

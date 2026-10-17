@@ -33,6 +33,14 @@ class Notification(models.Model):
         related_name="notifications",
         help_text="The Reminder that sent it, which lets the user complete or snooze its Task.",
     )
+    habit = models.ForeignKey(
+        "habits.Habit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notifications",
+        help_text="The Habit whose Reminder sent it.",
+    )
     created_at = models.DateTimeField(default=timezone.now)
     read_at = models.DateTimeField(null=True, blank=True)
 

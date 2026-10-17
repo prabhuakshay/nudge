@@ -52,7 +52,9 @@ class Habit(models.Model):
     `times_per_week` only for a number of times a week. `goal` is how many Check-ins make a day
     done. `start_date` is the first day the Habit counts, in the user's time zone. `position` is
     a fractional-indexing key in the user's manual order. An archived Habit keeps its Check-ins
-    and its place, so unarchiving puts it back as it was.
+    and its place, so unarchiving puts it back as it was. `reminder_time` is a clock time in the
+    user's zone; `next_reminder_at` (UTC) is when the Reminder next fires, kept by
+    `apps.habits.reminders` so the sweep is one indexed query.
     """
 
     class Frequency(models.TextChoices):
@@ -75,6 +77,8 @@ class Habit(models.Model):
     times_per_week = models.PositiveSmallIntegerField(null=True, blank=True)
     goal = models.PositiveSmallIntegerField(default=1)
     start_date = models.DateField()
+    reminder_time = models.TimeField(null=True, blank=True)
+    next_reminder_at = models.DateTimeField(null=True, blank=True)
     position = models.CharField(max_length=255, db_collation="C")
     archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
@@ -84,6 +88,13 @@ class Habit(models.Model):
         """Model options."""
 
         ordering = ("position", "id")
+        indexes: ClassVar = [
+            models.Index(
+                fields=["next_reminder_at"],
+                condition=Q(next_reminder_at__isnull=False),
+                name="habit_pending_reminder_idx",
+            ),
+        ]
         constraints: ClassVar = [
             models.CheckConstraint(condition=~Q(name=""), name="habits_habit_name_not_empty"),
             models.CheckConstraint(

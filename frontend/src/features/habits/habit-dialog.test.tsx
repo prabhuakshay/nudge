@@ -158,9 +158,53 @@ describe("The Habit dialog", () => {
           times_per_week: 2,
           goal: 3,
           start_date: "2026-09-01",
+          reminder_time: null,
         },
       },
     ]);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+  });
+
+  it("adds a Habit with no Reminder unless given a time", async () => {
+    const sent = mockApi([]);
+    const user = renderPage();
+    await screen.findByRole("heading", { name: "No habits yet" });
+
+    await user.click(screen.getByRole("button", { name: "Add habit" }));
+    const dialog = await screen.findByRole("dialog", { name: "New habit" });
+    await user.type(within(dialog).getByLabelText("Name"), "Read");
+    expect(within(dialog).getByLabelText("Reminder")).toHaveValue("");
+    await user.click(within(dialog).getByRole("button", { name: "Add habit" }));
+    await user.click(await screen.findByRole("button", { name: "Add habit" }));
+    const second = await screen.findByRole("dialog", { name: "New habit" });
+    await user.type(within(second).getByLabelText("Name"), "Stretch");
+    await user.type(within(second).getByLabelText("Reminder"), "07:30");
+    await user.click(within(second).getByRole("button", { name: "Add habit" }));
+
+    await waitFor(() => {
+      expect(names()).toEqual(["Read", "Stretch"]);
+    });
+    expect(added(sent)).toEqual([
+      expect.objectContaining({ name: "Read", reminder_time: null }),
+      expect.objectContaining({ name: "Stretch", reminder_time: "07:30" }),
+    ]);
+  });
+
+  it("shows a Habit's Reminder time when editing, and removes it", async () => {
+    const sent = mockApi([habit({ id: 1, name: "Read", reminder_time: "21:15:00" })]);
+    const user = renderPage();
+    await screen.findByText("Read");
+
+    await pick(user, "Read", "Edit");
+    const dialog = await screen.findByRole("dialog", { name: "Edit habit" });
+    expect(within(dialog).getByLabelText("Reminder")).toHaveValue("21:15");
+    await user.click(within(dialog).getByRole("button", { name: "Remove reminder" }));
+    await user.click(within(dialog).getByRole("button", { name: "Save" }));
+
+    await waitFor(() => {
+      expect(changes(sent).map((write) => write.body)).toEqual([
+        expect.objectContaining({ reminder_time: null }),
+      ]);
+    });
   });
 });

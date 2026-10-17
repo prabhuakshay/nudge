@@ -126,6 +126,7 @@ def test_edit_changes_every_setting_the_list_then_shows(client: Client) -> None:
             "weekdays": [2, 4],
             "goal": 8,
             "start_date": "2026-02-01",
+            "reminder_time": "08:30",
         },
     )
 
@@ -140,6 +141,7 @@ def test_edit_changes_every_setting_the_list_then_shows(client: Client) -> None:
         "times_per_week": None,
         "goal": 8,
         "start_date": "2026-02-01",
+        "reminder_time": "08:30:00",
         "today_count": 0,
         "is_archived": False,
     }

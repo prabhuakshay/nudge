@@ -1,5 +1,7 @@
+import { X } from "lucide-react";
 import { useId, useState, type SubmitEvent } from "react";
 
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ColorField } from "@/features/projects/color-field";
@@ -34,7 +36,7 @@ type HabitDialogProps = {
   habit?: Habit;
 };
 
-/** Add a Habit or edit one: its name, Frequency, Goal, start date, colour and icon. */
+/** Add a Habit or edit one: its name, Frequency, Goal, start date, Reminder, colour and icon. */
 export function HabitDialog({ open, onOpenChange, timeZone, habit }: HabitDialogProps) {
   return (
     <SidebarDialog
@@ -55,14 +57,21 @@ export function HabitDialog({ open, onOpenChange, timeZone, habit }: HabitDialog
   );
 }
 
-type OwnFields = Pick<HabitSettings, "name" | "color" | "icon" | "start_date">;
+type OwnFields = Pick<HabitSettings, "name" | "color" | "icon" | "start_date" | "reminder_time">;
 
 /** The form's starting fields: the Habit's own, or a new Habit's starting today. */
 function initialFields(habit: Habit | undefined, today: string): OwnFields {
   if (habit) {
-    return { name: habit.name, color: habit.color, icon: habit.icon, start_date: habit.start_date };
+    return {
+      name: habit.name,
+      color: habit.color,
+      icon: habit.icon,
+      start_date: habit.start_date,
+      // The server sends seconds; the time field shows hours and minutes.
+      reminder_time: habit.reminder_time?.slice(0, 5) ?? null,
+    };
   }
-  return { name: "", color: "green", icon: "circle-check", start_date: today };
+  return { name: "", color: "green", icon: "circle-check", start_date: today, reminder_time: null };
 }
 
 /** The form's starting Frequency, with working days and three a week ready to pick. */
@@ -102,6 +111,7 @@ function HabitForm({ habit, today, onDone }: { habit?: Habit; today: string; onD
   const nameId = useId();
   const goalId = useId();
   const startId = useId();
+  const reminderId = useId();
   const [fields, setFields] = useState(() => initialFields(habit, today));
   const [frequency, setFrequency] = useState(() => initialFrequency(habit));
   // A string, so the field can be cleared while typing; `required`, `min` and `max` check it.
@@ -175,6 +185,36 @@ function HabitForm({ habit, today, onDone }: { habit?: Habit; today: string; onD
               setFields({ ...fields, start_date: event.target.value });
             }}
           />
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={reminderId}>Reminder</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id={reminderId}
+              type="time"
+              value={fields.reminder_time ?? ""}
+              onChange={(event) => {
+                setFields({ ...fields, reminder_time: event.target.value || null });
+              }}
+              className="w-32"
+            />
+            {fields.reminder_time ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label="Remove reminder"
+                onClick={() => {
+                  setFields({ ...fields, reminder_time: null });
+                }}
+              >
+                <X aria-hidden />
+              </Button>
+            ) : (
+              <span className="text-sm text-muted-foreground">No reminder</span>
+            )}
+          </div>
         </div>
 
         <ColorField

@@ -50,6 +50,7 @@ def create_habit(request: HttpRequest, habit: HabitIn) -> Status[HabitOut]:
         times_per_week=habit.times_per_week,
         goal=habit.goal,
         start_date=habit.start_date,
+        reminder_time=habit.reminder_time,
     )
     return Status(HTTPStatus.CREATED, HabitOut.from_orm(created))
 
@@ -64,7 +65,10 @@ def create_habit(request: HttpRequest, habit: HabitIn) -> Status[HabitOut]:
     summary="Edit a Habit",
 )
 def update_habit(request: HttpRequest, habit_id: int, patch: HabitPatchIn) -> Status[HabitOut]:
-    """Change any of a Habit's settings; the ones left out stay as they are."""
+    """Change any of a Habit's settings; the ones left out stay as they are.
+
+    A null reminder time removes the Reminder, unlike the other settings.
+    """
     updated = services.update_habit(
         signed_in_user(request),
         habit_id,
@@ -76,6 +80,8 @@ def update_habit(request: HttpRequest, habit_id: int, patch: HabitPatchIn) -> St
         times_per_week=patch.times_per_week,
         goal=patch.goal,
         start_date=patch.start_date,
+        reminder_time=patch.reminder_time,
+        remove_reminder="reminder_time" in patch.model_fields_set and patch.reminder_time is None,
     )
     return Status(HTTPStatus.OK, HabitOut.from_orm(updated))
 

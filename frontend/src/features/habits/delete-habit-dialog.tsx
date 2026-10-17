@@ -4,21 +4,27 @@ import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog"
 
 import { useDeleteHabit, type Habit } from "./habits";
 
-/** Asks before a Habit and its history are deleted, which can't be undone. */
+/**
+ * Asks before a Habit and its history are deleted, which can't be undone. `onDeleted` runs once
+ * the user confirms, and `onClose` whenever the dialog closes.
+ */
 export function DeleteHabitDialog({
   habit,
   onClose,
+  onDeleted,
 }: {
   habit: Habit | null;
   onClose: () => void;
+  onDeleted: (habit: Habit) => void;
 }) {
   const deleteHabit = useDeleteHabit();
   if (!habit) return null;
-  const { id } = habit;
+  const deleting = habit;
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    deleteHabit.mutate(id);
+    deleteHabit.mutate(deleting.id);
+    onDeleted(deleting);
     onClose();
   }
 

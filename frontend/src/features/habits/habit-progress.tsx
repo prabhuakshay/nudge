@@ -6,14 +6,8 @@ import { HUE } from "@/features/projects/project-style";
 import { addDays, todayIn } from "@/features/tasks/schedule";
 import { cn } from "@/lib/utils";
 
-import { checkInsQuery, type Habit } from "./habits";
-import { lastSevenDays, type DayState } from "./recent-days";
-
-/** A Streak's length with its unit, as in "3 days" or "1 week". */
-function streakLength(count: number, unit: Habit["streak_unit"]) {
-  const word = unit === "weeks" ? "week" : "day";
-  return `${String(count)} ${word}${count === 1 ? "" : "s"}`;
-}
+import { checkInsQuery, streakLength, type Habit } from "./habits";
+import { describeDay, lastSevenDays } from "./recent-days";
 
 /** The Habit's current Streak with its unit, and its best Streak. */
 export function StreakLine({ habit }: { habit: Habit }) {
@@ -31,13 +25,6 @@ export function StreakLine({ habit }: { habit: Habit }) {
   );
 }
 
-const SAYS: Record<DayState, (count: number, goal: number) => string> = {
-  done: () => "done",
-  partial: (count, goal) => `${String(count)} of ${String(goal)}`,
-  none: () => "not done",
-  unscheduled: () => "not asked for",
-};
-
 /**
  * The Habit's last seven days as dots, oldest first: solid for a day that met the Goal, soft for
  * one with some Check-ins, an outline for a miss, and dimmed for a day the Habit doesn't ask for.
@@ -52,7 +39,8 @@ export function RecentDays({ habit, timeZone }: { habit: Habit; timeZone: string
       {lastSevenDays(habit, today, checkIns).map((day) => (
         <li key={day.date} className="flex">
           <span className="sr-only">
-            {format(parseISO(day.date), "EEE d MMM")}: {SAYS[day.state](day.count, habit.goal)}
+            {format(parseISO(day.date), "EEE d MMM")}:{" "}
+            {describeDay(day.state, day.count, habit.goal)}
           </span>
           <span
             aria-hidden

@@ -20,6 +20,12 @@ export type HabitSettings = Omit<
 /** The most Check-ins a Habit's Goal can ask for in a day, as the server allows. */
 export const MAX_GOAL = 99;
 
+/** A Streak's length with its unit, as in "3 days" or "1 week". */
+export function streakLength(count: number, unit: Habit["streak_unit"]) {
+  const word = unit === "weeks" ? "week" : "day";
+  return `${String(count)} ${word}${count === 1 ? "" : "s"}`;
+}
+
 /** The user's Habits in their order. */
 export const habitsQuery = queryOptions({
   queryKey: ["habits"],
@@ -72,30 +78,40 @@ export function useCreateHabit() {
   });
 }
 
-/** A Habit and the number of Check-ins it should have today. */
-type CheckInsChange = { id: number; count: number };
+/** A Habit, an ISO date and the number of Check-ins the Habit should have that day. */
+type CheckInsChange = { id: number; day: string; count: number };
 
 const countToday = (habits: Habit[], { id, count }: CheckInsChange) =>
   habits.map((habit) => (habit.id === id ? { ...habit, today_count: count } : habit));
 
+const countDay = (checkIns: CheckIn[], { day, count }: CheckInsChange) => [
+  ...checkIns.filter((checkIn) => checkIn.date !== day),
+  ...(count > 0 ? [{ date: day, count }] : []),
+];
+
 /**
- * Set how many Check-ins a Habit has today on the user's clock; the Habits page and Today's strip
- * show them at once.
+ * Set how many Check-ins a Habit has on a day up to today on the user's clock; the Habits page,
+ * Today's strip and the heatmap show them at once.
  */
-export function useSetTodayCheckIns(timeZone: string) {
+export function useSetCheckIns(timeZone: string) {
   return useCacheMutation({
-    mutationFn: async ({ id, count }: CheckInsChange) => {
+    mutationFn: async ({ id, day, count }: CheckInsChange) => {
       const { data, error } = await api.PUT("/api/v1/habits/{habit_id}/check-ins/{day}", {
-        params: { path: { habit_id: id, day: todayIn(timeZone) } },
+        params: { path: { habit_id: id, day } },
         body: { count },
       });
       if (!data) throw new Error(failureReason(error, "Could not check in."));
       return data;
     },
     optimistic: {
-      // ["habits"] is the prefix of both queries, so a failure puts both back.
+      // ["habits"] is the prefix of every query changed, so a failure puts them all back.
       touches: habitsQuery.queryKey,
       show: (queryClient, change: CheckInsChange) => {
+        queryClient.setQueriesData<CheckIn[]>(
+          { queryKey: [...habitsQuery.queryKey, change.id, "check-ins"] },
+          (checkIns) => checkIns && countDay(checkIns, change),
+        );
+        if (change.day !== todayIn(timeZone)) return;
         for (const { queryKey } of [habitsQuery, todayHabitsQuery]) {
           editing(queryKey, countToday).show(queryClient, change);
         }

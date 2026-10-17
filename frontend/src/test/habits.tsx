@@ -6,8 +6,9 @@ import type { ReactNode } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import type { CheckIn, Habit, HabitSettings } from "@/features/habits/habits";
 import { HabitsPage } from "@/features/habits/habits-page";
+import { validateHabitSearch } from "@/features/habits/open-habit";
 import { TodayHabits } from "@/features/habits/today-strip";
-import { json } from "@/test/drawer";
+import { json, renderListRoute } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 
 /** A daily Habit with no Check-ins yet, changed by `overrides`. */
@@ -34,11 +35,32 @@ export function habit(overrides: Partial<Habit> = {}): Habit {
 /** A request the page sent that changes Habits: its method, path and body. */
 export type Write = { method: string; path: string; body: unknown };
 
-const HABIT_PATH = /^\/api\/v1\/habits\/(\d+)(?:\/([\w-]+))?(?:\/[\d-]+)?$/;
+const HABIT_PATH = /^\/api\/v1\/habits\/(\d+)(?:\/([\w-]+))?(?:\/([\d-]+))?$/;
 
-/** Answer a write to one Habit as the real server does, changing `habits` to match. */
-function answer(habits: Habit[], { method, path, body }: Write) {
-  const [, id, action] = HABIT_PATH.exec(path) ?? [];
+/** Today in London on the tests' fixed clock, the day whose Check-ins a Habit counts as today's. */
+const TODAY = "2026-10-15";
+
+/** Set a Habit's Check-ins on a day as the real server does; the page only sends `{ count }`. */
+function setCheckIns(
+  found: Habit,
+  checkIns: Record<number, CheckIn[]>,
+  day: string,
+  body: unknown,
+) {
+  const { count } = body as { count: number };
+  const others = (checkIns[found.id] ?? []).filter((checkIn) => checkIn.date !== day);
+  checkIns[found.id] = count > 0 ? [...others, { date: day, count }] : others;
+  if (day === TODAY) found.today_count = count;
+  return json(found);
+}
+
+/**
+ * Answer a write to one Habit as the real server does, changing `habits` and the days in
+ * `checkIns` to match.
+ */
+function answer(habits: Habit[], checkIns: Record<number, CheckIn[]>, write: Write) {
+  const { method, path, body } = write;
+  const [, id, action, day] = HABIT_PATH.exec(path) ?? [];
   const index = habits.findIndex((each) => each.id === Number(id));
   const found = habits[index];
   if (!found) return json({ detail: "Habit not found." }, 404);
@@ -57,11 +79,7 @@ function answer(habits: Habit[], { method, path, body }: Write) {
     Object.assign(found, body as HabitSettings);
     return json(found);
   }
-  if (action === "check-ins") {
-    // The page only sets Check-ins with `{ count }`, and only for today.
-    found.today_count = (body as { count: number }).count;
-    return json(found);
-  }
+  if (action === "check-ins" && day) return setCheckIns(found, checkIns, day, body);
   found.is_archived = action === "archive";
   return json(found);
 }
@@ -89,7 +107,7 @@ export function mockApi(habits: Habit[], checkIns: Record<number, CheckIn[]> = {
       body: text ? (JSON.parse(text) as unknown) : null,
     };
     sent.push(write);
-    if (path !== "/api/v1/habits") return answer(habits, write);
+    if (path !== "/api/v1/habits") return answer(habits, checkIns, write);
     // The only write to the collection is a new Habit.
     const added = habit({ ...(write.body as HabitSettings), id: habits.length + 1 });
     habits.push(added);
@@ -120,9 +138,16 @@ function renderFresh(view: ReactNode) {
   return userEvent.setup();
 }
 
-/** Render the Habits page for a user in `timeZone`, as a fresh client would load it. */
-export const renderPage = (timeZone = "Europe/London") =>
-  renderFresh(<HabitsPage timeZone={timeZone} />);
+/**
+ * Render the Habits page for a user in `timeZone` at `url`, as a fresh client would load it.
+ * Returns a user to drive the page.
+ */
+export const renderPage = (timeZone = "Europe/London", url = "/") =>
+  renderPageRoute(timeZone, url).user;
+
+/** Render the Habits page at `url` for a user in London; returns the router too, to read the URL. */
+export const renderPageRoute = (timeZone = "Europe/London", url = "/") =>
+  renderListRoute(<HabitsPage timeZone={timeZone} />, { url, validateSearch: validateHabitSearch });
 
 /** Render Today's strip of Habits for a user in London, as a fresh client would load it. */
 export const renderStrip = () => renderFresh(<TodayHabits timeZone="Europe/London" />);

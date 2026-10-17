@@ -268,6 +268,63 @@ def test_a_new_time_zone_moves_the_reminder(
     assert len(_sweep_at(freeze_time, datetime(2026, 3, 11, 3, 30, tzinfo=UTC))) == 1
 
 
+def _edit(user: User, habit: Habit) -> None:
+    services.update_habit(user, habit.pk, name="Drink more water")
+
+
+def _check_in_yesterday(user: User, habit: Habit) -> None:
+    services.set_check_ins(user, habit.pk, date(2026, 3, 9), 1)
+
+
+def _archive_and_unarchive(user: User, habit: Habit) -> None:
+    services.archive_habit(user, habit.pk)
+    services.unarchive_habit(user, habit.pk)
+
+
+@pytest.mark.django_db
+@pytest.mark.parametrize("change", [_edit, _check_in_yesterday, _archive_and_unarchive])
+def test_a_change_just_after_the_reminder_time_keeps_todays_reminder(
+    london: User,
+    freeze_time: Callable[[datetime], None],
+    change: Callable[[User, Habit], None],
+) -> None:
+    freeze_time(NOW)
+    habit = _habit(london)
+    # Past 09:00, before the minute sweep has run.
+    freeze_time(datetime(2026, 3, 10, 9, 0, 20, tzinfo=UTC))
+    change(london, habit)
+
+    assert len(_sweep_at(freeze_time, datetime(2026, 3, 10, 9, 1, tzinfo=UTC))) == 1
+
+
+@pytest.mark.django_db
+def test_a_change_after_todays_reminder_fired_doesnt_send_it_again(
+    london: User,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    freeze_time(NOW)
+    habit = _habit(london)
+    _sweep_at(freeze_time, datetime(2026, 3, 10, 9, 0, tzinfo=UTC))
+    _edit(london, habit)
+
+    assert len(_sweep_at(freeze_time, datetime(2026, 3, 10, 9, 1, tzinfo=UTC))) == 1
+
+
+@pytest.mark.django_db
+def test_a_change_hours_after_the_reminder_time_doesnt_send_it_late(
+    london: User,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    freeze_time(datetime(2026, 3, 10, 15, 0, tzinfo=UTC))
+    habit = _habit(london)
+    _edit(london, habit)
+
+    today = _sweep_at(freeze_time, datetime(2026, 3, 10, 15, 1, tzinfo=UTC))
+    tomorrow = _sweep_at(freeze_time, datetime(2026, 3, 11, 9, 0, tzinfo=UTC))
+
+    assert (len(today), len(tomorrow)) == (0, 1)
+
+
 @pytest.mark.django_db
 @pytest.mark.parametrize(
     ("late", "fired"),

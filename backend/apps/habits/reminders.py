@@ -31,10 +31,17 @@ _LOOKAHEAD_DAYS = DAYS_IN_WEEK + 1
 
 
 def reschedule(habits: Iterable[Habit]) -> None:
-    """Work out again when each Habit's Reminder fires next, after a change it depends on."""
-    now = timezone.now()
+    """Work out again when each Habit's Reminder fires next, after a change it depends on.
+
+    The search starts `CATCH_UP` ago rather than now, so a change made just after the reminder
+    time, before the sweep got to it, keeps that Reminder, as the sweep would have sent it late.
+    A Reminder already sent isn't found again.
+    """
+    catch_up_from = timezone.now() - CATCH_UP
     for habit in habits:
-        habit.next_reminder_at = next_reminder(habit, now)
+        sent = habit.last_reminded_at
+        since = catch_up_from if sent is None else max(catch_up_from, sent)
+        habit.next_reminder_at = next_reminder(habit, since)
         habit.save(update_fields=["next_reminder_at"])
 
 
@@ -94,14 +101,18 @@ def send_due_reminders() -> int:
         for habit in due:
             if habit.next_reminder_at is not None and habit.next_reminder_at <= now - CATCH_UP:
                 habit.next_reminder_at = next_reminder(habit, now - CATCH_UP)
-            if _may_fire(habit, now) or _may_fire_snooze(habit, now):
+            if _may_fire(habit, now):
+                habit.last_reminded_at = habit.next_reminder_at
+                _notify(habit)
+                fired += 1
+            elif _may_fire_snooze(habit, now):
                 _notify(habit)
                 fired += 1
             if habit.next_reminder_at is not None and habit.next_reminder_at <= now:
                 habit.next_reminder_at = next_reminder(habit, now)
             if habit.snoozed_until is not None and habit.snoozed_until <= now:
                 habit.snoozed_until = None
-            habit.save(update_fields=["next_reminder_at", "snoozed_until"])
+            habit.save(update_fields=["next_reminder_at", "last_reminded_at", "snoozed_until"])
     return fired
 
 

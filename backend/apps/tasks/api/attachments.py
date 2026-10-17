@@ -15,16 +15,13 @@ from ninja import File, Router, Status, UploadedFile
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
-from apps.tasks import attachments, services
-from apps.tasks.api.errors import TASK_NOT_FOUND
+from apps.tasks import attachments
 from apps.tasks.schemas.attachments import AttachmentOut
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
 
 router = Router()
-
-_ATTACHMENT_NOT_FOUND = ErrorOut(detail="Attachment not found.")
 
 # Types a browser shows without running anything. SVG and HTML can carry scripts, so they, like
 # every other type, download instead.
@@ -49,11 +46,8 @@ def upload_attachment(
     file: File[UploadedFile],
 ) -> Status[AttachmentOut] | Status[ErrorOut]:
     """Store one file against a Task, up to the configured size."""
-    task = services.live_task(signed_in_user(request), task_id)
-    if task is None:
-        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
     try:
-        attachment = attachments.attach_file(task, file)
+        attachment = attachments.attach_file(signed_in_user(request), task_id, file)
     except attachments.AttachmentTooLargeError as error:
         return Status(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, ErrorOut(detail=str(error)))
     return Status(HTTPStatus.CREATED, AttachmentOut.from_orm(attachment))
@@ -67,12 +61,10 @@ def upload_attachment(
 def list_attachments(
     request: HttpRequest,
     task_id: int,
-) -> Status[list[AttachmentOut]] | Status[ErrorOut]:
+) -> Status[list[AttachmentOut]]:
     """Return a Task's Attachments, oldest first."""
-    task = services.live_task(signed_in_user(request), task_id)
-    if task is None:
-        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
-    items = [AttachmentOut.from_orm(attachment) for attachment in attachments.attachments(task)]
+    found = attachments.attachments(signed_in_user(request), task_id)
+    items = [AttachmentOut.from_orm(attachment) for attachment in found]
     return Status(HTTPStatus.OK, items)
 
 
@@ -92,11 +84,9 @@ def list_attachments(
 def download_attachment(
     request: HttpRequest,
     attachment_id: int,
-) -> FileResponse | Status[ErrorOut]:
+) -> FileResponse:
     """Send an Attachment's bytes, inline for images and PDFs and as a download otherwise."""
     attachment = attachments.live_attachment(signed_in_user(request), attachment_id)
-    if attachment is None:
-        return Status(HTTPStatus.NOT_FOUND, _ATTACHMENT_NOT_FOUND)
     response = FileResponse(
         attachment.file.open("rb"),
         as_attachment=attachment.content_type not in _INLINE_TYPES,
@@ -117,9 +107,7 @@ def download_attachment(
     },
     summary="Delete an Attachment",
 )
-def delete_attachment(request: HttpRequest, attachment_id: int) -> Status[None] | Status[ErrorOut]:
+def delete_attachment(request: HttpRequest, attachment_id: int) -> Status[None]:
     """Delete an Attachment and its file for good."""
-    deleted = attachments.delete_attachment(signed_in_user(request), attachment_id)
-    if not deleted:
-        return Status(HTTPStatus.NOT_FOUND, _ATTACHMENT_NOT_FOUND)
+    attachments.delete_attachment(signed_in_user(request), attachment_id)
     return Status(HTTPStatus.NO_CONTENT, None)

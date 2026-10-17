@@ -1,8 +1,9 @@
 """Business rules for Projects and Tasks: Inbox, order, Status, pins, dates and Activity.
 
-Every function takes the user first and reaches Projects and Tasks through that user's related
-managers, so another user's ids behave as if they don't exist. A change and the Activity event
-that records it are saved in one transaction, so a Task's history never misses or invents a change.
+Every function takes the user first and turns ids into that user's live rows through
+`apps.tasks.live`, so another user's ids behave as if they don't exist. A change and the Activity
+event that records it are saved in one transaction, so a Task's history never misses or invents a
+change.
 How a change spreads through a Task's Subtask tree lives in `apps.tasks.tree`.
 """
 
@@ -17,7 +18,7 @@ from django.utils import timezone
 
 from apps.core.errors import DomainRuleError
 from apps.core.palette import PaletteColor
-from apps.tasks import reminders, repeat
+from apps.tasks import live, reminders, repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import TEXT_FIELDS, check_mentions, sync_mentions
@@ -26,14 +27,13 @@ from apps.tasks.models import (
     INBOX_NAME,
     OPEN_STATUSES,
     Project,
-    Tag,
     Task,
     TaskActivity,
 )
 from apps.tasks.pagination import Page, newest_first
-from apps.tasks.rows import as_rows, with_counts, with_overdue
+from apps.tasks.rows import as_rows
 from apps.tasks.siblings import task_siblings
-from apps.tasks.tags import retag
+from apps.tasks.tags import owned_tags, retag
 from apps.tasks.tree import (
     AffectedTask,
     cascade_status,
@@ -63,7 +63,8 @@ class TaskEdit:
     """The fields of a Task to change; a field left as None stays as it is.
 
     `dates` replaces all of the Task's dates at once; an empty `TaskDates` removes them, and the
-    Reminders with them. `reminders` replaces the Reminders, as offsets, and `tags` the Tags.
+    Reminders with them. `reminders` replaces the Reminders, as offsets, and `tag_ids` the Tags.
+    `project_id` moves the Task to another Project.
     New dates restart a repeating Task's series there, unless `move_occurrence` says they move
     only its current Occurrence.
     """
@@ -76,10 +77,10 @@ class TaskEdit:
     pinned: bool | None = None
     dates: TaskDates | None = None
     reminders: list[timedelta] | None = None
-    project: Project | None = None
+    project_id: int | None = None
     repeat_rule: str | None = None
     repeat_from: Task.RepeatFrom | None = None
-    tags: list[Tag] | None = None
+    tag_ids: list[int] | None = None
     move_occurrence: bool = False
 
 
@@ -107,13 +108,8 @@ def inbox(user: User) -> Project:
     return user.projects.get(is_inbox=True)
 
 
-def live_project(user: User, project_id: int) -> Project | None:
-    """Return one of the user's Projects that isn't in Trash, or None."""
-    return user.projects.filter(pk=project_id, deleted_at__isnull=True).first()
-
-
-def _live_tasks(project: Project) -> QuerySet[Task]:
-    return as_rows(project.tasks.filter(deleted_at__isnull=True), project.owner)
+def _project_rows(project: Project) -> QuerySet[Task]:
+    return as_rows(live.tasks(project.owner).filter(project=project), project.owner)
 
 
 def open_tasks(project: Project) -> QuerySet[Task]:
@@ -135,7 +131,7 @@ def section_open_tasks(project: Project, section: Section | None) -> QuerySet[Ta
 
 def _open_trees(project: Project, trees: Q) -> QuerySet[Task]:
     return (
-        _live_tasks(project)
+        _project_rows(project)
         .filter(root_status_in(OPEN_STATUSES), trees)
         .order_by(F("pinned_at").asc(nulls_last=True), "position", "id")
     )
@@ -169,16 +165,10 @@ def section_closed_tasks(
 
 
 def _closed_trees(project: Project, trees: Q, cursor: str | None) -> Page[Task]:
-    roots = _live_tasks(project).filter(trees, parent__isnull=True, status__in=CLOSED_STATUSES)
+    roots = _project_rows(project).filter(trees, parent__isnull=True, status__in=CLOSED_STATUSES)
     page = newest_first(roots, "completed_at", cursor)
     rows = [*page.items, *rows_below(page.items, project.owner)]
     return Page(items=rows, next_cursor=page.next_cursor)
-
-
-def live_task(user: User, task_id: int) -> Task | None:
-    """Return one of the user's Tasks that isn't in Trash, or None."""
-    tasks = with_counts(user.tasks.filter(pk=task_id, deleted_at__isnull=True))
-    return with_overdue(tasks, user).first()
 
 
 _EDITABLE_FIELDS = (
@@ -200,8 +190,8 @@ _EDITABLE_FIELDS = (
 )
 
 
-def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
-    """Change the given fields of one of the user's Tasks; return None if it isn't theirs.
+def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange:
+    """Change the given fields of one of the user's live Tasks.
 
     A Status change keeps the tree consistent: closing a Task closes its open descendants with
     the same Status, and reopening one reopens its Closed ancestors. Every Task the change
@@ -212,6 +202,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     Project. Each Tag put on or taken off is logged in Activity.
 
     Raises:
+        NotFoundError: The Task, the Project or a Tag isn't one of the user's.
         TaskRuleError: The edit gives a Blocked reason to a Task that isn't Blocked, or pins a
             Subtask.
         ReminderRuleError: The edit's Reminders break a Reminder rule.
@@ -219,12 +210,12 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
         ArchivedProjectError: The Task is in an archived Project, or would move into one.
         MentionError: A text mentions a Person the user doesn't have.
     """
-    task = live_task(user, task_id)
-    if task is None:
-        return None
+    task = live.task(user, task_id)
+    target = _target_project(user, task, edit.project_id)
+    tags = None if edit.tag_ids is None else owned_tags(user, edit.tag_ids)
     ensure_writable(task.project)
-    if edit.project is not None:
-        ensure_writable(edit.project)
+    if target is not None:
+        ensure_writable(target)
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
     from_project, from_parent = task.project.name, task.parent_title
     from_section = section_name(task)
@@ -243,7 +234,6 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     check_mentions(user, *(getattr(task, name) for name in TEXT_FIELDS if name in changed))
     affected = []
     cascaded: list[AffectedTask] = []
-    target = edit.project if edit.project and edit.project.pk != task.project_id else None
     with transaction.atomic():
         moved = []
         if target is not None:
@@ -262,7 +252,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
             events.append(moved_event(task, from_project, from_parent, from_section))
         asked = edit.repeat_rule is not None or edit.repeat_from is not None
         events.extend(filter(None, [repeat.edit_event(task, repeat_before, asked=asked)]))
-        events.extend([] if edit.tags is None else retag(task, edit.tags))
+        events.extend([] if tags is None else retag(task, tags))
         TaskActivity.objects.bulk_create(events)
         reminders.replace(task, edit.reminders, dates_before)
         if step is not None:
@@ -270,6 +260,14 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange | None:
     # Re-read, because a change of dates or Status can change whether the Task is overdue.
     fresh = as_rows(user.tasks.filter(pk=task.pk), user).get()
     return TaskChange(task=fresh, affected=affected + cascaded)
+
+
+def _target_project(user: User, task: Task, project_id: int | None) -> Project | None:
+    """Return the user's live Project the Task moves to, or None when it stays in its own."""
+    if project_id is None:
+        return None
+    project = live.project(user, project_id)
+    return None if project.pk == task.project_id else project
 
 
 def _apply(task: Task, edit: TaskEdit) -> None:
@@ -334,15 +332,22 @@ def _activity(
     return events
 
 
-def task_activity(task: Task, cursor: str | None = None) -> Page[TaskActivity]:
-    """Return a page of the Task's history, newest first.
+@dataclass(frozen=True)
+class ActivityPage:
+    """A page of a Task's history, and how many events the whole history holds."""
+
+    items: list[TaskActivity]
+    next_cursor: str | None
+    count: int
+
+
+def task_activity(user: User, task_id: int, cursor: str | None = None) -> ActivityPage:
+    """Return a page of the history of one of the user's live Tasks, newest first.
 
     Raises:
+        NotFoundError: The Task isn't one of the user's.
         InvalidCursorError: The cursor wasn't one this function returned.
     """
-    return newest_first(task.activity.all(), "at", cursor)
-
-
-def activity_count(task: Task) -> int:
-    """Return how many events the Task's history holds."""
-    return task.activity.count()
+    task = live.task(user, task_id)
+    page = newest_first(task.activity.all(), "at", cursor)
+    return ActivityPage(page.items, page.next_cursor, task.activity.count())

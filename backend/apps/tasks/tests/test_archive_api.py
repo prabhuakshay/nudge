@@ -266,7 +266,7 @@ def test_deleting_a_file_from_a_task_in_an_archived_project_is_refused(
 ) -> None:
     project = projects.create_project(ada, "Garden")
     task = creation.create_task(project, "Plant bulbs")
-    attachment = attachments.attach_file(task, SimpleUploadedFile("plan.txt", b"rows"))
+    attachment = attachments.attach_file(ada, task.pk, SimpleUploadedFile("plan.txt", b"rows"))
     projects.archive_project(ada, project.pk)
 
     response = client.delete(f"/api/v1/attachments/{attachment.pk}")

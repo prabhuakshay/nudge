@@ -19,8 +19,9 @@ from django.db import IntegrityError, transaction
 from django.db.models import Count
 from django.utils import timezone
 
-from apps.core.errors import DomainRuleError
+from apps.core.errors import DomainRuleError, NotFoundError
 from apps.core.palette import PaletteColor
+from apps.tasks import live
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import OPEN_STATUSES, Folder, Project
 from apps.tasks.siblings import SiblingRef, sidebar_siblings
@@ -38,6 +39,7 @@ class ProjectRuleError(DomainRuleError):
 INBOX_IS_FIXED = "The Inbox can't be renamed, recoloured or moved."
 INBOX_HAS_NO_BOARD = "The Inbox has no Sections, so it can't be a Board."
 INBOX_CANT_BE_ARCHIVED = "The Inbox can't be archived."
+FOLDER_NOT_FOUND = "Folder not found."
 
 
 @dataclass(frozen=True)
@@ -67,7 +69,7 @@ class Sidebar:
 
 def sidebar(user: User) -> Sidebar:
     """Return the user's Inbox, Folders and live Projects in sidebar order, with open counts."""
-    projects = list(user.projects.filter(deleted_at__isnull=True).order_by("position", "id"))
+    projects = list(live.projects(user).order_by("position", "id"))
     inbox = next(project for project in projects if project.is_inbox)
     folder_projects: dict[int, list[Project]] = {}
     ungrouped: list[Project] = []
@@ -108,12 +110,19 @@ def sidebar_items(user: User) -> list[Folder | Project]:
 
 def folder_projects(folder: Folder) -> QuerySet[Project]:
     """Return the live Projects in a Folder, in the user's order."""
-    return folder.projects.filter(deleted_at__isnull=True).order_by("position", "id")
+    return live.projects(folder.owner).filter(folder=folder).order_by("position", "id")
 
 
-def folder(user: User, folder_id: int) -> Folder | None:
-    """Return one of the user's Folders, or None."""
-    return user.folders.filter(pk=folder_id).first()
+def folder(user: User, folder_id: int) -> Folder:
+    """Return the user's Folder with this id.
+
+    Raises:
+        NotFoundError: There's no such Folder.
+    """
+    found = user.folders.filter(pk=folder_id).first()
+    if found is None:
+        raise NotFoundError(FOLDER_NOT_FOUND)
+    return found
 
 
 def _name_taken(name: str) -> ProjectRuleError:
@@ -162,15 +171,14 @@ def create_project(
     return project
 
 
-def update_project(user: User, project_id: int, edit: ProjectEdit) -> Project | None:
-    """Change the given fields of one of the user's live Projects; None if it isn't theirs.
+def update_project(user: User, project_id: int, edit: ProjectEdit) -> Project:
+    """Change the given fields of one of the user's live Projects.
 
     Raises:
+        NotFoundError: The Project isn't one of the user's.
         ProjectRuleError: The Project is the Inbox, the name is taken or the icon is the Inbox's.
     """
-    project = user.projects.filter(pk=project_id, deleted_at__isnull=True).first()
-    if project is None:
-        return None
+    project = live.project(user, project_id)
     if project.is_inbox:
         board = edit.layout == Project.Layout.BOARD
         raise ProjectRuleError(INBOX_HAS_NO_BOARD if board else INBOX_IS_FIXED)
@@ -188,34 +196,29 @@ def move_project(
     project_id: int,
     folder: Folder | None,
     after: SiblingRef | None,
-) -> bool:
-    """Put one of the user's Projects in a Folder (or the top level) right after `after`.
+) -> None:
+    """Put one of the user's live Projects in a Folder (or the top level) right after `after`.
 
     No `after` puts it first; an `after` that isn't in the target sibling set puts it last.
-    Returns False when the Project isn't the user's.
 
     Raises:
+        NotFoundError: The Project isn't one of the user's.
         ProjectRuleError: The Project is the Inbox.
     """
-    project = user.projects.filter(pk=project_id, deleted_at__isnull=True).first()
-    if project is None:
-        return False
+    project = live.project(user, project_id)
     if project.is_inbox:
         raise ProjectRuleError(INBOX_IS_FIXED)
     moving = SiblingRef("project", project.pk)
     if after == moving:
-        return True
+        return
     with transaction.atomic():
         project.position = sidebar_siblings(user, folder).after(after, moving=moving)
         project.folder = folder
         project.save(update_fields=["position", "folder", "updated_at"])
-    return True
 
 
-def _set_archived(user: User, project_id: int, *, archived: bool) -> Project | None:
-    project = user.projects.filter(pk=project_id, deleted_at__isnull=True).first()
-    if project is None:
-        return None
+def _set_archived(user: User, project_id: int, *, archived: bool) -> Project:
+    project = live.project(user, project_id)
     if archived and project.is_inbox:
         raise ProjectRuleError(INBOX_CANT_BE_ARCHIVED)
     if archived != project.is_archived:
@@ -224,19 +227,24 @@ def _set_archived(user: User, project_id: int, *, archived: bool) -> Project | N
     return project
 
 
-def archive_project(user: User, project_id: int) -> Project | None:
-    """Archive one of the user's Projects; None if it isn't theirs. Archiving twice is harmless.
+def archive_project(user: User, project_id: int) -> Project:
+    """Archive one of the user's live Projects. Archiving twice is harmless.
 
     It keeps its Folder and place, so unarchiving puts it back as it was.
 
     Raises:
+        NotFoundError: The Project isn't one of the user's.
         ProjectRuleError: The Project is the Inbox.
     """
     return _set_archived(user, project_id, archived=True)
 
 
-def unarchive_project(user: User, project_id: int) -> Project | None:
-    """Bring one of the user's archived Projects back where it was; None if it isn't theirs."""
+def unarchive_project(user: User, project_id: int) -> Project:
+    """Bring one of the user's archived Projects back where it was.
+
+    Raises:
+        NotFoundError: The Project isn't one of the user's.
+    """
     return _set_archived(user, project_id, archived=False)
 
 
@@ -253,44 +261,46 @@ def update_folder(
     *,
     name: str | None = None,
     collapsed: bool | None = None,
-) -> Folder | None:
-    """Rename, collapse or expand one of the user's Folders; None if it isn't theirs."""
+) -> Folder:
+    """Rename, collapse or expand one of the user's Folders.
+
+    Raises:
+        NotFoundError: The Folder isn't one of the user's.
+    """
     found = folder(user, folder_id)
-    if found is None:
-        return None
     found.name = name if name is not None else found.name
     found.collapsed = collapsed if collapsed is not None else found.collapsed
     found.save()
     return found
 
 
-def move_folder(user: User, folder_id: int, after: SiblingRef | None) -> bool:
+def move_folder(user: User, folder_id: int, after: SiblingRef | None) -> None:
     """Put one of the user's Folders right after `after` on the sidebar's top level.
 
-    No `after` puts it first; an `after` that isn't on the top level puts it last. Returns False
-    when the Folder isn't the user's.
+    No `after` puts it first; an `after` that isn't on the top level puts it last.
+
+    Raises:
+        NotFoundError: The Folder isn't one of the user's.
     """
     found = folder(user, folder_id)
-    if found is None:
-        return False
     moving = SiblingRef("folder", found.pk)
     if after == moving:
-        return True
+        return
     with transaction.atomic():
         found.position = sidebar_siblings(user, None).after(after, moving=moving)
         found.save(update_fields=["position", "updated_at"])
-    return True
 
 
-def delete_folder(user: User, folder_id: int) -> bool:
+def delete_folder(user: User, folder_id: int) -> None:
     """Delete one of the user's Folders, leaving its Projects ungrouped in its place.
 
-    Returns False when the Folder isn't the user's. A Folder holds only Projects, never Tasks,
-    so it is deleted for good rather than sent to Trash.
+    A Folder holds only Projects, never Tasks, so it is deleted for good rather than sent to
+    Trash.
+
+    Raises:
+        NotFoundError: The Folder isn't one of the user's.
     """
     found = folder(user, folder_id)
-    if found is None:
-        return False
     with transaction.atomic():
         top_level = sidebar_siblings(user, None)
         top_level.lock()
@@ -302,4 +312,3 @@ def delete_folder(user: User, folder_id: int) -> bool:
             project.position = key
         Project.objects.bulk_update(projects, ["folder", "position"])
         found.delete()
-    return True

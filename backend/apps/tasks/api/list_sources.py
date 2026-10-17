@@ -9,13 +9,7 @@ from typing import TYPE_CHECKING, Literal
 from ninja import Status
 
 from apps.core.schemas import ErrorOut
-from apps.tasks import people, schedule, sections, services, tags
-from apps.tasks.api.errors import (
-    PERSON_NOT_FOUND,
-    PROJECT_NOT_FOUND,
-    SECTION_NOT_FOUND,
-    TAG_NOT_FOUND,
-)
+from apps.tasks import live, people, schedule, sections, services, tags
 from apps.tasks.pagination import Page
 
 if TYPE_CHECKING:
@@ -31,7 +25,11 @@ type ListSource = tuple[Callable[[], Iterable[Task]], Callable[[str | None], Pag
 
 
 def list_source(user: User, query: TaskListQuery) -> ListSource | Status[ErrorOut]:
-    """Return how to read the open Tasks and a page of Closed ones of the list asked for."""
+    """Return how to read the open Tasks and a page of Closed ones of the list asked for.
+
+    Raises:
+        NotFoundError: The Person, Tag, Project or Section isn't one of the user's.
+    """
     if query.view is not None:
         return _view_source(user, query.view)
     by_id = (
@@ -45,10 +43,8 @@ def list_source(user: User, query: TaskListQuery) -> ListSource | Status[ErrorOu
     return Status(HTTPStatus.UNPROCESSABLE_ENTITY, _ONE_SOURCE)
 
 
-def _person_source(user: User, person: int) -> ListSource | Status[ErrorOut]:
+def _person_source(user: User, person: int) -> ListSource:
     found = people.person(user, person)
-    if found is None:
-        return Status(HTTPStatus.NOT_FOUND, PERSON_NOT_FOUND)
     return partial(people.open_tasks, found), partial(people.closed_tasks, found)
 
 
@@ -63,10 +59,8 @@ def _nothing_closed(_cursor: str | None) -> Page[Task]:
     return Page(items=[], next_cursor=None)
 
 
-def _tag_source(user: User, tag: int) -> ListSource | Status[ErrorOut]:
+def _tag_source(user: User, tag: int) -> ListSource:
     found = tags.tag(user, tag)
-    if found is None:
-        return Status(HTTPStatus.NOT_FOUND, TAG_NOT_FOUND)
     return partial(tags.open_tasks, found), partial(tags.closed_tasks, found)
 
 
@@ -74,18 +68,11 @@ def _project_source(
     user: User,
     project: int,
     section: int | Literal["none"] | None,
-) -> ListSource | Status[ErrorOut]:
-    found = services.live_project(user, project)
-    if found is None:
-        return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
+) -> ListSource:
+    found = live.project(user, project)
     if section is None:
         return partial(services.open_tasks, found), partial(services.closed_tasks, found)
-    if section == "none":
-        picked = None
-    else:
-        picked = sections.project_section(found, section)
-        if picked is None:
-            return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
+    picked = None if section == "none" else sections.project_section(found, section)
     return (
         partial(services.section_open_tasks, found, picked),
         partial(services.section_closed_tasks, found, picked),

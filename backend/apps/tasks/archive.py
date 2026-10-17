@@ -8,6 +8,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from apps.core.errors import DomainRuleError
+from apps.tasks import live
 
 if TYPE_CHECKING:
     from django.db.models import QuerySet
@@ -36,8 +37,4 @@ def active_tasks(user: User) -> QuerySet[Task]:
 
     Every view and count that spans Projects starts from this, so archived work stays out of it.
     """
-    return user.tasks.filter(
-        deleted_at__isnull=True,
-        project__deleted_at__isnull=True,
-        project__archived_at__isnull=True,
-    )
+    return live.tasks(user).filter(project__archived_at__isnull=True)

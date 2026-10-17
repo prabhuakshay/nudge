@@ -9,10 +9,11 @@ writes one row for it plus, across Projects, the Project of each Subtask.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from django.db import transaction
 
-from apps.tasks import repeat
+from apps.tasks import live, repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, Project, Section, Task, TaskActivity
 from apps.tasks.rows import as_rows
@@ -28,43 +29,51 @@ from apps.tasks.tree import (
     section_name,
 )
 
+if TYPE_CHECKING:
+    from apps.accounts.models import User
+
 
 @dataclass(frozen=True)
 class Destination:
-    """Where a Task goes, already resolved to the owner's Project and parent.
+    """Where a Task goes, by the ids of the owner's Project, parent, sibling and Section.
 
-    No `project` means the parent's Project, or the Task's own for a root. No `parent` means the
-    top level. No `after_id` puts it first among its new siblings; an `after_id` that isn't one
-    of them puts it last. `section` is the Section a root joins, or No section, and counts only
-    when `section_given`; otherwise a root staying in its Project keeps its Section.
+    No `project_id` means the parent's Project, or the Task's own for a root. No `parent_id`
+    means the top level. No `after_id` puts it first among its new siblings; an `after_id` that
+    isn't one of them puts it last. `section_id` is the Section a root joins, or No section, and
+    counts only when `section_given`; otherwise a root staying in its Project keeps its Section.
     """
 
-    project: Project | None = None
-    parent: Task | None = None
+    project_id: int | None = None
+    parent_id: int | None = None
     after_id: int | None = None
-    section: Section | None = None
+    section_id: int | None = None
     section_given: bool = False
 
 
-def move_task(task: Task, destination: Destination) -> TaskChange:
-    """Move the Task and its Subtasks to the destination.
+def move_task(user: User, task_id: int, destination: Destination) -> TaskChange:
+    """Move one of the user's live Tasks and its Subtasks to the destination.
 
     A change of Project, parent or Section is logged; a reorder among the same siblings isn't. A
     Task that becomes a Subtask drops its pin, its Repeat and its Section, since only roots have
     them, and an open Task moved under Closed work reopens it.
 
     Raises:
+        NotFoundError: The Task, or the destination's Project, parent or Section, isn't one of
+            the user's.
         TaskRuleError: The destination is under the Task itself, nests too deep, names a
             parent in another Project than the one given, or gives a Subtask a Section.
         SectionRuleError: The Section is in another Project than the destination.
         ArchivedProjectError: The Task is in an archived Project, or would move into one.
     """
-    project = _target_project(task, destination)
+    task = live.task(user, task_id)
+    given_project, parent, given_section = _resolve(user, destination)
+    project = _target_project(task, given_project, parent)
     ensure_writable(task.project)
     ensure_writable(project)
-    parent = destination.parent
     _check_parent(task, parent)
-    section = _target_section(task, project, parent, destination)
+    section = _target_section(
+        task, project, parent, given_section, section_given=destination.section_given
+    )
     from_project, from_parent = task.project.name, task.parent_title
     from_section = section_name(task)
     with transaction.atomic():
@@ -110,11 +119,18 @@ def _pk(row: Task | Section | None) -> int | None:
     return None if row is None else row.pk
 
 
-def _target_project(task: Task, destination: Destination) -> Project:
-    parent = destination.parent
+def _resolve(user: User, to: Destination) -> tuple[Project | None, Task | None, Section | None]:
+    """Return the user's live Project, parent and Section the destination names, where it does."""
+    project = None if to.project_id is None else live.project(user, to.project_id)
+    parent = None if to.parent_id is None else live.task(user, to.parent_id)
+    section = None if to.section_id is None else live.section(user, to.section_id)
+    return project, parent, section
+
+
+def _target_project(task: Task, project: Project | None, parent: Task | None) -> Project:
     if parent is None:
-        return destination.project or task.project
-    if destination.project is not None and destination.project.pk != parent.project_id:
+        return project or task.project
+    if project is not None and project.pk != parent.project_id:
         message = "A subtask lives in its parent's project."
         raise TaskRuleError(message)
     return parent.project
@@ -124,16 +140,17 @@ def _target_section(
     task: Task,
     project: Project,
     parent: Task | None,
-    destination: Destination,
+    section: Section | None,
+    *,
+    section_given: bool,
 ) -> Section | None:
     """Return the Section the Task has after the move: Subtasks follow their root's."""
-    section = destination.section
     if parent is not None:
         if section is not None:
             message = "A Subtask follows its root Task's Section."
             raise TaskRuleError(message)
         return None
-    if not destination.section_given:
+    if not section_given:
         return task.section if project.pk == task.project_id else None
     if section is not None and section.project_id != project.pk:
         raise SectionRuleError(NOT_IN_THIS_PROJECT)

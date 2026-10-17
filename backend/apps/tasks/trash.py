@@ -27,7 +27,8 @@ from django.db.models import (
 )
 from django.utils import timezone
 
-from apps.tasks import reminders, services
+from apps.core.errors import NotFoundError
+from apps.tasks import live, reminders, services
 from apps.tasks.archive import ensure_writable
 from apps.tasks.models import MAX_DEPTH, Project, Task, TaskActivity
 from apps.tasks.rows import as_rows
@@ -40,6 +41,8 @@ if TYPE_CHECKING:
 
     from apps.accounts.models import User
 
+TASK_NOT_IN_TRASH = "Task not found in Trash."
+
 
 @dataclass(frozen=True)
 class Restored:
@@ -49,17 +52,16 @@ class Restored:
     project: Project
 
 
-def trash_task(user: User, task_id: int) -> bool:
-    """Send one of the user's live Tasks and its live Subtasks to Trash; False if it isn't theirs.
+def trash_task(user: User, task_id: int) -> None:
+    """Send one of the user's live Tasks and its live Subtasks to Trash.
 
     Subtasks trashed earlier on their own stay units of their own.
 
     Raises:
+        NotFoundError: The Task isn't one of the user's.
         ArchivedProjectError: The Task is in an archived Project.
     """
-    task = user.tasks.filter(pk=task_id, deleted_at__isnull=True).select_related("project").first()
-    if task is None:
-        return False
+    task = live.task(user, task_id)
     ensure_writable(task.project)
     now = timezone.now()
     with transaction.atomic():
@@ -69,7 +71,6 @@ def trash_task(user: User, task_id: int) -> bool:
         TaskActivity.objects.bulk_create(
             TaskActivity(task_id=pk, kind=TaskActivity.Kind.TRASHED, at=now) for pk in ids
         )
-    return True
 
 
 def trashed_tasks(user: User) -> QuerySet[Task]:
@@ -106,8 +107,8 @@ def expires_at() -> ExpressionWrapper[CombinedExpression]:
     )
 
 
-def restore_task(user: User, task_id: int) -> Restored | None:
-    """Bring back the Trash unit one of the user's trashed Tasks belongs to; None if there's none.
+def restore_task(user: User, task_id: int) -> Restored:
+    """Bring back the Trash unit one of the user's trashed Tasks belongs to.
 
     A Task deleted along with its Project comes back only with the Project.
 
@@ -115,6 +116,9 @@ def restore_task(user: User, task_id: int) -> Restored | None:
     else it becomes the last root of its Project; a unit whose Project is in Trash goes to the
     Inbox. An archived Project takes it back as it is. A root stays in its Section unless the
     Section was deleted or the root changed Project; then it comes back in No section.
+
+    Raises:
+        NotFoundError: The Task isn't one of the user's Tasks in Trash.
     """
     task = (
         user.tasks.filter(pk=task_id, trash_unit__isnull=False)
@@ -122,7 +126,7 @@ def restore_task(user: User, task_id: int) -> Restored | None:
         .first()
     )
     if task is None:
-        return None
+        raise NotFoundError(TASK_NOT_IN_TRASH)
     head = _head(task)
     unit = list(user.tasks.filter(trash_unit=head.trash_unit))
     with transaction.atomic():

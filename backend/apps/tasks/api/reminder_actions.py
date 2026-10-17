@@ -19,8 +19,6 @@ if TYPE_CHECKING:
 
 router = Router()
 
-_NOT_FOUND = ErrorOut(detail="Reminder notification not found.")
-
 
 @router.post(
     "/{int:notification_id}/complete",
@@ -34,11 +32,9 @@ _NOT_FOUND = ErrorOut(detail="Reminder notification not found.")
 def complete(
     request: HttpRequest,
     notification_id: int,
-) -> Status[TaskChangeOut] | Status[ErrorOut]:
+) -> Status[TaskChangeOut]:
     """Complete the Task a Reminder notification is about, as ticking it off would."""
     change = reminder_actions.complete(signed_in_user(request), notification_id)
-    if change is None:
-        return Status(HTTPStatus.NOT_FOUND, _NOT_FOUND)
     return Status(HTTPStatus.OK, task_change_out(change))
 
 
@@ -51,8 +47,7 @@ def snooze(
     request: HttpRequest,
     notification_id: int,
     body: SnoozeIn,
-) -> Status[None] | Status[ErrorOut]:
+) -> Status[None]:
     """Fire a Reminder notification once more later, leaving its Task as it is."""
-    if not reminder_actions.snooze(signed_in_user(request), notification_id, body.until):
-        return Status(HTTPStatus.NOT_FOUND, _NOT_FOUND)
+    reminder_actions.snooze(signed_in_user(request), notification_id, body.until)
     return Status(HTTPStatus.NO_CONTENT, None)

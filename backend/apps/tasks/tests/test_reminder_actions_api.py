@@ -11,7 +11,7 @@ from django.test import Client
 from apps.accounts.services import set_time_zone
 from apps.notifications.models import Notification
 from apps.notifications.services import notify
-from apps.tasks import creation, projects, reminders, services
+from apps.tasks import creation, live, projects, reminders, services
 from apps.tasks.dates import TaskDates
 
 if TYPE_CHECKING:
@@ -228,8 +228,7 @@ def test_completing_from_a_reminder_applies_the_status_rules(
 ) -> None:
     notification = _fired_reminder(ada, freeze_time)
     task_id = _task_id(notification)
-    parent = services.live_task(ada, task_id)
-    assert parent is not None
+    parent = live.task(ada, task_id)
     subtask = creation.create_subtask(parent, "Find the card").task
 
     response = client.post(f"/api/v1/notifications/{notification.pk}/complete")
@@ -255,7 +254,7 @@ def test_a_task_in_an_archived_project_cannot_be_completed(
 ) -> None:
     notification = _fired_reminder(ada, freeze_time)
     work = projects.create_project(ada, "Work")
-    services.update_task(ada, _task_id(notification), services.TaskEdit(project=work))
+    services.update_task(ada, _task_id(notification), services.TaskEdit(project_id=work.pk))
     projects.archive_project(ada, work.pk)
 
     response = client.post(f"/api/v1/notifications/{notification.pk}/complete")

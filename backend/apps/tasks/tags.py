@@ -14,7 +14,8 @@ from typing import TYPE_CHECKING, Literal
 from django.db import IntegrityError, transaction
 from django.db.models import Count
 
-from apps.core.errors import DomainRuleError
+from apps.core.errors import DomainRuleError, NotFoundError
+from apps.tasks import live
 from apps.tasks.archive import active_tasks
 from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Tag, Task, TaskActivity
 from apps.tasks.pagination import Page, newest_first
@@ -28,6 +29,9 @@ if TYPE_CHECKING:
 
     from apps.accounts.models import User
     from apps.core.palette import PaletteColor
+
+
+TAG_NOT_FOUND = "Tag not found."
 
 
 class TagRuleError(DomainRuleError):
@@ -47,16 +51,29 @@ def _save(tag: Tag) -> None:
         raise _name_taken(tag.name) from error
 
 
-def tag(user: User, tag_id: int) -> Tag | None:
-    """Return one of the user's Tags, or None."""
-    return user.tags.filter(pk=tag_id).first()
+def tag(user: User, tag_id: int) -> Tag:
+    """Return the user's Tag with this id.
+
+    Raises:
+        NotFoundError: There's no such Tag.
+    """
+    found = user.tags.filter(pk=tag_id).first()
+    if found is None:
+        raise NotFoundError(TAG_NOT_FOUND)
+    return found
 
 
-def owned_tags(user: User, tag_ids: Iterable[int]) -> list[Tag] | None:
-    """Return the user's Tags with these ids, or None if any of them isn't the user's."""
+def owned_tags(user: User, tag_ids: Iterable[int]) -> list[Tag]:
+    """Return the user's Tags with these ids.
+
+    Raises:
+        NotFoundError: Any id isn't one of the user's Tags.
+    """
     wanted = set(tag_ids)
     found = list(user.tags.filter(pk__in=wanted))
-    return found if len(found) == len(wanted) else None
+    if len(found) != len(wanted):
+        raise NotFoundError(TAG_NOT_FOUND)
+    return found
 
 
 def create_tag(user: User, name: str, *, color: PaletteColor | None = None) -> Tag:
@@ -90,65 +107,57 @@ def update_tag(
     *,
     name: str | None = None,
     color: PaletteColor | Literal[""] | None = None,
-) -> Tag | None:
-    """Rename or recolour one of the user's Tags; None if it isn't theirs. "" makes it grey.
+) -> Tag:
+    """Rename or recolour one of the user's Tags. "" makes it grey.
 
     Raises:
+        NotFoundError: The Tag isn't one of the user's.
         TagRuleError: Another of the user's Tags has that name.
     """
     found = tag(user, tag_id)
-    if found is None:
-        return None
     found.name = name if name is not None else found.name
     found.color = color if color is not None else found.color
     _save(found)
     return found
 
 
-def move_tag(user: User, tag_id: int, after_id: int | None) -> bool:
+def move_tag(user: User, tag_id: int, after_id: int | None) -> None:
     """Put one of the user's Tags right after another; first for None, last if it isn't theirs.
 
-    Returns False when the Tag isn't the user's.
+    Raises:
+        NotFoundError: The Tag isn't one of the user's.
     """
     found = tag(user, tag_id)
-    if found is None:
-        return False
     if after_id == found.pk:
-        return True
+        return
     with transaction.atomic():
         found.position = tag_siblings(user).after(after_id, moving=found.pk)
         found.save(update_fields=["position", "updated_at"])
-    return True
 
 
-def delete_tag(user: User, tag_id: int) -> bool:
+def delete_tag(user: User, tag_id: int) -> None:
     """Delete one of the user's Tags for good, recording its removal on each of its Tasks.
 
-    Returns False when the Tag isn't the user's.
+    Raises:
+        NotFoundError: The Tag isn't one of the user's.
     """
     found = tag(user, tag_id)
-    if found is None:
-        return False
     with transaction.atomic():
         TaskActivity.objects.bulk_create(
             _event(task, TaskActivity.Kind.TAG_REMOVED, {"name": found.name})
             for task in found.tasks.all()
         )
         found.delete()
-    return True
 
 
-def merge_tag(user: User, tag_id: int, into_id: int) -> bool:
+def merge_tag(user: User, tag_id: int, into_id: int) -> None:
     """Move every Task of one of the user's Tags onto another, then delete the first.
 
-    Returns False when either Tag isn't the user's.
-
     Raises:
+        NotFoundError: Either Tag isn't one of the user's.
         TagRuleError: The two are the same Tag.
     """
     source, target = tag(user, tag_id), tag(user, into_id)
-    if source is None or target is None:
-        return False
     if source == target:
         message = "A Tag can't be merged into itself."
         raise TagRuleError(message)
@@ -160,7 +169,6 @@ def merge_tag(user: User, tag_id: int, into_id: int) -> bool:
             _event(task, TaskActivity.Kind.TAGS_MERGED, data) for task in tasks
         )
         source.delete()
-    return True
 
 
 def _event(task: Task, kind: TaskActivity.Kind, data: dict[str, str]) -> TaskActivity:
@@ -206,9 +214,7 @@ def sidebar_tags(user: User) -> list[SidebarTag]:
     counts every Task that isn't in Trash, because that's how many merging or deleting touches.
     """
     open_counts = _counts_by_tag(active_tasks(user).filter(status__in=OPEN_STATUSES))
-    totals = _counts_by_tag(
-        user.tasks.filter(deleted_at__isnull=True, project__deleted_at__isnull=True),
-    )
+    totals = _counts_by_tag(live.tasks(user))
     return [
         SidebarTag(
             tag=found, open_count=open_counts.get(found.pk, 0), task_count=totals.get(found.pk, 0)

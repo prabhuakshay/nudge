@@ -71,6 +71,7 @@ def test_another_users_task_makes_the_whole_request_404(
     response = _bulk(client, [mine, theirs], {"kind": "priority", "priority": 1})
 
     assert response.status_code == 404
+    assert response.json() == {"detail": "Task not found."}
     assert _fresh(mine).priority == Task.Priority.NONE
     assert _fresh(theirs).priority == Task.Priority.NONE
 
@@ -96,6 +97,7 @@ def test_another_users_tag_is_404(client: Client, ada: User, grace: User, kind: 
     response = _bulk(client, [task], {"kind": kind, "tag_id": theirs.pk})
 
     assert response.status_code == 404
+    assert response.json() == {"detail": "Tag not found."}
 
 
 @pytest.mark.django_db
@@ -124,6 +126,7 @@ def test_moving_into_another_users_project_is_404(
     response = _bulk(client, [task], {"kind": "move", "project_id": services.inbox(grace).pk})
 
     assert response.status_code == 404
+    assert response.json() == {"detail": "Project not found."}
     assert _fresh(task).project_id == services.inbox(ada).pk
 
 

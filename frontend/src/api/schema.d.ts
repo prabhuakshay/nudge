@@ -792,10 +792,10 @@ export interface paths {
      * @description Apply one action to every Task given, in one transaction.
      *
      *     Each Task changes as it would on its own, cascades and Activity included. If any id isn't one
-     *     of the user's Tasks, or the Project or Tag isn't theirs, nothing changes and the answer is
-     *     404; if any Task refuses the change, nothing changes and the answer is 422. Every Task whose
-     *     Status changed comes back with its Status from before, and a move says where each Task was,
-     *     so the client can offer Undo.
+     *     of the user's Tasks, or the Project, parent, Section or Tag isn't theirs, nothing changes and
+     *     the answer is 404; if any Task refuses the change, nothing changes and the answer is 422.
+     *     Every Task whose Status changed comes back with its Status from before, and a move says where
+     *     each Task was, so the client can offer Undo.
      */
     post: operations["apps_tasks_api_bulk_bulk_change"];
     delete?: never;

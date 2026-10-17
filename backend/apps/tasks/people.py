@@ -12,8 +12,9 @@ from typing import TYPE_CHECKING
 
 from django.db import IntegrityError, transaction
 
-from apps.core.errors import DomainRuleError
+from apps.core.errors import DomainRuleError, NotFoundError
 from apps.core.palette import PaletteColor
+from apps.tasks.archive import active_tasks
 from apps.tasks.mentions import rewrite_mentions, token
 from apps.tasks.models import (
     CLOSED_STATUSES,
@@ -32,6 +33,9 @@ if TYPE_CHECKING:
     from apps.accounts.models import User
 
 
+PERSON_NOT_FOUND = "Person not found."
+
+
 class PersonRuleError(DomainRuleError):
     """A change to a Person breaks one of the rules People follow."""
 
@@ -41,9 +45,16 @@ def people(user: User) -> QuerySet[Person]:
     return user.people.all()
 
 
-def person(user: User, person_id: int) -> Person | None:
-    """Return one of the user's People, or None."""
-    return user.people.filter(pk=person_id).first()
+def person(user: User, person_id: int) -> Person:
+    """Return the user's Person with this id.
+
+    Raises:
+        NotFoundError: There's no such Person.
+    """
+    found = user.people.filter(pk=person_id).first()
+    if found is None:
+        raise NotFoundError(PERSON_NOT_FOUND)
+    return found
 
 
 def _save(found: Person) -> None:
@@ -73,17 +84,16 @@ def update_person(
     *,
     name: str | None = None,
     color: PaletteColor | None = None,
-) -> Person | None:
-    """Rename or recolour one of the user's People; None if it isn't theirs.
+) -> Person:
+    """Rename or recolour one of the user's People.
 
     A rename rewrites every Mention of the Person to the new name.
 
     Raises:
+        NotFoundError: The Person isn't one of the user's.
         PersonRuleError: The new name belongs to another of the user's People.
     """
     found = person(user, person_id)
-    if found is None:
-        return None
     renamed = name is not None and name != found.name
     found.name = name if name is not None else found.name
     found.color = color or found.color
@@ -94,32 +104,31 @@ def update_person(
     return found
 
 
-def delete_person(user: User, person_id: int) -> bool:
-    """Delete one of the user's People for good; False if it isn't theirs.
+def delete_person(user: User, person_id: int) -> None:
+    """Delete one of the user's People for good.
 
     Their Mentions become plain `@Name` text, so old Tasks still read correctly.
+
+    Raises:
+        NotFoundError: The Person isn't one of the user's.
     """
     found = person(user, person_id)
-    if found is None:
-        return False
     with transaction.atomic():
         rewrite_mentions(found, f"@{found.name}")
         found.delete()
-    return True
 
 
-def merge_person(user: User, person_id: int, into_id: int) -> Person | None:
+def merge_person(user: User, person_id: int, into_id: int) -> Person:
     """Fold one of the user's People into another, and return the one that's left.
 
     Every Mention of the first becomes a Mention of the second, each Task that changes records
-    the merge in its Activity, and the first Person is deleted. None if either isn't theirs.
+    the merge in its Activity, and the first Person is deleted.
 
     Raises:
+        NotFoundError: Either Person isn't one of the user's.
         PersonRuleError: The two are the same Person.
     """
     source, target = person(user, person_id), person(user, into_id)
-    if source is None or target is None:
-        return None
     if source.pk == target.pk:
         message = "A Person can't be merged into themselves."
         raise PersonRuleError(message)
@@ -144,12 +153,7 @@ def _mentioning(found: Person) -> QuerySet[Task]:
     Only the Task whose own text holds the Mention counts: a Subtask's Mention never pulls in its
     parent. Tasks in a deleted or archived Project stay out with their Project.
     """
-    tasks = Task.objects.filter(
-        mentions__person=found,
-        deleted_at__isnull=True,
-        project__deleted_at__isnull=True,
-        project__archived_at__isnull=True,
-    )
+    tasks = active_tasks(found.owner).filter(mentions__person=found)
     return as_rows(tasks, found.owner)
 
 

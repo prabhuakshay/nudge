@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import creation, projects, sections, services
+from apps.tasks import creation, project_trash, projects, sections, services
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
@@ -190,3 +190,31 @@ def test_places_must_name_the_tasks_given(client: Client, ada: User) -> None:
     response = _bulk(client, [other.pk], {"kind": "place", "places": [place]})
 
     assert response.status_code == 422
+
+
+@pytest.mark.django_db
+def test_placing_into_a_section_of_a_trashed_project_is_404_as_a_single_move_is(
+    client: Client, ada: User
+) -> None:
+    inbox = services.inbox(ada)
+    task = creation.create_task(inbox, "Pay rent")
+    work = projects.create_project(ada, "Work")
+    to_do = sections.create_section(work, "To do")
+    project_trash.trash_project(ada, work.pk)
+    place: dict[str, object] = {
+        "id": task.pk,
+        "project_id": inbox.pk,
+        "parent_id": None,
+        "after_id": None,
+        "section_id": to_do.pk,
+    }
+
+    bulk = _place(client, [place])
+    single = client.post(
+        f"/api/v1/tasks/{task.pk}/move",
+        {"project_id": inbox.pk, "section_id": to_do.pk},
+        content_type="application/json",
+    )
+
+    assert (bulk.status_code, bulk.json()) == (404, {"detail": "Section not found."})
+    assert (single.status_code, single.json()) == (404, {"detail": "Section not found."})

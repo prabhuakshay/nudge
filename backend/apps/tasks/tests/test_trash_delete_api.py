@@ -134,7 +134,7 @@ def test_delete_forever_deletes_attachment_files_after_commit(
     django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     task = creation.create_task(services.inbox(ada), "File the taxes")
-    attachments.attach_file(task, SimpleUploadedFile("return.pdf", b"%PDF"))
+    attachments.attach_file(ada, task.pk, SimpleUploadedFile("return.pdf", b"%PDF"))
     trash.trash_task(ada, task.pk)
 
     with django_capture_on_commit_callbacks(execute=True):

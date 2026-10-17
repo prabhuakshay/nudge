@@ -2084,7 +2084,7 @@
             }
           }
         },
-        "description": "Apply one action to every Task given, in one transaction.\n\nEach Task changes as it would on its own, cascades and Activity included. If any id isn't one\nof the user's Tasks, or the Project or Tag isn't theirs, nothing changes and the answer is\n404; if any Task refuses the change, nothing changes and the answer is 422. Every Task whose\nStatus changed comes back with its Status from before, and a move says where each Task was,\nso the client can offer Undo.",
+        "description": "Apply one action to every Task given, in one transaction.\n\nEach Task changes as it would on its own, cascades and Activity included. If any id isn't one\nof the user's Tasks, or the Project, parent, Section or Tag isn't theirs, nothing changes and\nthe answer is 404; if any Task refuses the change, nothing changes and the answer is 422.\nEvery Task whose Status changed comes back with its Status from before, and a move says where\neach Task was, so the client can offer Undo.",
         "tags": [
           "tasks"
         ],

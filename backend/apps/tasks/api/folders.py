@@ -10,7 +10,6 @@ from ninja import Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import projects
-from apps.tasks.api.errors import FOLDER_NOT_FOUND
 from apps.tasks.schemas.projects import FolderIn, FolderMoveIn, FolderOut, FolderPatchIn
 from apps.tasks.siblings import SiblingRef
 
@@ -36,7 +35,7 @@ def update_folder(
     request: HttpRequest,
     folder_id: int,
     patch: FolderPatchIn,
-) -> Status[FolderOut] | Status[ErrorOut]:
+) -> Status[FolderOut]:
     """Rename a Folder, or collapse or expand it."""
     folder = projects.update_folder(
         signed_in_user(request),
@@ -44,8 +43,6 @@ def update_folder(
         name=patch.name,
         collapsed=patch.collapsed,
     )
-    if folder is None:
-        return Status(HTTPStatus.NOT_FOUND, FOLDER_NOT_FOUND)
     return Status(HTTPStatus.OK, FolderOut.from_orm(folder))
 
 
@@ -58,11 +55,10 @@ def move_folder(
     request: HttpRequest,
     folder_id: int,
     move: FolderMoveIn,
-) -> Status[None] | Status[ErrorOut]:
+) -> Status[None]:
     """Put a Folder right after a top-level sibling, or first."""
     after = None if move.after is None else SiblingRef(move.after.kind, move.after.id)
-    if not projects.move_folder(signed_in_user(request), folder_id, after):
-        return Status(HTTPStatus.NOT_FOUND, FOLDER_NOT_FOUND)
+    projects.move_folder(signed_in_user(request), folder_id, after)
     return Status(HTTPStatus.NO_CONTENT, None)
 
 
@@ -71,8 +67,7 @@ def move_folder(
     response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Delete a Folder",
 )
-def delete_folder(request: HttpRequest, folder_id: int) -> Status[None] | Status[ErrorOut]:
+def delete_folder(request: HttpRequest, folder_id: int) -> Status[None]:
     """Delete a Folder for good; its Projects stay, ungrouped, where it was."""
-    if not projects.delete_folder(signed_in_user(request), folder_id):
-        return Status(HTTPStatus.NOT_FOUND, FOLDER_NOT_FOUND)
+    projects.delete_folder(signed_in_user(request), folder_id)
     return Status(HTTPStatus.NO_CONTENT, None)

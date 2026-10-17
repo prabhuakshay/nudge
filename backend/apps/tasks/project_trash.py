@@ -15,7 +15,8 @@ from django.db import transaction
 from django.db.models import Count, F, Q
 from django.utils import timezone
 
-from apps.tasks import reminders
+from apps.core.errors import NotFoundError
+from apps.tasks import live, reminders
 from apps.tasks.models import Project, TaskActivity
 from apps.tasks.models.projects import PROJECT_NAME_MAX_LENGTH
 from apps.tasks.projects import ProjectRuleError
@@ -28,17 +29,17 @@ if TYPE_CHECKING:
     from apps.accounts.models import User
 
 INBOX_CANT_BE_DELETED = "The Inbox can't be deleted."
+PROJECT_NOT_IN_TRASH = "Project not found in Trash."
 
 
-def trash_project(user: User, project_id: int) -> bool:
-    """Send one of the user's live Projects and its live Tasks to Trash; False if it isn't theirs.
+def trash_project(user: User, project_id: int) -> None:
+    """Send one of the user's live Projects and its live Tasks to Trash.
 
     Raises:
+        NotFoundError: The Project isn't one of the user's.
         ProjectRuleError: The Project is the Inbox.
     """
-    project = user.projects.filter(pk=project_id, deleted_at__isnull=True).first()
-    if project is None:
-        return False
+    project = live.project(user, project_id)
     if project.is_inbox:
         raise ProjectRuleError(INBOX_CANT_BE_DELETED)
     now = timezone.now()
@@ -51,7 +52,6 @@ def trash_project(user: User, project_id: int) -> bool:
         TaskActivity.objects.bulk_create(
             TaskActivity(task_id=pk, kind=TaskActivity.Kind.TRASHED, at=now) for pk in ids
         )
-    return True
 
 
 def trashed_projects(user: User) -> QuerySet[Project]:
@@ -70,14 +70,17 @@ def trashed_projects(user: User) -> QuerySet[Project]:
     )
 
 
-def restore_project(user: User, project_id: int) -> Project | None:
-    """Bring back one of the user's Projects in Trash with its Tasks; None if there's none.
+def restore_project(user: User, project_id: int) -> Project:
+    """Bring back one of the user's Projects in Trash with its Tasks.
 
     A name a live Project took in the meantime gets a " (2)" suffix, or the next free number.
+
+    Raises:
+        NotFoundError: The Project isn't one of the user's Projects in Trash.
     """
     project = user.projects.filter(pk=project_id, trash_unit__isnull=False).first()
     if project is None:
-        return None
+        raise NotFoundError(PROJECT_NOT_IN_TRASH)
     now = timezone.now()
     with transaction.atomic():
         siblings = sidebar_siblings(user, project.folder)
@@ -98,9 +101,7 @@ def _free_name(user: User, name: str) -> str:
     """Return the name, or the first "<name> (n)" no live Project of the user has."""
     taken = {
         taken.lower()
-        for taken in user.projects.filter(deleted_at__isnull=True, is_inbox=False).values_list(
-            "name", flat=True
-        )
+        for taken in live.projects(user).filter(is_inbox=False).values_list("name", flat=True)
     }
     candidate, number = name, 1
     while candidate.lower() in taken:

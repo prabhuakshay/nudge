@@ -13,27 +13,13 @@ from ninja import Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
-from apps.tasks import sections, services
-from apps.tasks.api.errors import PROJECT_NOT_FOUND, SECTION_NOT_FOUND
+from apps.tasks import live, sections
 from apps.tasks.schemas.sections import SectionIn, SectionMoveIn, SectionOut, SectionPatchIn
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
 
-    from apps.accounts.models import User
-    from apps.tasks.models import Section
-
 router = Router()
-
-
-def _section_after(user: User, after_id: int | None) -> Section | Status[ErrorOut] | None:
-    """Return the Section `after_id` names, None when it names none, or a 404 if it isn't theirs."""
-    if after_id is None:
-        return None
-    after = sections.section(user, after_id)
-    if after is None:
-        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
-    return after
 
 
 @router.get(
@@ -41,14 +27,9 @@ def _section_after(user: User, after_id: int | None) -> Section | Status[ErrorOu
     response={HTTPStatus.OK: list[SectionOut], HTTPStatus.NOT_FOUND: ErrorOut},
     summary="List a Project's Sections",
 )
-def list_sections(
-    request: HttpRequest, project_id: int
-) -> Status[list[SectionOut]] | Status[ErrorOut]:
+def list_sections(request: HttpRequest, project_id: int) -> Status[list[SectionOut]]:
     """List a Project's Sections in order. The Inbox has none."""
-    project = services.live_project(signed_in_user(request), project_id)
-    if project is None:
-        return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
-    found = sections.project_sections(project)
+    found = sections.project_sections(live.project(signed_in_user(request), project_id))
     return Status(HTTPStatus.OK, [SectionOut.from_orm(section) for section in found])
 
 
@@ -61,18 +42,10 @@ def list_sections(
     },
     summary="Add a Section to a Project",
 )
-def create_section(
-    request: HttpRequest, project_id: int, section: SectionIn
-) -> Status[SectionOut] | Status[ErrorOut]:
+def create_section(request: HttpRequest, project_id: int, section: SectionIn) -> Status[SectionOut]:
     """Add an expanded Section after another one, or last. The Inbox can't have Sections."""
-    user = signed_in_user(request)
-    project = services.live_project(user, project_id)
-    if project is None:
-        return Status(HTTPStatus.NOT_FOUND, PROJECT_NOT_FOUND)
-    after = _section_after(user, section.after_id)
-    if isinstance(after, Status):
-        return after
-    created = sections.create_section(project, section.name, after)
+    project = live.project(signed_in_user(request), project_id)
+    created = sections.create_section(project, section.name, section.after_id)
     return Status(HTTPStatus.CREATED, SectionOut.from_orm(created))
 
 
@@ -87,12 +60,11 @@ def create_section(
 )
 def update_section(
     request: HttpRequest, section_id: int, patch: SectionPatchIn
-) -> Status[SectionOut] | Status[ErrorOut]:
+) -> Status[SectionOut]:
     """Rename a Section, or collapse or expand it."""
-    found = sections.section(signed_in_user(request), section_id)
-    if found is None:
-        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
-    updated = sections.update_section(found, name=patch.name, collapsed=patch.collapsed)
+    updated = sections.update_section(
+        signed_in_user(request), section_id, name=patch.name, collapsed=patch.collapsed
+    )
     return Status(HTTPStatus.OK, SectionOut.from_orm(updated))
 
 
@@ -105,18 +77,9 @@ def update_section(
     },
     summary="Move a Section in its Project",
 )
-def move_section(
-    request: HttpRequest, section_id: int, move: SectionMoveIn
-) -> Status[None] | Status[ErrorOut]:
+def move_section(request: HttpRequest, section_id: int, move: SectionMoveIn) -> Status[None]:
     """Put a Section right after another one in the same Project, or first."""
-    user = signed_in_user(request)
-    moved = sections.section(user, section_id)
-    if moved is None:
-        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
-    after = _section_after(user, move.after_id)
-    if isinstance(after, Status):
-        return after
-    sections.move_section(moved, after)
+    sections.move_section(signed_in_user(request), section_id, move.after_id)
     return Status(HTTPStatus.NO_CONTENT, None)
 
 
@@ -129,10 +92,7 @@ def move_section(
     },
     summary="Delete a Section",
 )
-def delete_section(request: HttpRequest, section_id: int) -> Status[None] | Status[ErrorOut]:
+def delete_section(request: HttpRequest, section_id: int) -> Status[None]:
     """Delete a Section for good. Its Tasks stay in the Project, in No section."""
-    found = sections.section(signed_in_user(request), section_id)
-    if found is None:
-        return Status(HTTPStatus.NOT_FOUND, SECTION_NOT_FOUND)
-    sections.delete_section(found)
+    sections.delete_section(signed_in_user(request), section_id)
     return Status(HTTPStatus.NO_CONTENT, None)

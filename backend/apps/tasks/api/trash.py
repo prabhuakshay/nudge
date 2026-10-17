@@ -28,10 +28,6 @@ if TYPE_CHECKING:
 
 router = Router()
 
-_TASK_NOT_FOUND = ErrorOut(detail="Task not found in Trash.")
-_PROJECT_NOT_FOUND = ErrorOut(detail="Project not found in Trash.")
-_NOT_IN_TRASH = ErrorOut(detail="Not everything given is in Trash.")
-
 
 @router.get("/trash", response={HTTPStatus.OK: list[TrashedOut]}, summary="List the Trash")
 def list_trash(request: HttpRequest) -> Status[list[TrashedTaskOut | TrashedProjectOut]]:
@@ -49,11 +45,9 @@ def list_trash(request: HttpRequest) -> Status[list[TrashedTaskOut | TrashedProj
     response={HTTPStatus.OK: TaskRestoreOut, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Restore a Task from Trash",
 )
-def restore_task(request: HttpRequest, task_id: int) -> Status[TaskRestoreOut] | Status[ErrorOut]:
+def restore_task(request: HttpRequest, task_id: int) -> Status[TaskRestoreOut]:
     """Bring back a Task with everything deleted along with it, and say where it went."""
     restored = trash.restore_task(signed_in_user(request), task_id)
-    if restored is None:
-        return Status(HTTPStatus.NOT_FOUND, _TASK_NOT_FOUND)
     body = TaskRestoreOut(
         task=TaskOut.from_orm(restored.task),
         project=ProjectOut.from_orm(restored.project),
@@ -69,11 +63,9 @@ def restore_task(request: HttpRequest, task_id: int) -> Status[TaskRestoreOut] |
 def restore_project(
     request: HttpRequest,
     project_id: int,
-) -> Status[ProjectOut] | Status[ErrorOut]:
+) -> Status[ProjectOut]:
     """Bring back a Project with its Tasks, renamed "<Name> (2)" if its name was taken."""
     project = project_trash.restore_project(signed_in_user(request), project_id)
-    if project is None:
-        return Status(HTTPStatus.NOT_FOUND, _PROJECT_NOT_FOUND)
     return Status(HTTPStatus.OK, ProjectOut.from_orm(project))
 
 
@@ -82,11 +74,9 @@ def restore_project(
     response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Delete Tasks and Projects in Trash forever",
 )
-def delete_forever(request: HttpRequest, payload: TrashDeleteIn) -> Status[None] | Status[ErrorOut]:
+def delete_forever(request: HttpRequest, payload: TrashDeleteIn) -> Status[None]:
     """Delete the given Trash units for good; nothing goes if any id isn't in the user's Trash."""
-    user = signed_in_user(request)
-    if not purge.delete_forever(user, payload.task_ids, payload.project_ids):
-        return Status(HTTPStatus.NOT_FOUND, _NOT_IN_TRASH)
+    purge.delete_forever(signed_in_user(request), payload.task_ids, payload.project_ids)
     return Status(HTTPStatus.NO_CONTENT, None)
 
 

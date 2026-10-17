@@ -4,7 +4,8 @@ Each app exposes a `router` in its `api.py`; register it here so the whole API s
 OpenAPI schema, which the frontend's typed client is generated from.
 
 Every endpoint requires a signed-in session unless it opts out with `auth=None`, so new
-endpoints are private by default. A `DomainRuleError` raised anywhere becomes a 422 answer.
+endpoints are private by default. A `DomainRuleError` raised anywhere becomes a 422 answer and a
+`NotFoundError` a 404 one.
 """
 
 from __future__ import annotations
@@ -18,7 +19,7 @@ from ninja.security import django_auth
 
 from apps.accounts.api import router as accounts_router
 from apps.core.api import router as core_router
-from apps.core.errors import DomainRuleError
+from apps.core.errors import DomainRuleError, NotFoundError
 from apps.notifications.api import router as notifications_router
 from apps.tasks.api.activity import router as activity_router
 from apps.tasks.api.attachments import router as attachments_router
@@ -58,6 +59,12 @@ def refused(request: HttpRequest, error: DomainRuleError) -> HttpResponse:
         {"detail": str(error)},
         status=HTTPStatus.UNPROCESSABLE_ENTITY,
     )
+
+
+@api.exception_handler(NotFoundError)
+def not_found(request: HttpRequest, error: NotFoundError) -> HttpResponse:
+    """Answer an id that names nothing the user has with 404 and what wasn't found."""
+    return api.create_response(request, {"detail": str(error)}, status=HTTPStatus.NOT_FOUND)
 
 
 api.add_router("/", core_router, tags=["core"])

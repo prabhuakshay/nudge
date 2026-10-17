@@ -220,12 +220,12 @@ def test_archiving_a_project_stops_its_reminders_and_unarchiving_restores_them(
     assert _fire_at(task) == [datetime(2026, 11, 6, 13, 30, tzinfo=UTC)]
 
 
-def _drag(user: User, task: Task, project: Project) -> None:  # noqa: ARG001 - same shape as _edit
-    moves.move_task(task, moves.Destination(project=project))
+def _drag(user: User, task: Task, project: Project) -> None:
+    moves.move_task(user, task.pk, moves.Destination(project_id=project.pk))
 
 
 def _edit(user: User, task: Task, project: Project) -> None:
-    services.update_task(user, task.pk, services.TaskEdit(project=project))
+    services.update_task(user, task.pk, services.TaskEdit(project_id=project.pk))
 
 
 @pytest.mark.parametrize("move", [_drag, _edit])

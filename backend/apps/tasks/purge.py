@@ -20,6 +20,7 @@ from django.db import transaction
 from django.db.models import F
 from django.utils import timezone
 
+from apps.core.errors import NotFoundError
 from apps.tasks import services
 from apps.tasks.models import Attachment, Project, Task
 from apps.tasks.siblings import task_siblings
@@ -32,6 +33,8 @@ if TYPE_CHECKING:
     from django.db.models.fields.files import FieldFile
 
     from apps.accounts.models import User
+
+NOT_IN_TRASH = "Not everything given is in Trash."
 
 
 def purge_expired_trash() -> int:
@@ -51,11 +54,14 @@ def delete_forever(
     user: User,
     task_ids: Collection[int],
     project_ids: Collection[int] = (),
-) -> bool:
-    """Delete the units of the given trashed Tasks and Projects; False if any isn't the user's.
+) -> None:
+    """Delete the units of the given trashed Tasks and Projects of the user's.
 
     Nothing is deleted unless every id is found, so a stale or foreign id changes nothing. A Task
     deleted along with its Project goes only with the Project.
+
+    Raises:
+        NotFoundError: Any id isn't one of the user's Tasks or Projects in Trash.
     """
     tasks = (
         user.tasks.filter(pk__in=task_ids, trash_unit__isnull=False)
@@ -67,9 +73,8 @@ def delete_forever(
     )
     task_units, project_units = dict(tasks), dict(projects)
     if len(task_units) != len(set(task_ids)) or len(project_units) != len(set(project_ids)):
-        return False
+        raise NotFoundError(NOT_IN_TRASH)
     _delete_units({*task_units.values(), *project_units.values()})
-    return True
 
 
 def empty_trash(user: User) -> int:

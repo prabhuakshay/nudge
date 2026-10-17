@@ -15,6 +15,7 @@ from django.db.models import Q, Subquery
 from fractional_indexing import generate_key_between, generate_n_keys_between
 
 from apps.accounts.models import User
+from apps.tasks import live
 from apps.tasks.models import Project, Section, Tag, Task
 
 if TYPE_CHECKING:
@@ -164,10 +165,10 @@ def sidebar_siblings(user: User, folder: Folder | None) -> Siblings[SiblingRef]:
     """
 
     def ordered() -> list[tuple[SiblingRef, str]]:
-        live = user.projects.filter(deleted_at__isnull=True, is_inbox=False, folder=folder)
+        projects = live.projects(user).filter(is_inbox=False, folder=folder)
         siblings = [
             (SiblingRef("project", pk), position)
-            for pk, position in live.values_list("pk", "position")
+            for pk, position in projects.values_list("pk", "position")
         ]
         if folder is None:
             siblings += [

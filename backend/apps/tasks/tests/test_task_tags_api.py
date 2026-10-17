@@ -111,7 +111,7 @@ def test_patch_cannot_use_another_users_tag(client: Client, ada: User, grace: Us
 def test_activity_lists_tag_events(client: Client, ada: User) -> None:
     job, work = tags.create_tag(ada, "job"), tags.create_tag(ada, "work")
     task = creation.create_task(services.inbox(ada), "Report")
-    services.update_task(ada, task.pk, services.TaskEdit(tags=[job]))
+    services.update_task(ada, task.pk, services.TaskEdit(tag_ids=[job.pk]))
     tags.merge_tag(ada, job.pk, work.pk)
     tags.delete_tag(ada, work.pk)
 
@@ -195,7 +195,7 @@ def test_tag_view_lists_a_tagged_subtask_with_its_parents_title(
     work = tags.create_tag(ada, "work")
     parent = creation.create_task(services.inbox(ada), "Launch")
     subtask = creation.create_subtask(parent, "Write the post").task
-    services.update_task(ada, subtask.pk, services.TaskEdit(tags=[work]))
+    services.update_task(ada, subtask.pk, services.TaskEdit(tag_ids=[work.pk]))
 
     response = client.get(f"/api/v1/tasks?tag={work.pk}")
 

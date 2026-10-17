@@ -10,7 +10,6 @@ from ninja import Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import people
-from apps.tasks.api.errors import PERSON_NOT_FOUND
 from apps.tasks.schemas.people import PersonIn, PersonMergeIn, PersonOut, PersonPatchIn
 
 if TYPE_CHECKING:
@@ -50,7 +49,7 @@ def update_person(
     request: HttpRequest,
     person_id: int,
     patch: PersonPatchIn,
-) -> Status[PersonOut] | Status[ErrorOut]:
+) -> Status[PersonOut]:
     """Rename or recolour a Person. A rename shows in every Mention of them."""
     found = people.update_person(
         signed_in_user(request),
@@ -58,8 +57,6 @@ def update_person(
         name=patch.name,
         color=patch.color,
     )
-    if found is None:
-        return Status(HTTPStatus.NOT_FOUND, PERSON_NOT_FOUND)
     return Status(HTTPStatus.OK, PersonOut.from_orm(found))
 
 
@@ -68,10 +65,9 @@ def update_person(
     response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
     summary="Delete a Person",
 )
-def delete_person(request: HttpRequest, person_id: int) -> Status[None] | Status[ErrorOut]:
+def delete_person(request: HttpRequest, person_id: int) -> Status[None]:
     """Delete a Person for good; their Mentions become plain `@Name` text."""
-    if not people.delete_person(signed_in_user(request), person_id):
-        return Status(HTTPStatus.NOT_FOUND, PERSON_NOT_FOUND)
+    people.delete_person(signed_in_user(request), person_id)
     return Status(HTTPStatus.NO_CONTENT, None)
 
 
@@ -88,9 +84,7 @@ def merge_person(
     request: HttpRequest,
     person_id: int,
     merge: PersonMergeIn,
-) -> Status[PersonOut] | Status[ErrorOut]:
+) -> Status[PersonOut]:
     """Fold a Person into another: their Mentions move over and they are deleted."""
     merged = people.merge_person(signed_in_user(request), person_id, merge.into_id)
-    if merged is None:
-        return Status(HTTPStatus.NOT_FOUND, PERSON_NOT_FOUND)
     return Status(HTTPStatus.OK, PersonOut.from_orm(merged))

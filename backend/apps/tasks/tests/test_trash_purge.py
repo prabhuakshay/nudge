@@ -117,7 +117,7 @@ def test_a_purged_unit_takes_its_subtasks_and_everything_on_them(
             reminders=[timedelta(0)],
         ),
     )
-    comments.add_comment(subtask, "Boxes are in the garage")
+    comments.add_comment(ada, subtask.pk, "Boxes are in the garage")
     trash.trash_task(ada, task.pk)
     freeze_time(DELETED + RETENTION)
 
@@ -164,7 +164,7 @@ def test_attachment_files_are_deleted_only_after_the_purge_commits(
 ) -> None:
     freeze_time(DELETED)
     task = creation.create_task(services.inbox(ada), "File the taxes")
-    attachments.attach_file(task, SimpleUploadedFile("return.pdf", b"%PDF"))
+    attachments.attach_file(ada, task.pk, SimpleUploadedFile("return.pdf", b"%PDF"))
     trash.trash_task(ada, task.pk)
     freeze_time(DELETED + RETENTION)
 

@@ -16,6 +16,7 @@ from typing import TYPE_CHECKING
 
 from django.db.models import Case, F, OuterRef, Q, Subquery, TextField, When
 
+from apps.tasks import live
 from apps.tasks.mentions import MENTION
 from apps.tasks.models import OPEN_STATUSES, Comment, Task
 from apps.tasks.rows import as_rows
@@ -63,7 +64,7 @@ def search_tasks(user: User, q: str) -> list[SearchHit]:
     comments = Comment.objects.filter(_holds_every_word("body", words), task=OuterRef("pk"))
     first_comment = Subquery(comments.order_by("created_at", "id").values("body")[:1])
     matches = (
-        user.tasks.filter(deleted_at__isnull=True, project__deleted_at__isnull=True)
+        live.tasks(user)
         .annotate(
             matched_comment=first_comment,
             match_rank=Case(When(in_title, then=0), When(in_description, then=1), default=2),

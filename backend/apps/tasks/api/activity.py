@@ -10,7 +10,6 @@ from ninja import Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.tasks import services
-from apps.tasks.api.errors import TASK_NOT_FOUND
 from apps.tasks.schemas.activity import TaskActivityListOut
 
 if TYPE_CHECKING:
@@ -32,17 +31,10 @@ def list_activity(
     request: HttpRequest,
     task_id: int,
     cursor: str | None = None,
-) -> Status[TaskActivityListOut] | Status[ErrorOut]:
+) -> Status[TaskActivityListOut]:
     """Return a page of a Task's history, newest first, with the number of events in all."""
-    task = services.live_task(signed_in_user(request), task_id)
-    if task is None:
-        return Status(HTTPStatus.NOT_FOUND, TASK_NOT_FOUND)
-    page = services.task_activity(task, cursor)
+    page = services.task_activity(signed_in_user(request), task_id, cursor)
     activity = TaskActivityListOut.model_validate(
-        {
-            "items": page.items,
-            "next_cursor": page.next_cursor,
-            "count": services.activity_count(task),
-        },
+        {"items": page.items, "next_cursor": page.next_cursor, "count": page.count},
     )
     return Status(HTTPStatus.OK, activity)

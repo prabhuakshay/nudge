@@ -19,7 +19,14 @@ from django.utils import timezone
 
 from apps.accounts.services import local_zone
 from apps.habits.models import Habit
-from apps.habits.schedule import DAYS_IN_WEEK, is_done, is_scheduled, is_week_met, week_of
+from apps.habits.schedule import (
+    DAYS_IN_WEEK,
+    days_done,
+    is_done,
+    is_scheduled,
+    is_week_met,
+    week_of,
+)
 from apps.notifications.services import notify
 from apps.tasks.reminders import CATCH_UP
 
@@ -76,10 +83,10 @@ def _needs(habit: Habit, day: date, counts: Mapping[date, int]) -> bool:
 
 def _still_to_do(habit: Habit, day: date, counts: Mapping[date, int]) -> bool:
     """Whether neither the day's Goal nor its week's number is met yet."""
-    monday = week_of(day)
-    week = (monday + timedelta(days=offset) for offset in range(DAYS_IN_WEEK))
-    days_done = sum(1 for each in week if is_done(habit, counts.get(each, 0)))
-    return not is_done(habit, counts.get(day, 0)) and not is_week_met(habit, days_done)
+    return not is_done(habit, counts.get(day, 0)) and not is_week_met(
+        habit,
+        days_done(habit, counts, week_of(day)),
+    )
 
 
 def send_due_reminders() -> int:

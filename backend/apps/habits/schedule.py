@@ -15,6 +15,8 @@ from apps.accounts.services import local_zone
 
 # Habit is only a type here: the model derives its Streak through this module.
 if TYPE_CHECKING:
+    from collections.abc import Mapping
+
     from apps.accounts.models import User
     from apps.habits.models import Habit
 
@@ -46,6 +48,15 @@ def is_scheduled(habit: Habit, day: date) -> bool:
 def is_done(habit: Habit, count: int) -> bool:
     """Whether this many Check-ins on one day meet the Habit's Goal."""
     return count >= habit.goal
+
+
+def days_done(habit: Habit, counts: Mapping[date, int], monday: date) -> int:
+    """Return how many days of the week from `monday` asked for the Habit and met its Goal.
+
+    `counts` holds the Check-ins per day; a day missing from it has none.
+    """
+    week = (monday + timedelta(days=offset) for offset in range(DAYS_IN_WEEK))
+    return sum(1 for day in week if is_scheduled(habit, day) and is_done(habit, counts.get(day, 0)))
 
 
 def is_week_met(habit: Habit, days_done: int) -> bool:

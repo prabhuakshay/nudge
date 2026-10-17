@@ -56,7 +56,7 @@ def streak(habit: Habit, counts: Mapping[date, int], on: date) -> Streak:
         weeks = _every(schedule.week_of(habit.start_date), this_week, step=schedule.DAYS_IN_WEEK)
         return _run(
             weeks,
-            lambda week: schedule.is_week_met(habit, _days_done(habit, counts, week)),
+            lambda week: schedule.is_week_met(habit, schedule.days_done(habit, counts, week)),
             in_progress=this_week,
             unit=StreakUnit.WEEKS,
         )
@@ -68,15 +68,6 @@ def streak(habit: Habit, counts: Mapping[date, int], on: date) -> Streak:
         lambda day: schedule.is_done(habit, counts.get(day, 0)),
         in_progress=on,
         unit=StreakUnit.DAYS,
-    )
-
-
-def _days_done(habit: Habit, counts: Mapping[date, int], monday: date) -> int:
-    week = _every(monday, monday + timedelta(days=schedule.DAYS_IN_WEEK - 1), step=1)
-    return sum(
-        1
-        for day in week
-        if schedule.is_scheduled(habit, day) and schedule.is_done(habit, counts.get(day, 0))
     )
 
 

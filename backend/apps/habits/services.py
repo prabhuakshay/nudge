@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from typing import TYPE_CHECKING, TypedDict
 
 from django.db import transaction
-from django.db.models import F, OuterRef, Subquery
+from django.db.models import OuterRef, Subquery
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 from django_stubs_ext import WithAnnotations
@@ -16,7 +15,7 @@ from apps.core.errors import DomainRuleError, NotFoundError
 from apps.core.siblings import Siblings, by_key, row_lock
 from apps.habits import reminders
 from apps.habits.models import CheckIn, Habit
-from apps.habits.schedule import is_scheduled, is_week_met, today, week_of
+from apps.habits.schedule import days_done, is_scheduled, is_week_met, today, week_of
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -75,20 +74,19 @@ def today_strip(user: User) -> list[Habit]:
     doesn't lose a Habit the moment it's checked in.
     """
     day = today(user)
-    monday = week_of(day)
-    done_days = Counter(
-        CheckIn.objects.filter(
-            habit__owner=user,
-            date__gte=monday,
-            date__lt=day,
-            count__gte=F("habit__goal"),
-        ).values_list("habit_id", flat=True)
-    )
     return [
         found
         for found in habits(user).filter(archived_at=None)
-        if is_scheduled(found, day) and not is_week_met(found, done_days[found.pk])
+        if is_scheduled(found, day)
+        and not is_week_met(found, days_done(found, _counts_before(found, day), week_of(day)))
     ]
+
+
+def _counts_before(habit: Habit, day: date) -> dict[date, int]:
+    """Return the Habit's Check-ins per day before `day`, from its prefetched Check-ins."""
+    return {
+        check_in.date: check_in.count for check_in in habit.check_ins.all() if check_in.date < day
+    }
 
 
 def habit_siblings(user: User) -> Siblings[int]:

@@ -18,6 +18,7 @@ from django.utils import timezone
 
 from apps.accounts.services import local_zone
 from apps.core.errors import DomainRuleError
+from apps.notifications.reminders import CATCH_UP
 from apps.notifications.services import notify
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import OPEN_STATUSES, Reminder, Task, TaskActivity
@@ -27,8 +28,6 @@ if TYPE_CHECKING:
 
 MAX_REMINDERS = 10
 MAX_OFFSET = timedelta(days=365)
-# A Reminder this late (the worker was down) is dropped, so an outage doesn't end in a flood.
-CATCH_UP = timedelta(hours=1)
 
 
 class ReminderRuleError(DomainRuleError):

@@ -11,6 +11,7 @@ import pytest
 from apps.accounts.services import set_time_zone
 from apps.notifications import services as notifications
 from apps.notifications.models import Notification
+from apps.notifications.reminders import Snooze
 from apps.tasks import creation, projects, reminder_actions, reminders, services
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Reminder, Task
@@ -201,7 +202,7 @@ def test_a_snooze_leaves_the_next_regular_firing_in_place(
     freeze_time(datetime(2026, 11, 6, 13, 30, tzinfo=UTC))
     reminders.send_due_reminders()
     first = Notification.objects.get(user=london)
-    reminder_actions.snooze(london, first.pk, reminder_actions.Snooze.IN_15_MINUTES)
+    reminder_actions.snooze(london, first.pk, Snooze.IN_15_MINUTES)
     freeze_time(datetime(2026, 11, 6, 13, 45, tzinfo=UTC))
 
     snoozed = reminders.send_due_reminders()

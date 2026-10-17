@@ -22,7 +22,7 @@ from apps.habits.schemas import (
     HabitOut,
     HabitPatchIn,
 )
-from apps.tasks.schemas.reminders import SnoozeIn  # noqa: TC001 - Ninja reads the type at runtime
+from apps.notifications.schemas import SnoozeIn  # noqa: TC001 - Ninja reads the type at runtime
 
 if TYPE_CHECKING:
     from django.http import HttpRequest

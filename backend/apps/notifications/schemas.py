@@ -7,6 +7,8 @@ from datetime import datetime  # noqa: TC003 - Pydantic needs the type at runtim
 from ninja import Field, Schema
 from pydantic import field_validator
 
+from apps.notifications.reminders import Snooze  # noqa: TC001 - Pydantic needs the type at runtime
+
 
 class NotificationOut(Schema):
     """A notification as the notification center shows it."""
@@ -69,3 +71,9 @@ class PushUnsubscribeIn(Schema):
     """The endpoint of the browser to stop pushing to."""
 
     endpoint: str
+
+
+class SnoozeIn(Schema):
+    """When a snoozed Reminder should fire again."""
+
+    until: Snooze = Field(description="Tomorrow morning is 09:00 in the user's time zone.")

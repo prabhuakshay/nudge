@@ -12,13 +12,13 @@ from typing import TYPE_CHECKING
 from apps.core.errors import NotFoundError
 from apps.habits import services
 from apps.habits.schedule import today
+from apps.notifications.reminders import snooze_end
 from apps.notifications.services import mark_read
-from apps.tasks.reminder_actions import snooze_end
 
 if TYPE_CHECKING:
     from apps.accounts.models import User
     from apps.habits.models import Habit
-    from apps.tasks.reminder_actions import Snooze
+    from apps.notifications.reminders import Snooze
 
 NOTIFICATION_NOT_FOUND = "Habit Reminder notification not found."
 

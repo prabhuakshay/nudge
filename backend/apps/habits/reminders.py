@@ -27,8 +27,8 @@ from apps.habits.schedule import (
     is_week_met,
     week_of,
 )
+from apps.notifications.reminders import CATCH_UP
 from apps.notifications.services import notify
-from apps.tasks.reminders import CATCH_UP
 
 if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping

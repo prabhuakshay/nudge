@@ -20,6 +20,7 @@ from apps.tasks.models import Task
 
 if TYPE_CHECKING:
     from apps.accounts.models import User
+    from apps.tasks.changes import TaskChange
     from apps.tasks.models import Reminder
 
 MORNING = time(9, 0)
@@ -81,7 +82,7 @@ def _snooze_end(user: User, until: Snooze) -> datetime:
     return datetime.combine(tomorrow, MORNING, tzinfo=zone)
 
 
-def complete(user: User, notification_id: int) -> services.TaskChange:
+def complete(user: User, notification_id: int) -> TaskChange:
     """Complete the Task of the notification's Reminder, by the usual Status rules.
 
     The notification counts as read once the Task is complete.

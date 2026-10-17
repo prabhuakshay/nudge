@@ -32,6 +32,8 @@ from apps.tasks.schemas.tasks import (
 if TYPE_CHECKING:
     from django.http import HttpRequest
 
+    from apps.tasks.changes import TaskChange
+
 router = Router()
 
 
@@ -111,7 +113,7 @@ def _detail(task: Task) -> TaskDetailOut:
     )
 
 
-def task_change_out(change: services.TaskChange) -> TaskChangeOut:
+def task_change_out(change: TaskChange) -> TaskChangeOut:
     """Return a change as the API shows it, with every Task whose Status changed, for Undo."""
     affected = [AffectedTaskOut.from_orm(task) for task in change.affected]
     return TaskChangeOut(task=_detail(change.task), affected=affected)

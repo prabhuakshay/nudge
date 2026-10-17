@@ -16,10 +16,10 @@ from django.db import transaction
 from django.db.models import F, Q
 from django.utils import timezone
 
-from apps.core.errors import DomainRuleError
 from apps.core.palette import PaletteColor
 from apps.tasks import live, reminders, repeat
 from apps.tasks.archive import ensure_writable
+from apps.tasks.changes import TaskChange, TaskRuleError
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import TEXT_FIELDS, check_mentions, sync_mentions
 from apps.tasks.models import (
@@ -54,10 +54,6 @@ if TYPE_CHECKING:
     from apps.tasks.models import Section
 
 
-class TaskRuleError(DomainRuleError):
-    """A change that would break a Task rule. The message says which, in the user's words."""
-
-
 @dataclass(frozen=True)
 class TaskEdit:
     """The fields of a Task to change; a field left as None stays as it is.
@@ -82,14 +78,6 @@ class TaskEdit:
     repeat_from: Task.RepeatFrom | None = None
     tag_ids: list[int] | None = None
     move_occurrence: bool = False
-
-
-@dataclass(frozen=True)
-class TaskChange:
-    """A Task after a change, and the Tasks whose Status it changed."""
-
-    task: Task
-    affected: list[AffectedTask]
 
 
 def create_inbox(user: User) -> Project:

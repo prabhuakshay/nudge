@@ -15,10 +15,10 @@ from django.db import transaction
 
 from apps.tasks import live, repeat
 from apps.tasks.archive import ensure_writable
+from apps.tasks.changes import TaskChange, TaskRuleError
 from apps.tasks.models import MAX_DEPTH, Project, Section, Task, TaskActivity
 from apps.tasks.rows import as_rows
 from apps.tasks.sections import NOT_IN_THIS_PROJECT, SectionRuleError
-from apps.tasks.services import TaskChange, TaskRuleError
 from apps.tasks.siblings import task_siblings
 from apps.tasks.tree import (
     ancestors,

@@ -13,13 +13,14 @@ from django.db import transaction
 
 from apps.tasks import live, repeat
 from apps.tasks.archive import ensure_writable
+from apps.tasks.changes import TaskChange, TaskRuleError
 from apps.tasks.dates import TaskDates
 from apps.tasks.mentions import check_mentions, sync_mentions
 from apps.tasks.models import MAX_DEPTH, Tag, Task, TaskActivity
 from apps.tasks.repeat import SUBTASK_REPEAT, Repeat, RepeatRuleError
 from apps.tasks.rows import as_rows, with_overdue
 from apps.tasks.sections import NOT_IN_THIS_PROJECT, SectionRuleError
-from apps.tasks.services import TaskChange, TaskRuleError, inbox
+from apps.tasks.services import inbox
 from apps.tasks.siblings import task_siblings
 from apps.tasks.tags import owned_tags, tags_named
 from apps.tasks.tree import reopen_ancestors

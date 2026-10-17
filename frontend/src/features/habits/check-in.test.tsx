@@ -75,6 +75,22 @@ describe("Checking in on the Habits page", () => {
     });
   });
 
+  it("shows a day above a since-lowered Goal as done, and undo drops it below the Goal", async () => {
+    const sent = mockApi([habit({ id: 1, name: "Drink water", goal: 3, today_count: 5 })]);
+    const user = renderPage();
+    await screen.findByText("Drink water");
+    expect(checkInButton("Drink water")).toHaveAccessibleDescription("Done today");
+
+    await pick(user, "Drink water", "Undo Check-in");
+
+    expect(checkInButton("Drink water")).toHaveAccessibleDescription("2 of 3 today");
+    await waitFor(() => {
+      expect(changes(sent)).toEqual([
+        { method: "PUT", path: "/api/v1/habits/1/check-ins/2026-10-15", body: { count: 2 } },
+      ]);
+    });
+  });
+
   it("offers no undo before the first Check-in of the day", async () => {
     mockApi([habit({ id: 1, name: "Read" })]);
     const user = renderPage();

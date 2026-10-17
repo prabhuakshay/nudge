@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 
 import { checkInsQuery, useSetCheckIns, type Habit } from "./habits";
 import { cellShade, heatmapWeeks, type CellShade, type ShadeLevel } from "./heatmap";
-import { dayState, describeDay } from "./recent-days";
+import { dayState, describeDay, withoutOne } from "./recent-days";
 
 /** The days each arrow key moves by: a row is a weekday, a column a week. */
 const STEPS: Partial<Record<string, number>> = {
@@ -227,7 +227,7 @@ function DayCount({ label, count, goal, editable, onSet }: DayCountProps) {
         aria-label="Remove a Check-in"
         disabled={!editable || count === 0}
         onClick={() => {
-          onSet(count - 1);
+          onSet(withoutOne(count, goal));
         }}
       >
         <Minus aria-hidden />

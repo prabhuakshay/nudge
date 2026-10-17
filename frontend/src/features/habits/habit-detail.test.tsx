@@ -126,6 +126,27 @@ describe("A Habit's details", () => {
     ]);
   });
 
+  it("take a past day above a since-lowered Goal back below it", async () => {
+    stubScreenWidth({ wide: true });
+    const sent = mockApi([READ], { 1: [{ date: "2026-10-13", count: 4 }] });
+    const user = renderPage("Europe/London", "/?habit=1");
+    await details();
+    await waitFor(() => {
+      expect(cell("Tue 13 Oct")).toHaveAccessibleName("Tue 13 Oct: done");
+    });
+
+    await user.click(cell("Tue 13 Oct"));
+    const day = screen.getByRole("group", { name: "Tue 13 Oct" });
+    expect(within(day).getByRole("button", { name: "Add a Check-in" })).toBeDisabled();
+    await user.click(within(day).getByRole("button", { name: "Remove a Check-in" }));
+
+    await waitFor(() => {
+      expect(changes(sent)).toEqual([
+        { method: "PUT", path: "/api/v1/habits/1/check-ins/2026-10-13", body: { count: 1 } },
+      ]);
+    });
+  });
+
   it("pick a day from the keyboard without changing it", async () => {
     stubScreenWidth({ wide: true });
     const sent = mockApi([READ]);

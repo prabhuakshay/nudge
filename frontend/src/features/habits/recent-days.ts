@@ -44,6 +44,14 @@ export function dayState(habit: Habit, date: string, count: number): DayState {
   return isScheduled(habit, date) ? "none" : "unscheduled";
 }
 
+/**
+ * A day's count with one Check-in taken back. A day above a since-lowered Goal drops to one below
+ * the Goal, since a count above the Goal can't be set and the day stops counting as met.
+ */
+export function withoutOne(count: number, goal: number): number {
+  return Math.min(count, goal) - 1;
+}
+
 const SAYS: Record<DayState, (count: number, goal: number) => string> = {
   done: () => "done",
   partial: (count, goal) => `${String(count)} of ${String(goal)}`,

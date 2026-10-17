@@ -7,6 +7,7 @@ import { todayIn } from "@/features/tasks/schedule";
 import { cn } from "@/lib/utils";
 
 import { useSetCheckIns, type Habit } from "./habits";
+import { withoutOne } from "./recent-days";
 
 /** What today's Check-ins come to, as the Check-in button describes it. */
 function progressLabel({ today_count: count, goal }: Habit) {
@@ -109,7 +110,11 @@ export function UndoCheckInItem({ habit, timeZone }: { habit: Habit; timeZone: s
     <DropdownMenuItem
       disabled={habit.today_count === 0}
       onSelect={() => {
-        setCheckIns.mutate({ id: habit.id, day: todayIn(timeZone), count: habit.today_count - 1 });
+        setCheckIns.mutate({
+          id: habit.id,
+          day: todayIn(timeZone),
+          count: withoutOne(habit.today_count, habit.goal),
+        });
       }}
     >
       <Undo2 aria-hidden /> Undo Check-in

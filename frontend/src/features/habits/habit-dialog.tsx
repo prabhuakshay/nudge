@@ -9,12 +9,12 @@ import type { PaletteColor } from "@/features/projects/projects";
 import { cn } from "@/lib/utils";
 
 import { HABIT_ICONS } from "./habit-style";
-import { useCreateHabit, type HabitIconKey } from "./habits";
+import { MAX_GOAL, useCreateHabit, type HabitIconKey } from "./habits";
 
 // `Object.keys` types keys as strings; these are exactly HABIT_ICONS' keys.
 const ICON_KEYS = Object.keys(HABIT_ICONS) as HabitIconKey[];
 
-/** Add a Habit: its name, colour and icon. It's done every day, starting today. */
+/** Add a Habit: its name, daily Goal, colour and icon. It's done every day, starting today. */
 export function HabitDialog({
   open,
   onOpenChange,
@@ -38,14 +38,17 @@ export function HabitDialog({
 function HabitForm({ onDone }: { onDone: () => void }) {
   const nameId = useId();
   const frequencyId = useId();
+  const goalId = useId();
   const [name, setName] = useState("");
+  // A string, so the field can be cleared while typing; `required`, `min` and `max` check it.
+  const [goal, setGoal] = useState("1");
   const [color, setColor] = useState<PaletteColor>("green");
   const [icon, setIcon] = useState<HabitIconKey>("circle-check");
   const create = useCreateHabit();
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    create.mutate({ name, color, icon }, { onSuccess: onDone });
+    create.mutate({ name, color, icon, goal: Number(goal) }, { onSuccess: onDone });
   }
 
   return (
@@ -71,6 +74,26 @@ function HabitForm({ onDone }: { onDone: () => void }) {
             Frequency
           </span>
           <span className="text-sm text-muted-foreground">Every day</span>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={goalId}>Goal per day</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id={goalId}
+              type="number"
+              required
+              min={1}
+              max={MAX_GOAL}
+              inputMode="numeric"
+              value={goal}
+              onChange={(event) => {
+                setGoal(event.target.value);
+              }}
+              className="w-20"
+            />
+            <span className="text-sm text-muted-foreground">Check-ins make a day done</span>
+          </div>
         </div>
 
         <ColorField value={color} onChange={setColor} />

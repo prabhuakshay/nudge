@@ -3653,6 +3653,84 @@
           }
         ]
       }
+    },
+    "/api/v1/habits/{habit_id}/check-ins/{day}": {
+      "put": {
+        "operationId": "apps_habits_api_set_check_ins",
+        "summary": "Set a day's Check-ins",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "habit_id",
+            "schema": {
+              "title": "Habit Id",
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Set how many times the user did a Habit on a day, up to its Goal; zero clears the day.",
+        "tags": [
+          "habits"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckInsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -8402,11 +8480,21 @@
           "frequency": {
             "$ref": "#/components/schemas/Frequency"
           },
+          "goal": {
+            "description": "How many Check-ins make a day done.",
+            "title": "Goal",
+            "type": "integer"
+          },
           "start_date": {
             "description": "The first day the Habit counts, in the user's zone.",
             "format": "date",
             "title": "Start Date",
             "type": "string"
+          },
+          "today_count": {
+            "description": "Check-ins so far today, in the user's zone.",
+            "title": "Today Count",
+            "type": "integer"
           }
         },
         "required": [
@@ -8415,7 +8503,9 @@
           "icon",
           "color",
           "frequency",
-          "start_date"
+          "goal",
+          "start_date",
+          "today_count"
         ],
         "title": "HabitOut",
         "type": "object"
@@ -8434,6 +8524,13 @@
           },
           "color": {
             "$ref": "#/components/schemas/PaletteColor"
+          },
+          "goal": {
+            "default": 1,
+            "maximum": 99,
+            "minimum": 1,
+            "title": "Goal",
+            "type": "integer"
           }
         },
         "required": [
@@ -8442,6 +8539,21 @@
           "color"
         ],
         "title": "HabitIn",
+        "type": "object"
+      },
+      "CheckInsIn": {
+        "description": "How many times the user did a Habit on a day. Zero clears the day.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "title": "CheckInsIn",
         "type": "object"
       }
     },

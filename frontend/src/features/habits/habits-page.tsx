@@ -6,11 +6,14 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { Button } from "@/components/ui/button";
 
 import { HabitDialog } from "./habit-dialog";
-import { HabitIcon } from "./habit-icon";
+import { HabitRow } from "./habit-row";
 import { habitsQuery } from "./habits";
 
-/** The Habits page: the user's Habits in their order, and a button to add one. */
-export function HabitsPage() {
+/**
+ * The Habits page: the user's Habits in their order, each with today's Check-in button, and a
+ * button to add one. `timeZone` is the user's, which decides what today is.
+ */
+export function HabitsPage({ timeZone }: { timeZone: string }) {
   const { data: habits } = useQuery(habitsQuery);
   const [adding, setAdding] = useState(false);
   return (
@@ -45,13 +48,7 @@ export function HabitsPage() {
           className="overflow-hidden rounded-xl border border-border bg-surface"
         >
           {habits.map((habit) => (
-            <li
-              key={habit.id}
-              className="flex min-h-14 items-center gap-3 border-b border-border/60 px-4 py-2 last:border-b-0"
-            >
-              <HabitIcon habit={habit} />
-              <span className="min-w-0 flex-1 truncate text-sm font-medium">{habit.name}</span>
-            </li>
+            <HabitRow key={habit.id} habit={habit} timeZone={timeZone} />
           ))}
         </ul>
       )}

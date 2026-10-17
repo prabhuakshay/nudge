@@ -73,7 +73,7 @@ def test_the_minute_sweep_reminds_at_the_habits_time(
 
     assert early == []
     assert [(n.user, n.title, n.url, n.habit) for n in due] == [
-        (london, "Drink water", "/habits", habit),
+        (london, "Drink water", f"/habits?habit={habit.pk}", habit),
     ]
 
 
@@ -339,7 +339,7 @@ def test_a_habit_reminder_is_pushed_to_devices(
             "id": notification.pk,
             "title": "Drink water",
             "body": "",
-            "url": "/habits",
+            "url": notification.url,
             "is_reminder": False,
             "is_habit_reminder": True,
         },

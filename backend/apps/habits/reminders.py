@@ -120,4 +120,4 @@ def _may_fire_snooze(habit: Habit, now: datetime) -> bool:
 
 
 def _notify(habit: Habit) -> None:
-    notify(habit.owner, title=habit.name, url="/habits", habit=habit)
+    notify(habit.owner, title=habit.name, url=f"/habits?habit={habit.pk}", habit=habit)

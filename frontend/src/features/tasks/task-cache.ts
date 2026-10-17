@@ -77,6 +77,13 @@ export type TaskChange =
   | { kind: "remove"; taskId: number }
   | { kind: "insert"; task: Task; last?: boolean; afterId?: number };
 
+/**
+ * A change as every query shows it. A removal names every Task it removes, since a view can hold
+ * a Subtask without the Tasks above it.
+ */
+type ShownChange =
+  Exclude<TaskChange, { kind: "remove" }> | { kind: "remove"; taskIds: Set<number> };
+
 const UNDATED = { due_date: null, due_time: null, start_date: null, start_time: null };
 
 /** The Task as the server will return it after the patch, for showing it straight away. */
@@ -155,7 +162,7 @@ function insertedAfter<T extends Task>(rows: T[], task: T, afterId: number | und
  * Rows after a change. `ordered` rows keep a Project's manual order, so a moved Task changes place
  * among them; other rows keep their own order. Inserting is up to each shape.
  */
-function rowsAfter<T extends Task>(rows: T[], change: TaskChange, ordered: boolean): T[] {
+function rowsAfter<T extends Task>(rows: T[], change: ShownChange, ordered: boolean): T[] {
   switch (change.kind) {
     case "patch":
       return rows.map((row) => patched(row, change.patch));
@@ -167,19 +174,19 @@ function rowsAfter<T extends Task>(rows: T[], change: TaskChange, ordered: boole
     case "project":
       return inProject(rows, change);
     case "remove":
-      return withoutTree(rows, change.taskId);
+      return rows.filter((row) => !change.taskIds.has(row.id));
     case "insert":
       return rows;
   }
 }
 
 /** An open list after a change: trees whose root closed leave it. */
-function openAfter(rows: Task[], change: TaskChange) {
+function openAfter(rows: Task[], change: ShownChange) {
   return openTrees(rowsAfter(rows, change, true));
 }
 
 /** A page of Closed Tasks after a change: trees whose root reopened leave it. */
-function closedAfter(page: TaskPage, change: TaskChange): TaskPage {
+function closedAfter(page: TaskPage, change: ShownChange): TaskPage {
   const rows = rowsAfter(page.items, change, false);
   return { ...page, items: treesWhere(rows, (root) => isClosed(root.status)) };
 }
@@ -188,7 +195,7 @@ function closedAfter(page: TaskPage, change: TaskChange): TaskPage {
  * A drawer's Task after a change, with its Subtasks. A new Subtask goes right after the one it
  * follows, or last among its parent's; a Subtask moved to another Project leaves the drawer.
  */
-function detailAfter(task: TaskDetail, change: TaskChange): TaskDetail {
+function detailAfter(task: TaskDetail, change: ShownChange): TaskDetail {
   if (change.kind === "project") return projectDetailAfter(task, change);
   const [changed = task] = rowsAfter([task], change, false);
   const subtasks = rowsAfter(task.subtasks, change, true);
@@ -220,7 +227,7 @@ function overlaps(task: Task, { start, end }: DayRange) {
  * exactly when its dates overlap the range; `redated` is that Task after the patch, if any cached
  * shape holds it.
  */
-function itemsAfter(items: Task[], change: TaskChange, range: DayRange, redated?: Task) {
+function itemsAfter(items: Task[], change: ShownChange, range: DayRange, redated?: Task) {
   const after = rowsAfter(items, change, false);
   if (change.kind === "insert")
     return overlaps(change.task, range) ? [...after, change.task] : after;
@@ -236,7 +243,7 @@ function itemsAfter(items: Task[], change: TaskChange, range: DayRange, redated?
  */
 function calendarAfter(
   data: CalendarRange,
-  change: TaskChange,
+  change: ShownChange,
   range: DayRange,
   redated?: Task,
 ): CalendarRange {
@@ -304,7 +311,7 @@ function showProjectMove(queryClient: QueryClient, change: ProjectChange) {
 }
 
 /** Show a change in every open list. */
-function showInOpenLists(queryClient: QueryClient, change: TaskChange) {
+function showInOpenLists(queryClient: QueryClient, change: ShownChange) {
   if (change.kind === "project") {
     showProjectMove(queryClient, change);
     return;
@@ -334,7 +341,7 @@ function cachedRows(queryClient: QueryClient): Task[] {
   return [
     ...[...lists, ...searches].flatMap(([, rows]) => rows ?? []),
     ...closed.flatMap(([, data]) => data?.pages.flatMap((page) => page.items) ?? []),
-    ...ranges.flatMap(([, data]) => data?.items ?? []),
+    ...ranges.flatMap(([, data]) => (data ? [...data.items, ...data.repeating] : [])),
     // Last, since a drawer's Task carries fields a row doesn't; they're harmless in a Calendar
     // range until it refetches.
     ...drawers.flatMap(([, task]) => (task ? [...task.subtasks, task] : [])),
@@ -345,15 +352,23 @@ function cachedRows(queryClient: QueryClient): Task[] {
  * The Task a patch gives new dates, as it will be after the patch. A patch carries only the
  * changed fields, so the rest comes from a cached shape that holds the Task.
  */
-function redatedTask(queryClient: QueryClient, change: TaskChange): Task | undefined {
+function redatedTask(rows: Task[], change: TaskChange): Task | undefined {
   if (change.kind !== "patch" || change.patch.dates === undefined) return undefined;
-  const row = cachedRows(queryClient).find((task) => task.id === change.patch.id);
+  const row = rows.find((task) => task.id === change.patch.id);
   return row && patched(row, change.patch);
 }
 
+/** The change as every query shows it, with a removal's Subtasks found across the whole cache. */
+function shownChange(rows: Task[], change: TaskChange): ShownChange {
+  if (change.kind !== "remove") return change;
+  return { kind: "remove", taskIds: treeIds(rows, change.taskId) };
+}
+
 /** Show one change in every cached query that holds Tasks. */
-function showChange(queryClient: QueryClient, change: TaskChange) {
-  const redated = redatedTask(queryClient, change);
+function showChange(queryClient: QueryClient, requested: TaskChange) {
+  const rows = cachedRows(queryClient);
+  const redated = redatedTask(rows, requested);
+  const change = shownChange(rows, requested);
   showInOpenLists(queryClient, change);
   queryClient.setQueriesData<InfiniteData<TaskPage>>(
     { queryKey: prefix("closed") },

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import creation, projects, services
+from apps.tasks import creation, projects, sections, services
 from apps.tasks.models import Project
 
 if TYPE_CHECKING:
@@ -46,6 +46,19 @@ def test_patch_moves_a_task_first_into_another_project(client: Client, ada: User
     assert response.json()["task"]["project_id"] == work.pk
     assert [t.title for t in services.open_tasks(work)] == ["Plan launch", "Already there"]
     assert not services.open_tasks(services.inbox(ada)).exists()
+
+
+@pytest.mark.django_db
+def test_patch_to_another_project_clears_the_section(client: Client, ada: User) -> None:
+    home = projects.create_project(ada, "Home")
+    kitchen = sections.create_section(home, "Kitchen")
+    task = creation.create_task(home, "Tile the wall", creation.NewTask(section=kitchen))
+    work = projects.create_project(ada, "Work")
+
+    response = _patch(client, task.pk, {"project_id": work.pk})
+
+    assert response.status_code == 200, response.json()
+    assert response.json()["task"]["section_id"] is None
 
 
 @pytest.mark.django_db

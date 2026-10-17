@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import cached_property
 from typing import ClassVar, override
 
 from django.conf import settings
@@ -11,6 +12,7 @@ from django.db.models import Q
 from django.utils import timezone
 
 from apps.core.palette import PaletteColor
+from apps.habits.streaks import Streak, StreakUnit, habit_streak
 
 MAX_GOAL = 99
 
@@ -111,6 +113,26 @@ class Habit(models.Model):
     def is_archived(self) -> bool:
         """Whether the user has put the Habit away, keeping its history."""
         return self.archived_at is not None
+
+    @cached_property
+    def streak(self) -> Streak:
+        """The Habit's Streak as of today on its owner's clock, derived from its Check-ins."""
+        return habit_streak(self)
+
+    @property
+    def current_streak(self) -> int:
+        """The current run of done days, or of met weeks for a times-a-week Habit."""
+        return self.streak.current
+
+    @property
+    def best_streak(self) -> int:
+        """The longest run of done days or met weeks the Habit has had."""
+        return self.streak.best
+
+    @property
+    def streak_unit(self) -> StreakUnit:
+        """What the Habit's Streak counts: days, or weeks for a times-a-week Habit."""
+        return self.streak.unit
 
 
 class CheckIn(models.Model):

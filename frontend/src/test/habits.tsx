@@ -4,7 +4,7 @@ import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
-import type { Habit, HabitSettings } from "@/features/habits/habits";
+import type { CheckIn, Habit, HabitSettings } from "@/features/habits/habits";
 import { HabitsPage } from "@/features/habits/habits-page";
 import { TodayHabits } from "@/features/habits/today-strip";
 import { json } from "@/test/drawer";
@@ -24,6 +24,9 @@ export function habit(overrides: Partial<Habit> = {}): Habit {
     start_date: "2026-10-15",
     today_count: 0,
     is_archived: false,
+    current_streak: 0,
+    best_streak: 0,
+    streak_unit: "days",
     ...overrides,
   };
 }
@@ -63,15 +66,21 @@ function answer(habits: Habit[], { method, path, body }: Write) {
   return json(found);
 }
 
+const CHECK_INS_PATH = /^\/api\/v1\/habits\/(\d+)\/check-ins$/;
+
 /**
  * A stand-in server holding the user's Habits, which adds, edits, moves, archives and deletes them
- * and sets their Check-ins as the real one does. Returns the writes the page sent, in order.
+ * and sets their Check-ins as the real one does. `checkIns` holds each Habit's past days with
+ * Check-ins, by Habit id, which it answers whatever range is asked for. Returns the writes the page
+ * sent, in order.
  */
-export function mockApi(habits: Habit[]) {
+export function mockApi(habits: Habit[], checkIns: Record<number, CheckIn[]> = {}) {
   const sent: Write[] = [];
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
     const path = new URL(request.url).pathname;
+    const [, checkInsOf] = CHECK_INS_PATH.exec(path) ?? [];
+    if (checkInsOf) return json(checkIns[Number(checkInsOf)] ?? []);
     if (request.method === "GET") return json(habits);
     const text = await request.clone().text();
     const write = {
@@ -120,9 +129,8 @@ export const renderStrip = () => renderFresh(<TodayHabits timeZone="Europe/Londo
 
 /** The names of the Habits in the list with this label, in order. */
 export const namesIn = (list: string) =>
-  within(screen.getByRole("list", { name: list }))
-    .getAllByRole("listitem")
-    // A row's name is its first text; the Check-in button's progress comes after it.
+  [...screen.getByRole("list", { name: list }).querySelectorAll<HTMLLIElement>(":scope > li")]
+    // A row's name is its first text; its Streak, days and Check-in progress come after it.
     .map((row) => within(row).getAllByText(/./)[0]?.textContent);
 
 /** The Check-in button of the Habit with this name. */

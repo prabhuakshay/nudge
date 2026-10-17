@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections import Counter
-from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from django.db import transaction
@@ -12,11 +11,10 @@ from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.accounts.models import User
-from apps.accounts.services import local_zone
 from apps.core.errors import DomainRuleError, NotFoundError
 from apps.core.siblings import Siblings, by_key, row_lock
 from apps.habits.models import CheckIn, Habit
-from apps.habits.schedule import is_scheduled, is_week_met
+from apps.habits.schedule import is_scheduled, is_week_met, today, week_of
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -34,15 +32,17 @@ class HabitRuleError(DomainRuleError):
     """A change to a Habit or its Check-ins breaks one of the rules Habits follow."""
 
 
-def today(user: User) -> date:
-    """Return today's date on the user's clock."""
-    return timezone.now().astimezone(local_zone(user)).date()
-
-
 def habits(user: User) -> QuerySet[Habit]:
-    """Return the user's Habits in their order, each with its `today_count` of Check-ins."""
+    """Return the user's Habits in their order, each with its `today_count` of Check-ins.
+
+    The owner and Check-ins come along, since every Habit's Streak is derived from them.
+    """
     on_today = CheckIn.objects.filter(habit=OuterRef("pk"), date=today(user)).values("count")
-    return user.habits.annotate(today_count=Coalesce(Subquery(on_today), 0))
+    return (
+        user.habits.annotate(today_count=Coalesce(Subquery(on_today), 0))
+        .select_related("owner")
+        .prefetch_related("check_ins")
+    )
 
 
 def habit(user: User, habit_id: int) -> Habit:
@@ -65,7 +65,7 @@ def today_strip(user: User) -> list[Habit]:
     doesn't lose a Habit the moment it's checked in.
     """
     day = today(user)
-    monday = day - timedelta(days=day.weekday())
+    monday = week_of(day)
     done_days = Counter(
         CheckIn.objects.filter(
             habit__owner=user,
@@ -196,6 +196,15 @@ def set_check_ins(user: User, habit_id: int, day: date, count: int) -> Habit:
     else:
         CheckIn.objects.update_or_create(habit=found, date=day, defaults={"count": count})
     return habit(user, habit_id)
+
+
+def check_ins(user: User, habit_id: int, first: date, last: date) -> QuerySet[CheckIn]:
+    """Return a Habit's Check-ins from the first day to the last, both included, oldest first.
+
+    Raises:
+        NotFoundError: There's no such Habit.
+    """
+    return habit(user, habit_id).check_ins.filter(date__range=(first, last))
 
 
 def move_habit(user: User, habit_id: int, after_id: int | None) -> None:

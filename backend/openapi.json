@@ -3803,6 +3803,78 @@
         ]
       }
     },
+    "/api/v1/habits/{habit_id}/check-ins": {
+      "get": {
+        "operationId": "apps_habits_api_list_check_ins",
+        "summary": "List a Habit's Check-ins",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "habit_id",
+            "schema": {
+              "title": "Habit Id",
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "start",
+            "schema": {
+              "format": "date",
+              "title": "Start",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "end",
+            "schema": {
+              "format": "date",
+              "title": "End",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CheckInOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the days from `start` to `end`, both included, that have Check-ins, oldest first.",
+        "tags": [
+          "habits"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/habits/{habit_id}/check-ins/{day}": {
       "put": {
         "operationId": "apps_habits_api_set_check_ins",
@@ -8818,6 +8890,20 @@
             "description": "Archived Habits keep their history but stay out of Today.",
             "title": "Is Archived",
             "type": "boolean"
+          },
+          "current_streak": {
+            "description": "The current run of done days or met weeks.",
+            "title": "Current Streak",
+            "type": "integer"
+          },
+          "best_streak": {
+            "description": "The longest run of done days or met weeks ever.",
+            "title": "Best Streak",
+            "type": "integer"
+          },
+          "streak_unit": {
+            "$ref": "#/components/schemas/StreakUnit",
+            "description": "Weeks for a times-a-week Habit, else days."
           }
         },
         "required": [
@@ -8831,10 +8917,22 @@
           "goal",
           "start_date",
           "today_count",
-          "is_archived"
+          "is_archived",
+          "current_streak",
+          "best_streak",
+          "streak_unit"
         ],
         "title": "HabitOut",
         "type": "object"
+      },
+      "StreakUnit": {
+        "description": "What a Streak counts: done days, or weeks that met a times-a-week Habit's number.",
+        "enum": [
+          "days",
+          "weeks"
+        ],
+        "title": "StreakUnit",
+        "type": "string"
       },
       "HabitIn": {
         "description": "A new Habit. Unless told otherwise it's done once every day, starting today.",
@@ -9019,6 +9117,26 @@
           }
         },
         "title": "HabitPatchIn",
+        "type": "object"
+      },
+      "CheckInOut": {
+        "description": "How many times the user did a Habit on a day with Check-ins.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "count": {
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "count"
+        ],
+        "title": "CheckInOut",
         "type": "object"
       },
       "CheckInsIn": {

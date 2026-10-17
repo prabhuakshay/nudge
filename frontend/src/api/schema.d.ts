@@ -1292,6 +1292,26 @@ export interface paths {
     patch: operations["apps_habits_api_update_habit"];
     trace?: never;
   };
+  "/api/v1/habits/{habit_id}/check-ins": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Habit's Check-ins
+     * @description Return the days from `start` to `end`, both included, that have Check-ins, oldest first.
+     */
+    get: operations["apps_habits_api_list_check_ins"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/habits/{habit_id}/check-ins/{day}": {
     parameters: {
       query?: never;
@@ -3835,7 +3855,25 @@ export interface components {
        * @description Archived Habits keep their history but stay out of Today.
        */
       is_archived: boolean;
+      /**
+       * Current Streak
+       * @description The current run of done days or met weeks.
+       */
+      current_streak: number;
+      /**
+       * Best Streak
+       * @description The longest run of done days or met weeks ever.
+       */
+      best_streak: number;
+      /** @description Weeks for a times-a-week Habit, else days. */
+      streak_unit: components["schemas"]["StreakUnit"];
     };
+    /**
+     * StreakUnit
+     * @description What a Streak counts: done days, or weeks that met a times-a-week Habit's number.
+     * @enum {string}
+     */
+    StreakUnit: "days" | "weeks";
     /**
      * HabitIn
      * @description A new Habit. Unless told otherwise it's done once every day, starting today.
@@ -3895,6 +3933,19 @@ export interface components {
       goal?: number | null;
       /** Start Date */
       start_date?: string | null;
+    };
+    /**
+     * CheckInOut
+     * @description How many times the user did a Habit on a day with Check-ins.
+     */
+    CheckInOut: {
+      /**
+       * Date
+       * Format: date
+       */
+      date: string;
+      /** Count */
+      count: number;
     };
     /**
      * CheckInsIn
@@ -6437,6 +6488,40 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_list_check_ins: {
+    parameters: {
+      query: {
+        start: string;
+        end: string;
+      };
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CheckInOut"][];
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

@@ -23,6 +23,18 @@ class HabitOut(Schema):
     color: PaletteColor
     frequency: Habit.Frequency
     start_date: date = Field(description="The first day the Habit counts, in the user's zone.")
+    is_archived: bool = Field(
+        description="Archived Habits keep their history but stay out of Today."
+    )
+
+
+class HabitMoveIn(Schema):
+    """Where a Habit goes in the user's order."""
+
+    after_id: int | None = Field(
+        default=None,
+        description="The Habit it now follows; first when null, last when it isn't there.",
+    )
 
 
 class HabitIn(Schema):

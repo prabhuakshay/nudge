@@ -46,7 +46,8 @@ class Habit(models.Model):
 
     A Habit is not a Task: it has no Status or Repeat, and its Frequency is plain fields rather
     than an RRULE. `start_date` is the first day the Habit counts, in the user's time zone.
-    `position` is a fractional-indexing key in the user's manual order.
+    `position` is a fractional-indexing key in the user's manual order. An archived Habit keeps
+    its Check-ins and its place, so unarchiving puts it back as it was.
     """
 
     class Frequency(models.TextChoices):
@@ -65,6 +66,7 @@ class Habit(models.Model):
     frequency = models.CharField(max_length=16, choices=Frequency, default=Frequency.DAILY)
     start_date = models.DateField()
     position = models.CharField(max_length=255, db_collation="C")
+    archived_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(default=timezone.now)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -80,3 +82,8 @@ class Habit(models.Model):
     def __str__(self) -> str:
         """Return the name, which is how the user tells Habits apart."""
         return self.name
+
+    @property
+    def is_archived(self) -> bool:
+        """Whether the user has put the Habit away, keeping its history."""
+        return self.archived_at is not None

@@ -1,4 +1,4 @@
-"""Habit endpoints: list the user's Habits and add one."""
+"""Habit endpoints: list, add, move, archive, unarchive and delete the user's Habits."""
 
 from __future__ import annotations
 
@@ -8,8 +8,9 @@ from typing import TYPE_CHECKING
 from ninja import Router, Status
 
 from apps.core.auth import signed_in_user
+from apps.core.schemas import ErrorOut
 from apps.habits import services
-from apps.habits.schemas import HabitIn, HabitOut
+from apps.habits.schemas import HabitIn, HabitMoveIn, HabitOut
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -34,3 +35,47 @@ def create_habit(request: HttpRequest, habit: HabitIn) -> Status[HabitOut]:
         color=habit.color,
     )
     return Status(HTTPStatus.CREATED, HabitOut.from_orm(created))
+
+
+@router.post(
+    "/{int:habit_id}/move",
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
+    summary="Move a Habit in the user's order",
+)
+def move_habit(request: HttpRequest, habit_id: int, move: HabitMoveIn) -> Status[None]:
+    """Put a Habit right after another, or first."""
+    services.move_habit(signed_in_user(request), habit_id, move.after_id)
+    return Status(HTTPStatus.NO_CONTENT, None)
+
+
+@router.post(
+    "/{int:habit_id}/archive",
+    response={HTTPStatus.OK: HabitOut, HTTPStatus.NOT_FOUND: ErrorOut},
+    summary="Archive a Habit",
+)
+def archive_habit(request: HttpRequest, habit_id: int) -> Status[HabitOut]:
+    """Move a Habit to the Archived section, keeping its Check-ins."""
+    archived = services.archive_habit(signed_in_user(request), habit_id)
+    return Status(HTTPStatus.OK, HabitOut.from_orm(archived))
+
+
+@router.post(
+    "/{int:habit_id}/unarchive",
+    response={HTTPStatus.OK: HabitOut, HTTPStatus.NOT_FOUND: ErrorOut},
+    summary="Unarchive a Habit",
+)
+def unarchive_habit(request: HttpRequest, habit_id: int) -> Status[HabitOut]:
+    """Bring an archived Habit back to its place, with its Check-ins."""
+    unarchived = services.unarchive_habit(signed_in_user(request), habit_id)
+    return Status(HTTPStatus.OK, HabitOut.from_orm(unarchived))
+
+
+@router.delete(
+    "/{int:habit_id}",
+    response={HTTPStatus.NO_CONTENT: None, HTTPStatus.NOT_FOUND: ErrorOut},
+    summary="Delete a Habit",
+)
+def delete_habit(request: HttpRequest, habit_id: int) -> Status[None]:
+    """Delete a Habit and its Check-ins for good. Habits don't go to Trash."""
+    services.delete_habit(signed_in_user(request), habit_id)
+    return Status(HTTPStatus.NO_CONTENT, None)

@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { ReactNode } from "react";
 
 import { Toaster } from "@/components/ui/sonner";
 import type { Habit, HabitSettings } from "@/features/habits/habits";
 import { HabitsPage } from "@/features/habits/habits-page";
+import { TodayHabits } from "@/features/habits/today-strip";
 import { json } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 
@@ -97,17 +99,24 @@ export const added = (sent: Write[]) =>
 /** The Frequency fields of a Habit done every day. */
 export const EVERY_DAY = { frequency: "daily", weekdays: [], times_per_week: null } as const;
 
-/** Render the Habits page for a user in `timeZone`, as a fresh client would load it. */
-export function renderPage(timeZone = "Europe/London") {
+/** Render a view of Habits as a fresh client would load it. */
+function renderFresh(view: ReactNode) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   render(
     <QueryClientProvider client={queryClient}>
-      <HabitsPage timeZone={timeZone} />
+      {view}
       <Toaster />
     </QueryClientProvider>,
   );
   return userEvent.setup();
 }
+
+/** Render the Habits page for a user in `timeZone`, as a fresh client would load it. */
+export const renderPage = (timeZone = "Europe/London") =>
+  renderFresh(<HabitsPage timeZone={timeZone} />);
+
+/** Render Today's strip of Habits for a user in London, as a fresh client would load it. */
+export const renderStrip = () => renderFresh(<TodayHabits timeZone="Europe/London" />);
 
 /** The names of the Habits in the list with this label, in order. */
 export const namesIn = (list: string) =>

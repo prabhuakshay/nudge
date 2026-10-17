@@ -26,6 +26,19 @@ export const habitsQuery = queryOptions({
   },
 });
 
+/**
+ * The Habits for Today's strip, in the user's order: the server picks the live ones due today and
+ * the times-a-week ones whose week isn't met yet.
+ */
+export const todayHabitsQuery = queryOptions({
+  queryKey: ["habits", "today"],
+  queryFn: async (): Promise<Habit[]> => {
+    const { data } = await api.GET("/api/v1/habits/today");
+    if (!data) throw new Error("Could not load today's habits.");
+    return data;
+  },
+});
+
 /** Add a Habit; the server puts it last. */
 export function useCreateHabit() {
   return useCacheMutation({
@@ -41,7 +54,13 @@ export function useCreateHabit() {
 /** A Habit and the number of Check-ins it should have today. */
 type CheckInsChange = { id: number; count: number };
 
-/** Set how many Check-ins a Habit has today on the user's clock; its row shows them at once. */
+const countToday = (habits: Habit[], { id, count }: CheckInsChange) =>
+  habits.map((habit) => (habit.id === id ? { ...habit, today_count: count } : habit));
+
+/**
+ * Set how many Check-ins a Habit has today on the user's clock; the Habits page and Today's strip
+ * show them at once.
+ */
 export function useSetTodayCheckIns(timeZone: string) {
   return useCacheMutation({
     mutationFn: async ({ id, count }: CheckInsChange) => {
@@ -52,12 +71,19 @@ export function useSetTodayCheckIns(timeZone: string) {
       if (!data) throw new Error(failureReason(error, "Could not check in."));
       return data;
     },
-    optimistic: editing(habitsQuery.queryKey, (habits, { id, count }: CheckInsChange) =>
-      habits.map((habit) => (habit.id === id ? { ...habit, today_count: count } : habit)),
-    ),
+    optimistic: {
+      // ["habits"] is the prefix of both queries, so a failure puts both back.
+      touches: habitsQuery.queryKey,
+      show: (queryClient, change: CheckInsChange) => {
+        for (const { queryKey } of [habitsQuery, todayHabitsQuery]) {
+          editing(queryKey, countToday).show(queryClient, change);
+        }
+      },
+    },
     refetch: [habitsQuery.queryKey],
   });
 }
+
 /** A change to one or more Habits that the page shows at once, before the server answers. */
 function useHabitMutation<V>(
   change: (variables: V) => Promise<void>,

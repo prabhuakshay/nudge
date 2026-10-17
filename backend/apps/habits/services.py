@@ -1,4 +1,4 @@
-"""Business rules for Habits: listing and adding them, and recording the user's Check-ins."""
+"""Business rules for Habits: adding, ordering, archiving and deleting them, and Check-ins."""
 
 from __future__ import annotations
 
@@ -103,3 +103,52 @@ def set_check_ins(user: User, habit_id: int, day: date, count: int) -> Habit:
     else:
         CheckIn.objects.update_or_create(habit=found, date=day, defaults={"count": count})
     return habit(user, habit_id)
+
+
+def move_habit(user: User, habit_id: int, after_id: int | None) -> None:
+    """Put one of the user's Habits right after another; first for None, last if it isn't theirs.
+
+    Raises:
+        NotFoundError: The Habit isn't one of the user's.
+    """
+    found = habit(user, habit_id)
+    if after_id == found.pk:
+        return
+    with transaction.atomic():
+        found.position = habit_siblings(user).after(after_id, moving=found.pk)
+        found.save(update_fields=["position", "updated_at"])
+
+
+def _set_archived(user: User, habit_id: int, *, archived: bool) -> Habit:
+    found = habit(user, habit_id)
+    if archived != found.is_archived:
+        found.archived_at = timezone.now() if archived else None
+        found.save(update_fields=["archived_at", "updated_at"])
+    return found
+
+
+def archive_habit(user: User, habit_id: int) -> Habit:
+    """Archive one of the user's Habits, keeping its Check-ins and place. Twice is harmless.
+
+    Raises:
+        NotFoundError: The Habit isn't one of the user's.
+    """
+    return _set_archived(user, habit_id, archived=True)
+
+
+def unarchive_habit(user: User, habit_id: int) -> Habit:
+    """Bring one of the user's archived Habits back in its place, history intact.
+
+    Raises:
+        NotFoundError: The Habit isn't one of the user's.
+    """
+    return _set_archived(user, habit_id, archived=False)
+
+
+def delete_habit(user: User, habit_id: int) -> None:
+    """Delete one of the user's Habits for good, with its history.
+
+    Raises:
+        NotFoundError: The Habit isn't one of the user's.
+    """
+    habit(user, habit_id).delete()

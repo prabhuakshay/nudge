@@ -1,54 +1,11 @@
-import { Check, Ellipsis, Undo2 } from "lucide-react";
+import { Check, Undo2 } from "lucide-react";
 import { useId } from "react";
 
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { HUE } from "@/features/projects/project-style";
 import { cn } from "@/lib/utils";
 
-import { HabitIcon } from "./habit-icon";
 import { useSetTodayCheckIns, type Habit } from "./habits";
-
-/** One Habit on the Habits page: its icon and name, its ⋯ menu and today's Check-in button. */
-export function HabitRow({ habit, timeZone }: { habit: Habit; timeZone: string }) {
-  const setCheckIns = useSetTodayCheckIns(timeZone);
-  const done = habit.today_count >= habit.goal;
-  return (
-    <li className="flex min-h-14 items-center gap-3 border-b border-border/60 px-4 py-2 last:border-b-0">
-      <HabitIcon habit={habit} />
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">{habit.name}</span>
-      <DropdownMenu>
-        <DropdownMenuTrigger
-          aria-label={`${habit.name} actions`}
-          className="flex size-11 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-surface-muted hover:text-foreground lg:size-8"
-        >
-          <Ellipsis className="size-4" aria-hidden />
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-44">
-          <DropdownMenuItem
-            disabled={habit.today_count === 0}
-            onSelect={() => {
-              setCheckIns.mutate({ id: habit.id, count: habit.today_count - 1 });
-            }}
-          >
-            <Undo2 aria-hidden />
-            Undo Check-in
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <CheckInButton
-        habit={habit}
-        onCheckIn={() => {
-          if (!done) setCheckIns.mutate({ id: habit.id, count: habit.today_count + 1 });
-        }}
-      />
-    </li>
-  );
-}
 
 /** What today's Check-ins come to, as the Check-in button describes it. */
 function progressLabel({ today_count: count, goal }: Habit) {
@@ -60,8 +17,10 @@ function progressLabel({ today_count: count, goal }: Habit) {
 /**
  * Today's Check-in button: a ring that fills one Check-in at a time toward the Goal, solid with
  * a check once the Goal is met. A tap once it's met does nothing, so the count stays at the Goal.
+ * `timeZone` is the user's, which decides what today is.
  */
-function CheckInButton({ habit, onCheckIn }: { habit: Habit; onCheckIn: () => void }) {
+export function CheckInButton({ habit, timeZone }: { habit: Habit; timeZone: string }) {
+  const setCheckIns = useSetTodayCheckIns(timeZone);
   const progressId = useId();
   const hue = HUE[habit.color];
   const done = habit.today_count >= habit.goal;
@@ -71,7 +30,9 @@ function CheckInButton({ habit, onCheckIn }: { habit: Habit; onCheckIn: () => vo
       type="button"
       aria-label={`Check in ${habit.name}`}
       aria-describedby={progressId}
-      onClick={onCheckIn}
+      onClick={() => {
+        if (!done) setCheckIns.mutate({ id: habit.id, count: habit.today_count + 1 });
+      }}
       className="relative flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-ring lg:size-9"
     >
       <span id={progressId} className="sr-only">
@@ -112,5 +73,20 @@ function CheckInButton({ habit, onCheckIn }: { habit: Habit; onCheckIn: () => vo
         </span>
       )}
     </button>
+  );
+}
+
+/** A Habit menu's item that takes back today's latest Check-in; off before the first one. */
+export function UndoCheckInItem({ habit, timeZone }: { habit: Habit; timeZone: string }) {
+  const setCheckIns = useSetTodayCheckIns(timeZone);
+  return (
+    <DropdownMenuItem
+      disabled={habit.today_count === 0}
+      onSelect={() => {
+        setCheckIns.mutate({ id: habit.id, count: habit.today_count - 1 });
+      }}
+    >
+      <Undo2 aria-hidden /> Undo Check-in
+    </DropdownMenuItem>
   );
 }

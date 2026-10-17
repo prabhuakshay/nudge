@@ -1268,6 +1268,86 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/habits/{habit_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Habit in the user's order
+     * @description Put a Habit right after another, or first.
+     */
+    post: operations["apps_habits_api_move_habit"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/habits/{habit_id}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Archive a Habit
+     * @description Move a Habit to the Archived section, keeping its Check-ins.
+     */
+    post: operations["apps_habits_api_archive_habit"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/habits/{habit_id}/unarchive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Unarchive a Habit
+     * @description Bring an archived Habit back to its place, with its Check-ins.
+     */
+    post: operations["apps_habits_api_unarchive_habit"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/habits/{habit_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Habit
+     * @description Delete a Habit and its Check-ins for good. Habits don't go to Trash.
+     */
+    delete: operations["apps_habits_api_delete_habit"];
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3716,6 +3796,11 @@ export interface components {
        * @description Check-ins so far today, in the user's zone.
        */
       today_count: number;
+      /**
+       * Is Archived
+       * @description Archived Habits keep their history but stay out of Today.
+       */
+      is_archived: boolean;
     };
     /**
      * HabitIn
@@ -3739,6 +3824,17 @@ export interface components {
     CheckInsIn: {
       /** Count */
       count: number;
+    };
+    /**
+     * HabitMoveIn
+     * @description Where a Habit goes in the user's order.
+     */
+    HabitMoveIn: {
+      /**
+       * After Id
+       * @description The Habit it now follows; first when null, last when it isn't there.
+       */
+      after_id?: number | null;
     };
   };
   responses: never;
@@ -6205,6 +6301,130 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_move_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HabitMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_archive_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_unarchive_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_delete_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

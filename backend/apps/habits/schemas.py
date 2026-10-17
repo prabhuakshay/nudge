@@ -25,6 +25,18 @@ class HabitOut(Schema):
     goal: int = Field(description="How many Check-ins make a day done.")
     start_date: date = Field(description="The first day the Habit counts, in the user's zone.")
     today_count: int = Field(description="Check-ins so far today, in the user's zone.")
+    is_archived: bool = Field(
+        description="Archived Habits keep their history but stay out of Today."
+    )
+
+
+class HabitMoveIn(Schema):
+    """Where a Habit goes in the user's order."""
+
+    after_id: int | None = Field(
+        default=None,
+        description="The Habit it now follows; first when null, last when it isn't there.",
+    )
 
 
 class HabitIn(Schema):

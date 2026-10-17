@@ -10,7 +10,7 @@ from ninja import Query, Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
-from apps.tasks import creation, live, moves, services, trash, tree
+from apps.tasks import creation, live, placement, services, trash, tree
 from apps.tasks.api import list_sources
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Task
@@ -95,8 +95,8 @@ def create_task(request: HttpRequest, task: TaskIn) -> Status[TaskOut]:
         repeat=_repeat(task),
         last=bool(task.last),
     )
-    placement = creation.Placement(task.project_id, task.parent_id, task.section_id)
-    created = creation.add_task(signed_in_user(request), task.title, new, placement, task.tag_ids)
+    asked = creation.Asked(task.project_id, task.parent_id, task.section_id)
+    created = creation.add_task(signed_in_user(request), task.title, new, asked, task.tag_ids)
     return Status(HTTPStatus.CREATED, TaskOut.from_orm(created))
 
 
@@ -187,14 +187,14 @@ def move_task(
     The server picks the new order key. The Task comes back with every Closed ancestor the move
     reopened, so the client can offer Undo.
     """
-    destination = moves.Destination(
+    destination = placement.Destination(
         move.project_id,
         move.parent_id,
         move.after_id,
         move.section_id,
         section_given="section_id" in move.model_fields_set,
     )
-    change = moves.move_task(signed_in_user(request), task_id, destination)
+    change = placement.move(signed_in_user(request), task_id, destination)
     return Status(HTTPStatus.OK, task_change_out(change))
 
 

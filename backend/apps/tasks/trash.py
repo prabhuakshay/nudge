@@ -28,11 +28,10 @@ from django.db.models import (
 from django.utils import timezone
 
 from apps.core.errors import NotFoundError
-from apps.tasks import live, reminders, services
+from apps.tasks import live, placement, reminders, services
 from apps.tasks.archive import ensure_writable
-from apps.tasks.models import MAX_DEPTH, Project, Task, TaskActivity
+from apps.tasks.models import Project, Task, TaskActivity
 from apps.tasks.rows import as_rows
-from apps.tasks.siblings import task_siblings
 from apps.tasks.tree import below, reopen_ancestors
 
 if TYPE_CHECKING:
@@ -130,24 +129,11 @@ def restore_task(user: User, task_id: int) -> Restored:
     head = _head(task)
     unit = list(user.tasks.filter(trash_unit=head.trash_unit))
     with transaction.atomic():
-        _place(user, head, height=max(member.depth for member in unit) - head.depth)
-        head.deleted_at = head.trash_unit = None
-        fields = [
-            "deleted_at",
-            "trash_unit",
-            "project",
-            "parent",
-            "section",
-            "position",
-            "updated_at",
-        ]
-        head.save(update_fields=fields)
-        others = user.tasks.filter(pk__in=[member.pk for member in unit if member != head])
+        placement.return_from_trash(head, unit, services.inbox(user))
         reminders.update_tasks(
-            others,
+            user.tasks.filter(pk__in=[member.pk for member in unit]),
             deleted_at=None,
             trash_unit=None,
-            project=head.project,
             updated_at=timezone.now(),
         )
         TaskActivity.objects.bulk_create(
@@ -162,21 +148,3 @@ def _head(task: Task) -> Task:
     while task.parent is not None and task.parent.trash_unit == task.trash_unit:
         task = task.parent
     return task
-
-
-def _place(user: User, head: Task, height: int) -> None:
-    """Point a unit's head at where it goes back to, keeping its place when it can."""
-    parent = head.parent
-    if parent is not None and parent.deleted_at is None and parent.depth + 1 + height <= MAX_DEPTH:
-        head.project = parent.project
-        task_siblings(parent.project_id, parent.pk).lock()
-        return
-    project = head.project if head.project.deleted_at is None else services.inbox(user)
-    roots = task_siblings(project.pk, None)
-    if parent is None and project == head.project:
-        roots.lock()
-        return
-    head.position = roots.last()
-    if project != head.project:
-        head.section = None
-    head.project, head.parent = project, None

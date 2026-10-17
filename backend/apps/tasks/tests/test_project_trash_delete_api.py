@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.tasks import creation, project_trash, projects, purge, services, trash
+from apps.tasks import creation, project_trash, projects, purge, sections, services, trash
 from apps.tasks.models import Project, Task
 
 if TYPE_CHECKING:
@@ -72,6 +72,20 @@ def test_a_task_trashed_before_its_project_outlives_it_in_the_inbox(
     assert response.json()["project"]["name"] == "Inbox"
     items = client.get(f"/api/v1/tasks?project={services.inbox(ada).pk}").json()["items"]
     assert [item["title"] for item in items] == ["Buy milk", "Paint the fence"]
+
+
+@pytest.mark.django_db
+def test_a_task_that_outlives_its_project_leaves_its_section(client: Client, ada: User) -> None:
+    home = projects.create_project(ada, "Home")
+    garden = sections.create_section(home, "Garden")
+    fence = creation.create_task(home, "Paint the fence", creation.NewTask(section=garden))
+    trash.trash_task(ada, fence.pk)
+    project_trash.trash_project(ada, home.pk)
+
+    _delete_forever(client, projects=(home,))
+
+    response = client.post(f"/api/v1/tasks/{fence.pk}/restore")
+    assert response.json()["task"]["section_id"] is None
 
 
 @pytest.mark.django_db

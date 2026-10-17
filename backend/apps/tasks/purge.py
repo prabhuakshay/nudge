@@ -21,9 +21,8 @@ from django.db.models import F
 from django.utils import timezone
 
 from apps.core.errors import NotFoundError
-from apps.tasks import services
+from apps.tasks import placement, services
 from apps.tasks.models import Attachment, Project, Task
-from apps.tasks.siblings import task_siblings
 
 if TYPE_CHECKING:
     import uuid
@@ -95,7 +94,8 @@ def _delete_units(units: set[uuid.UUID | None]) -> int:
         return 0
     tasks = Task.objects.filter(trash_unit__in=units)
     with transaction.atomic():
-        _detach(Task.objects.filter(parent__in=tasks).exclude(trash_unit__in=units))
+        for orphan in Task.objects.filter(parent__in=tasks).exclude(trash_unit__in=units):
+            placement.detach(orphan)
         projects = Project.objects.filter(trash_unit__in=units)
         _rehome(Task.objects.filter(project__in=projects).exclude(trash_unit__in=units))
         files = [attachment.file for attachment in Attachment.objects.filter(task__in=tasks)]
@@ -105,26 +105,13 @@ def _delete_units(units: set[uuid.UUID | None]) -> int:
     return len(units)
 
 
-def _detach(orphans: Collection[Task]) -> None:
-    """Make each Task the last root of its Project, so it outlives the parent being deleted."""
-    for orphan in orphans:
-        orphan.parent = None
-        orphan.position = task_siblings(orphan.project_id, None).last()
-        orphan.save(update_fields=["parent", "position", "updated_at"])
-
-
 def _rehome(strays: QuerySet[Task]) -> None:
     """Move trashed Tasks out of a Project about to be deleted, into their owner's Inbox.
 
-    Run after `_detach`, so each stray's parent is gone or moves with it; each root becomes the
-    last root of the Inbox.
+    Run after detaching orphans, so each stray's parent is gone or moves with it.
     """
     for stray in strays.select_related("owner"):
-        inbox = services.inbox(stray.owner)
-        if stray.parent_id is None:
-            stray.position = task_siblings(inbox.pk, None).last()
-        stray.project = inbox
-        stray.save(update_fields=["position", "project", "updated_at"])
+        placement.rehome(stray, services.inbox(stray.owner))
 
 
 def _delete_files(files: list[FieldFile]) -> None:

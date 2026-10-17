@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import pytest
 
 from apps.accounts.services import set_time_zone
-from apps.tasks import creation, moves, projects, reminders, services
+from apps.tasks import creation, placement, projects, reminders, services
 from apps.tasks.dates import TaskDates
 from apps.tasks.models import Project, Reminder, Task
 
@@ -221,7 +221,7 @@ def test_archiving_a_project_stops_its_reminders_and_unarchiving_restores_them(
 
 
 def _drag(user: User, task: Task, project: Project) -> None:
-    moves.move_task(user, task.pk, moves.Destination(project_id=project.pk))
+    placement.move(user, task.pk, placement.Destination(project_id=project.pk))
 
 
 def _edit(user: User, task: Task, project: Project) -> None:

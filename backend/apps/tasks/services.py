@@ -17,7 +17,7 @@ from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.core.palette import PaletteColor
-from apps.tasks import live, reminders, repeat
+from apps.tasks import live, placement, reminders, repeat
 from apps.tasks.archive import ensure_writable
 from apps.tasks.changes import TaskChange, TaskRuleError
 from apps.tasks.dates import TaskDates
@@ -32,17 +32,13 @@ from apps.tasks.models import (
 )
 from apps.tasks.pagination import Page, newest_first
 from apps.tasks.rows import as_rows
-from apps.tasks.siblings import task_siblings
 from apps.tasks.tags import owned_tags, retag
 from apps.tasks.tree import (
     AffectedTask,
     cascade_status,
-    move_tree,
-    moved_event,
     root_in_section,
     root_status_in,
     rows_below,
-    section_name,
 )
 
 if TYPE_CHECKING:
@@ -202,11 +198,7 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange:
     target = _target_project(user, task, edit.project_id)
     tags = None if edit.tag_ids is None else owned_tags(user, edit.tag_ids)
     ensure_writable(task.project)
-    if target is not None:
-        ensure_writable(target)
     before = {name: getattr(task, name) for name in _EDITABLE_FIELDS}
-    from_project, from_parent = task.project.name, task.parent_title
-    from_section = section_name(task)
     dates_before, repeat_before = TaskDates.of(task), repeat.Repeat.of(task)
     # Closing a repeating Task moves it on instead, and reopening it may undo that.
     step = repeat.plan(task, edit.status)
@@ -223,11 +215,10 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange:
     affected = []
     cascaded: list[AffectedTask] = []
     with transaction.atomic():
-        moved = []
         if target is not None:
-            moved = move_tree(task, target, task_siblings(target.pk, None).first())
-        if changed or moved:
-            task.save(update_fields=[*changed, *moved, "updated_at"])
+            placement.move_to_project(task, target)
+        if changed:
+            task.save(update_fields=[*changed, "updated_at"])
             sync_mentions(task)
         if "status" in changed:
             affected.append(
@@ -236,8 +227,6 @@ def update_task(user: User, task_id: int, edit: TaskEdit) -> TaskChange:
             cascaded = cascade_status(task)
         closed_subtasks = len(cascaded) if task.status in CLOSED_STATUSES else 0
         events = _activity(task, before, dates_before, closed_subtasks)
-        if moved:
-            events.append(moved_event(task, from_project, from_parent, from_section))
         asked = edit.repeat_rule is not None or edit.repeat_from is not None
         events.extend(filter(None, [repeat.edit_event(task, repeat_before, asked=asked)]))
         events.extend([] if tags is None else retag(task, tags))

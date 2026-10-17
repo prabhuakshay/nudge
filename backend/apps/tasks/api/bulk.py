@@ -9,7 +9,7 @@ from ninja import Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
-from apps.tasks import bulk, services
+from apps.tasks import bulk, placement, services
 from apps.tasks.dates import TaskDates
 from apps.tasks.schemas.bulk import (
     BulkDatesIn,
@@ -101,7 +101,9 @@ def _per_task(user: User, action: BulkStatusesIn | BulkPlaceIn) -> list[Affected
         ]
         return bulk.set_statuses(user, statuses)
     places = [
-        bulk.Place(entry.id, entry.project_id, entry.parent_id, entry.after_id, entry.section_id)
+        placement.Place(
+            entry.id, entry.project_id, entry.parent_id, entry.after_id, entry.section_id
+        )
         for entry in action.places
     ]
     return bulk.place_tasks(user, places)

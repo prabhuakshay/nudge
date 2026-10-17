@@ -91,7 +91,7 @@ class HabitPatchIn(Schema):
     )
     goal: Goal | None = Field(
         default=None,
-        description="A lower Goal lowers any day's Check-ins above it to the new Goal.",
+        description="A lower Goal keeps every day's Check-ins; a day above it counts as met.",
     )
     start_date: date | None = None
     reminder_time: time | None = Field(

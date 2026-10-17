@@ -3985,7 +3985,7 @@ export interface components {
       times_per_week?: number | null;
       /**
        * Goal
-       * @description A lower Goal lowers any day's Check-ins above it to the new Goal.
+       * @description A lower Goal keeps every day's Check-ins; a day above it counts as met.
        */
       goal?: number | null;
       /** Start Date */

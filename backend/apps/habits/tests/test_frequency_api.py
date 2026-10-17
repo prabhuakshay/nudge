@@ -224,22 +224,47 @@ def test_edit_cannot_reach_another_users_habit(client: Client, grace: User) -> N
 
 
 @pytest.mark.django_db
-def test_a_lower_goal_lowers_check_ins_above_it(
+def test_a_lower_goal_keeps_check_ins_above_it_as_met_days(
+    client: Client,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    freeze_time(NOW)
+    created = _create(client, {**_habit(), "goal": 8, "start_date": "2026-03-09"})
+    habit_id = created.json()["id"]
+    for day in ("2026-03-09", "2026-03-10"):
+        client.put(
+            f"/api/v1/habits/{habit_id}/check-ins/{day}",
+            {"count": 6},
+            content_type="application/json",
+        )
+
+    edited = _patch(client, habit_id, {"goal": 4})
+    history = client.get(
+        f"/api/v1/habits/{habit_id}/check-ins",
+        {"start": "2026-03-09", "end": "2026-03-10"},
+    )
+
+    assert (edited.json()["goal"], edited.json()["today_count"]) == (4, 6)
+    assert edited.json()["current_streak"] == 2
+    assert [day["count"] for day in history.json()] == [6, 6]
+
+
+@pytest.mark.django_db
+def test_after_a_lower_goal_a_count_above_it_is_still_refused(
     client: Client,
     freeze_time: Callable[[datetime], None],
 ) -> None:
     freeze_time(NOW)
     habit_id = _create(client, {**_habit(), "goal": 8}).json()["id"]
-    client.put(
+    _patch(client, habit_id, {"goal": 4})
+
+    response = client.put(
         f"/api/v1/habits/{habit_id}/check-ins/2026-03-10",
-        {"count": 6},
+        {"count": 5},
         content_type="application/json",
     )
 
-    edited = _patch(client, habit_id, {"goal": 4})
-
-    assert edited.json()["goal"] == 4
-    assert edited.json()["today_count"] == 4
+    assert response.status_code == 422
 
 
 @pytest.mark.django_db

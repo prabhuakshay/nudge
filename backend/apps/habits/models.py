@@ -158,8 +158,9 @@ class Habit(models.Model):
 class CheckIn(models.Model):
     """How many times the user did a Habit on one day, in their time zone.
 
-    One row per Habit per day, never more than the Habit's Goal. A day with no Check-ins has no
-    row rather than a count of zero.
+    One row per Habit per day. A count is set no higher than the Habit's Goal, but a later, lower
+    Goal keeps it, so a count can be above the Goal; that day counts as met. A day with no
+    Check-ins has no row rather than a count of zero.
     """
 
     habit = models.ForeignKey(Habit, on_delete=models.CASCADE, related_name="check_ins")

@@ -135,8 +135,8 @@ def update_habit(  # noqa: PLR0913 - one keyword per setting the user can change
 ) -> Habit:
     """Change any of a Habit's settings; None leaves a setting as it is.
 
-    `remove_reminder` turns the Reminder off, since None leaves it. A lower Goal lowers any day's
-    Check-ins above it, so no day has more than the Goal.
+    `remove_reminder` turns the Reminder off, since None leaves it. A lower Goal keeps every
+    day's Check-ins, so history survives; a day with more than the new Goal counts as met.
 
     Raises:
         NotFoundError: The Habit isn't one of the user's.
@@ -160,7 +160,6 @@ def update_habit(  # noqa: PLR0913 - one keyword per setting the user can change
     )
     with transaction.atomic():
         found.save()
-        found.check_ins.filter(count__gt=found.goal).update(count=found.goal)
         reminders.reschedule([found])
     return habit(user, habit_id)
 

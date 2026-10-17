@@ -303,6 +303,17 @@ def test_after_days_of_outage_the_reminder_picks_up_from_today(
 
 
 @pytest.mark.django_db
+def test_after_days_of_outage_todays_reminder_still_catches_up(
+    london: User,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    freeze_time(NOW)
+    _habit(london)
+
+    assert len(_sweep_at(freeze_time, datetime(2026, 3, 13, 9, 30, tzinfo=UTC))) == 1
+
+
+@pytest.mark.django_db
 def test_a_met_goal_stays_quiet_even_with_a_stale_reminder_time(
     london: User,
     freeze_time: Callable[[datetime], None],

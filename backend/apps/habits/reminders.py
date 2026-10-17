@@ -79,8 +79,9 @@ def send_due_reminders() -> int:
     """Fire every Habit Reminder or snooze that is due, as a Notification, and clear it.
 
     A fired Reminder moves on to its next day. Returns how many fired. Firings more than
-    `CATCH_UP` late are dropped instead. Rows are locked and skipped when already locked, so two
-    sweeps running at once never send twice.
+    `CATCH_UP` late are dropped instead, catching up with the latest one, if any, that isn't.
+    Rows are locked and skipped when already locked, so two sweeps running at once never send
+    twice.
     """
     now = timezone.now()
     fired = 0
@@ -91,6 +92,8 @@ def send_due_reminders() -> int:
             .select_for_update(skip_locked=True, of=("self",))
         )
         for habit in due:
+            if habit.next_reminder_at is not None and habit.next_reminder_at <= now - CATCH_UP:
+                habit.next_reminder_at = next_reminder(habit, now - CATCH_UP)
             if _may_fire(habit, now) or _may_fire_snooze(habit, now):
                 _notify(habit)
                 fired += 1

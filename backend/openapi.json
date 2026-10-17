@@ -3664,6 +3664,38 @@
         ]
       }
     },
+    "/api/v1/habits/today": {
+      "get": {
+        "operationId": "apps_habits_api_list_today_habits",
+        "summary": "List today's Habits",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HabitOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the Habits for the Today strip: due today, or still short of this week's target.",
+        "tags": [
+          "habits"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/habits/{habit_id}": {
       "patch": {
         "operationId": "apps_habits_api_update_habit",

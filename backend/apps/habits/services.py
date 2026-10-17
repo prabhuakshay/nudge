@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from collections import Counter
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from django.db import transaction
-from django.db.models import OuterRef, Subquery
+from django.db.models import F, OuterRef, Subquery
 from django.db.models.functions import Coalesce
 from django.utils import timezone
 
@@ -14,6 +16,7 @@ from apps.accounts.services import local_zone
 from apps.core.errors import DomainRuleError, NotFoundError
 from apps.core.siblings import Siblings, by_key, row_lock
 from apps.habits.models import CheckIn, Habit
+from apps.habits.schedule import is_scheduled, is_week_met
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -52,6 +55,30 @@ def habit(user: User, habit_id: int) -> Habit:
     if found is None:
         raise NotFoundError(HABIT_NOT_FOUND)
     return found
+
+
+def today_strip(user: User) -> list[Habit]:
+    """Return the user's live Habits for the Today strip, in their order.
+
+    A Habit belongs there when it's scheduled today or, for one done a number of times a week,
+    when the days before today haven't met its week yet. One done today stays, so the strip
+    doesn't lose a Habit the moment it's checked in.
+    """
+    day = today(user)
+    monday = day - timedelta(days=day.weekday())
+    done_days = Counter(
+        CheckIn.objects.filter(
+            habit__owner=user,
+            date__gte=monday,
+            date__lt=day,
+            count__gte=F("habit__goal"),
+        ).values_list("habit_id", flat=True)
+    )
+    return [
+        found
+        for found in habits(user).filter(archived_at=None)
+        if is_scheduled(found, day) and not is_week_met(found, done_days[found.pk])
+    ]
 
 
 def habit_siblings(user: User) -> Siblings[int]:

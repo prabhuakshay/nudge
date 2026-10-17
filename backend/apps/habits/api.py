@@ -1,4 +1,4 @@
-"""Habit endpoints: list, add, edit, move, archive, unarchive and delete Habits; set Check-ins."""
+"""Habit endpoints: list all or today's Habits, add, edit, order, archive, delete, check in."""
 
 from __future__ import annotations
 
@@ -23,6 +23,13 @@ router = Router()
 def list_habits(request: HttpRequest) -> Status[list[HabitOut]]:
     """Return the user's Habits in their order."""
     found = services.habits(signed_in_user(request))
+    return Status(HTTPStatus.OK, [HabitOut.from_orm(habit) for habit in found])
+
+
+@router.get("/today", response={HTTPStatus.OK: list[HabitOut]}, summary="List today's Habits")
+def list_today_habits(request: HttpRequest) -> Status[list[HabitOut]]:
+    """Return the Habits for the Today strip: due today, or still short of this week's target."""
+    found = services.today_strip(signed_in_user(request))
     return Status(HTTPStatus.OK, [HabitOut.from_orm(habit) for habit in found])
 
 

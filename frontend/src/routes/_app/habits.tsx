@@ -4,8 +4,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { sessionQuery } from "@/features/auth/session";
 import { HabitsPage } from "@/features/habits/habits-page";
 import { habitsQuery } from "@/features/habits/habits";
+import { validateHabitSearch } from "@/features/habits/open-habit";
 
 export const Route = createFileRoute("/_app/habits")({
+  validateSearch: validateHabitSearch,
   loader: ({ context }) => context.queryClient.query(habitsQuery),
   component: HabitsRoute,
 });

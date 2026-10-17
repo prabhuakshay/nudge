@@ -18,21 +18,34 @@ import { useMoveHabit, useSetArchived, type Habit } from "./habits";
 const LIST = "overflow-hidden rounded-xl border border-border bg-surface";
 const ROW = "group flex min-h-14 items-center gap-3 border-b border-border/60 px-4 py-2";
 
-/** A Habit's icon, name and menu, the parts every row shares, with `details` under the name. */
+/**
+ * A Habit's icon, name and menu, the parts every row shares, with `details` under the name. The
+ * name opens the Habit's details.
+ */
 function HabitLine({
   habit,
   menu,
   details,
+  onOpen,
 }: {
   habit: Habit;
   menu: ReactNode;
   details?: ReactNode;
+  onOpen: (habit: Habit) => void;
 }) {
   return (
     <>
       <HabitIcon habit={habit} />
-      <span className="flex min-w-0 flex-1 flex-col">
-        <span className="truncate text-sm font-medium">{habit.name}</span>
+      <span className="flex min-w-0 flex-1 flex-col items-start">
+        <button
+          type="button"
+          onClick={() => {
+            onOpen(habit);
+          }}
+          className="max-w-full truncate rounded-sm text-left text-sm font-medium hover:underline focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          {habit.name}
+        </button>
         {details}
       </span>
       <RowMenu label={`${habit.name} options`}>{menu}</RowMenu>
@@ -52,7 +65,8 @@ function DeleteItem({ onSelect }: { onSelect: () => void }) {
 }
 
 /**
- * The user's live Habits in their order. Each row shows its Streak and last 7 days, drags by its
+ * The user's live Habits in their order. Each row's name opens its details, and the row shows its
+ * Streak and last 7 days, drags by its
  * grip (Space picks it up from the keyboard), checks in for today with its ring button, and its
  * menu edits it, undoes today's
  * latest Check-in, archives or deletes it. `timeZone` is the user's, which decides what today is.
@@ -60,11 +74,13 @@ function DeleteItem({ onSelect }: { onSelect: () => void }) {
 export function HabitList({
   habits,
   timeZone,
+  onOpen,
   onEdit,
   onDelete,
 }: {
   habits: Habit[];
   timeZone: string;
+  onOpen: (habit: Habit) => void;
   onEdit: (habit: Habit) => void;
   onDelete: (habit: Habit) => void;
 }) {
@@ -89,6 +105,7 @@ export function HabitList({
               key={habit.id}
               habit={habit}
               timeZone={timeZone}
+              onOpen={onOpen}
               onEdit={onEdit}
               onDelete={onDelete}
             />
@@ -102,11 +119,13 @@ export function HabitList({
 function SortableHabitRow({
   habit,
   timeZone,
+  onOpen,
   onEdit,
   onDelete,
 }: {
   habit: Habit;
   timeZone: string;
+  onOpen: (habit: Habit) => void;
   onEdit: (habit: Habit) => void;
   onDelete: (habit: Habit) => void;
 }) {
@@ -142,6 +161,7 @@ function SortableHabitRow({
       </button>
       <HabitLine
         habit={habit}
+        onOpen={onOpen}
         details={<StreakLine habit={habit} />}
         menu={
           <>
@@ -180,9 +200,11 @@ function SortableHabitRow({
  */
 export function ArchivedHabits({
   habits,
+  onOpen,
   onDelete,
 }: {
   habits: Habit[];
+  onOpen: (habit: Habit) => void;
   onDelete: (habit: Habit) => void;
 }) {
   const [expanded, setExpanded] = useState(false);
@@ -211,6 +233,7 @@ export function ArchivedHabits({
             <li key={habit.id} className={cn(ROW, "text-muted-foreground last:border-b-0")}>
               <HabitLine
                 habit={habit}
+                onOpen={onOpen}
                 menu={
                   <>
                     <DropdownMenuItem

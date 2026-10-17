@@ -3,9 +3,10 @@ import { useId } from "react";
 
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { HUE } from "@/features/projects/project-style";
+import { todayIn } from "@/features/tasks/schedule";
 import { cn } from "@/lib/utils";
 
-import { useSetTodayCheckIns, type Habit } from "./habits";
+import { useSetCheckIns, type Habit } from "./habits";
 
 /** What today's Check-ins come to, as the Check-in button describes it. */
 function progressLabel({ today_count: count, goal }: Habit) {
@@ -20,7 +21,7 @@ function progressLabel({ today_count: count, goal }: Habit) {
  * `timeZone` is the user's, which decides what today is.
  */
 export function CheckInButton({ habit, timeZone }: { habit: Habit; timeZone: string }) {
-  const setCheckIns = useSetTodayCheckIns(timeZone);
+  const setCheckIns = useSetCheckIns(timeZone);
   const progressId = useId();
   const hue = HUE[habit.color];
   const done = habit.today_count >= habit.goal;
@@ -31,7 +32,12 @@ export function CheckInButton({ habit, timeZone }: { habit: Habit; timeZone: str
       aria-label={`Check in ${habit.name}`}
       aria-describedby={progressId}
       onClick={() => {
-        if (!done) setCheckIns.mutate({ id: habit.id, count: habit.today_count + 1 });
+        if (!done)
+          setCheckIns.mutate({
+            id: habit.id,
+            day: todayIn(timeZone),
+            count: habit.today_count + 1,
+          });
       }}
       className="relative flex size-11 shrink-0 items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-ring lg:size-9"
     >
@@ -78,12 +84,12 @@ export function CheckInButton({ habit, timeZone }: { habit: Habit; timeZone: str
 
 /** A Habit menu's item that takes back today's latest Check-in; off before the first one. */
 export function UndoCheckInItem({ habit, timeZone }: { habit: Habit; timeZone: string }) {
-  const setCheckIns = useSetTodayCheckIns(timeZone);
+  const setCheckIns = useSetCheckIns(timeZone);
   return (
     <DropdownMenuItem
       disabled={habit.today_count === 0}
       onSelect={() => {
-        setCheckIns.mutate({ id: habit.id, count: habit.today_count - 1 });
+        setCheckIns.mutate({ id: habit.id, day: todayIn(timeZone), count: habit.today_count - 1 });
       }}
     >
       <Undo2 aria-hidden /> Undo Check-in

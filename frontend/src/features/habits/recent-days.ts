@@ -33,12 +33,25 @@ export function lastSevenDays(habit: Habit, today: string, checkIns: CheckIn[]):
   return Array.from({ length: DAYS_SHOWN }, (_, index) => {
     const date = addDays(today, index - DAYS_SHOWN + 1);
     const count = date === today ? habit.today_count : (counts.get(date) ?? 0);
-    return { date, count, state: stateOf(habit, date, count) };
+    return { date, count, state: dayState(habit, date, count) };
   });
 }
 
-function stateOf(habit: Habit, date: string, count: number): DayState {
+/** How a day with `count` Check-ins went for the Habit. */
+export function dayState(habit: Habit, date: string, count: number): DayState {
   if (count >= habit.goal) return "done";
   if (count > 0) return "partial";
   return isScheduled(habit, date) ? "none" : "unscheduled";
+}
+
+const SAYS: Record<DayState, (count: number, goal: number) => string> = {
+  done: () => "done",
+  partial: (count, goal) => `${String(count)} of ${String(goal)}`,
+  none: () => "not done",
+  unscheduled: () => "not asked for",
+};
+
+/** How a day went in words, such as "done" or "1 of 2", for screen readers. */
+export function describeDay(state: DayState, count: number, goal: number): string {
+  return SAYS[state](count, goal);
 }

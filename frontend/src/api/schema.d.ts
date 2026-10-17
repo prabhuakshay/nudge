@@ -1272,6 +1272,26 @@ export interface paths {
     patch: operations["apps_habits_api_update_habit"];
     trace?: never;
   };
+  "/api/v1/habits/{habit_id}/check-ins/{day}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Set a day's Check-ins
+     * @description Set how many times the user did a Habit on a day, up to its Goal; zero clears the day.
+     */
+    put: operations["apps_habits_api_set_check_ins"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/habits/{habit_id}/move": {
     parameters: {
       query?: never;
@@ -3775,11 +3795,21 @@ export interface components {
        */
       times_per_week: number | null;
       /**
+       * Goal
+       * @description How many Check-ins make a day done.
+       */
+      goal: number;
+      /**
        * Start Date
        * Format: date
        * @description The first day the Habit counts, in the user's zone.
        */
       start_date: string;
+      /**
+       * Today Count
+       * @description Check-ins so far today, in the user's zone.
+       */
+      today_count: number;
       /**
        * Is Archived
        * @description Archived Habits keep their history but stay out of Today.
@@ -3788,7 +3818,7 @@ export interface components {
     };
     /**
      * HabitIn
-     * @description A new Habit. Unless told otherwise it's done every day, starting today.
+     * @description A new Habit. Unless told otherwise it's done once every day, starting today.
      */
     HabitIn: {
       /** Name */
@@ -3807,6 +3837,11 @@ export interface components {
        * @description How many times a week, needed when the Frequency is times a week.
        */
       times_per_week?: number | null;
+      /**
+       * Goal
+       * @default 1
+       */
+      goal: number;
       /**
        * Start Date
        * @description Defaults to today.
@@ -3833,8 +3868,21 @@ export interface components {
        * @description How many times a week, kept only when the Frequency is times a week.
        */
       times_per_week?: number | null;
+      /**
+       * Goal
+       * @description A lower Goal lowers any day's Check-ins above it to the new Goal.
+       */
+      goal?: number | null;
       /** Start Date */
       start_date?: string | null;
+    };
+    /**
+     * CheckInsIn
+     * @description How many times the user did a Habit on a day. Zero clears the day.
+     */
+    CheckInsIn: {
+      /** Count */
+      count: number;
     };
     /**
      * HabitMoveIn
@@ -6326,6 +6374,51 @@ export interface operations {
     requestBody: {
       content: {
         "application/json": components["schemas"]["HabitPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_set_check_ins: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+        day: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CheckInsIn"];
       };
     };
     responses: {

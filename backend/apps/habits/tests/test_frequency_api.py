@@ -1,16 +1,21 @@
-"""Tests for a Habit's Frequency and start date, chosen when adding it or editing it later."""
+"""Tests for a Habit's Frequency and start date, chosen when adding it, and editing a Habit."""
 
 from __future__ import annotations
 
+from datetime import UTC, datetime
 from typing import TYPE_CHECKING
 
 import pytest
 from django.test import Client
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from django.test.client import _MonkeyPatchedWSGIResponse as Response
 
     from apps.accounts.models import User
+
+NOW = datetime(2026, 3, 10, 12, 0, tzinfo=UTC)
 
 
 def _create(client: Client, data: object) -> Response:
@@ -27,6 +32,13 @@ def _habit(name: str = "Read") -> dict[str, str]:
 
 def _names(client: Client) -> list[str]:
     return [habit["name"] for habit in client.get("/api/v1/habits").json()]
+
+
+@pytest.mark.django_db
+def test_editing_requires_a_session() -> None:
+    response = Client().patch("/api/v1/habits/1", {}, content_type="application/json")
+
+    assert response.status_code == 401
 
 
 @pytest.mark.django_db
@@ -112,6 +124,7 @@ def test_edit_changes_every_setting_the_list_then_shows(client: Client) -> None:
             "color": "orange",
             "frequency": "weekdays",
             "weekdays": [2, 4],
+            "goal": 8,
             "start_date": "2026-02-01",
         },
     )
@@ -125,7 +138,9 @@ def test_edit_changes_every_setting_the_list_then_shows(client: Client) -> None:
         "frequency": "weekdays",
         "weekdays": [2, 4],
         "times_per_week": None,
+        "goal": 8,
         "start_date": "2026-02-01",
+        "today_count": 0,
         "is_archived": False,
     }
     assert client.get("/api/v1/habits").json() == [edited.json()]
@@ -175,6 +190,8 @@ def test_edit_changes_the_weekdays_of_a_weekday_habit(client: Client) -> None:
         {"frequency": "times_per_week"},
         {"frequency": "times_per_week", "times_per_week": 7},
         {"icon": "sparkles"},
+        {"goal": 0},
+        {"goal": 100},
     ],
 )
 def test_edit_refuses_a_setting_that_makes_no_sense(
@@ -199,3 +216,40 @@ def test_edit_cannot_reach_another_users_habit(client: Client, grace: User) -> N
 
     assert response.status_code == 404
     assert other.get("/api/v1/habits").json() == [created]
+
+
+@pytest.mark.django_db
+def test_a_lower_goal_lowers_check_ins_above_it(
+    client: Client,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    freeze_time(NOW)
+    habit_id = _create(client, {**_habit(), "goal": 8}).json()["id"]
+    client.put(
+        f"/api/v1/habits/{habit_id}/check-ins/2026-03-10",
+        {"count": 6},
+        content_type="application/json",
+    )
+
+    edited = _patch(client, habit_id, {"goal": 4})
+
+    assert edited.json()["goal"] == 4
+    assert edited.json()["today_count"] == 4
+
+
+@pytest.mark.django_db
+def test_edit_keeps_todays_check_ins(
+    client: Client,
+    freeze_time: Callable[[datetime], None],
+) -> None:
+    freeze_time(NOW)
+    habit_id = _create(client, {**_habit(), "goal": 3}).json()["id"]
+    client.put(
+        f"/api/v1/habits/{habit_id}/check-ins/2026-03-10",
+        {"count": 2},
+        content_type="application/json",
+    )
+
+    edited = _patch(client, habit_id, {"name": "Study"})
+
+    assert edited.json()["today_count"] == 2

@@ -3771,6 +3771,84 @@
         ]
       }
     },
+    "/api/v1/habits/{habit_id}/check-ins/{day}": {
+      "put": {
+        "operationId": "apps_habits_api_set_check_ins",
+        "summary": "Set a day's Check-ins",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "habit_id",
+            "schema": {
+              "title": "Habit Id",
+              "type": "integer"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "day",
+            "schema": {
+              "format": "date",
+              "title": "Day",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Set how many times the user did a Habit on a day, up to its Goal; zero clears the day.",
+        "tags": [
+          "habits"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckInsIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
     "/api/v1/habits/{habit_id}/move": {
       "post": {
         "operationId": "apps_habits_api_move_habit",
@@ -8688,11 +8766,21 @@
             "description": "How many times a week; else null.",
             "title": "Times Per Week"
           },
+          "goal": {
+            "description": "How many Check-ins make a day done.",
+            "title": "Goal",
+            "type": "integer"
+          },
           "start_date": {
             "description": "The first day the Habit counts, in the user's zone.",
             "format": "date",
             "title": "Start Date",
             "type": "string"
+          },
+          "today_count": {
+            "description": "Check-ins so far today, in the user's zone.",
+            "title": "Today Count",
+            "type": "integer"
           },
           "is_archived": {
             "description": "Archived Habits keep their history but stay out of Today.",
@@ -8708,14 +8796,16 @@
           "frequency",
           "weekdays",
           "times_per_week",
+          "goal",
           "start_date",
+          "today_count",
           "is_archived"
         ],
         "title": "HabitOut",
         "type": "object"
       },
       "HabitIn": {
-        "description": "A new Habit. Unless told otherwise it's done every day, starting today.",
+        "description": "A new Habit. Unless told otherwise it's done once every day, starting today.",
         "properties": {
           "name": {
             "maxLength": 100,
@@ -8761,6 +8851,13 @@
             ],
             "description": "How many times a week, needed when the Frequency is times a week.",
             "title": "Times Per Week"
+          },
+          "goal": {
+            "default": 1,
+            "maximum": 99,
+            "minimum": 1,
+            "title": "Goal",
+            "type": "integer"
           },
           "start_date": {
             "anyOf": [
@@ -8862,6 +8959,20 @@
             "description": "How many times a week, kept only when the Frequency is times a week.",
             "title": "Times Per Week"
           },
+          "goal": {
+            "anyOf": [
+              {
+                "maximum": 99,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "A lower Goal lowers any day's Check-ins above it to the new Goal.",
+            "title": "Goal"
+          },
           "start_date": {
             "anyOf": [
               {
@@ -8876,6 +8987,21 @@
           }
         },
         "title": "HabitPatchIn",
+        "type": "object"
+      },
+      "CheckInsIn": {
+        "description": "How many times the user did a Habit on a day. Zero clears the day.",
+        "properties": {
+          "count": {
+            "minimum": 0,
+            "title": "Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "count"
+        ],
+        "title": "CheckInsIn",
         "type": "object"
       },
       "HabitMoveIn": {

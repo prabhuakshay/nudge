@@ -10,6 +10,7 @@ import { RowMenu } from "@/features/projects/sidebar-rows";
 import { dropAfter } from "@/features/tags/tags";
 import { cn } from "@/lib/utils";
 
+import { CheckInButton, UndoCheckInItem } from "./check-in";
 import { HabitIcon } from "./habit-icon";
 import { useMoveHabit, useSetArchived, type Habit } from "./habits";
 
@@ -40,14 +41,17 @@ function DeleteItem({ onSelect }: { onSelect: () => void }) {
 
 /**
  * The user's live Habits in their order. Each row drags by its grip (Space picks it up from the
- * keyboard), and its menu edits, archives or deletes it.
+ * keyboard), checks in for today with its ring button, and its menu edits it, undoes today's
+ * latest Check-in, archives or deletes it. `timeZone` is the user's, which decides what today is.
  */
 export function HabitList({
   habits,
+  timeZone,
   onEdit,
   onDelete,
 }: {
   habits: Habit[];
+  timeZone: string;
   onEdit: (habit: Habit) => void;
   onDelete: (habit: Habit) => void;
 }) {
@@ -68,7 +72,13 @@ export function HabitList({
       >
         <ul aria-label="Habits" className={LIST}>
           {habits.map((habit) => (
-            <SortableHabitRow key={habit.id} habit={habit} onEdit={onEdit} onDelete={onDelete} />
+            <SortableHabitRow
+              key={habit.id}
+              habit={habit}
+              timeZone={timeZone}
+              onEdit={onEdit}
+              onDelete={onDelete}
+            />
           ))}
         </ul>
       </SortableContext>
@@ -78,10 +88,12 @@ export function HabitList({
 
 function SortableHabitRow({
   habit,
+  timeZone,
   onEdit,
   onDelete,
 }: {
   habit: Habit;
+  timeZone: string;
   onEdit: (habit: Habit) => void;
   onDelete: (habit: Habit) => void;
 }) {
@@ -126,6 +138,7 @@ function SortableHabitRow({
             >
               <Pencil aria-hidden /> Edit
             </DropdownMenuItem>
+            <UndoCheckInItem habit={habit} timeZone={timeZone} />
             <DropdownMenuItem
               onSelect={() => {
                 setArchived.mutate({ id: habit.id, archived: true });
@@ -141,6 +154,7 @@ function SortableHabitRow({
           </>
         }
       />
+      <CheckInButton habit={habit} timeZone={timeZone} />
     </li>
   );
 }

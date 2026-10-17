@@ -3,14 +3,13 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 import { Toaster } from "@/components/ui/sonner";
-import { sessionQuery, type User } from "@/features/auth/session";
 import type { Habit, HabitSettings } from "@/features/habits/habits";
 import { HabitsPage } from "@/features/habits/habits-page";
 import { json } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
-import { EXPANDED_USER } from "@/test/session";
 
-export function makeHabit(overrides: Partial<Habit> = {}): Habit {
+/** A daily Habit with no Check-ins yet, changed by `overrides`. */
+export function habit(overrides: Partial<Habit> = {}): Habit {
   return {
     id: 1,
     name: "Read",
@@ -19,7 +18,9 @@ export function makeHabit(overrides: Partial<Habit> = {}): Habit {
     frequency: "daily",
     weekdays: [],
     times_per_week: null,
-    start_date: "2026-10-17",
+    goal: 1,
+    start_date: "2026-10-15",
+    today_count: 0,
     is_archived: false,
     ...overrides,
   };
@@ -28,7 +29,7 @@ export function makeHabit(overrides: Partial<Habit> = {}): Habit {
 /** A request the page sent that changes Habits: its method, path and body. */
 export type Write = { method: string; path: string; body: unknown };
 
-const HABIT_PATH = /^\/api\/v1\/habits\/(\d+)(?:\/(\w+))?$/;
+const HABIT_PATH = /^\/api\/v1\/habits\/(\d+)(?:\/([\w-]+))?(?:\/[\d-]+)?$/;
 
 /** Answer a write to one Habit as the real server does, changing `habits` to match. */
 function answer(habits: Habit[], { method, path, body }: Write) {
@@ -51,13 +52,18 @@ function answer(habits: Habit[], { method, path, body }: Write) {
     Object.assign(found, body as HabitSettings);
     return json(found);
   }
+  if (action === "check-ins") {
+    // The page only sets Check-ins with `{ count }`, and only for today.
+    found.today_count = (body as { count: number }).count;
+    return json(found);
+  }
   found.is_archived = action === "archive";
   return json(found);
 }
 
 /**
  * A stand-in server holding the user's Habits, which adds, edits, moves, archives and deletes them
- * as the real one does. Returns the writes the page sent, in order.
+ * and sets their Check-ins as the real one does. Returns the writes the page sent, in order.
  */
 export function mockApi(habits: Habit[]) {
   const sent: Write[] = [];
@@ -74,7 +80,7 @@ export function mockApi(habits: Habit[]) {
     sent.push(write);
     if (path !== "/api/v1/habits") return answer(habits, write);
     // The only write to the collection is a new Habit.
-    const added = makeHabit({ ...(write.body as HabitSettings), id: habits.length + 1 });
+    const added = habit({ ...(write.body as HabitSettings), id: habits.length + 1 });
     habits.push(added);
     return json(added, 201);
   });
@@ -88,42 +94,37 @@ export const changes = (sent: Write[]) => sent.filter((write) => write.path !== 
 export const added = (sent: Write[]) =>
   sent.filter((write) => write.path === "/api/v1/habits").map((write) => write.body);
 
-/** The signed-in user, whose clock is in Kiritimati, far from the test machine's. */
-const ada: User = { ...EXPANDED_USER, time_zone: "Pacific/Kiritimati" };
+/** The Frequency fields of a Habit done every day. */
+export const EVERY_DAY = { frequency: "daily", weekdays: [], times_per_week: null } as const;
 
-export function renderPage() {
+/** Render the Habits page for a user in `timeZone`, as a fresh client would load it. */
+export function renderPage(timeZone = "Europe/London") {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  queryClient.setQueryData(sessionQuery.queryKey, ada);
   render(
     <QueryClientProvider client={queryClient}>
-      <HabitsPage />
+      <HabitsPage timeZone={timeZone} />
       <Toaster />
     </QueryClientProvider>,
   );
   return userEvent.setup();
 }
 
+/** The names of the Habits in the list with this label, in order. */
 export const namesIn = (list: string) =>
   within(screen.getByRole("list", { name: list }))
     .getAllByRole("listitem")
-    .map((row) => row.textContent);
+    // A row's name is its first text; the Check-in button's progress comes after it.
+    .map((row) => within(row).getAllByText(/./)[0]?.textContent);
 
+/** The Check-in button of the Habit with this name. */
+export const checkInButton = (name: string) =>
+  screen.getByRole("button", { name: `Check in ${name}` });
+
+/** The names of the live Habits, in order. */
 export const names = () => namesIn("Habits");
 
 /** Open a Habit's row menu and pick an item from it. */
 export async function pick(user: ReturnType<typeof userEvent.setup>, name: string, item: string) {
   await user.click(await screen.findByRole("button", { name: `${name} options` }));
   await user.click(await screen.findByRole("menuitem", { name: item }));
-}
-
-export const EVERY_DAY = { frequency: "daily", weekdays: [], times_per_week: null } as const;
-
-/** Fixes the clock at 11:00 UTC on 17 October 2026, already 18 October on the user's clock. */
-export function fakeHabitsToday() {
-  beforeEach(() => {
-    vi.useFakeTimers({ now: new Date("2026-10-17T11:00:00Z"), toFake: ["Date"] });
-  });
-  afterEach(() => {
-    vi.useRealTimers();
-  });
 }

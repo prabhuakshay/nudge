@@ -12,6 +12,8 @@ from django.utils import timezone
 
 from apps.core.palette import PaletteColor
 
+MAX_GOAL = 99
+
 
 class HabitIcon(models.TextChoices):
     """The Lucide icons a Habit can show. Not `Habit.Icon`: the API schema names enums by class."""
@@ -47,10 +49,10 @@ class Habit(models.Model):
 
     A Habit is not a Task: it has no Status or Repeat, and its Frequency is plain fields rather
     than an RRULE: `weekdays` (ISO numbers, 1 is Monday) only for chosen weekdays and
-    `times_per_week` only for a number of times a week. `start_date` is the first day the Habit
-    counts, in the user's time zone. `position` is a fractional-indexing key in the user's manual
-    order. An archived Habit keeps its Check-ins and its place, so unarchiving puts it back as it
-    was.
+    `times_per_week` only for a number of times a week. `goal` is how many Check-ins make a day
+    done. `start_date` is the first day the Habit counts, in the user's time zone. `position` is
+    a fractional-indexing key in the user's manual order. An archived Habit keeps its Check-ins
+    and its place, so unarchiving puts it back as it was.
     """
 
     class Frequency(models.TextChoices):
@@ -71,6 +73,7 @@ class Habit(models.Model):
     frequency = models.CharField(max_length=16, choices=Frequency, default=Frequency.DAILY)
     weekdays = ArrayField(models.PositiveSmallIntegerField(), default=list, blank=True)
     times_per_week = models.PositiveSmallIntegerField(null=True, blank=True)
+    goal = models.PositiveSmallIntegerField(default=1)
     start_date = models.DateField()
     position = models.CharField(max_length=255, db_collation="C")
     archived_at = models.DateTimeField(null=True, blank=True)
@@ -83,6 +86,10 @@ class Habit(models.Model):
         ordering = ("position", "id")
         constraints: ClassVar = [
             models.CheckConstraint(condition=~Q(name=""), name="habits_habit_name_not_empty"),
+            models.CheckConstraint(
+                condition=Q(goal__gte=1, goal__lte=MAX_GOAL),
+                name="habits_habit_goal_in_range",
+            ),
             models.CheckConstraint(
                 condition=Q(frequency="weekdays", weekdays__len__gt=0)
                 | (~Q(frequency="weekdays") & Q(weekdays=[])),
@@ -104,3 +111,29 @@ class Habit(models.Model):
     def is_archived(self) -> bool:
         """Whether the user has put the Habit away, keeping its history."""
         return self.archived_at is not None
+
+
+class CheckIn(models.Model):
+    """How many times the user did a Habit on one day, in their time zone.
+
+    One row per Habit per day, never more than the Habit's Goal. A day with no Check-ins has no
+    row rather than a count of zero.
+    """
+
+    habit = models.ForeignKey(Habit, on_delete=models.CASCADE, related_name="check_ins")
+    date = models.DateField()
+    count = models.PositiveSmallIntegerField()
+
+    class Meta:
+        """Model options."""
+
+        ordering = ("date",)
+        constraints: ClassVar = [
+            models.UniqueConstraint(fields=("habit", "date"), name="habits_checkin_one_per_day"),
+            models.CheckConstraint(condition=Q(count__gte=1), name="habits_checkin_count_positive"),
+        ]
+
+    @override
+    def __str__(self) -> str:
+        """Return the Habit, day and count, as the admin and logs show them."""
+        return f"{self.habit} on {self.date}: {self.count}"

@@ -6,12 +6,13 @@ import { ColorField } from "@/features/projects/color-field";
 import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog";
 import { HUE } from "@/features/projects/project-style";
 import type { PaletteColor } from "@/features/projects/projects";
-import { useToday } from "@/features/time-zone/time-zone";
+import { todayIn } from "@/features/tasks/schedule";
 import { cn } from "@/lib/utils";
 
 import { FrequencyField, type FrequencyChoice } from "./frequency-field";
 import { HABIT_ICONS } from "./habit-style";
 import {
+  MAX_GOAL,
   useCreateHabit,
   useUpdateHabit,
   type Habit,
@@ -27,12 +28,14 @@ const WORKING_WEEK = [1, 2, 3, 4, 5];
 type HabitDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** The user's time zone, which decides the day a new Habit starts on. */
+  timeZone: string;
   /** The Habit to edit; a new Habit is added when left out. */
   habit?: Habit;
 };
 
-/** Add a Habit or edit one: its name, Frequency, start date, colour and icon. */
-export function HabitDialog({ open, onOpenChange, habit }: HabitDialogProps) {
+/** Add a Habit or edit one: its name, Frequency, Goal, start date, colour and icon. */
+export function HabitDialog({ open, onOpenChange, timeZone, habit }: HabitDialogProps) {
   return (
     <SidebarDialog
       open={open}
@@ -43,6 +46,7 @@ export function HabitDialog({ open, onOpenChange, habit }: HabitDialogProps) {
       <HabitForm
         key={String(open)}
         habit={habit}
+        today={todayIn(timeZone)}
         onDone={() => {
           onOpenChange(false);
         }}
@@ -74,12 +78,14 @@ function initialFrequency(habit: Habit | undefined): FrequencyChoice {
 function settingsOf(
   fields: OwnFields,
   { frequency, weekdays, timesPerWeek }: FrequencyChoice,
+  goal: number,
 ): HabitSettings {
   return {
     ...fields,
     frequency,
     weekdays: frequency === "weekdays" ? weekdays : [],
     times_per_week: frequency === "times_per_week" ? timesPerWeek : null,
+    goal,
   };
 }
 
@@ -92,20 +98,22 @@ function problemWith(settings: HabitSettings): string | null {
   return null;
 }
 
-function HabitForm({ habit, onDone }: { habit?: Habit; onDone: () => void }) {
+function HabitForm({ habit, today, onDone }: { habit?: Habit; today: string; onDone: () => void }) {
   const nameId = useId();
+  const goalId = useId();
   const startId = useId();
-  const today = useToday();
   const [fields, setFields] = useState(() => initialFields(habit, today));
   const [frequency, setFrequency] = useState(() => initialFrequency(habit));
-  const { name, color, icon } = fields;
+  // A string, so the field can be cleared while typing; `required`, `min` and `max` check it.
+  const [goal, setGoal] = useState(String(habit?.goal ?? 1));
   const [problem, setProblem] = useState<string | null>(null);
   const create = useCreateHabit();
   const update = useUpdateHabit();
+  const { name, color, icon } = fields;
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    const settings = settingsOf(fields, frequency);
+    const settings = settingsOf(fields, frequency, Number(goal));
     const found = problemWith(settings);
     setProblem(found);
     if (found) return;
@@ -135,6 +143,26 @@ function HabitForm({ habit, onDone }: { habit?: Habit; onDone: () => void }) {
         </div>
 
         <FrequencyField value={frequency} onChange={setFrequency} />
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={goalId}>Goal per day</Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id={goalId}
+              type="number"
+              required
+              min={1}
+              max={MAX_GOAL}
+              inputMode="numeric"
+              value={goal}
+              onChange={(event) => {
+                setGoal(event.target.value);
+              }}
+              className="w-20"
+            />
+            <span className="text-sm text-muted-foreground">Check-ins make a day done</span>
+          </div>
+        </div>
 
         <div className="flex flex-col gap-1.5">
           <Label htmlFor={startId}>Start date</Label>

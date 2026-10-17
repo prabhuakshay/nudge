@@ -12,9 +12,10 @@ import { habitsQuery, type Habit } from "./habits";
 
 /**
  * The Habits page: the user's Habits in their order, a button to add one, and the Archived ones
- * in a collapsed section at the bottom. Each row's menu edits its Habit.
+ * in a collapsed section at the bottom. Each row's menu edits its Habit. `timeZone` is the
+ * user's, which decides what today is for Check-ins and a new Habit's start date.
  */
-export function HabitsPage() {
+export function HabitsPage({ timeZone }: { timeZone: string }) {
   const { data: habits } = useQuery(habitsQuery);
   const [adding, setAdding] = useState(false);
   const [deleting, setDeleting] = useState<Habit | null>(null);
@@ -52,6 +53,7 @@ export function HabitsPage() {
       {live.length > 0 && (
         <HabitList
           habits={live}
+          timeZone={timeZone}
           onEdit={(habit) => {
             setEditing(habit);
             setEditOpen(true);
@@ -61,8 +63,15 @@ export function HabitsPage() {
       )}
       <ArchivedHabits habits={archived} onDelete={setDeleting} />
 
-      <HabitDialog open={adding} onOpenChange={setAdding} />
-      {editing && <HabitDialog open={editOpen} onOpenChange={setEditOpen} habit={editing} />}
+      <HabitDialog open={adding} onOpenChange={setAdding} timeZone={timeZone} />
+      {editing && (
+        <HabitDialog
+          open={editOpen}
+          onOpenChange={setEditOpen}
+          timeZone={timeZone}
+          habit={editing}
+        />
+      )}
       <DeleteHabitDialog
         habit={deleting}
         onClose={() => {

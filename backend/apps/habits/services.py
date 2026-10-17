@@ -1,17 +1,19 @@
-"""Business rules for Habits: listing, adding, editing, ordering, archiving and deleting them."""
+"""Business rules for Habits: adding, editing, ordering, archiving, deleting, Check-ins."""
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
 from django.db import transaction
+from django.db.models import OuterRef, Subquery
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.accounts.models import User
 from apps.accounts.services import local_zone
 from apps.core.errors import DomainRuleError, NotFoundError
 from apps.core.siblings import Siblings, by_key, row_lock
-from apps.habits.models import Habit
+from apps.habits.models import CheckIn, Habit
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -22,22 +24,31 @@ if TYPE_CHECKING:
     from apps.core.palette import PaletteColor
     from apps.habits.models import HabitIcon
 
-
-def habits(user: User) -> QuerySet[Habit]:
-    """Return the user's Habits in their order."""
-    return user.habits.all()
-
-
 HABIT_NOT_FOUND = "Habit not found."
 
 
+class HabitRuleError(DomainRuleError):
+    """A change to a Habit or its Check-ins breaks one of the rules Habits follow."""
+
+
+def today(user: User) -> date:
+    """Return today's date on the user's clock."""
+    return timezone.now().astimezone(local_zone(user)).date()
+
+
+def habits(user: User) -> QuerySet[Habit]:
+    """Return the user's Habits in their order, each with its `today_count` of Check-ins."""
+    on_today = CheckIn.objects.filter(habit=OuterRef("pk"), date=today(user)).values("count")
+    return user.habits.annotate(today_count=Coalesce(Subquery(on_today), 0))
+
+
 def habit(user: User, habit_id: int) -> Habit:
-    """Return one of the user's Habits.
+    """Return the user's Habit with this id, with its `today_count`.
 
     Raises:
-        NotFoundError: The Habit isn't one of the user's.
+        NotFoundError: There's no such Habit.
     """
-    found = user.habits.filter(pk=habit_id).first()
+    found = habits(user).filter(pk=habit_id).first()
     if found is None:
         raise NotFoundError(HABIT_NOT_FOUND)
     return found
@@ -46,10 +57,6 @@ def habit(user: User, habit_id: int) -> Habit:
 def habit_siblings(user: User) -> Siblings[int]:
     """Return the user's Habits, ordered by key and then id. Writes lock the user."""
     return by_key(row_lock(User.objects.filter(pk=user.pk)), user.habits.all())
-
-
-class HabitRuleError(DomainRuleError):
-    """A Habit change the rules refuse, such as chosen weekdays with no weekday chosen."""
 
 
 def create_habit(  # noqa: PLR0913 - one keyword per setting the user picks in the Add dialog
@@ -61,21 +68,23 @@ def create_habit(  # noqa: PLR0913 - one keyword per setting the user picks in t
     frequency: Habit.Frequency = Habit.Frequency.DAILY,
     weekdays: Iterable[int] = (),
     times_per_week: int | None = None,
+    goal: int = 1,
     start_date: date | None = None,
 ) -> Habit:
     """Add a Habit last in the user's order, starting today in the user's time zone by default."""
-    habit = Habit(
+    created = Habit(
         owner=user,
         name=name,
         icon=icon,
         color=color,
-        start_date=start_date or timezone.now().astimezone(local_zone(user)).date(),
+        goal=goal,
+        start_date=start_date or today(user),
     )
-    _set_frequency(habit, frequency, weekdays, times_per_week)
+    _set_frequency(created, frequency, weekdays, times_per_week)
     with transaction.atomic():
-        habit.position = habit_siblings(user).last()
-        habit.save()
-    return habit
+        created.position = habit_siblings(user).last()
+        created.save()
+    return habit(user, created.pk)
 
 
 def update_habit(  # noqa: PLR0913 - one keyword per setting the user can change in the Edit dialog
@@ -88,9 +97,12 @@ def update_habit(  # noqa: PLR0913 - one keyword per setting the user can change
     frequency: Habit.Frequency | None = None,
     weekdays: Iterable[int] | None = None,
     times_per_week: int | None = None,
+    goal: int | None = None,
     start_date: date | None = None,
 ) -> Habit:
     """Change any of a Habit's settings; None leaves a setting as it is.
+
+    A lower Goal lowers any day's Check-ins above it, so no day has more than the Goal.
 
     Raises:
         NotFoundError: The Habit isn't one of the user's.
@@ -100,6 +112,7 @@ def update_habit(  # noqa: PLR0913 - one keyword per setting the user can change
     found.name = name if name is not None else found.name
     found.icon = icon if icon is not None else found.icon
     found.color = color if color is not None else found.color
+    found.goal = goal if goal is not None else found.goal
     found.start_date = start_date if start_date is not None else found.start_date
     _set_frequency(
         found,
@@ -107,8 +120,10 @@ def update_habit(  # noqa: PLR0913 - one keyword per setting the user can change
         weekdays if weekdays is not None else found.weekdays,
         times_per_week if times_per_week is not None else found.times_per_week,
     )
-    found.save()
-    return found
+    with transaction.atomic():
+        found.save()
+        found.check_ins.filter(count__gt=found.goal).update(count=found.goal)
+    return habit(user, habit_id)
 
 
 def _set_frequency(
@@ -129,6 +144,31 @@ def _set_frequency(
     habit.frequency = frequency
     habit.weekdays = chosen
     habit.times_per_week = per_week
+
+
+def set_check_ins(user: User, habit_id: int, day: date, count: int) -> Habit:
+    """Set how many times the user did a Habit on a day; zero clears the day.
+
+    Raises:
+        NotFoundError: There's no such Habit.
+        HabitRuleError: The day is in the future or before the Habit started, or the count is
+            above the Goal.
+    """
+    found = habit(user, habit_id)
+    if day > today(user):
+        msg = "You can't check in for a day that hasn't come yet."
+        raise HabitRuleError(msg)
+    if day < found.start_date:
+        msg = "You can't check in for a day before the Habit started."
+        raise HabitRuleError(msg)
+    if count > found.goal:
+        msg = f"A day can't have more Check-ins than the Goal of {found.goal}."
+        raise HabitRuleError(msg)
+    if count == 0:
+        found.check_ins.filter(date=day).delete()
+    else:
+        CheckIn.objects.update_or_create(habit=found, date=day, defaults={"count": count})
+    return habit(user, habit_id)
 
 
 def move_habit(user: User, habit_id: int, after_id: int | None) -> None:

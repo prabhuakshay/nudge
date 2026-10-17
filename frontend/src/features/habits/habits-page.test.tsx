@@ -1,19 +1,19 @@
 import { screen, waitFor, within } from "@testing-library/react";
 
+import { fakeCalendarToday } from "@/test/calendar";
+import { json } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 import {
   added,
   changes,
   EVERY_DAY,
-  fakeHabitsToday,
-  makeHabit,
+  habit,
   mockApi,
   names,
   namesIn,
   pick,
   renderPage,
 } from "@/test/habits";
-import { json } from "@/test/drawer";
 
 /**
  * jsdom lays nothing out, so stack the rows in document order for dnd-kit to measure. The drag
@@ -28,13 +28,10 @@ function layOutInDocumentOrder() {
 }
 
 describe("The Habits page", () => {
-  fakeHabitsToday();
+  fakeCalendarToday();
 
   it("lists the user's Habits in their order", async () => {
-    mockApi([
-      makeHabit({ id: 1, name: "Read" }),
-      makeHabit({ id: 2, name: "Run", icon: "footprints" }),
-    ]);
+    mockApi([habit({ id: 1, name: "Read" }), habit({ id: 2, name: "Run", icon: "footprints" })]);
 
     renderPage();
 
@@ -54,14 +51,14 @@ describe("The Habits page", () => {
   });
 
   it("adds a Habit with a name, colour and icon at the bottom of the list", async () => {
-    const sent = mockApi([makeHabit({ id: 1, name: "Read" })]);
+    const sent = mockApi([habit({ id: 1, name: "Read" })]);
     const user = renderPage();
     await screen.findByText("Read");
 
     await user.click(screen.getByRole("button", { name: "Add habit" }));
     const dialog = await screen.findByRole("dialog", { name: "New habit" });
     expect(within(dialog).getByRole("radio", { name: "Every day" })).toBeChecked();
-    expect(within(dialog).getByLabelText("Start date")).toHaveValue("2026-10-18");
+    expect(within(dialog).getByLabelText("Start date")).toHaveValue("2026-10-15");
     await user.type(within(dialog).getByLabelText("Name"), "Drink water");
     await user.click(within(dialog).getByRole("radio", { name: "Blue" }));
     await user.click(within(dialog).getByRole("radio", { name: "Water" }));
@@ -75,8 +72,9 @@ describe("The Habits page", () => {
         name: "Drink water",
         color: "blue",
         icon: "droplet",
+        goal: 1,
         ...EVERY_DAY,
-        start_date: "2026-10-18",
+        start_date: "2026-10-15",
       },
     ]);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
@@ -102,8 +100,9 @@ describe("The Habits page", () => {
         name: "Read",
         color: "green",
         icon: "circle-check",
+        goal: 1,
         ...EVERY_DAY,
-        start_date: "2026-10-18",
+        start_date: "2026-10-15",
       },
     ]);
   });
@@ -125,12 +124,31 @@ describe("The Habits page", () => {
     expect(screen.getByRole("dialog", { name: "New habit" })).toBeInTheDocument();
   });
 
+  it("adds a Habit with a daily Goal", async () => {
+    const sent = mockApi([]);
+    const user = renderPage();
+    await screen.findByRole("heading", { name: "No habits yet" });
+
+    await user.click(screen.getByRole("button", { name: "Add habit" }));
+    const dialog = await screen.findByRole("dialog", { name: "New habit" });
+    const goal = within(dialog).getByRole("spinbutton", { name: "Goal per day" });
+    expect(goal).toHaveValue(1);
+    await user.type(within(dialog).getByLabelText("Name"), "Drink water");
+    await user.clear(goal);
+    await user.type(goal, "8");
+    await user.click(within(dialog).getByRole("button", { name: "Add habit" }));
+
+    await waitFor(() => {
+      expect(added(sent)).toEqual([expect.objectContaining({ name: "Drink water", goal: 8 })]);
+    });
+  });
+
   it("reorders Habits by dragging from the keyboard and keeps the new order", async () => {
     layOutInDocumentOrder();
     const sent = mockApi([
-      makeHabit({ id: 1, name: "Read" }),
-      makeHabit({ id: 2, name: "Run" }),
-      makeHabit({ id: 3, name: "Meditate" }),
+      habit({ id: 1, name: "Read" }),
+      habit({ id: 2, name: "Run" }),
+      habit({ id: 3, name: "Meditate" }),
     ]);
     const user = renderPage();
 
@@ -146,7 +164,7 @@ describe("The Habits page", () => {
   });
 
   it("archives a Habit into a collapsed Archived section at the bottom", async () => {
-    const sent = mockApi([makeHabit({ id: 1, name: "Read" }), makeHabit({ id: 2, name: "Run" })]);
+    const sent = mockApi([habit({ id: 1, name: "Read" }), habit({ id: 2, name: "Run" })]);
     const user = renderPage();
 
     await pick(user, "Read", "Archive");
@@ -165,7 +183,7 @@ describe("The Habits page", () => {
   });
 
   it("hides the Archived section while nothing is archived", async () => {
-    mockApi([makeHabit({ id: 1, name: "Read" })]);
+    mockApi([habit({ id: 1, name: "Read" })]);
 
     renderPage();
 
@@ -175,9 +193,9 @@ describe("The Habits page", () => {
 
   it("unarchives a Habit back into its place", async () => {
     const sent = mockApi([
-      makeHabit({ id: 1, name: "Read" }),
-      makeHabit({ id: 2, name: "Run", is_archived: true }),
-      makeHabit({ id: 3, name: "Meditate" }),
+      habit({ id: 1, name: "Read" }),
+      habit({ id: 2, name: "Run", is_archived: true }),
+      habit({ id: 3, name: "Meditate" }),
     ]);
     const user = renderPage();
 
@@ -194,7 +212,7 @@ describe("The Habits page", () => {
   });
 
   it("asks before deleting a Habit and keeps it when the user cancels", async () => {
-    const sent = mockApi([makeHabit({ id: 1, name: "Read" })]);
+    const sent = mockApi([habit({ id: 1, name: "Read" })]);
     const user = renderPage();
 
     await pick(user, "Read", "Delete");
@@ -210,7 +228,7 @@ describe("The Habits page", () => {
   });
 
   it("deletes a Habit for good once the user confirms", async () => {
-    const sent = mockApi([makeHabit({ id: 1, name: "Read" }), makeHabit({ id: 2, name: "Run" })]);
+    const sent = mockApi([habit({ id: 1, name: "Read" }), habit({ id: 2, name: "Run" })]);
     const user = renderPage();
 
     await pick(user, "Read", "Delete");
@@ -225,8 +243,8 @@ describe("The Habits page", () => {
 
   it("deletes an archived Habit from the Archived section", async () => {
     const sent = mockApi([
-      makeHabit({ id: 1, name: "Read" }),
-      makeHabit({ id: 2, name: "Run", is_archived: true }),
+      habit({ id: 1, name: "Read" }),
+      habit({ id: 2, name: "Run", is_archived: true }),
     ]);
     const user = renderPage();
 

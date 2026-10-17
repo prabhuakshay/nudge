@@ -1,18 +1,22 @@
 import { screen, waitFor, within } from "@testing-library/react";
 
-import {
-  added,
-  changes,
-  fakeHabitsToday,
-  makeHabit,
-  mockApi,
-  names,
-  pick,
-  renderPage,
-} from "@/test/habits";
+import { fakeCalendarToday } from "@/test/calendar";
+import { added, changes, habit, mockApi, names, pick, renderPage } from "@/test/habits";
 
 describe("The Habit dialog", () => {
-  fakeHabitsToday();
+  fakeCalendarToday();
+
+  it("starts a new Habit today on the user's clock", async () => {
+    mockApi([]);
+    // 09:00 UTC on 15 October is still 14 October in Pago Pago.
+    const user = renderPage("Pacific/Pago_Pago");
+    await screen.findByRole("heading", { name: "No habits yet" });
+
+    await user.click(screen.getByRole("button", { name: "Add habit" }));
+
+    const dialog = await screen.findByRole("dialog", { name: "New habit" });
+    expect(within(dialog).getByLabelText("Start date")).toHaveValue("2026-10-14");
+  });
 
   it("adds a Habit done on chosen weekdays, from a chosen start date", async () => {
     const sent = mockApi([]);
@@ -108,8 +112,15 @@ describe("The Habit dialog", () => {
 
   it("edits a Habit's settings from its row", async () => {
     const sent = mockApi([
-      makeHabit({ id: 1, name: "Read" }),
-      makeHabit({ id: 2, name: "Gym", frequency: "weekdays", weekdays: [1, 3] }),
+      habit({ id: 1, name: "Read" }),
+      habit({
+        id: 2,
+        name: "Gym",
+        frequency: "weekdays",
+        weekdays: [1, 3],
+        goal: 2,
+        start_date: "2026-09-01",
+      }),
     ]);
     const user = renderPage();
     await screen.findByText("Gym");
@@ -120,7 +131,11 @@ describe("The Habit dialog", () => {
     expect(within(dialog).getByRole("radio", { name: "On chosen days" })).toBeChecked();
     expect(within(dialog).getByRole("checkbox", { name: "Monday" })).toBeChecked();
     expect(within(dialog).getByRole("checkbox", { name: "Tuesday" })).not.toBeChecked();
-    expect(within(dialog).getByLabelText("Start date")).toHaveValue("2026-10-17");
+    expect(within(dialog).getByLabelText("Start date")).toHaveValue("2026-09-01");
+    const goal = within(dialog).getByRole("spinbutton", { name: "Goal per day" });
+    expect(goal).toHaveValue(2);
+    await user.clear(goal);
+    await user.type(goal, "3");
     await user.clear(within(dialog).getByLabelText("Name"));
     await user.type(within(dialog).getByLabelText("Name"), "Lift");
     await user.click(within(dialog).getByRole("radio", { name: "Times a week" }));
@@ -141,7 +156,8 @@ describe("The Habit dialog", () => {
           frequency: "times_per_week",
           weekdays: [],
           times_per_week: 2,
-          start_date: "2026-10-17",
+          goal: 3,
+          start_date: "2026-09-01",
         },
       },
     ]);

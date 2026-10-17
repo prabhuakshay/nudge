@@ -1,7 +1,8 @@
-"""Habit endpoints: list, add, edit, move, archive, unarchive and delete the user's Habits."""
+"""Habit endpoints: list, add, edit, move, archive, unarchive and delete Habits; set Check-ins."""
 
 from __future__ import annotations
 
+from datetime import date  # noqa: TC003 - Ninja reads the path parameter's type at runtime
 from http import HTTPStatus
 from typing import TYPE_CHECKING
 
@@ -10,7 +11,7 @@ from ninja import Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.habits import services
-from apps.habits.schemas import HabitIn, HabitMoveIn, HabitOut, HabitPatchIn
+from apps.habits.schemas import CheckInsIn, HabitIn, HabitMoveIn, HabitOut, HabitPatchIn
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -40,6 +41,7 @@ def create_habit(request: HttpRequest, habit: HabitIn) -> Status[HabitOut]:
         frequency=habit.frequency,
         weekdays=habit.weekdays,
         times_per_week=habit.times_per_week,
+        goal=habit.goal,
         start_date=habit.start_date,
     )
     return Status(HTTPStatus.CREATED, HabitOut.from_orm(created))
@@ -65,8 +67,29 @@ def update_habit(request: HttpRequest, habit_id: int, patch: HabitPatchIn) -> St
         frequency=patch.frequency,
         weekdays=patch.weekdays,
         times_per_week=patch.times_per_week,
+        goal=patch.goal,
         start_date=patch.start_date,
     )
+    return Status(HTTPStatus.OK, HabitOut.from_orm(updated))
+
+
+@router.put(
+    "/{int:habit_id}/check-ins/{day}",
+    response={
+        HTTPStatus.OK: HabitOut,
+        HTTPStatus.NOT_FOUND: ErrorOut,
+        HTTPStatus.UNPROCESSABLE_ENTITY: ErrorOut,
+    },
+    summary="Set a day's Check-ins",
+)
+def set_check_ins(
+    request: HttpRequest,
+    habit_id: int,
+    day: date,
+    check_ins: CheckInsIn,
+) -> Status[HabitOut]:
+    """Set how many times the user did a Habit on a day, up to its Goal; zero clears the day."""
+    updated = services.set_check_ins(signed_in_user(request), habit_id, day, check_ins.count)
     return Status(HTTPStatus.OK, HabitOut.from_orm(updated))
 
 

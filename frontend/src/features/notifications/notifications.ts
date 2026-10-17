@@ -1,4 +1,4 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useMutation, useQueryClient, type QueryKey } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
 import { failureReason } from "@/api/errors";
@@ -34,8 +34,14 @@ export const notificationsQuery = queryOptions({
   refetchInterval: 60 * 1000,
 });
 
-/** A change to the notification center that refreshes the list once the server has it. */
-function useNotificationsMutation<Variables>(change: (variables: Variables) => Promise<Response>) {
+/**
+ * A change to the notification center that refreshes the list once the server has it, along with
+ * any `alsoRefetch` queries the change reaches beyond it.
+ */
+function useNotificationsMutation<Variables>(
+  change: (variables: Variables) => Promise<Response>,
+  alsoRefetch: QueryKey[] = [],
+) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (variables: Variables) => {
@@ -44,7 +50,12 @@ function useNotificationsMutation<Variables>(change: (variables: Variables) => P
         throw new Error("Could not update your notifications.");
       }
     },
-    onSettled: () => queryClient.invalidateQueries(notificationsQuery),
+    onSettled: () =>
+      Promise.all(
+        [notificationsQuery.queryKey, ...alsoRefetch].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      ),
   });
 }
 
@@ -128,22 +139,16 @@ export function useSnoozeReminder() {
 
 /** Add one Check-in today to a Habit Reminder's Habit, up to its Goal; Habits show it once saved. */
 export function useCheckInFromReminder() {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: async (id: number) => {
-      const { data, error } = await api.POST("/api/v1/notifications/{notification_id}/check-in", {
-        params: { path: { notification_id: id } },
-      });
-      if (!data) throw new Error(failureReason(error, "Could not check in."));
-      return data;
-    },
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries(notificationsQuery),
-        // ["habits"] is the prefix of every Habits query, Today's strip included.
-        queryClient.invalidateQueries({ queryKey: habitsQuery.queryKey }),
-      ]),
-  });
+  return useNotificationsMutation(
+    async (id: number) =>
+      (
+        await api.POST("/api/v1/notifications/{notification_id}/check-in", {
+          params: { path: { notification_id: id } },
+        })
+      ).response,
+    // ["habits"] is the prefix of every Habits query, Today's strip included.
+    [habitsQuery.queryKey],
+  );
 }
 
 /** Fire a Habit Reminder notification once more later; the Habit's own Reminder stays as it is. */

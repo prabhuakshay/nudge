@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Flame, Plus } from "lucide-react";
+import { Flame, Pencil, Plus } from "lucide-react";
 import { useState } from "react";
 
 import { EmptyState } from "@/components/layout/empty-state";
@@ -7,12 +7,15 @@ import { Button } from "@/components/ui/button";
 
 import { HabitDialog } from "./habit-dialog";
 import { HabitIcon } from "./habit-icon";
-import { habitsQuery } from "./habits";
+import { habitsQuery, type Habit } from "./habits";
 
-/** The Habits page: the user's Habits in their order, and a button to add one. */
+/** The Habits page: the user's Habits in their order, with buttons to add and edit them. */
 export function HabitsPage() {
   const { data: habits } = useQuery(habitsQuery);
   const [adding, setAdding] = useState(false);
+  // Kept after the Edit dialog closes, so it shows the same Habit while it animates out.
+  const [editing, setEditing] = useState<Habit>();
+  const [editOpen, setEditOpen] = useState(false);
   return (
     <div className="mx-auto w-full max-w-3xl">
       <header className="mb-4 flex items-center gap-2.5 sm:gap-3">
@@ -51,12 +54,25 @@ export function HabitsPage() {
             >
               <HabitIcon habit={habit} />
               <span className="min-w-0 flex-1 truncate text-sm font-medium">{habit.name}</span>
+              <Button
+                variant="ghost"
+                size="icon"
+                aria-label={`Edit ${habit.name}`}
+                className="text-muted-foreground"
+                onClick={() => {
+                  setEditing(habit);
+                  setEditOpen(true);
+                }}
+              >
+                <Pencil aria-hidden />
+              </Button>
             </li>
           ))}
         </ul>
       )}
 
       <HabitDialog open={adding} onOpenChange={setAdding} />
+      {editing && <HabitDialog open={editOpen} onOpenChange={setEditOpen} habit={editing} />}
     </div>
   );
 }

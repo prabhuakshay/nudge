@@ -3631,9 +3631,19 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
           }
         },
-        "description": "Add a daily Habit last in the user's order, starting today in the user's time zone.",
+        "description": "Add a Habit last in the user's order, starting today in the user's time zone by default.",
         "tags": [
           "habits"
         ],
@@ -3642,6 +3652,74 @@
             "application/json": {
               "schema": {
                 "$ref": "#/components/schemas/HabitIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/habits/{habit_id}": {
+      "patch": {
+        "operationId": "apps_habits_api_update_habit",
+        "summary": "Edit a Habit",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "habit_id",
+            "schema": {
+              "title": "Habit Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change any of a Habit's settings; the ones left out stay as they are.",
+        "tags": [
+          "habits"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HabitPatchIn"
               }
             }
           },
@@ -8346,7 +8424,9 @@
       "Frequency": {
         "description": "When a Habit is meant to be done.",
         "enum": [
-          "daily"
+          "daily",
+          "weekdays",
+          "times_per_week"
         ],
         "title": "Frequency",
         "type": "string"
@@ -8402,6 +8482,26 @@
           "frequency": {
             "$ref": "#/components/schemas/Frequency"
           },
+          "weekdays": {
+            "description": "The chosen weekdays, 1 is Monday; else empty.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Weekdays",
+            "type": "array"
+          },
+          "times_per_week": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many times a week; else null.",
+            "title": "Times Per Week"
+          },
           "start_date": {
             "description": "The first day the Habit counts, in the user's zone.",
             "format": "date",
@@ -8415,13 +8515,15 @@
           "icon",
           "color",
           "frequency",
+          "weekdays",
+          "times_per_week",
           "start_date"
         ],
         "title": "HabitOut",
         "type": "object"
       },
       "HabitIn": {
-        "description": "A new Habit. It's done every day, starting today.",
+        "description": "A new Habit. Unless told otherwise it's done every day, starting today.",
         "properties": {
           "name": {
             "maxLength": 100,
@@ -8434,6 +8536,52 @@
           },
           "color": {
             "$ref": "#/components/schemas/PaletteColor"
+          },
+          "frequency": {
+            "allOf": [
+              {
+                "$ref": "#/components/schemas/Frequency"
+              }
+            ],
+            "default": "daily"
+          },
+          "weekdays": {
+            "description": "The chosen weekdays, needed when the Frequency is chosen weekdays.",
+            "items": {
+              "description": "1 is Monday, 7 is Sunday.",
+              "maximum": 7,
+              "minimum": 1,
+              "type": "integer"
+            },
+            "title": "Weekdays",
+            "type": "array"
+          },
+          "times_per_week": {
+            "anyOf": [
+              {
+                "maximum": 6,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many times a week, needed when the Frequency is times a week.",
+            "title": "Times Per Week"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Defaults to today.",
+            "title": "Start Date"
           }
         },
         "required": [
@@ -8442,6 +8590,100 @@
           "color"
         ],
         "title": "HabitIn",
+        "type": "object"
+      },
+      "HabitPatchIn": {
+        "description": "The settings of a Habit to change; settings left out or null stay as they are.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "minLength": 1,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Name"
+          },
+          "icon": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/HabitIcon"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "color": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PaletteColor"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "frequency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/Frequency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "weekdays": {
+            "anyOf": [
+              {
+                "items": {
+                  "description": "1 is Monday, 7 is Sunday.",
+                  "maximum": 7,
+                  "minimum": 1,
+                  "type": "integer"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The chosen weekdays, kept only when the Frequency is chosen weekdays.",
+            "title": "Weekdays"
+          },
+          "times_per_week": {
+            "anyOf": [
+              {
+                "maximum": 6,
+                "minimum": 1,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many times a week, kept only when the Frequency is times a week.",
+            "title": "Times Per Week"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          }
+        },
+        "title": "HabitPatchIn",
         "type": "object"
       }
     },

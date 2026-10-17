@@ -1239,13 +1239,33 @@ export interface paths {
     put?: never;
     /**
      * Add a Habit
-     * @description Add a daily Habit last in the user's order, starting today in the user's time zone.
+     * @description Add a Habit last in the user's order, starting today in the user's time zone by default.
      */
     post: operations["apps_habits_api_create_habit"];
     delete?: never;
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/v1/habits/{habit_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Edit a Habit
+     * @description Change any of a Habit's settings; the ones left out stay as they are.
+     */
+    patch: operations["apps_habits_api_update_habit"];
     trace?: never;
   };
 }
@@ -3637,7 +3657,7 @@ export interface components {
      * @description When a Habit is meant to be done.
      * @enum {string}
      */
-    Frequency: "daily";
+    Frequency: "daily" | "weekdays" | "times_per_week";
     /**
      * HabitIcon
      * @description The Lucide icons a Habit can show. Not `Habit.Icon`: the API schema names enums by class.
@@ -3681,6 +3701,16 @@ export interface components {
       color: components["schemas"]["PaletteColor"];
       frequency: components["schemas"]["Frequency"];
       /**
+       * Weekdays
+       * @description The chosen weekdays, 1 is Monday; else empty.
+       */
+      weekdays: number[];
+      /**
+       * Times Per Week
+       * @description How many times a week; else null.
+       */
+      times_per_week: number | null;
+      /**
        * Start Date
        * Format: date
        * @description The first day the Habit counts, in the user's zone.
@@ -3689,13 +3719,53 @@ export interface components {
     };
     /**
      * HabitIn
-     * @description A new Habit. It's done every day, starting today.
+     * @description A new Habit. Unless told otherwise it's done every day, starting today.
      */
     HabitIn: {
       /** Name */
       name: string;
       icon: components["schemas"]["HabitIcon"];
       color: components["schemas"]["PaletteColor"];
+      /** @default daily */
+      frequency: components["schemas"]["Frequency"];
+      /**
+       * Weekdays
+       * @description The chosen weekdays, needed when the Frequency is chosen weekdays.
+       */
+      weekdays?: number[];
+      /**
+       * Times Per Week
+       * @description How many times a week, needed when the Frequency is times a week.
+       */
+      times_per_week?: number | null;
+      /**
+       * Start Date
+       * @description Defaults to today.
+       */
+      start_date?: string | null;
+    };
+    /**
+     * HabitPatchIn
+     * @description The settings of a Habit to change; settings left out or null stay as they are.
+     */
+    HabitPatchIn: {
+      /** Name */
+      name?: string | null;
+      icon?: components["schemas"]["HabitIcon"] | null;
+      color?: components["schemas"]["PaletteColor"] | null;
+      frequency?: components["schemas"]["Frequency"] | null;
+      /**
+       * Weekdays
+       * @description The chosen weekdays, kept only when the Frequency is chosen weekdays.
+       */
+      weekdays?: number[] | null;
+      /**
+       * Times Per Week
+       * @description How many times a week, kept only when the Frequency is times a week.
+       */
+      times_per_week?: number | null;
+      /** Start Date */
+      start_date?: string | null;
     };
   };
   responses: never;
@@ -6122,6 +6192,59 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_update_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HabitPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
         };
       };
     };

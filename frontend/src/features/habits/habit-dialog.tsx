@@ -6,27 +6,43 @@ import { ColorField } from "@/features/projects/color-field";
 import { DialogFooter, SidebarDialog } from "@/features/projects/project-dialog";
 import { HUE } from "@/features/projects/project-style";
 import type { PaletteColor } from "@/features/projects/projects";
+import { useToday } from "@/features/time-zone/time-zone";
 import { cn } from "@/lib/utils";
 
+import { FrequencyField, type FrequencyChoice } from "./frequency-field";
 import { HABIT_ICONS } from "./habit-style";
-import { useCreateHabit, type HabitIconKey } from "./habits";
+import {
+  useCreateHabit,
+  useUpdateHabit,
+  type Habit,
+  type HabitIconKey,
+  type HabitSettings,
+} from "./habits";
 
 // `Object.keys` types keys as strings; these are exactly HABIT_ICONS' keys.
 const ICON_KEYS = Object.keys(HABIT_ICONS) as HabitIconKey[];
 
-/** Add a Habit: its name, colour and icon. It's done every day, starting today. */
-export function HabitDialog({
-  open,
-  onOpenChange,
-}: {
+const WORKING_WEEK = [1, 2, 3, 4, 5];
+
+type HabitDialogProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}) {
+  /** The Habit to edit; a new Habit is added when left out. */
+  habit?: Habit;
+};
+
+/** Add a Habit or edit one: its name, Frequency, start date, colour and icon. */
+export function HabitDialog({ open, onOpenChange, habit }: HabitDialogProps) {
   return (
-    <SidebarDialog open={open} onOpenChange={onOpenChange} title="New habit">
-      {/* Keyed by `open` so each opening starts from an empty form. */}
+    <SidebarDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={habit ? "Edit habit" : "New habit"}
+    >
+      {/* Keyed by `open` so each opening starts from the Habit's saved settings. */}
       <HabitForm
         key={String(open)}
+        habit={habit}
         onDone={() => {
           onOpenChange(false);
         }}
@@ -35,17 +51,69 @@ export function HabitDialog({
   );
 }
 
-function HabitForm({ onDone }: { onDone: () => void }) {
+type OwnFields = Pick<HabitSettings, "name" | "color" | "icon" | "start_date">;
+
+/** The form's starting fields: the Habit's own, or a new Habit's starting today. */
+function initialFields(habit: Habit | undefined, today: string): OwnFields {
+  if (habit) {
+    return { name: habit.name, color: habit.color, icon: habit.icon, start_date: habit.start_date };
+  }
+  return { name: "", color: "green", icon: "circle-check", start_date: today };
+}
+
+/** The form's starting Frequency, with working days and three a week ready to pick. */
+function initialFrequency(habit: Habit | undefined): FrequencyChoice {
+  return {
+    frequency: habit?.frequency ?? "daily",
+    weekdays: habit?.weekdays.length ? habit.weekdays : WORKING_WEEK,
+    timesPerWeek: habit?.times_per_week ?? 3,
+  };
+}
+
+/** The Habit's settings as the server takes them, keeping only what its Frequency uses. */
+function settingsOf(
+  fields: OwnFields,
+  { frequency, weekdays, timesPerWeek }: FrequencyChoice,
+): HabitSettings {
+  return {
+    ...fields,
+    frequency,
+    weekdays: frequency === "weekdays" ? weekdays : [],
+    times_per_week: frequency === "times_per_week" ? timesPerWeek : null,
+  };
+}
+
+/** Why the settings can't be saved, or null when they can. */
+function problemWith(settings: HabitSettings): string | null {
+  if (!settings.name.trim()) return "Give the habit a name.";
+  if (settings.frequency === "weekdays" && settings.weekdays.length === 0) {
+    return "Choose at least one day.";
+  }
+  return null;
+}
+
+function HabitForm({ habit, onDone }: { habit?: Habit; onDone: () => void }) {
   const nameId = useId();
-  const frequencyId = useId();
-  const [name, setName] = useState("");
-  const [color, setColor] = useState<PaletteColor>("green");
-  const [icon, setIcon] = useState<HabitIconKey>("circle-check");
+  const startId = useId();
+  const today = useToday();
+  const [fields, setFields] = useState(() => initialFields(habit, today));
+  const [frequency, setFrequency] = useState(() => initialFrequency(habit));
+  const { name, color, icon } = fields;
+  const [problem, setProblem] = useState<string | null>(null);
   const create = useCreateHabit();
+  const update = useUpdateHabit();
 
   function handleSubmit(event: SubmitEvent<HTMLFormElement>) {
     event.preventDefault();
-    create.mutate({ name, color, icon }, { onSuccess: onDone });
+    const settings = settingsOf(fields, frequency);
+    const found = problemWith(settings);
+    setProblem(found);
+    if (found) return;
+    if (habit) {
+      update.mutate({ id: habit.id, ...settings }, { onSuccess: onDone });
+    } else {
+      create.mutate(settings, { onSuccess: onDone });
+    }
   }
 
   return (
@@ -61,19 +129,32 @@ function HabitForm({ onDone }: { onDone: () => void }) {
             placeholder="Drink water"
             value={name}
             onChange={(event) => {
-              setName(event.target.value);
+              setFields({ ...fields, name: event.target.value });
             }}
           />
         </div>
 
-        <div role="group" aria-labelledby={frequencyId} className="flex flex-col gap-1.5">
-          <span id={frequencyId} className="text-sm font-semibold">
-            Frequency
-          </span>
-          <span className="text-sm text-muted-foreground">Every day</span>
+        <FrequencyField value={frequency} onChange={setFrequency} />
+
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={startId}>Start date</Label>
+          <Input
+            id={startId}
+            type="date"
+            required
+            value={fields.start_date}
+            onChange={(event) => {
+              setFields({ ...fields, start_date: event.target.value });
+            }}
+          />
         </div>
 
-        <ColorField value={color} onChange={setColor} />
+        <ColorField
+          value={color}
+          onChange={(picked: PaletteColor) => {
+            setFields({ ...fields, color: picked });
+          }}
+        />
 
         <fieldset>
           <legend className="mb-2 text-sm font-semibold">Icon</legend>
@@ -88,7 +169,7 @@ function HabitForm({ onDone }: { onDone: () => void }) {
                     value={key}
                     checked={icon === key}
                     onChange={() => {
-                      setIcon(key);
+                      setFields({ ...fields, icon: key });
                     }}
                     aria-label={label}
                     className="peer sr-only"
@@ -106,9 +187,18 @@ function HabitForm({ onDone }: { onDone: () => void }) {
             })}
           </div>
         </fieldset>
+
+        {problem && (
+          <p role="alert" className="text-sm text-danger">
+            {problem}
+          </p>
+        )}
       </div>
 
-      <DialogFooter pending={create.isPending} label="Add habit" />
+      <DialogFooter
+        pending={create.isPending || update.isPending}
+        label={habit ? "Save" : "Add habit"}
+      />
     </form>
   );
 }

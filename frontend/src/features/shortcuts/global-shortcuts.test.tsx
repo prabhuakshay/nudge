@@ -67,6 +67,7 @@ function renderApp(onAddTask: (draft: string) => void = vi.fn()) {
       page("/all", "All"),
       page("/search", "Search"),
       page("/trash", "Trash"),
+      page("/habits", "Habits"),
     ]),
     history: createMemoryHistory({ initialEntries: ["/"] }),
   });
@@ -88,6 +89,7 @@ describe("GlobalShortcuts", () => {
     ["ga", "All"],
     ["gs", "Search"],
     ["gx", "Trash"],
+    ["gh", "Habits"],
   ])("goes to a view with a G chord (%s)", async (keys, title) => {
     const user = renderApp();
     await screen.findByRole("heading", { name: "Today" });
@@ -147,6 +149,17 @@ describe("GlobalShortcuts", () => {
     await user.click(screen.getByRole("option", { name: /Go to Matrix/ }));
 
     expect(await screen.findByRole("heading", { name: "Matrix" })).toBeInTheDocument();
+  });
+
+  it("goes to Habits from the command bar", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(() => Promise.reject(new Error("offline")));
+    const user = renderApp();
+    await screen.findByRole("heading", { name: "Today" });
+
+    await user.keyboard("{Control>}k{/Control}");
+    await user.click(screen.getByRole("option", { name: /Go to Habits/ }));
+
+    expect(await screen.findByRole("heading", { name: "Habits" })).toBeInTheDocument();
   });
 
   it("undoes the latest change still offering Undo with Mod+Z", async () => {

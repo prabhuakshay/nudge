@@ -20,6 +20,7 @@ from ninja.security import django_auth
 from apps.accounts.api import router as accounts_router
 from apps.core.api import router as core_router
 from apps.core.errors import DomainRuleError, NotFoundError
+from apps.habits.api import router as habits_router
 from apps.notifications.api import router as notifications_router
 from apps.tasks.api.activity import router as activity_router
 from apps.tasks.api.attachments import router as attachments_router
@@ -86,3 +87,4 @@ api.add_router("/", attachments_router, tags=["attachments"])
 api.add_router("/", comments_router, tags=["comments"])
 api.add_router("/calendar", calendar_router, tags=["calendar"])
 api.add_router("/", trash_router, tags=["trash"])
+api.add_router("/habits", habits_router, tags=["habits"])

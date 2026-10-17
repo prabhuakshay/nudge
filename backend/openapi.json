@@ -3585,6 +3585,74 @@
           }
         ]
       }
+    },
+    "/api/v1/habits": {
+      "get": {
+        "operationId": "apps_habits_api_list_habits",
+        "summary": "List Habits",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/HabitOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the user's Habits in their order.",
+        "tags": [
+          "habits"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_habits_api_create_habit",
+        "summary": "Add a Habit",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HabitOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Add a daily Habit last in the user's order, starting today in the user's time zone.",
+        "tags": [
+          "habits"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HabitIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -8273,6 +8341,107 @@
           }
         },
         "title": "TrashDeleteIn",
+        "type": "object"
+      },
+      "Frequency": {
+        "description": "When a Habit is meant to be done.",
+        "enum": [
+          "daily"
+        ],
+        "title": "Frequency",
+        "type": "string"
+      },
+      "HabitIcon": {
+        "description": "The Lucide icons a Habit can show. Not `Habit.Icon`: the API schema names enums by class.",
+        "enum": [
+          "circle-check",
+          "droplet",
+          "book-open",
+          "dumbbell",
+          "footprints",
+          "bike",
+          "apple",
+          "salad",
+          "pill",
+          "bed",
+          "moon",
+          "sun",
+          "brain",
+          "heart-pulse",
+          "music",
+          "pencil",
+          "languages",
+          "code",
+          "sprout",
+          "coffee",
+          "cigarette-off",
+          "wallet",
+          "smile",
+          "star"
+        ],
+        "title": "HabitIcon",
+        "type": "string"
+      },
+      "HabitOut": {
+        "description": "A Habit's own fields.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/HabitIcon"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          },
+          "frequency": {
+            "$ref": "#/components/schemas/Frequency"
+          },
+          "start_date": {
+            "description": "The first day the Habit counts, in the user's zone.",
+            "format": "date",
+            "title": "Start Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "icon",
+          "color",
+          "frequency",
+          "start_date"
+        ],
+        "title": "HabitOut",
+        "type": "object"
+      },
+      "HabitIn": {
+        "description": "A new Habit. It's done every day, starting today.",
+        "properties": {
+          "name": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Name",
+            "type": "string"
+          },
+          "icon": {
+            "$ref": "#/components/schemas/HabitIcon"
+          },
+          "color": {
+            "$ref": "#/components/schemas/PaletteColor"
+          }
+        },
+        "required": [
+          "name",
+          "icon",
+          "color"
+        ],
+        "title": "HabitIn",
         "type": "object"
       }
     },

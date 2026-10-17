@@ -14,6 +14,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as AppIndexRouteImport } from './routes/_app/index'
 import { Route as AppAllRouteImport } from './routes/_app/all'
 import { Route as AppCalendarRouteImport } from './routes/_app/calendar'
+import { Route as AppHabitsRouteImport } from './routes/_app/habits'
 import { Route as AppInboxRouteImport } from './routes/_app/inbox'
 import { Route as AppMatrixRouteImport } from './routes/_app/matrix'
 import { Route as AppSearchRouteImport } from './routes/_app/search'
@@ -45,6 +46,11 @@ const AppAllRoute = AppAllRouteImport.update({
 const AppCalendarRoute = AppCalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppHabitsRoute = AppHabitsRouteImport.update({
+  id: '/habits',
+  path: '/habits',
   getParentRoute: () => AppRoute,
 } as any)
 const AppInboxRoute = AppInboxRouteImport.update({
@@ -93,6 +99,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/all': typeof AppAllRoute
   '/calendar': typeof AppCalendarRoute
+  '/habits': typeof AppHabitsRoute
   '/inbox': typeof AppInboxRoute
   '/matrix': typeof AppMatrixRoute
   '/search': typeof AppSearchRoute
@@ -106,6 +113,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/all': typeof AppAllRoute
   '/calendar': typeof AppCalendarRoute
+  '/habits': typeof AppHabitsRoute
   '/inbox': typeof AppInboxRoute
   '/matrix': typeof AppMatrixRoute
   '/search': typeof AppSearchRoute
@@ -122,6 +130,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/_app/all': typeof AppAllRoute
   '/_app/calendar': typeof AppCalendarRoute
+  '/_app/habits': typeof AppHabitsRoute
   '/_app/inbox': typeof AppInboxRoute
   '/_app/matrix': typeof AppMatrixRoute
   '/_app/search': typeof AppSearchRoute
@@ -139,6 +148,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/all'
     | '/calendar'
+    | '/habits'
     | '/inbox'
     | '/matrix'
     | '/search'
@@ -152,6 +162,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/all'
     | '/calendar'
+    | '/habits'
     | '/inbox'
     | '/matrix'
     | '/search'
@@ -167,6 +178,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/_app/all'
     | '/_app/calendar'
+    | '/_app/habits'
     | '/_app/inbox'
     | '/_app/matrix'
     | '/_app/search'
@@ -218,6 +230,13 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof AppCalendarRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/habits': {
+      id: '/_app/habits'
+      path: '/habits'
+      fullPath: '/habits'
+      preLoaderRoute: typeof AppHabitsRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/inbox': {
@@ -282,6 +301,7 @@ declare module '@tanstack/react-router' {
 interface AppRouteChildren {
   AppAllRoute: typeof AppAllRoute
   AppCalendarRoute: typeof AppCalendarRoute
+  AppHabitsRoute: typeof AppHabitsRoute
   AppInboxRoute: typeof AppInboxRoute
   AppMatrixRoute: typeof AppMatrixRoute
   AppSearchRoute: typeof AppSearchRoute
@@ -296,6 +316,7 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppAllRoute: AppAllRoute,
   AppCalendarRoute: AppCalendarRoute,
+  AppHabitsRoute: AppHabitsRoute,
   AppInboxRoute: AppInboxRoute,
   AppMatrixRoute: AppMatrixRoute,
   AppSearchRoute: AppSearchRoute,

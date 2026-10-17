@@ -1224,6 +1224,30 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/habits": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Habits
+     * @description Return the user's Habits in their order.
+     */
+    get: operations["apps_habits_api_list_habits"];
+    put?: never;
+    /**
+     * Add a Habit
+     * @description Add a daily Habit last in the user's order, starting today in the user's time zone.
+     */
+    post: operations["apps_habits_api_create_habit"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -3608,6 +3632,71 @@ export interface components {
        */
       project_ids: number[];
     };
+    /**
+     * Frequency
+     * @description When a Habit is meant to be done.
+     * @enum {string}
+     */
+    Frequency: "daily";
+    /**
+     * HabitIcon
+     * @description The Lucide icons a Habit can show. Not `Habit.Icon`: the API schema names enums by class.
+     * @enum {string}
+     */
+    HabitIcon:
+      | "circle-check"
+      | "droplet"
+      | "book-open"
+      | "dumbbell"
+      | "footprints"
+      | "bike"
+      | "apple"
+      | "salad"
+      | "pill"
+      | "bed"
+      | "moon"
+      | "sun"
+      | "brain"
+      | "heart-pulse"
+      | "music"
+      | "pencil"
+      | "languages"
+      | "code"
+      | "sprout"
+      | "coffee"
+      | "cigarette-off"
+      | "wallet"
+      | "smile"
+      | "star";
+    /**
+     * HabitOut
+     * @description A Habit's own fields.
+     */
+    HabitOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      icon: components["schemas"]["HabitIcon"];
+      color: components["schemas"]["PaletteColor"];
+      frequency: components["schemas"]["Frequency"];
+      /**
+       * Start Date
+       * Format: date
+       * @description The first day the Habit counts, in the user's zone.
+       */
+      start_date: string;
+    };
+    /**
+     * HabitIn
+     * @description A new Habit. It's done every day, starting today.
+     */
+    HabitIn: {
+      /** Name */
+      name: string;
+      icon: components["schemas"]["HabitIcon"];
+      color: components["schemas"]["PaletteColor"];
+    };
   };
   responses: never;
   parameters: never;
@@ -5989,6 +6078,50 @@ export interface operations {
         };
         content: {
           "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_list_habits: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"][];
+        };
+      };
+    };
+  };
+  apps_habits_api_create_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HabitIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
         };
       };
     };

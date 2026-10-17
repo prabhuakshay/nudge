@@ -33,6 +33,7 @@ describe("the shortcut registry", () => {
     expect(SHORTCUTS.goToAll.keys).toEqual(["g a"]);
     expect(SHORTCUTS.goToSearch.keys).toEqual(["g s"]);
     expect(SHORTCUTS.goToTrash.keys).toEqual(["g x"]);
+    expect(SHORTCUTS.goToHabits.keys).toEqual(["g h"]);
     expect(SHORTCUTS.goToSettings.keys).toEqual(["g ,"]);
   });
 

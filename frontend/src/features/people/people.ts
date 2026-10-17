@@ -1,9 +1,11 @@
-import { queryOptions, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { queryOptions, useQuery } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
-import { OPEN_KEY, sidebarQuery, TASKS_KEY, type Task } from "@/features/tasks/tasks";
+import { taskKeys } from "@/features/tasks/task-cache";
+import { sidebarQuery, type Task } from "@/features/tasks/tasks";
+import { useCacheMutation } from "@/lib/cache-mutation";
 
 import { fromEditable } from "./mentions";
 
@@ -31,7 +33,7 @@ export function useWithMentions() {
  */
 export function personTasksQuery(personId: number) {
   return queryOptions({
-    queryKey: [...OPEN_KEY, "person", personId],
+    queryKey: taskKeys.open({ person: personId }),
     queryFn: async (): Promise<Task[]> => {
       const { data } = await api.GET("/api/v1/tasks", {
         params: { query: { person: personId } },
@@ -47,23 +49,14 @@ export function personTasksQuery(personId: number) {
  * one refreshes the Task lists as well as the People.
  */
 function usePeopleMutation<V, R>(change: (variables: V) => Promise<R>) {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: change,
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries(peopleQuery),
-        queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
-      ]),
-  });
+  return useCacheMutation({ mutationFn: change, refetch: [peopleQuery.queryKey, taskKeys.all] });
 }
 
 /** Add a Person; a new one without a colour gets a random one from the server. */
 export function useCreatePerson() {
   return usePeopleMutation(async (fields: PersonFields) => {
     const { data, error } = await api.POST("/api/v1/people", { body: fields });
-    if (error) throw new Error(error.detail);
+    if (error) throw new Error(failureReason(error, "Could not add the person."));
     return data;
   });
 }
@@ -75,7 +68,7 @@ export function useUpdatePerson() {
       params: { path: { person_id: id } },
       body: fields,
     });
-    if (error) throw new Error(error.detail);
+    if (error) throw new Error(failureReason(error, "Could not save the person."));
     return data;
   });
 }
@@ -97,7 +90,7 @@ export function useMergePerson() {
       params: { path: { person_id: id } },
       body: { into_id: intoId },
     });
-    if (error) throw new Error(error.detail);
+    if (error) throw new Error(failureReason(error, "Could not merge the people."));
     return data;
   });
 }

@@ -6,7 +6,7 @@ import { useCallback } from "react";
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
 import { validateTaskSearch, type TaskSearch } from "@/features/tasks/open-task";
-import { CALENDAR_KEY } from "@/features/tasks/tasks";
+import { taskKeys } from "@/features/tasks/task-cache";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 /** The Tasks on a range of days, as the API returns them. */
@@ -48,7 +48,7 @@ export function validateCalendarSearch(search: Record<string, unknown>): Calenda
 /** The dated Tasks, open and Closed, whose dates overlap `start` to `end`, both included. */
 export function calendarQuery({ start, end }: { start: string; end: string }) {
   return queryOptions({
-    queryKey: [...CALENDAR_KEY, start, end],
+    queryKey: taskKeys.calendar({ start, end }),
     queryFn: async (): Promise<CalendarRange> => {
       const { data } = await api.GET("/api/v1/tasks/calendar", {
         params: { query: { start, end } },

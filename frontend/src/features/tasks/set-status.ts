@@ -1,30 +1,23 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-
 import { api } from "@/api/client";
+import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
 import { toastWithUndo } from "@/lib/undo-toast";
 
 import { advances, statusToast } from "./repeat";
-import {
-  patchTask,
-  refreshTasks,
-  showChange,
-  type Task,
-  type TaskPatch,
-  type TaskStatus,
-} from "./tasks";
+import { useTaskMutation, type TaskChange } from "./task-cache";
+import { patchTask, type Task, type TaskStatus } from "./tasks";
 
 /** A Task a Status change touched, with the Status and Blocked reason it had before. */
 export type AffectedTask = components["schemas"]["AffectedTaskOut"];
 
 /** The change that gives a Task back the Status and Blocked reason it had. */
-function priorStatus(prior: AffectedTask): TaskPatch {
-  return {
+function priorStatus(prior: AffectedTask): TaskChange {
+  const patch = {
     id: prior.id,
     status: prior.prior_status,
     ...(prior.prior_status === "blocked" && { blocked_reason: prior.prior_blocked_reason }),
   };
+  return { kind: "patch", patch };
 }
 
 /**
@@ -32,8 +25,7 @@ function priorStatus(prior: AffectedTask): TaskPatch {
  * and in the order given, for Undo. The lists show it before the server answers.
  */
 export function useRestoreStatuses() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useTaskMutation({
     mutationFn: async (affected: AffectedTask[]) => {
       const statuses = affected.map((prior) => ({
         id: prior.id,
@@ -44,13 +36,10 @@ export function useRestoreStatuses() {
         body: { ids: statuses.map((each) => each.id), action: { kind: "statuses", statuses } },
       });
       if (error) {
-        throw new Error("detail" in error ? error.detail : "Could not undo the change.");
+        throw new Error(failureReason(error, "Could not undo the change."));
       }
     },
-    onMutate: (affected) =>
-      Promise.all(affected.map((prior) => showChange(queryClient, priorStatus(prior)))),
-    onError: (error) => toast.error(error.message),
-    onSettled: () => refreshTasks(queryClient),
+    changes: (affected) => affected.map(priorStatus),
   });
 }
 
@@ -72,18 +61,15 @@ export function offerStatusUndo(
 
 /** Set a Task's Status, then offer Undo in a toast. */
 export function useSetTaskStatus() {
-  const queryClient = useQueryClient();
   const { mutate: restore } = useRestoreStatuses();
-  return useMutation({
+  return useTaskMutation({
     mutationFn: ({ task, status }: { task: Task; status: TaskStatus }) =>
       patchTask({ id: task.id, status }),
     // A repeating Task moves on rather than closing, so it stays where it is until the server says.
-    onMutate: ({ task, status }) =>
-      advances(task, status) ? undefined : showChange(queryClient, { id: task.id, status }),
+    changes: ({ task, status }) =>
+      advances(task, status) ? [] : [{ kind: "patch", patch: { id: task.id, status } }],
     onSuccess: ({ task, affected }, { status }) => {
       offerStatusUndo(restore, task, status, affected);
     },
-    onError: (error) => toast.error(error.message),
-    onSettled: () => refreshTasks(queryClient),
   });
 }

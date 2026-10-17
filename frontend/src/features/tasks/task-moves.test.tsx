@@ -1,10 +1,9 @@
 import { screen } from "@testing-library/react";
 
 import { GARDEN, INBOX, json, renderTaskList } from "@/test/drawer";
-import { makeTask } from "@/test/tasks";
+import { makeTask, movedAsAsked, type MoveBody } from "@/test/tasks";
 import { requestOf } from "@/test/fetch";
 
-import { moveRow, type Placement } from "./task-drag";
 import type { Task } from "./tasks";
 
 /** Trip > Flights, then Groceries and Laundry on their own. */
@@ -25,12 +24,7 @@ function mockApi(rows: Task[] = seed(), refusal?: string) {
     if (url.pathname.endsWith("/move")) {
       if (refusal) return json({ detail: refusal }, 422);
       const id = Number(url.pathname.split("/").at(-2));
-      const body = (await request.clone().json()) as {
-        parent_id: number | null;
-        after_id: number | null;
-      };
-      const placement: Placement = { parentId: body.parent_id, afterId: body.after_id };
-      rows = moveRow(rows, id, placement);
+      rows = movedAsAsked(rows, id, (await request.clone().json()) as MoveBody);
       return json({ task: makeTask({ id }), affected: [] });
     }
     if (url.pathname === "/api/v1/sidebar") return json({ inbox: INBOX, items: [] });

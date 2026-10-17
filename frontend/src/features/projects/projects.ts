@@ -1,15 +1,10 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-
 import { api } from "@/api/client";
+import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
-import {
-  refreshTasks,
-  sidebarQuery,
-  type Sidebar,
-  type SidebarProject,
-} from "@/features/tasks/tasks";
+import { TASK_REFETCH, taskKeys } from "@/features/tasks/task-cache";
+import { sidebarQuery, type Sidebar, type SidebarProject } from "@/features/tasks/tasks";
 import { trashQuery, useRestoreProject } from "@/features/trash/trash";
+import { editing, useCacheMutation } from "@/lib/cache-mutation";
 import { toastWithUndo } from "@/lib/undo-toast";
 
 import { applyPlacement, type Placement, type SiblingRef } from "./sidebar-order";
@@ -55,19 +50,10 @@ function useSidebarMutation<V, R>(
   change: (variables: V) => Promise<R>,
   optimistic?: (sidebar: Sidebar, variables: V) => Sidebar,
 ) {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useCacheMutation({
     mutationFn: change,
-    onMutate: async (variables) => {
-      if (!optimistic) return;
-      await queryClient.cancelQueries(sidebarQuery);
-      queryClient.setQueryData(
-        sidebarQuery.queryKey,
-        (sidebar) => sidebar && optimistic(sidebar, variables),
-      );
-    },
-    onError: (error) => toast.error(error.message),
-    onSettled: () => queryClient.invalidateQueries(sidebarQuery),
+    ...(optimistic && { optimistic: editing(sidebarQuery.queryKey, optimistic) }),
+    refetch: [taskKeys.sidebar],
   });
 }
 
@@ -75,7 +61,7 @@ function useSidebarMutation<V, R>(
 export function useCreateProject() {
   return useSidebarMutation(async (fields: ProjectFields) => {
     const { data, error } = await api.POST("/api/v1/projects", { body: fields });
-    if (error) throw new Error(error.detail);
+    if (error) throw new Error(failureReason(error, "Could not create the project."));
     return data;
   });
 }
@@ -96,7 +82,7 @@ export function useUpdateProject() {
         params: { path: { project_id: id } },
         body: fields,
       });
-      if (error) throw new Error(error.detail);
+      if (error) throw new Error(failureReason(error, "Could not save the project."));
       return data;
     },
     (sidebar, { id, ...fields }) => withProjectChanged(sidebar, id, fields),
@@ -201,7 +187,7 @@ export function useSetArchived() {
       const { error } = archived
         ? await api.POST("/api/v1/projects/{project_id}/archive", { params })
         : await api.POST("/api/v1/projects/{project_id}/unarchive", { params });
-      if (error) throw new Error(error.detail);
+      if (error) throw new Error(failureReason(error, "Could not archive the project."));
     },
   );
   return (project: SidebarProject, archived: boolean) => {
@@ -240,29 +226,22 @@ function withoutProject(sidebar: Sidebar, id: number): Sidebar {
  * before the server answers.
  */
 export function useDeleteProject() {
-  const queryClient = useQueryClient();
   const { mutate: restore } = useRestoreProject();
-  return useMutation({
+  return useCacheMutation({
     mutationFn: async (project: SidebarProject) => {
       const { error } = await api.DELETE("/api/v1/projects/{project_id}", {
         params: { path: { project_id: project.id } },
       });
-      if (error) throw new Error(error.detail);
+      if (error) throw new Error(failureReason(error, "Could not delete the project."));
     },
-    onMutate: async (project) => {
-      await queryClient.cancelQueries(sidebarQuery);
-      queryClient.setQueryData(
-        sidebarQuery.queryKey,
-        (sidebar) => sidebar && withoutProject(sidebar, project.id),
-      );
-    },
+    optimistic: editing(sidebarQuery.queryKey, (sidebar, project: SidebarProject) =>
+      withoutProject(sidebar, project.id),
+    ),
     onSuccess: (_, project) => {
       toastWithUndo(`Moved “${project.name}” to Trash`, () => {
         restore(project.id);
       });
     },
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),
+    refetch: [...TASK_REFETCH, trashQuery.queryKey],
   });
 }

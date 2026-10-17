@@ -1,10 +1,11 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { queryOptions } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
+import { editing, useCacheMutation } from "@/lib/cache-mutation";
 
-import { TASKS_KEY } from "./tasks";
+import { taskKeys } from "./task-cache";
 
 export type Comment = components["schemas"]["CommentOut"];
 
@@ -14,7 +15,7 @@ export type Comment = components["schemas"]["CommentOut"];
  */
 export function commentsQuery(taskId: number) {
   return queryOptions({
-    queryKey: [...TASKS_KEY, "comments", taskId],
+    queryKey: taskKeys.comments(taskId),
     queryFn: async (): Promise<Comment[]> => {
       const { data } = await api.GET("/api/v1/tasks/{task_id}/comments", {
         params: { path: { task_id: taskId } },
@@ -34,8 +35,7 @@ export function isEdited(comment: Comment) {
 
 /** Add a Comment to a Task. */
 export function useAddComment(taskId: number) {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useCacheMutation({
     mutationFn: async (body: string) => {
       const { data, error } = await api.POST("/api/v1/tasks/{task_id}/comments", {
         params: { path: { task_id: taskId } },
@@ -43,39 +43,34 @@ export function useAddComment(taskId: number) {
       });
       if (error) {
         // The server explains a refusal, such as a Mention of a Person that is gone.
-        throw new Error(error.detail);
+        throw new Error(failureReason(error, "Could not add the comment."));
       }
       return data;
     },
-    onError: (error) => toast.error(error.message),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+    refetch: [taskKeys.all],
   });
 }
 
 /** Replace a Comment's body. */
 export function useEditComment() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useCacheMutation({
     mutationFn: async ({ id, body }: { id: number; body: string }) => {
       const { data, error } = await api.PATCH("/api/v1/comments/{comment_id}", {
         params: { path: { comment_id: id } },
         body: { body },
       });
       if (error) {
-        throw new Error(error.detail);
+        throw new Error(failureReason(error, "Could not save the comment."));
       }
       return data;
     },
-    onError: (error) => toast.error(error.message),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+    refetch: [taskKeys.all],
   });
 }
 
 /** Delete a Comment for good. It leaves the drawer before the server answers. */
 export function useDeleteComment(taskId: number) {
-  const queryClient = useQueryClient();
-  const key = commentsQuery(taskId).queryKey;
-  return useMutation({
+  return useCacheMutation({
     mutationFn: async (commentId: number) => {
       const { response } = await api.DELETE("/api/v1/comments/{comment_id}", {
         params: { path: { comment_id: commentId } },
@@ -84,11 +79,9 @@ export function useDeleteComment(taskId: number) {
         throw new Error("Could not delete the comment.");
       }
     },
-    onMutate: async (commentId) => {
-      await queryClient.cancelQueries({ queryKey: key });
-      queryClient.setQueryData(key, (items) => items?.filter((item) => item.id !== commentId));
-    },
-    onError: (error) => toast.error(error.message),
-    onSettled: () => queryClient.invalidateQueries({ queryKey: TASKS_KEY }),
+    optimistic: editing(commentsQuery(taskId).queryKey, (items, commentId: number) =>
+      items.filter((item) => item.id !== commentId),
+    ),
+    refetch: [taskKeys.all],
   });
 }

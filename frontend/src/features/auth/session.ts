@@ -1,6 +1,7 @@
 import { queryOptions, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
 import { disablePush } from "@/features/notifications/push";
 
@@ -54,7 +55,7 @@ export function useLogin() {
         throw new LoginError("Too many attempts. Wait a minute and try again.");
       }
       if (error) {
-        throw new LoginError("detail" in error ? error.detail : "Something went wrong. Try again.");
+        throw new LoginError(failureReason(error, "Something went wrong. Try again."));
       }
       return data;
     },
@@ -92,9 +93,7 @@ export function useChangePassword() {
         throw new PasswordChangeError("Too many attempts. Wait a minute and try again.");
       }
       if (error) {
-        throw new PasswordChangeError(
-          "detail" in error ? error.detail : "Something went wrong. Try again.",
-        );
+        throw new PasswordChangeError(failureReason(error, "Something went wrong. Try again."));
       }
     },
   });

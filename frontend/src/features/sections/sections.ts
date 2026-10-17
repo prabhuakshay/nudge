@@ -1,9 +1,10 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { queryOptions } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
-import { refreshTasks } from "@/features/tasks/tasks";
+import { TASK_REFETCH } from "@/features/tasks/task-cache";
+import { editing, useCacheMutation } from "@/lib/cache-mutation";
 
 export type Section = components["schemas"]["SectionOut"];
 export type SectionFields = components["schemas"]["SectionIn"];
@@ -57,24 +58,11 @@ function useSectionMutation<V, R>(
     changesTasks?: boolean;
   } = {},
 ) {
-  const queryClient = useQueryClient();
-  return useMutation({
+  const { queryKey } = sectionsQuery(projectId);
+  return useCacheMutation({
     mutationFn: change,
-    onMutate: async (variables) => {
-      if (!optimistic) return;
-      const query = sectionsQuery(projectId);
-      await queryClient.cancelQueries(query);
-      queryClient.setQueryData(
-        query.queryKey,
-        (sections) => sections && optimistic(sections, variables),
-      );
-    },
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries(sectionsQuery(projectId)),
-        changesTasks && refreshTasks(queryClient),
-      ]),
+    ...(optimistic && { optimistic: editing(queryKey, optimistic) }),
+    refetch: changesTasks ? [queryKey, ...TASK_REFETCH] : [queryKey],
   });
 }
 
@@ -85,7 +73,7 @@ export function useCreateSection(projectId: number) {
       params: { path: { project_id: projectId } },
       body: fields,
     });
-    if (error) throw new Error(error.detail);
+    if (error) throw new Error(failureReason(error, "Could not add the section."));
     return data;
   });
 }
@@ -101,7 +89,7 @@ export function useUpdateSection(projectId: number) {
         params: { path: { section_id: id } },
         body: fields,
       });
-      if (error) throw new Error(error.detail);
+      if (error) throw new Error(failureReason(error, "Could not save the section."));
       return data;
     },
     {
@@ -140,7 +128,7 @@ export function useMoveSection(projectId: number) {
         params: { path: { section_id: id } },
         body: { after_id },
       });
-      if (error) throw new Error(error.detail);
+      if (error) throw new Error(failureReason(error, "Could not move the section."));
     },
     { optimistic: placedAfter },
   );
@@ -154,7 +142,7 @@ export function useDeleteSection(projectId: number) {
       const { error } = await api.DELETE("/api/v1/sections/{section_id}", {
         params: { path: { section_id: sectionId } },
       });
-      if (error) throw new Error(error.detail);
+      if (error) throw new Error(failureReason(error, "Could not delete the section."));
     },
     { changesTasks: true },
   );

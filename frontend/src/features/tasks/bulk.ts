@@ -1,16 +1,14 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
-
 import { api } from "@/api/client";
+import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
 import { trashQuery } from "@/features/trash/trash";
 import type { SidebarTag } from "@/features/tags/tags";
 import { toastWithUndo } from "@/lib/undo-toast";
 
 import { useRestoreStatuses } from "./set-status";
+import { useTaskMutation } from "./task-cache";
 import { STATUS_VERB } from "./task-properties";
 import {
-  refreshTasks,
   useUpdateTask,
   type SidebarProject,
   type Task,
@@ -58,36 +56,28 @@ function tops(chosen: Task[], tasks: Task[]) {
 
 /** Apply one action to several Tasks in one request; the lists refresh once it's done. */
 function useBulkChange() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useTaskMutation({
     mutationFn: async ({ ids, action }: BulkChange) => {
       const { data, error } = await api.POST("/api/v1/tasks/bulk", { body: { ids, action } });
       if (error) {
-        throw new Error("detail" in error ? error.detail : "Could not change the tasks.");
+        throw new Error(failureReason(error, "Could not change the tasks."));
       }
       return data;
     },
-    onError: (error) => toast.error(error.message),
-    onSettled: (_, __, { action }) =>
-      Promise.all([
-        refreshTasks(queryClient),
-        action.kind === "delete" && queryClient.invalidateQueries(trashQuery),
-      ]),
+    alsoRefetch: [trashQuery.queryKey],
   });
 }
 
 /** Bring Tasks back from Trash without a toast for each, for a bulk delete's Undo. */
 function useRestoreTasks() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useTaskMutation({
     mutationFn: (ids: number[]) =>
       Promise.all(
         ids.map((taskId) =>
           api.POST("/api/v1/tasks/{task_id}/restore", { params: { path: { task_id: taskId } } }),
         ),
       ),
-    onSettled: () =>
-      Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),
+    alsoRefetch: [trashQuery.queryKey],
   });
 }
 

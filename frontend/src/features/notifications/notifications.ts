@@ -1,10 +1,10 @@
 import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
 
 import { api } from "@/api/client";
+import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
 import { offerStatusUndo, useRestoreStatuses } from "@/features/tasks/set-status";
-import { refreshTasks } from "@/features/tasks/tasks";
+import { useTaskMutation } from "@/features/tasks/task-cache";
 
 export type Notification = components["schemas"]["NotificationOut"];
 export type NotificationList = components["schemas"]["NotificationListOut"];
@@ -82,24 +82,21 @@ export function useSendTestNotification() {
 
 /** Complete the Task a Reminder notification is about, then offer Undo in a toast. */
 export function useCompleteFromReminder() {
-  const queryClient = useQueryClient();
   const { mutate: restore } = useRestoreStatuses();
-  return useMutation({
+  return useTaskMutation({
     mutationFn: async (id: number) => {
       const { data, error } = await api.POST("/api/v1/notifications/{notification_id}/complete", {
         params: { path: { notification_id: id } },
       });
       if (!data) {
-        throw new Error(error.detail);
+        throw new Error(failureReason(error, "Could not complete the task."));
       }
       return data;
     },
     onSuccess: ({ task, affected }) => {
       offerStatusUndo(restore, task, "completed", affected);
     },
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([queryClient.invalidateQueries(notificationsQuery), refreshTasks(queryClient)]),
+    alsoRefetch: [notificationsQuery.queryKey],
   });
 }
 

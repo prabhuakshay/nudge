@@ -1,12 +1,14 @@
 import { arrayMove } from "@dnd-kit/sortable";
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { queryOptions } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
+import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
 import { HUE } from "@/features/projects/project-style";
 import type { PaletteColor } from "@/features/projects/projects";
-import { OPEN_KEY, sidebarQuery, type Task } from "@/features/tasks/tasks";
+import { taskKeys } from "@/features/tasks/task-cache";
+import { sidebarQuery, type Task } from "@/features/tasks/tasks";
+import { editing, useCacheMutation } from "@/lib/cache-mutation";
 
 export type Tag = components["schemas"]["TagOut"];
 export type SidebarTag = components["schemas"]["SidebarTagOut"];
@@ -14,7 +16,7 @@ export type SidebarTag = components["schemas"]["SidebarTagOut"];
 /** A Tag's open Tasks across Projects as flat rows, a Subtask with its parent's title. */
 export function tagTasksQuery(tagId: number) {
   return queryOptions({
-    queryKey: [...OPEN_KEY, "tag", tagId],
+    queryKey: taskKeys.open({ tag: tagId }),
     queryFn: async (): Promise<Task[]> => {
       const { data } = await api.GET("/api/v1/tasks", { params: { query: { tag: tagId } } });
       if (!data) {
@@ -50,23 +52,15 @@ function useTagMutation<V, R>(
   change: (variables: V) => Promise<R>,
   optimistic?: (tags: SidebarTag[], variables: V) => SidebarTag[],
 ) {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useCacheMutation({
     mutationFn: change,
-    onMutate: async (variables) => {
-      if (!optimistic) return;
-      await queryClient.cancelQueries(sidebarQuery);
-      queryClient.setQueryData(
-        sidebarQuery.queryKey,
-        (sidebar) => sidebar && { ...sidebar, tags: optimistic(sidebar.tags, variables) },
-      );
-    },
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([
-        queryClient.invalidateQueries(sidebarQuery),
-        queryClient.invalidateQueries({ queryKey: ["tasks"] }),
-      ]),
+    ...(optimistic && {
+      optimistic: editing(sidebarQuery.queryKey, (sidebar, variables: V) => ({
+        ...sidebar,
+        tags: optimistic(sidebar.tags, variables),
+      })),
+    }),
+    refetch: [taskKeys.sidebar, taskKeys.all],
   });
 }
 
@@ -74,7 +68,7 @@ function useTagMutation<V, R>(
 export function useCreateTag() {
   return useTagMutation(async (fields: TagFields): Promise<Tag> => {
     const { data, error } = await api.POST("/api/v1/tags", { body: fields });
-    if (error) throw new Error(error.detail);
+    if (error) throw new Error(failureReason(error, "Could not create the tag."));
     return data;
   });
 }
@@ -86,7 +80,7 @@ export function useUpdateTag() {
       params: { path: { tag_id: id } },
       body: fields,
     });
-    if (error) throw new Error(error.detail);
+    if (error) throw new Error(failureReason(error, "Could not save the tag."));
     return data;
   });
 }
@@ -132,7 +126,7 @@ export function useMergeTag() {
       params: { path: { tag_id: id } },
       body: { into_id: intoId },
     });
-    if (error) throw new Error(error.detail);
+    if (error) throw new Error(failureReason(error, "Could not merge the tags."));
   });
 }
 

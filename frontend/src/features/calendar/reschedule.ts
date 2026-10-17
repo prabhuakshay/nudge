@@ -1,9 +1,8 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { differenceInCalendarDays, parseISO } from "date-fns";
-import { toast } from "sonner";
 
 import type { Dates } from "@/features/tasks/due";
-import { patchTask, refreshTasks, showChange, TASKS_KEY } from "@/features/tasks/tasks";
+import { useTaskMutation } from "@/features/tasks/task-cache";
+import { patchTask } from "@/features/tasks/tasks";
 
 import { clockTime, DAY_MINUTES, minutesOf, shiftDays, timeSpan } from "./layout";
 
@@ -108,18 +107,8 @@ export type Reschedule = { id: number; dates: DueDates };
  * so its later Occurrences and its Repeat stay as they were.
  */
 export function useReschedule() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useTaskMutation({
     mutationFn: (change: Reschedule) => patchTask({ ...change, move_occurrence: true }),
-    onMutate: async (change) => {
-      const before = queryClient.getQueriesData({ queryKey: TASKS_KEY });
-      await showChange(queryClient, change);
-      return before;
-    },
-    onError: (error, _change, before) => {
-      for (const [key, data] of before ?? []) queryClient.setQueryData(key, data);
-      toast.error(error.message);
-    },
-    onSettled: () => refreshTasks(queryClient),
+    changes: (patch) => [{ kind: "patch", patch }],
   });
 }

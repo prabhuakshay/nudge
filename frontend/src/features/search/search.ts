@@ -2,7 +2,7 @@ import { queryOptions } from "@tanstack/react-query";
 
 import { api } from "@/api/client";
 import type { components } from "@/api/schema";
-import { TASKS_KEY } from "@/features/tasks/tasks";
+import { taskKeys } from "@/features/tasks/task-cache";
 
 /** A Task that matched a search, with where it matched and the text around the match. */
 export type SearchResult = components["schemas"]["TaskSearchOut"];
@@ -22,7 +22,7 @@ export function isSearchable(query: string) {
 export function searchQuery(query: string) {
   const q = query.trim();
   return queryOptions({
-    queryKey: [...TASKS_KEY, "search", q],
+    queryKey: taskKeys.search(q),
     queryFn: async (): Promise<SearchResult[]> => {
       const { data } = await api.GET("/api/v1/tasks/search", { params: { query: { q } } });
       if (!data) {

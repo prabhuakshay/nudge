@@ -1,16 +1,13 @@
-import { queryOptions, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import { queryOptions } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { api } from "@/api/client";
+import { failureReason } from "@/api/errors";
 import type { components } from "@/api/schema";
 import { plainMentions } from "@/features/people/mentions";
-import {
-  DETAIL_KEY,
-  OPEN_KEY,
-  refreshTasks,
-  type Task,
-  type TaskDetail,
-} from "@/features/tasks/tasks";
+import { TASK_REFETCH, useTaskMutation } from "@/features/tasks/task-cache";
+import type { Task } from "@/features/tasks/tasks";
+import { editing, useCacheMutation } from "@/lib/cache-mutation";
 import { plural } from "@/lib/plural";
 import { toastWithUndo } from "@/lib/undo-toast";
 
@@ -31,17 +28,8 @@ export const trashQuery = queryOptions({
   },
 });
 
-/** The rows without the Task and every Subtask under it. */
-function withoutTree<T extends Task>(rows: T[], taskId: number): T[] {
-  const gone = new Set([taskId]);
-  // Rows come in sibling order, not tree order, so sweep until no more Subtasks join.
-  let size = 0;
-  while (size !== gone.size) {
-    size = gone.size;
-    for (const row of rows) if (row.parent_id !== null && gone.has(row.parent_id)) gone.add(row.id);
-  }
-  return rows.filter((row) => !gone.has(row.id));
-}
+/** What a change between the Trash and the Tasks refetches: both, and the sidebar's counts. */
+const TASKS_AND_TRASH = [...TASK_REFETCH, trashQuery.queryKey];
 
 /** Where a restored Task went, as its toast says it. */
 function restoredMessage({ project }: Restored) {
@@ -53,27 +41,21 @@ function restoredMessage({ project }: Restored) {
  * went, which matters when its Project is archived or gone.
  */
 export function useRestoreTask() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useCacheMutation({
     mutationFn: async (taskId: number) => {
-      const { data } = await api.POST("/api/v1/tasks/{task_id}/restore", {
+      const { data, error } = await api.POST("/api/v1/tasks/{task_id}/restore", {
         params: { path: { task_id: taskId } },
       });
       if (!data) {
-        throw new Error("Could not restore the task.");
+        throw new Error(failureReason(error, "Could not restore the task."));
       }
       return data;
     },
-    onMutate: async (taskId) => {
-      await queryClient.cancelQueries(trashQuery);
-      queryClient.setQueryData(trashQuery.queryKey, (rows) =>
-        rows?.filter((row) => row.kind !== "task" || row.id !== taskId),
-      );
-    },
+    optimistic: editing(trashQuery.queryKey, (rows, taskId: number) =>
+      rows.filter((row) => row.kind !== "task" || row.id !== taskId),
+    ),
     onSuccess: (restored) => toast(restoredMessage(restored)),
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),
+    refetch: TASKS_AND_TRASH,
   });
 }
 
@@ -82,14 +64,11 @@ export function rowKey(row: TrashedRow) {
   return `${row.kind}-${String(row.id)}`;
 }
 
-/** Take rows out of the Trash before the server answers. */
-async function dropFromTrash(queryClient: QueryClient, gone: TrashedRow[]) {
+/** Takes rows out of the Trash before the server answers. */
+const dropFromTrash = editing(trashQuery.queryKey, (rows, gone: TrashedRow[]) => {
   const keys = new Set(gone.map(rowKey));
-  await queryClient.cancelQueries(trashQuery);
-  queryClient.setQueryData(trashQuery.queryKey, (rows) =>
-    rows?.filter((row) => !keys.has(rowKey(row))),
-  );
-}
+  return rows.filter((row) => !keys.has(rowKey(row)));
+});
 
 /** Bring one Trash row back: a Task unit or a Project. */
 async function restoreRow(row: TrashedRow) {
@@ -108,21 +87,17 @@ async function restoreRow(row: TrashedRow) {
 
 /** Bring several Trash rows back at once, with one toast for all of them. */
 export function useRestoreRows() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useCacheMutation({
     mutationFn: (rows: TrashedRow[]) => Promise.all(rows.map(restoreRow)),
-    onMutate: (rows) => dropFromTrash(queryClient, rows),
+    optimistic: dropFromTrash,
     onSuccess: (_, rows) => toast(`Restored ${plural(rows.length, "item")}`),
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),
+    refetch: TASKS_AND_TRASH,
   });
 }
 
 /** Delete Trash rows for good: each takes the whole unit it went to Trash with. */
 export function useDeleteForever() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useCacheMutation({
     mutationFn: async (rows: TrashedRow[]) => {
       const ids = (kind: TrashedRow["kind"]) =>
         rows.filter((row) => row.kind === kind).map((row) => row.id);
@@ -133,28 +108,22 @@ export function useDeleteForever() {
         throw new Error("Could not delete it forever.");
       }
     },
-    onMutate: (gone) => dropFromTrash(queryClient, gone),
-    onError: (error) => toast.error(error.message),
-    onSettled: () => queryClient.invalidateQueries(trashQuery),
+    optimistic: dropFromTrash,
+    refetch: [trashQuery.queryKey],
   });
 }
 
 /** Delete everything in the Trash for good. */
 export function useEmptyTrash() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useCacheMutation({
     mutationFn: async () => {
       const { response } = await api.DELETE("/api/v1/trash");
       if (!response.ok) {
         throw new Error("Could not empty the Trash.");
       }
     },
-    onMutate: async () => {
-      await queryClient.cancelQueries(trashQuery);
-      queryClient.setQueryData(trashQuery.queryKey, []);
-    },
-    onError: (error) => toast.error(error.message),
-    onSettled: () => queryClient.invalidateQueries(trashQuery),
+    optimistic: editing(trashQuery.queryKey, () => []),
+    refetch: [trashQuery.queryKey],
   });
 }
 
@@ -163,37 +132,23 @@ export function useEmptyTrash() {
  * drawer before the server answers.
  */
 export function useDeleteTask() {
-  const queryClient = useQueryClient();
   const { mutate: restore } = useRestoreTask();
-  return useMutation({
+  return useTaskMutation({
     mutationFn: async (task: Task) => {
       const { error } = await api.DELETE("/api/v1/tasks/{task_id}", {
         params: { path: { task_id: task.id } },
       });
       if (error) {
-        throw new Error("detail" in error ? error.detail : "Could not delete the task.");
+        throw new Error(failureReason(error, "Could not delete the task."));
       }
     },
-    onMutate: async (task) => {
-      await queryClient.cancelQueries({ queryKey: OPEN_KEY });
-      await queryClient.cancelQueries({ queryKey: DETAIL_KEY });
-      queryClient.setQueriesData<Task[]>(
-        { queryKey: OPEN_KEY },
-        (rows) => rows && withoutTree(rows, task.id),
-      );
-      queryClient.setQueriesData<TaskDetail>(
-        { queryKey: DETAIL_KEY },
-        (detail) => detail && { ...detail, subtasks: withoutTree(detail.subtasks, task.id) },
-      );
-    },
+    changes: (task) => [{ kind: "remove", taskId: task.id }],
     onSuccess: (_, task) => {
       toastWithUndo(`Moved “${plainMentions(task.title)}” to Trash`, () => {
         restore(task.id);
       });
     },
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),
+    alsoRefetch: [trashQuery.queryKey],
   });
 }
 
@@ -202,26 +157,20 @@ export function useDeleteTask() {
  * it comes back renamed when its name was taken in the meantime.
  */
 export function useRestoreProject() {
-  const queryClient = useQueryClient();
-  return useMutation({
+  return useCacheMutation({
     mutationFn: async (projectId: number) => {
-      const { data } = await api.POST("/api/v1/projects/{project_id}/restore", {
+      const { data, error } = await api.POST("/api/v1/projects/{project_id}/restore", {
         params: { path: { project_id: projectId } },
       });
       if (!data) {
-        throw new Error("Could not restore the project.");
+        throw new Error(failureReason(error, "Could not restore the project."));
       }
       return data;
     },
-    onMutate: async (projectId) => {
-      await queryClient.cancelQueries(trashQuery);
-      queryClient.setQueryData(trashQuery.queryKey, (rows) =>
-        rows?.filter((row) => row.kind !== "project" || row.id !== projectId),
-      );
-    },
+    optimistic: editing(trashQuery.queryKey, (rows, projectId: number) =>
+      rows.filter((row) => row.kind !== "project" || row.id !== projectId),
+    ),
     onSuccess: (project) => toast(`Restored “${project.name}”`),
-    onError: (error) => toast.error(error.message),
-    onSettled: () =>
-      Promise.all([refreshTasks(queryClient), queryClient.invalidateQueries(trashQuery)]),
+    refetch: TASKS_AND_TRASH,
   });
 }

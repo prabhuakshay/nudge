@@ -31,10 +31,10 @@ function result(id: number, title: string): SearchResult {
 
 /**
  * A stand-in server: the sidebar, People, Task 5 in Work, search results for any words, and
- * PATCHes to Tasks, which it logs.
+ * changes to Tasks, which it logs.
  */
 function mockApi(results: SearchResult[] = []) {
-  const patches: unknown[] = [];
+  const changes: unknown[] = [];
   vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
     const { pathname } = new URL(request.url);
@@ -49,14 +49,14 @@ function mockApi(results: SearchResult[] = []) {
     }
     if (pathname.endsWith("/tasks/search")) return json(results);
     const task = makeTask({ id: 5, title: "Water plants", project_id: WORK.id });
-    if (request.method === "PATCH") {
+    if (request.method === "PATCH" || pathname.endsWith("/tasks/bulk")) {
       const change = (await request.json()) as object;
-      patches.push(change);
-      return json({ task: { ...task, ...change }, affected: [] });
+      changes.push(change);
+      return json({ task: { ...task, ...change }, affected: [], moved_from: [] });
     }
     return json(task);
   });
-  return patches;
+  return changes;
 }
 
 /**
@@ -231,7 +231,7 @@ describe("CommandBar", () => {
   });
 
   it("puts the focused Task's actions first, each with its key", async () => {
-    const patches = mockApi();
+    const changes = mockApi();
     const { user } = renderBar();
     (await screen.findByRole("row")).focus();
 
@@ -247,7 +247,7 @@ describe("CommandBar", () => {
     await user.click(p1);
 
     await waitFor(() => {
-      expect(patches).toEqual([{ priority: 1 }]);
+      expect(changes).toEqual([{ ids: [5], action: { kind: "priority", priority: 1 } }]);
     });
   });
 

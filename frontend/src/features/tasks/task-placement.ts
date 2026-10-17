@@ -28,22 +28,6 @@ export function useMoveTask() {
   });
 }
 
-/** Move a Task to another Project, where it goes first. Both lists and the sidebar refresh. */
-export function useMoveTaskToProject() {
-  return useTaskMutation({
-    mutationFn: async ({ id, projectId }: { id: number; projectId: number }) => {
-      const { data, error } = await api.PATCH("/api/v1/tasks/{task_id}", {
-        params: { path: { task_id: id } },
-        body: { project_id: projectId },
-      });
-      if (!data) {
-        throw new Error(failureReason(error, "Could not move the task."));
-      }
-      return data;
-    },
-  });
-}
-
 /** Copy a Task to right after it, as the server places it. */
 export function useDuplicateTask() {
   return useTaskMutation({

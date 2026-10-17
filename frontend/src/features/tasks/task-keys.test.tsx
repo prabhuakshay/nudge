@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 
-import { GARDEN, mockApi, openTask, patches, renderList, task } from "@/test/drawer";
+import { bulkRequests, GARDEN, mockApi, openTask, patches, renderList, task } from "@/test/drawer";
 
 function row(title: string) {
   const found = screen
@@ -31,7 +31,9 @@ describe("Task keys on a focused row", () => {
     await user.keyboard("2");
 
     await vi.waitFor(async () => {
-      expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/2", { priority: 2 }]]);
+      expect(await bulkRequests(fetchSpy)).toEqual([
+        { ids: [2], action: { kind: "priority", priority: 2 } },
+      ]);
     });
   });
 
@@ -111,7 +113,9 @@ describe("Task keys in the drawer", () => {
     await user.keyboard("1");
 
     await vi.waitFor(async () => {
-      expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { priority: 1 }]]);
+      expect(await bulkRequests(fetchSpy)).toEqual([
+        { ids: [1], action: { kind: "priority", priority: 1 } },
+      ]);
     });
   });
 

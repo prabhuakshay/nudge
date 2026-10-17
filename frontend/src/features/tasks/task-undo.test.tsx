@@ -133,7 +133,7 @@ describe("Undo of a Priority change", () => {
     const changes = renderChanges(queryClient);
 
     changes.current.setPriority([URGENT], 0);
-    await screen.findByText("Changed the priority of 1 task");
+    await screen.findByText("Changed the priority of “Tea”");
     act(() => {
       undoLatestChange();
     });
@@ -201,6 +201,23 @@ describe("Undo of a Tag change", () => {
       { ids: [1], action: { kind: "add_tag", tag_id: 21 } },
       { ids: [2], action: { kind: "remove_tag", tag_id: 21 } },
     ]);
+  });
+});
+
+describe("a Tag change", () => {
+  it("shows on the Task before the server answers, and names one Task in its toast", async () => {
+    mockServer();
+    const queryClient = new QueryClient();
+    queryClient.setQueryData<Task[]>(taskKeys.open(WORK_LIST), [URGENT]);
+    const changes = renderChanges(queryClient);
+
+    changes.current.addTag([URGENT], WORK_TAG);
+
+    await vi.waitFor(() => {
+      const [shown] = queryClient.getQueryData<Task[]>(taskKeys.open(WORK_LIST)) ?? [];
+      expect(shown?.tags.map((tag) => tag.name)).toEqual(["work"]);
+    });
+    expect(await screen.findByText("Added “work” to “Tea”")).toBeInTheDocument();
   });
 });
 

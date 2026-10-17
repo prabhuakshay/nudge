@@ -1,6 +1,6 @@
 import { screen, waitFor } from "@testing-library/react";
 
-import { json, patches } from "@/test/drawer";
+import { bulkRequests, json, patches } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 import { layOutMatrix, mockApi, renderMatrix, titlesIn } from "@/test/matrix";
 import { makeTask as task } from "@/test/tasks";
@@ -35,7 +35,9 @@ describe("dragging Matrix cards", () => {
       expect(titlesIn("Important not urgent")).toEqual(["Tidy the shed"]);
     });
     expect(titlesIn("Neither")).toEqual([]);
-    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { priority: 2 }]]);
+    expect(await bulkRequests(fetchSpy)).toEqual([
+      { ids: [1], action: { kind: "priority", priority: 2 } },
+    ]);
   });
 
   it("makes a Task dragged down out of Important P3", async () => {
@@ -49,7 +51,9 @@ describe("dragging Matrix cards", () => {
     await waitFor(() => {
       expect(titlesIn("Urgent not important")).toEqual(["Pay rent"]);
     });
-    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { priority: 3 }]]);
+    expect(await bulkRequests(fetchSpy)).toEqual([
+      { ids: [1], action: { kind: "priority", priority: 3 } },
+    ]);
   });
 
   it("leaves a Task dropped sideways where it was, since dates don't change by dragging", async () => {
@@ -117,7 +121,9 @@ describe("dragging Matrix cards", () => {
     const fetchSpy = mockApi([task({ id: 1, title: "Tidy the shed", priority: 4 })]);
     const server = fetchSpy.getMockImplementation();
     fetchSpy.mockImplementation(async (input, init) => {
-      if (requestOf(input).method === "PATCH") return json({ detail: "That Task is gone." }, 422);
+      if (new URL(requestOf(input).url).pathname.endsWith("/tasks/bulk")) {
+        return json({ detail: "That Task is gone." }, 422);
+      }
       return server?.(input, init) ?? json({});
     });
     const { user } = renderMatrix();

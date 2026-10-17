@@ -14,7 +14,8 @@ import { DragPreview } from "@/features/projects/board-drag";
 import { plainMentions } from "@/features/people/mentions";
 import { useDragSensors, useSortableHandle } from "@/features/tasks/sortable-handle";
 import { PRIORITY } from "@/features/tasks/task-properties";
-import { useUpdateTask, type Task, type TaskPriority } from "@/features/tasks/tasks";
+import type { Task, TaskPriority } from "@/features/tasks/tasks";
+import { useUndoableTaskChanges } from "@/features/tasks/task-undo";
 import { useMediaQuery } from "@/lib/use-media-query";
 
 import { QUADRANT, QUADRANTS, type MatrixQuadrants, type Quadrant } from "./quadrants";
@@ -138,7 +139,7 @@ export function MatrixDrag({
   const sensors = useDragSensors(KEYBOARD);
   const [dragged, setDragged] = useState<Dragged | null>(null);
   const [over, setOver] = useState<Quadrant | null>(null);
-  const { mutate: update } = useUpdateTask();
+  const { setPriority } = useUndoableTaskChanges();
   const target = dragged && over && droppedPriority(dragged, over) !== null ? over : null;
 
   const stop = () => {
@@ -161,7 +162,7 @@ export function MatrixDrag({
         stop();
         const to = quadrantOfId(dropped?.id);
         const priority = dragged && to && droppedPriority(dragged, to);
-        if (dragged && priority) update({ id: dragged.task.id, priority });
+        if (dragged && priority) setPriority([dragged.task], priority);
       }}
       onDragCancel={stop}
     >

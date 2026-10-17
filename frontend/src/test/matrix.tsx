@@ -5,7 +5,7 @@ import type { NewTask, TaskDetail } from "@/features/tasks/tasks";
 import { stubScreenWidth } from "@/test/calendar";
 import { INBOX, json, renderListRoute, WORK } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
-import { makeTask } from "@/test/tasks";
+import { bulkApplied, makeTask, type BulkBody } from "@/test/tasks";
 
 /* Shared setup for the Matrix's tests. */
 
@@ -23,9 +23,17 @@ async function addTask(request: Request, tasks: TaskDetail[]) {
   return added;
 }
 
+/** A new Task added to the Tasks, or a bulk change made to them. */
+async function posted(request: Request, tasks: TaskDetail[]) {
+  if (new URL(request.url).pathname.endsWith("/tasks/bulk")) {
+    return json(bulkApplied(tasks, (await request.clone().json()) as BulkBody));
+  }
+  return json(await addTask(request, tasks), 201);
+}
+
 /**
- * A stand-in server: All's open Tasks, each Task's details, PATCHes that save to them, and new
- * Tasks added to them.
+ * A stand-in server: All's open Tasks, each Task's details, PATCHes and bulk changes that save
+ * to them, and new Tasks added to them.
  */
 export function mockApi(tasks: TaskDetail[] = []) {
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
@@ -34,9 +42,7 @@ export function mockApi(tasks: TaskDetail[] = []) {
     if (url.pathname === "/api/v1/sidebar") {
       return json({ inbox: INBOX, items: [WORK], archived: [], tags: [], people: [] });
     }
-    if (url.pathname === "/api/v1/tasks" && request.method === "POST") {
-      return json(await addTask(request, tasks), 201);
-    }
+    if (request.method === "POST") return posted(request, tasks);
     if (url.pathname === "/api/v1/tasks") {
       const open = tasks.filter((each) => each.status === "open" || each.status === "blocked");
       return json({ items: open, next_cursor: null });

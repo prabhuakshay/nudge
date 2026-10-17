@@ -13,6 +13,11 @@ import { editing, useCacheMutation } from "@/lib/cache-mutation";
 export type Tag = components["schemas"]["TagOut"];
 export type SidebarTag = components["schemas"]["SidebarTagOut"];
 
+/** Whether a Task has the Tag. */
+export function hasTag(task: { tags: Tag[] }, tag: Tag) {
+  return task.tags.some((each) => each.id === tag.id);
+}
+
 /** A Tag's open Tasks across Projects as flat rows, a Subtask with its parent's title. */
 export function tagTasksQuery(tagId: number) {
   return queryOptions({

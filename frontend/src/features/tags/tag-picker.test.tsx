@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 
-import { mockApi, openTask, patches, renderList, TAGS, task } from "@/test/drawer";
+import { bulkRequests, mockApi, openTask, renderList, TAGS, task } from "@/test/drawer";
 import { requestOf } from "@/test/fetch";
 
 const [WORK_TAG, HOME_TAG] = TAGS as [(typeof TAGS)[number], (typeof TAGS)[number]];
@@ -19,7 +19,9 @@ describe("Tags in the list", () => {
 
     expect(await screen.findByRole("button", { name: "Tags: home" })).toBeInTheDocument();
     expect(screen.queryByRole("dialog", { name: "Task details" })).toBeNull();
-    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { tag_ids: [HOME_TAG.id] }]]);
+    expect(await bulkRequests(fetchSpy)).toEqual([
+      { ids: [1], action: { kind: "remove_tag", tag_id: WORK_TAG.id } },
+    ]);
   });
 });
 
@@ -33,7 +35,9 @@ describe("Tags in the drawer", () => {
 
     expect(within(drawer).queryByRole("button", { name: "Remove tag work" })).toBeNull();
     expect(within(drawer).getByRole("button", { name: "Remove tag home" })).toBeVisible();
-    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { tag_ids: [HOME_TAG.id] }]]);
+    expect(await bulkRequests(fetchSpy)).toEqual([
+      { ids: [1], action: { kind: "remove_tag", tag_id: WORK_TAG.id } },
+    ]);
   });
 
   it("puts a Tag on the Task from the picker", async () => {
@@ -45,7 +49,9 @@ describe("Tags in the drawer", () => {
     await user.click(await screen.findByRole("option", { name: "home" }));
 
     expect(await within(drawer).findByRole("button", { name: "Remove tag home" })).toBeVisible();
-    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { tag_ids: [HOME_TAG.id] }]]);
+    expect(await bulkRequests(fetchSpy)).toEqual([
+      { ids: [1], action: { kind: "add_tag", tag_id: HOME_TAG.id } },
+    ]);
   });
 
   it("creates a Tag the user doesn't have and puts it on the Task", async () => {
@@ -88,6 +94,8 @@ describe("Tags on phones", () => {
     await user.click(within(sheet).getByRole("option", { name: "home" }));
 
     expect(sheet).toHaveAttribute("data-vaul-drawer");
-    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { tag_ids: [HOME_TAG.id] }]]);
+    expect(await bulkRequests(fetchSpy)).toEqual([
+      { ids: [1], action: { kind: "add_tag", tag_id: HOME_TAG.id } },
+    ]);
   });
 });

@@ -33,12 +33,12 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ProjectPicker } from "@/features/projects/project-picker";
 import { useShortcuts } from "@/features/shortcuts/use-shortcuts";
-import { tagHue } from "@/features/tags/tags";
+import { hasTag, tagHue } from "@/features/tags/tags";
 import { cn } from "@/lib/utils";
 
 import { PRIORITIES, PRIORITY, STATUS, STATUSES } from "./task-properties";
 import type { RowContext } from "./task-row";
-import { hasTag, useUndoableTaskChanges } from "./task-undo";
+import { useUndoableTaskChanges } from "./task-undo";
 import { sidebarQuery, type Task } from "./tasks";
 
 type Changes = ReturnType<typeof useUndoableTaskChanges>;

@@ -12,7 +12,8 @@ import {
   CommandSeparator,
 } from "@/components/ui/command";
 import { ResponsivePopover } from "@/components/ui/responsive-popover";
-import { sidebarQuery, useUpdateTask, type Task } from "@/features/tasks/tasks";
+import { sidebarQuery, type Task } from "@/features/tasks/tasks";
+import { useUndoableTaskChanges } from "@/features/tasks/task-undo";
 import { cn } from "@/lib/utils";
 
 import { tagHue, tagNameProblem, useCreateTag, type Tag } from "./tags";
@@ -38,7 +39,7 @@ export function TagPicker({
 }) {
   const [query, setQuery] = useState("");
   const { data: sidebar } = useQuery(sidebarQuery);
-  const { mutate: updateTask } = useUpdateTask();
+  const { addTag, removeTag } = useUndoableTaskChanges();
   const createTag = useCreateTag();
   const tags = sidebar?.tags ?? [];
   const name = query.trim();
@@ -47,10 +48,8 @@ export function TagPicker({
   const has = (tag: Tag) => task.tags.some((current) => current.id === tag.id);
 
   const toggle = (tag: Tag) => {
-    const next = has(tag)
-      ? task.tags.filter((current) => current.id !== tag.id)
-      : [...task.tags, tag];
-    updateTask({ id: task.id, tags: next });
+    if (has(tag)) removeTag([task], tag);
+    else addTag([task], tag);
   };
 
   return (
@@ -99,7 +98,7 @@ export function TagPicker({
                       { name, color: null },
                       {
                         onSuccess: (tag) => {
-                          updateTask({ id: task.id, tags: [...task.tags, tag] });
+                          addTag([task], tag);
                         },
                       },
                     );

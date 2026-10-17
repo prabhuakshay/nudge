@@ -1,7 +1,7 @@
 import { screen, within } from "@testing-library/react";
 
-import { INBOX, json, renderTaskList } from "@/test/drawer";
-import { makeTask } from "@/test/tasks";
+import { bulkRequests, INBOX, json, renderTaskList } from "@/test/drawer";
+import { makeTask, type BulkBody } from "@/test/tasks";
 import { requestOf } from "@/test/fetch";
 
 import type { Task } from "./tasks";
@@ -24,14 +24,16 @@ function mockApi({ open = [], closedPages = [] }: { open?: Task[]; closedPages?:
     );
     return { before, changed };
   };
+  const saveBulk = ({ ids, action }: BulkBody) => {
+    if (action.kind === "statuses")
+      for (const { id, status } of action.statuses) save(id, { status });
+    if (action.kind === "priority") for (const id of ids) save(id, { priority: action.priority });
+  };
   return vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
     const url = new URL(request.url);
     if (url.pathname.endsWith("/tasks/bulk")) {
-      const { action } = (await request.clone().json()) as {
-        action: { statuses: Pick<Task, "id" | "status">[] };
-      };
-      for (const { id, status } of action.statuses) save(id, { status });
+      saveBulk((await request.clone().json()) as BulkBody);
       return json({ affected: [] });
     }
     if (request.method === "POST") {
@@ -236,7 +238,10 @@ describe("TaskList", () => {
         .filter((request) => request.method === "PATCH")
         .map(async (request): Promise<unknown> => request.json()),
     );
-    expect(bodies).toEqual([{ status: "blocked" }, { priority: 2 }]);
+    expect(bodies).toEqual([{ status: "blocked" }]);
+    expect(await bulkRequests(fetchSpy)).toEqual([
+      { ids: [1], action: { kind: "priority", priority: 2 } },
+    ]);
   });
 
   it("shows a Blocked Task's reason and the Priority flag under its title", async () => {

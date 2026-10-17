@@ -13,7 +13,8 @@ import {
 import { cn } from "@/lib/utils";
 
 import { PRIORITIES, PRIORITY } from "./task-properties";
-import { useUpdateTask, type Task, type TaskPriority } from "./tasks";
+import type { Task, TaskPriority } from "./tasks";
+import { useUndoableTaskChanges } from "./task-undo";
 
 /** A filled flag in the Priority's colour; nothing for no Priority. */
 export function PriorityFlag({ priority }: { priority: TaskPriority }) {
@@ -45,7 +46,7 @@ export function PriorityBadge({ priority }: { priority: TaskPriority }) {
 
 /** The Priority picker. Its trigger is `children`, so the list cell and the drawer chip share it. */
 export function PriorityMenu({ task, children }: { task: Task; children: ReactNode }) {
-  const { mutate: update } = useUpdateTask();
+  const { setPriority } = useUndoableTaskChanges();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>{children}</DropdownMenuTrigger>
@@ -56,7 +57,7 @@ export function PriorityMenu({ task, children }: { task: Task; children: ReactNo
           onValueChange={(value) => {
             const priority = PRIORITIES.find((candidate) => String(candidate) === value);
             if (priority !== undefined && priority !== task.priority) {
-              update({ id: task.id, priority });
+              setPriority([task], priority);
             }
           }}
         >

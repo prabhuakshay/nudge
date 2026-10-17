@@ -1,6 +1,5 @@
 import { CalendarDays, ChevronDown, Flag, Hash } from "lucide-react";
 import type { ComponentProps } from "react";
-import { toast } from "sonner";
 
 import { ProjectIcon } from "@/features/projects/project-icon";
 import { ProjectPicker } from "@/features/projects/project-picker";
@@ -16,8 +15,8 @@ import { DueBadge } from "./due-badge";
 import { PriorityMenu } from "./task-priority";
 import { PRIORITY, STATUS } from "./task-properties";
 import { StatusMenu } from "./task-status";
-import { useMoveTaskToProject } from "./task-placement";
-import { useUpdateTask, type SidebarProject, type Task } from "./tasks";
+import type { SidebarProject, Task } from "./tasks";
+import { useUndoableTaskChanges } from "./task-undo";
 
 function Chip({ className, ...props }: ComponentProps<"button">) {
   return (
@@ -95,7 +94,7 @@ export function PropertyChips({ task, project }: { task: Task; project: SidebarP
 
 /** The Task's Tags, each with a × to take it off, then a chip that opens the Tag picker. */
 function TagChips({ task }: { task: Task }) {
-  const { mutate: updateTask } = useUpdateTask();
+  const { removeTag } = useUndoableTaskChanges();
   const tagPicker = useDetailPicker("addTag");
   return (
     <>
@@ -105,7 +104,7 @@ function TagChips({ task }: { task: Task }) {
           tag={tag}
           className="h-8 rounded-lg px-2.5 text-xs"
           onRemove={() => {
-            updateTask({ id: task.id, tags: task.tags.filter((other) => other.id !== tag.id) });
+            removeTag([task], tag);
           }}
         />
       ))}
@@ -123,17 +122,14 @@ function TagChips({ task }: { task: Task }) {
 
 /** The Task's Project; picking another Project moves the Task there. */
 function ProjectChip({ task, project }: { task: Task; project: SidebarProject }) {
-  const { mutate: moveTask } = useMoveTaskToProject();
+  const { moveTo } = useUndoableTaskChanges();
   const projectPicker = useDetailPicker("moveToProject");
   return (
     <ProjectPicker
       {...projectPicker}
       currentId={task.project_id}
       onSelect={(target) => {
-        moveTask(
-          { id: task.id, projectId: target.id },
-          { onSuccess: () => toast(`Moved to ${target.name}`) },
-        );
+        moveTo([task], target);
       }}
     >
       <ShortcutTooltip label="Move to project" shortcut="moveToProject">

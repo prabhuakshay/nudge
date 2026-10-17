@@ -75,7 +75,9 @@ describe("PropertyChips", () => {
 
     const chip = await within(drawer).findByRole("button", { name: "Priority: Priority 1" });
     expect(chip).toBeVisible();
-    expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { priority: 1 }]]);
+    expect(await bulkRequests(fetchSpy)).toEqual([
+      { ids: [1], action: { kind: "priority", priority: 1 } },
+    ]);
   });
 
   it("moves the Task to the Project picked from its Project chip", async () => {
@@ -89,7 +91,9 @@ describe("PropertyChips", () => {
     await user.click(await screen.findByRole("option", { name: "Work" }));
 
     await waitFor(async () => {
-      expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { project_id: 8 }]]);
+      expect(await bulkRequests(fetchSpy)).toEqual([
+        { ids: [1], action: { kind: "move", project_id: 8 } },
+      ]);
     });
     expect(
       await within(drawer).findByRole("button", { name: "Project: Work. Move to another project" }),
@@ -111,7 +115,9 @@ describe("PropertyChips on phones", () => {
 
     expect(sheet).toHaveAttribute("data-vaul-drawer");
     await waitFor(async () => {
-      expect(await patches(fetchSpy)).toEqual([["/api/v1/tasks/1", { project_id: 8 }]]);
+      expect(await bulkRequests(fetchSpy)).toEqual([
+        { ids: [1], action: { kind: "move", project_id: 8 } },
+      ]);
     });
   });
 });

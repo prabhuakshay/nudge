@@ -56,7 +56,7 @@ export function useToggleComplete() {
  */
 export function useTaskVerbs() {
   const { mutate: update } = useUpdateTask();
-  const { setStatus, remove } = useUndoableTaskChanges();
+  const { setStatus, setPriority, remove } = useUndoableTaskChanges();
   const { mutate: duplicate } = useDuplicateTask();
   const toggleComplete = useToggleComplete();
   const taskLink = useTaskLink();
@@ -102,12 +102,12 @@ export function useTaskVerbs() {
       const run = (verb: TaskVerb) =>
         verb.id === "setPriority"
           ? () => {
-              update({ id: task.id, priority: verb.priority });
+              setPriority([task], verb.priority);
             }
           : runs[verb.id];
       return taskVerbs(task, place).map((verb) => ({ ...verb, run: run(verb) }));
     },
-    [update, setStatus, remove, duplicate, toggleComplete, taskLink, setOpenTask],
+    [update, setStatus, setPriority, remove, duplicate, toggleComplete, taskLink, setOpenTask],
   );
 }
 

@@ -18,7 +18,7 @@ import type { Person } from "@/features/people/people";
 import type { SidebarTag } from "@/features/tags/tags";
 import type { Comment } from "@/features/tasks/comments";
 import type { SidebarProject, TaskActivity, TaskDetail } from "@/features/tasks/tasks";
-import { makeTask } from "@/test/tasks";
+import { bulkApplied, makeTask, type BulkBody } from "@/test/tasks";
 import { requestOf } from "./fetch";
 
 /* A stand-in server and a rendered list for the tasks feature's tests, shared by their files. */
@@ -95,7 +95,9 @@ export function mockApi(
     if (sidebarOrTag) return sidebarOrTag;
     const list = lists(url.pathname, activity, comments);
     if (list) return list;
-    if (url.pathname.endsWith("/tasks/bulk")) return restoreStatuses(request, tasks);
+    if (url.pathname.endsWith("/tasks/bulk")) {
+      return json(bulkApplied(tasks, (await request.clone().json()) as BulkBody, tags));
+    }
     const id = Number(url.pathname.split("/").at(-1));
     const found = tasks.find((item) => item.id === id);
     if (request.method === "PATCH" && found) {
@@ -134,18 +136,7 @@ function lists(pathname: string, activity: TaskActivity[], comments: Comment[]) 
   return undefined;
 }
 
-/** A bulk change that sets each Task's own Status, as Undo sends it. */
-async function restoreStatuses(request: Request, tasks: TaskDetail[]) {
-  const { action } = (await request.clone().json()) as BulkChange;
-  for (const { id, status, blocked_reason } of action.statuses ?? []) {
-    const restored = tasks.find((item) => item.id === id);
-    if (restored) Object.assign(restored, { status, blocked_reason });
-  }
-  return json({ affected: [] });
-}
-
 type TaskPatch = Partial<TaskDetail> & { tag_ids?: number[] };
-type BulkChange = { action: { statuses?: Pick<TaskDetail, "id" | "status" | "blocked_reason">[] } };
 
 /** The patch with its Tag ids turned into the Tags the server would return. */
 function withTags({ tag_ids: tagIds, ...change }: TaskPatch, tags: SidebarTag[]) {

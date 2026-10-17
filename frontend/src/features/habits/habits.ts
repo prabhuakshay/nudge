@@ -8,10 +8,14 @@ import { moveAfter } from "@/features/tags/tags";
 import { editing, useCacheMutation } from "@/lib/cache-mutation";
 
 export type Habit = components["schemas"]["HabitOut"];
+export type CheckIn = components["schemas"]["CheckInOut"];
 export type HabitIconKey = Habit["icon"];
 export type Frequency = Habit["frequency"];
 /** Every setting the user picks in the Add and Edit dialogs. */
-export type HabitSettings = Omit<Habit, "id" | "is_archived" | "today_count">;
+export type HabitSettings = Omit<
+  Habit,
+  "id" | "is_archived" | "today_count" | "current_streak" | "best_streak" | "streak_unit"
+>;
 
 /** The most Check-ins a Habit's Goal can ask for in a day, as the server allows. */
 export const MAX_GOAL = 99;
@@ -25,6 +29,23 @@ export const habitsQuery = queryOptions({
     return data;
   },
 });
+
+/**
+ * A Habit's days with Check-ins from `start` to `end`, both ISO dates and included. The key sits
+ * under the Habits list's, so every change to Habits refetches it.
+ */
+export function checkInsQuery(habitId: number, start: string, end: string) {
+  return queryOptions({
+    queryKey: [...habitsQuery.queryKey, habitId, "check-ins", start, end],
+    queryFn: async (): Promise<CheckIn[]> => {
+      const { data } = await api.GET("/api/v1/habits/{habit_id}/check-ins", {
+        params: { path: { habit_id: habitId }, query: { start, end } },
+      });
+      if (!data) throw new Error("Could not load the check-ins.");
+      return data;
+    },
+  });
+}
 
 /**
  * The Habits for Today's strip, in the user's order: the server picks the live ones due today and

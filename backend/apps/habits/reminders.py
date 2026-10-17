@@ -17,7 +17,7 @@ from django.utils import timezone
 
 from apps.accounts.services import local_zone
 from apps.habits.models import Habit
-from apps.habits.schedule import is_scheduled, is_week_met
+from apps.habits.schedule import DAYS_IN_WEEK, is_done, is_scheduled, is_week_met, week_of
 from apps.notifications.services import notify
 from apps.tasks.reminders import CATCH_UP
 
@@ -25,7 +25,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterable, Mapping
 
 # A week always has a day that needs the Habit, so a week and a day of candidates are enough.
-_LOOKAHEAD_DAYS = 8
+_LOOKAHEAD_DAYS = DAYS_IN_WEEK + 1
 
 
 def reschedule(habits: Iterable[Habit]) -> None:
@@ -45,7 +45,7 @@ def next_reminder(habit: Habit, after: datetime) -> datetime | None:
         return None
     zone = local_zone(habit.owner)
     first = max(after.astimezone(zone).date(), habit.start_date)
-    counts = _counts(habit, _monday(first))
+    counts = _counts(habit, week_of(first))
     for offset in range(_LOOKAHEAD_DAYS):
         day = first + timedelta(days=offset)
         # Combining the naive clock time keeps it at 09:00 across daylight saving changes.
@@ -55,11 +55,6 @@ def next_reminder(habit: Habit, after: datetime) -> datetime | None:
     return None
 
 
-def _monday(day: date) -> date:
-    """Return the Monday that starts the day's week; Habit weeks run Monday to Sunday."""
-    return day - timedelta(days=day.weekday())
-
-
 def _counts(habit: Habit, since: date) -> dict[date, int]:
     """Return the Habit's Check-ins by day from `since`; earlier ones can't stop a Reminder."""
     return dict(habit.check_ins.filter(date__gte=since).values_list("date", "count"))
@@ -67,12 +62,12 @@ def _counts(habit: Habit, since: date) -> dict[date, int]:
 
 def _needs(habit: Habit, day: date, counts: Mapping[date, int]) -> bool:
     """Whether the day asks for the Habit and neither its Goal nor its week is met yet."""
-    monday = _monday(day)
-    week = (monday + timedelta(days=offset) for offset in range(7))
-    days_done = sum(1 for each in week if counts.get(each, 0) >= habit.goal)
+    monday = week_of(day)
+    week = (monday + timedelta(days=offset) for offset in range(DAYS_IN_WEEK))
+    days_done = sum(1 for each in week if is_done(habit, counts.get(each, 0)))
     return (
         is_scheduled(habit, day)
-        and counts.get(day, 0) < habit.goal
+        and not is_done(habit, counts.get(day, 0))
         and not is_week_met(habit, days_done)
     )
 

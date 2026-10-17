@@ -1,4 +1,4 @@
-"""Habit endpoints: list all or today's Habits, add, edit, order, archive, delete, check in."""
+"""Habit endpoints: list all or today's Habits, add, edit, order, archive, delete, Check-ins."""
 
 from __future__ import annotations
 
@@ -11,7 +11,14 @@ from ninja import Router, Status
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
 from apps.habits import services
-from apps.habits.schemas import CheckInsIn, HabitIn, HabitMoveIn, HabitOut, HabitPatchIn
+from apps.habits.schemas import (
+    CheckInOut,
+    CheckInsIn,
+    HabitIn,
+    HabitMoveIn,
+    HabitOut,
+    HabitPatchIn,
+)
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -84,6 +91,22 @@ def update_habit(request: HttpRequest, habit_id: int, patch: HabitPatchIn) -> St
         remove_reminder="reminder_time" in patch.model_fields_set and patch.reminder_time is None,
     )
     return Status(HTTPStatus.OK, HabitOut.from_orm(updated))
+
+
+@router.get(
+    "/{int:habit_id}/check-ins",
+    response={HTTPStatus.OK: list[CheckInOut], HTTPStatus.NOT_FOUND: ErrorOut},
+    summary="List a Habit's Check-ins",
+)
+def list_check_ins(
+    request: HttpRequest,
+    habit_id: int,
+    start: date,
+    end: date,
+) -> Status[list[CheckInOut]]:
+    """Return the days from `start` to `end`, both included, that have Check-ins, oldest first."""
+    found = services.check_ins(signed_in_user(request), habit_id, start, end)
+    return Status(HTTPStatus.OK, [CheckInOut.from_orm(check_in) for check_in in found])
 
 
 @router.put(

@@ -144,6 +144,9 @@ def test_edit_changes_every_setting_the_list_then_shows(client: Client) -> None:
         "reminder_time": "08:30:00",
         "today_count": 0,
         "is_archived": False,
+        "current_streak": 0,
+        "best_streak": 0,
+        "streak_unit": "days",
     }
     assert client.get("/api/v1/habits").json() == [edited.json()]
 

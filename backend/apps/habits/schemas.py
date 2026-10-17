@@ -10,6 +10,7 @@ from pydantic import StringConstraints
 
 from apps.core.palette import PaletteColor  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.habits.models import MAX_GOAL, Habit, HabitIcon
+from apps.habits.streaks import StreakUnit  # noqa: TC001 - Pydantic needs the type at runtime
 
 HabitName = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=100)]
 Goal = Annotated[int, Field(ge=1, le=MAX_GOAL)]
@@ -36,6 +37,9 @@ class HabitOut(Schema):
     is_archived: bool = Field(
         description="Archived Habits keep their history but stay out of Today."
     )
+    current_streak: int = Field(description="The current run of done days or met weeks.")
+    best_streak: int = Field(description="The longest run of done days or met weeks ever.")
+    streak_unit: StreakUnit = Field(description="Weeks for a times-a-week Habit, else days.")
 
 
 class HabitMoveIn(Schema):
@@ -94,6 +98,13 @@ class HabitPatchIn(Schema):
         default=None,
         description="A clock time in the user's zone to remind them at; null removes it.",
     )
+
+
+class CheckInOut(Schema):
+    """How many times the user did a Habit on a day with Check-ins."""
+
+    date: date
+    count: int
 
 
 class CheckInsIn(Schema):

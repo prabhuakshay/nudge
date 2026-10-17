@@ -12,17 +12,29 @@ import { cn } from "@/lib/utils";
 
 import { CheckInButton, UndoCheckInItem } from "./check-in";
 import { HabitIcon } from "./habit-icon";
+import { RecentDays, StreakLine } from "./habit-progress";
 import { useMoveHabit, useSetArchived, type Habit } from "./habits";
 
 const LIST = "overflow-hidden rounded-xl border border-border bg-surface";
 const ROW = "group flex min-h-14 items-center gap-3 border-b border-border/60 px-4 py-2";
 
-/** A Habit's icon, name and menu, the parts every row shares. */
-function HabitLine({ habit, menu }: { habit: Habit; menu: ReactNode }) {
+/** A Habit's icon, name and menu, the parts every row shares, with `details` under the name. */
+function HabitLine({
+  habit,
+  menu,
+  details,
+}: {
+  habit: Habit;
+  menu: ReactNode;
+  details?: ReactNode;
+}) {
   return (
     <>
       <HabitIcon habit={habit} />
-      <span className="min-w-0 flex-1 truncate text-sm font-medium">{habit.name}</span>
+      <span className="flex min-w-0 flex-1 flex-col">
+        <span className="truncate text-sm font-medium">{habit.name}</span>
+        {details}
+      </span>
       <RowMenu label={`${habit.name} options`}>{menu}</RowMenu>
     </>
   );
@@ -40,8 +52,9 @@ function DeleteItem({ onSelect }: { onSelect: () => void }) {
 }
 
 /**
- * The user's live Habits in their order. Each row drags by its grip (Space picks it up from the
- * keyboard), checks in for today with its ring button, and its menu edits it, undoes today's
+ * The user's live Habits in their order. Each row shows its Streak and last 7 days, drags by its
+ * grip (Space picks it up from the keyboard), checks in for today with its ring button, and its
+ * menu edits it, undoes today's
  * latest Check-in, archives or deletes it. `timeZone` is the user's, which decides what today is.
  */
 export function HabitList({
@@ -129,6 +142,7 @@ function SortableHabitRow({
       </button>
       <HabitLine
         habit={habit}
+        details={<StreakLine habit={habit} />}
         menu={
           <>
             <DropdownMenuItem
@@ -154,6 +168,7 @@ function SortableHabitRow({
           </>
         }
       />
+      <RecentDays habit={habit} timeZone={timeZone} />
       <CheckInButton habit={habit} timeZone={timeZone} />
     </li>
   );

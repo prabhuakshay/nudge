@@ -7,6 +7,8 @@ from datetime import datetime  # noqa: TC003 - Pydantic needs the type at runtim
 from ninja import Field, Schema
 from pydantic import field_validator
 
+from apps.notifications.reminders import Snooze  # noqa: TC001 - Pydantic needs the type at runtime
+
 
 class NotificationOut(Schema):
     """A notification as the notification center shows it."""
@@ -17,6 +19,10 @@ class NotificationOut(Schema):
     url: str = Field(description="Path in the app to open, or empty.")
     is_reminder: bool = Field(
         description="Whether a Reminder sent it, so its Task can be completed or snoozed from it.",
+    )
+    is_habit_reminder: bool = Field(
+        description="Whether a Habit Reminder sent it, so its Habit can be checked in to or "
+        "snoozed from it.",
     )
     created_at: datetime
     read_at: datetime | None
@@ -65,3 +71,9 @@ class PushUnsubscribeIn(Schema):
     """The endpoint of the browser to stop pushing to."""
 
     endpoint: str
+
+
+class SnoozeIn(Schema):
+    """When a snoozed Reminder should fire again."""
+
+    until: Snooze = Field(description="Tomorrow morning is 09:00 in the user's time zone.")

@@ -101,7 +101,8 @@ Offline mode is not planned.
 
 ### Later
 - Calendar view
-- Habits (planned: #114), Pomodoro
+- Habits with Check-ins, Streaks, a heatmap, a Today strip and Reminders (done: #114)
+- Pomodoro
 - Matrix view, an Eisenhower matrix (done: #103)
 - Countdown, a dated Task showing the days left (done: #113)
 - Shared Projects and collaboration

@@ -7,7 +7,7 @@ import {
   Layers,
   type LucideIcon,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -47,6 +47,7 @@ export function ScheduleList({
   inbox,
   timeZone,
   description,
+  strip,
 }: {
   view: ScheduleView;
   /** The drawer's fallback Project; Quick add puts new Tasks there too. */
@@ -54,6 +55,8 @@ export function ScheduleList({
   /** The user's zone, which says what date today is. */
   timeZone: string;
   description?: string;
+  /** Shown between the header and Quick add, as Today does with its Habits. */
+  strip?: ReactNode;
 }) {
   const { data: tasks = [] } = useQuery(viewTasksQuery(view));
   const pinned = useMemo(() => tasks.filter((task) => task.pinned_at !== null), [tasks]);
@@ -91,6 +94,8 @@ export function ScheduleList({
           {tasks.length} open
         </Badge>
       </header>
+
+      {strip}
 
       <QuickAddCard view={view === "all" ? { kind: "all" } : { kind: view, today, tomorrow }} />
 

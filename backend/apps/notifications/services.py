@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from apps.accounts.models import User
+    from apps.habits.models import Habit
     from apps.tasks.models import Reminder
 
 logger = logging.getLogger(__name__)
@@ -39,17 +40,20 @@ def push_is_configured() -> bool:
     return bool(settings.VAPID_PUBLIC_KEY and settings.VAPID_PRIVATE_KEY)
 
 
-def notify(
+def notify(  # noqa: PLR0913 - one optional link per kind of Reminder that sends notifications
     user: User,
     title: str,
     body: str = "",
     url: str = "",
+    *,
     reminder: Reminder | None = None,
+    habit: Habit | None = None,
 ) -> Notification:
     """Add a notification to the user's notification center and push it to their devices.
 
-    A notification from a Reminder offers to complete or snooze its Task. Pushing happens in the
-    background worker, so a slow push service never delays the caller.
+    A notification from a Reminder offers to complete or snooze its Task, and one from a Habit
+    Reminder to check in or snooze. Pushing happens in the background worker, so a slow push
+    service never delays the caller.
     """
     from apps.notifications.tasks import push_notification  # noqa: PLC0415 - it imports this module
 
@@ -59,6 +63,7 @@ def notify(
         body=body,
         url=url,
         reminder=reminder,
+        habit=habit,
     )
     if push_is_configured():
         push_notification.defer(notification_id=notification.pk)
@@ -141,6 +146,7 @@ def push_to_devices(notification_id: int) -> None:
             "body": notification.body,
             "url": notification.url,
             "is_reminder": notification.is_reminder,
+            "is_habit_reminder": notification.is_habit_reminder,
         },
     )
     for subscription in notification.user.push_subscriptions.all():

@@ -8,6 +8,15 @@ const REMINDER = parsePushPayload({
   is_reminder: true,
 });
 
+const HABIT_REMINDER = parsePushPayload({
+  id: 9,
+  title: "Drink water",
+  body: "",
+  url: "/habits",
+  is_reminder: false,
+  is_habit_reminder: true,
+});
+
 describe("parsePushPayload", () => {
   it("reads the server's message", () => {
     expect(
@@ -17,8 +26,16 @@ describe("parsePushPayload", () => {
         body: "Due today",
         url: "/inbox",
         is_reminder: true,
+        is_habit_reminder: false,
       }),
-    ).toEqual({ id: 1, title: "Pay rent", body: "Due today", url: "/inbox", isReminder: true });
+    ).toEqual({
+      id: 1,
+      title: "Pay rent",
+      body: "Due today",
+      url: "/inbox",
+      isReminder: true,
+      isHabitReminder: false,
+    });
   });
 
   it.each([undefined, null, "text", 42])("falls back to a generic notification for %s", (value) => {
@@ -27,15 +44,26 @@ describe("parsePushPayload", () => {
       body: "",
       url: "/",
       isReminder: false,
+      isHabitReminder: false,
     });
   });
 
   it("fills in missing or empty fields", () => {
-    expect(parsePushPayload({ id: "7", title: "", body: 3, url: "", is_reminder: "yes" })).toEqual({
+    expect(
+      parsePushPayload({
+        id: "7",
+        title: "",
+        body: 3,
+        url: "",
+        is_reminder: "yes",
+        is_habit_reminder: 1,
+      }),
+    ).toEqual({
       title: "Nudge",
       body: "",
       url: "/",
       isReminder: false,
+      isHabitReminder: false,
     });
   });
 });
@@ -48,9 +76,17 @@ describe("pushActions", () => {
     ]);
   });
 
+  it("offers Check in and Snooze 15 min on a Habit Reminder", () => {
+    expect(pushActions(HABIT_REMINDER)).toEqual([
+      { action: "check_in", title: "Check in" },
+      { action: "snooze", title: "Snooze 15 min" },
+    ]);
+  });
+
   it("offers nothing on other notifications", () => {
     expect(pushActions({ ...REMINDER, isReminder: false })).toEqual([]);
     expect(pushActions({ ...REMINDER, id: undefined })).toEqual([]);
+    expect(pushActions({ ...HABIT_REMINDER, id: undefined })).toEqual([]);
   });
 });
 
@@ -66,6 +102,24 @@ describe("pushActionRequest", () => {
       path: "/api/v1/notifications/7/snooze",
       body: { until: "in_15_minutes" },
     });
+  });
+
+  it("checks in to the Habit", () => {
+    expect(pushActionRequest("check_in", HABIT_REMINDER)).toEqual({
+      path: "/api/v1/notifications/9/check-in",
+    });
+  });
+
+  it("snoozes a Habit Reminder for 15 minutes", () => {
+    expect(pushActionRequest("snooze", HABIT_REMINDER)).toEqual({
+      path: "/api/v1/notifications/9/snooze-habit",
+      body: { until: "in_15_minutes" },
+    });
+  });
+
+  it("keeps each kind of Reminder to its own actions", () => {
+    expect(pushActionRequest("check_in", REMINDER)).toBeUndefined();
+    expect(pushActionRequest("complete", HABIT_REMINDER)).toBeUndefined();
   });
 
   it("makes no call for a click on the notification itself", () => {

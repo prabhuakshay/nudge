@@ -76,7 +76,7 @@ function renderSidebar(onSearch = vi.fn()) {
 }
 
 describe("Sidebar", () => {
-  it("lists the views, the Inbox first with its open Task count, and Trash last", async () => {
+  it("lists the views, the Inbox first with its open Task count, then Habits, and Trash last", async () => {
     mockApi();
     renderSidebar();
 
@@ -88,6 +88,7 @@ describe("Sidebar", () => {
       "/calendar",
       "/matrix",
       "/all",
+      "/habits",
       "/trash",
     ]);
   });

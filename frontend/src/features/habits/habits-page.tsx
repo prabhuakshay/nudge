@@ -132,7 +132,7 @@ function HabitLists({
         <EmptyState
           icon={Flame}
           title="No habits yet"
-          description="Add something you want to do every day, then check in each day you do it."
+          description="Add something you want to do regularly, then check in whenever you do it."
         />
       )}
       {live.length > 0 && (

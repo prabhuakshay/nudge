@@ -15,7 +15,7 @@ export const OCTOBER: DayRange = { start: "2026-10-01", end: "2026-10-31" };
 export const NOVEMBER: DayRange = { start: "2026-11-01", end: "2026-11-30" };
 
 export const TRIP = makeTask({ id: 1, title: "Trip" });
-export const FLIGHTS = makeTask({ id: 2, title: "Flights", parent_id: 1 });
+export const FLIGHTS = makeTask({ id: 2, title: "Flights", parent_id: 1, depth: 1 });
 export const GYM = makeTask({
   id: 3,
   title: "Gym",

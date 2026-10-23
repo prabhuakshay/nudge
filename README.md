@@ -9,6 +9,11 @@
   Your tasks, projects and reminders, on a server you control.
 </p>
 
+<p align="center">
+  <a href="https://github.com/prabhuakshay/nudge/actions/workflows/ci.yml"><img src="https://github.com/prabhuakshay/nudge/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/prabhuakshay/nudge/pkgs/container/nudge"><img src="https://img.shields.io/badge/ghcr.io-prabhuakshay%2Fnudge-blue?logo=docker" alt="Container image on GHCR"></a>
+</p>
+
 ---
 
 > **Status:** early development. The v1 core loop is being finished: tasks, projects and
@@ -39,23 +44,25 @@ host's network, so they reach PostgreSQL at `localhost`.
    sudo -u postgres psql -c "CREATE DATABASE nudge OWNER nudge;"
    ```
 
-2. Configure Nudge:
+2. Download the stack and configure Nudge:
 
    ```sh
-   cp .env.example .env
+   mkdir nudge && cd nudge
+   curl -fsSLO https://raw.githubusercontent.com/prabhuakshay/nudge/main/compose.yaml
+   curl -fsSL https://raw.githubusercontent.com/prabhuakshay/nudge/main/.env.example -o .env
    ```
 
    Set at least `NUDGE_SECRET_KEY`, `NUDGE_PUBLIC_URL` and `DATABASE_URL`. Behind a reverse proxy,
    also set `NUDGE_TRUST_PROXY_HEADERS=true` and the address to listen on
-   (`NUDGE_WEB_HOST`, `NUDGE_WEB_PORT`).
+   (`NUDGE_WEB_HOST`, `NUDGE_WEB_PORT`). Pin `NUDGE_IMAGE_TAG` to a release, such as `0.1`.
 
 3. Start it:
 
    ```sh
-   docker compose up -d --build
+   docker compose pull && docker compose up -d
    ```
 
-   Migrations run automatically. Check health with `docker compose ps`.
+   The image runs on amd64 and arm64. Migrations run automatically. Check health with `docker compose ps`.
 
 4. Create your account:
 
@@ -68,10 +75,13 @@ host's network, so they reach PostgreSQL at `localhost`.
 
 ### Upgrading
 
+Change `NUDGE_IMAGE_TAG` if you pinned a version, then:
+
 ```sh
-git pull
-docker compose up -d --build
+docker compose pull && docker compose up -d
 ```
+
+[Releases](https://github.com/prabhuakshay/nudge/releases) list what changed in each version.
 
 ## Development
 

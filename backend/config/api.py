@@ -45,7 +45,7 @@ if TYPE_CHECKING:
 
 api = NinjaAPI(
     title="Nudge API",
-    version="1.0.0",
+    version=settings.VERSION,
     description="HTTP API for Nudge, an open-source, self-hostable task manager.",
     docs_url="/docs" if settings.API_DOCS_ENABLED else None,
     openapi_url="/openapi.json" if settings.API_DOCS_ENABLED else None,

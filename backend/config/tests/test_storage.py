@@ -38,6 +38,7 @@ def test_a_full_bucket_configuration_stores_files_in_the_bucket() -> None:
             "access_key": "key-id",
             "secret_key": "secret",
             "region_name": "eu-west-1",
+            "max_memory_size": 2_621_440,
         },
     }
 

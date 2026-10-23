@@ -19,8 +19,13 @@ _BUCKET_SETTING_TO_OPTION = {
     "NUDGE_STORAGE_SECRET_ACCESS_KEY": "secret_key",
 }
 
+# A file read from the bucket is downloaded whole before Django streams it. Above this size it
+# spills to FILE_UPLOAD_TEMP_DIR instead of staying in RAM; the backend's default is never.
+# Matches Django's FILE_UPLOAD_MAX_MEMORY_SIZE default, so reads and uploads behave alike.
+_MAX_MEMORY_SIZE = 2_621_440
 
-def default_storage(environ: Mapping[str, str]) -> dict[str, str | dict[str, str]]:
+
+def default_storage(environ: Mapping[str, str]) -> dict[str, str | dict[str, str | int]]:
     """Return the `default` entry of `STORAGES` that the `NUDGE_STORAGE_*` values describe.
 
     With none of the bucket settings, files stay on the file system under `MEDIA_ROOT`. With
@@ -36,7 +41,10 @@ def default_storage(environ: Mapping[str, str]) -> dict[str, str | dict[str, str
     if missing := [name for name, value in given.items() if not value]:
         message = f"Set {', '.join(missing)} to store Attachments in a bucket."
         raise ImproperlyConfigured(message)
-    options = {_BUCKET_SETTING_TO_OPTION[name]: value for name, value in given.items()}
+    options: dict[str, str | int] = {
+        _BUCKET_SETTING_TO_OPTION[name]: value for name, value in given.items()
+    }
     # R2 takes "auto"; other services need their real region.
     options["region_name"] = environ.get("NUDGE_STORAGE_REGION") or "auto"
+    options["max_memory_size"] = _MAX_MEMORY_SIZE
     return {"BACKEND": "storages.backends.s3.S3Storage", "OPTIONS": options}

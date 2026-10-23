@@ -23,7 +23,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
     from apps.accounts.models import User
-    from apps.tasks.siblings import Siblings
+    from apps.core.siblings import Siblings
 
 
 def _task(project: Project, position: str, parent: Task | None = None) -> Task:

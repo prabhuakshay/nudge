@@ -33,6 +33,14 @@ class Notification(models.Model):
         related_name="notifications",
         help_text="The Reminder that sent it, which lets the user complete or snooze its Task.",
     )
+    habit = models.ForeignKey(
+        "habits.Habit",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notifications",
+        help_text="The Habit whose Reminder sent it.",
+    )
     created_at = models.DateTimeField(default=timezone.now)
     read_at = models.DateTimeField(null=True, blank=True)
 
@@ -53,6 +61,11 @@ class Notification(models.Model):
     def is_reminder(self) -> bool:
         """Whether a Reminder sent it, so its Task can still be completed or snoozed from it."""
         return self.reminder_id is not None
+
+    @property
+    def is_habit_reminder(self) -> bool:
+        """Whether a Habit Reminder sent it, so the user can check in or snooze from it."""
+        return self.habit_id is not None
 
 
 class PushSubscription(models.Model):

@@ -172,6 +172,7 @@ def test_push_to_devices_sends_the_notification_to_every_browser(
         "body": "Due today",
         "url": "/inbox",
         "is_reminder": False,
+        "is_habit_reminder": False,
     }
     assert sorted(sent) == [
         ("https://push.example.com/laptop", payload),

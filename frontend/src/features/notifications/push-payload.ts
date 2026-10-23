@@ -11,9 +11,17 @@ export type PushPayload = {
   url: string;
   /** Whether a Reminder sent it, so its Task can be completed or snoozed from it. */
   isReminder: boolean;
+  /** Whether a Habit Reminder sent it, so its Habit can be checked in to or snoozed from it. */
+  isHabitReminder: boolean;
 };
 
-const FALLBACK: PushPayload = { title: "Nudge", body: "", url: "/", isReminder: false };
+const FALLBACK: PushPayload = {
+  title: "Nudge",
+  body: "",
+  url: "/",
+  isReminder: false,
+  isHabitReminder: false,
+};
 
 function nonEmptyString(value: object, key: string): string | undefined {
   const field: unknown = Reflect.get(value, key);
@@ -35,6 +43,7 @@ export function parsePushPayload(value: unknown): PushPayload {
     body: nonEmptyString(value, "body") ?? FALLBACK.body,
     url: nonEmptyString(value, "url") ?? FALLBACK.url,
     isReminder: Reflect.get(value, "is_reminder") === true,
+    isHabitReminder: Reflect.get(value, "is_habit_reminder") === true,
   };
 }
 
@@ -43,14 +52,14 @@ export type PushAction = { action: string; title: string };
 
 /**
  * The buttons a pushed notification shows. Browsers that don't support buttons ignore them, and
- * a click on the notification itself still opens the Task.
+ * a click on the notification itself still opens its page.
  */
 export function pushActions(payload: PushPayload): PushAction[] {
-  if (!payload.isReminder || payload.id === undefined) return [];
-  return [
-    { action: "complete", title: "Complete" },
-    { action: "snooze", title: "Snooze 15 min" },
-  ];
+  if (payload.id === undefined) return [];
+  const snooze = { action: "snooze", title: "Snooze 15 min" };
+  if (payload.isReminder) return [{ action: "complete", title: "Complete" }, snooze];
+  if (payload.isHabitReminder) return [{ action: "check_in", title: "Check in" }, snooze];
+  return [];
 }
 
 /** The API call a click on one of the notification's buttons makes. */
@@ -61,9 +70,16 @@ export function pushActionRequest(
   action: string,
   payload: PushPayload,
 ): PushActionRequest | undefined {
-  if (!payload.isReminder || payload.id === undefined) return undefined;
+  if (payload.id === undefined) return undefined;
   const base = `/api/v1/notifications/${String(payload.id)}`;
-  if (action === "complete") return { path: `${base}/complete` };
-  if (action === "snooze") return { path: `${base}/snooze`, body: { until: "in_15_minutes" } };
+  const later = { until: "in_15_minutes" };
+  if (payload.isReminder) {
+    if (action === "complete") return { path: `${base}/complete` };
+    if (action === "snooze") return { path: `${base}/snooze`, body: later };
+  }
+  if (payload.isHabitReminder) {
+    if (action === "check_in") return { path: `${base}/check-in` };
+    if (action === "snooze") return { path: `${base}/snooze-habit`, body: later };
+  }
   return undefined;
 }

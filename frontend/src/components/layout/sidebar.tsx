@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Search, Trash2 } from "lucide-react";
+import { Flame, Search, Trash2 } from "lucide-react";
 
 import { Logo } from "@/components/brand/logo";
 import { Kbd } from "@/components/ui/kbd";
@@ -66,7 +66,7 @@ const LINK =
   "flex h-10 items-center gap-2.5 rounded-md px-2.5 text-sm text-foreground transition-colors hover:bg-surface-muted data-[status=active]:bg-primary-soft data-[status=active]:text-primary lg:h-9";
 
 /**
- * The views, then the user's Projects, Tags and People, then Trash: the body of the desktop
+ * The views, then Habits, the user's Projects, Tags and People, then Trash: the body of the desktop
  * sidebar and of the phone menu, which holds what the bottom bar has no room for.
  * `onNavigate` runs when a link is followed, so the phone menu can close. `onSearch` adds a
  * Search field that opens the command bar; the phone menu leaves it out, as its top bar has one.
@@ -107,6 +107,13 @@ export function SidebarNav({
           );
         })}
       </nav>
+
+      <div className="mt-3 border-t border-border px-2 pt-3">
+        <Link to="/habits" onClick={onNavigate} className={LINK}>
+          <Flame className="size-4" aria-hidden />
+          Habits
+        </Link>
+      </div>
 
       <div className="mt-3 flex flex-col gap-3 border-t border-border pt-3">
         <SidebarProjects onNavigate={onNavigate} />

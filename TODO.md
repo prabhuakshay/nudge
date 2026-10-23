@@ -36,7 +36,7 @@
   - Lists what was completed, grouped by Project, ready to copy as markdown.
   - Optional AI summary of that list, off unless `NUDGE_LLM_URL` and `NUDGE_LLM_API_KEY` are
     set. The page says which text leaves the server.
-- [ ] Add Habits (#114)
+- [x] Add Habits (#114, split into #115 to #123)
 - [ ] Add a daily digest
   - At a time the user picks, send Today's Tasks and the Overdue count through their channels;
     email gets an HTML version.

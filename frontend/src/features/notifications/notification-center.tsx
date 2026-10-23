@@ -16,12 +16,15 @@ import { cn } from "@/lib/utils";
 import {
   notificationsQuery,
   SNOOZE_OPTIONS,
+  useCheckInFromReminder,
   useCompleteFromReminder,
   useDismiss,
   useMarkAllRead,
   useMarkRead,
+  useSnoozeHabitReminder,
   useSnoozeReminder,
   type Notification,
+  type Snooze,
 } from "./notifications";
 import { timeAgo } from "./relative-time";
 
@@ -166,6 +169,7 @@ function NotificationItem({ notification, onOpen }: NotificationItemProps) {
         </Button>
       </div>
       {notification.is_reminder && <ReminderActions notification={notification} />}
+      {notification.is_habit_reminder && <HabitReminderActions notification={notification} />}
     </li>
   );
 }
@@ -190,32 +194,81 @@ function ReminderActions({ notification }: { notification: Notification }) {
         <Check aria-hidden />
         Complete
       </Button>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            aria-label={`Snooze ${notification.title}`}
-            disabled={busy}
-            className="h-11 px-3 lg:h-8"
-          >
-            <AlarmClock aria-hidden />
-            Snooze
-            <ChevronDown aria-hidden />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-44">
-          {SNOOZE_OPTIONS.map(({ until, label }) => (
-            <DropdownMenuItem
-              key={until}
-              onSelect={() => {
-                snooze.mutate({ id: notification.id, until });
-              }}
-            >
-              {label}
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+      <SnoozeMenu
+        title={notification.title}
+        disabled={busy}
+        onSnooze={(until) => {
+          snooze.mutate({ id: notification.id, until });
+        }}
+      />
     </div>
+  );
+}
+
+/** Check in and Snooze for a Habit Reminder, laid out like a Task Reminder's actions. */
+function HabitReminderActions({ notification }: { notification: Notification }) {
+  const checkIn = useCheckInFromReminder();
+  const snooze = useSnoozeHabitReminder();
+  const busy = checkIn.isPending || snooze.isPending;
+
+  return (
+    <div className="flex gap-2 pr-4 pb-3 pl-9">
+      <Button
+        variant="outline"
+        aria-label={`Check in ${notification.title}`}
+        disabled={busy}
+        onClick={() => {
+          checkIn.mutate(notification.id);
+        }}
+        className="h-11 px-3 lg:h-8"
+      >
+        <Check aria-hidden />
+        Check in
+      </Button>
+      <SnoozeMenu
+        title={notification.title}
+        disabled={busy}
+        onSnooze={(until) => {
+          snooze.mutate({ id: notification.id, until });
+        }}
+      />
+    </div>
+  );
+}
+
+type SnoozeMenuProps = {
+  title: string;
+  disabled: boolean;
+  onSnooze: (until: Snooze) => void;
+};
+
+function SnoozeMenu({ title, disabled, onSnooze }: SnoozeMenuProps) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          variant="outline"
+          aria-label={`Snooze ${title}`}
+          disabled={disabled}
+          className="h-11 px-3 lg:h-8"
+        >
+          <AlarmClock aria-hidden />
+          Snooze
+          <ChevronDown aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start" className="w-44">
+        {SNOOZE_OPTIONS.map(({ until, label }) => (
+          <DropdownMenuItem
+            key={until}
+            onSelect={() => {
+              onSnooze(until);
+            }}
+          >
+            {label}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

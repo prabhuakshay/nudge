@@ -2,6 +2,7 @@ import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { sessionQuery } from "@/features/auth/session";
+import { TodayHabits } from "@/features/habits/today-strip";
 import { validateTaskSearch } from "@/features/tasks/open-task";
 import { ScheduleList } from "@/features/tasks/schedule-list";
 import { sidebarQuery } from "@/features/tasks/tasks";
@@ -28,6 +29,7 @@ function TodayPage() {
       inbox={sidebar.inbox}
       timeZone={user.time_zone}
       description={firstName ? `${greeting}, ${firstName}.` : `${greeting}.`}
+      strip={<TodayHabits timeZone={user.time_zone} />}
     />
   );
 }

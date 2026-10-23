@@ -9,9 +9,9 @@ from ninja import Router, Status
 
 from apps.core.auth import signed_in_user
 from apps.core.schemas import ErrorOut
+from apps.notifications.schemas import SnoozeIn  # noqa: TC001 - Ninja reads the type at runtime
 from apps.tasks import reminder_actions
 from apps.tasks.api.tasks import task_change_out
-from apps.tasks.schemas.reminders import SnoozeIn  # noqa: TC001 - Ninja reads the type at runtime
 from apps.tasks.schemas.tasks import TaskChangeOut
 
 if TYPE_CHECKING:

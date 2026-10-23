@@ -368,6 +368,46 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/notifications/{notification_id}/check-in": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Check in to a Habit from its Reminder
+     * @description Add one Check-in today to the Habit a Reminder notification is about, up to its Goal.
+     */
+    post: operations["apps_habits_api_check_in_from_reminder"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/notifications/{notification_id}/snooze-habit": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Snooze a Habit Reminder
+     * @description Fire a Habit Reminder notification once more later, leaving the Habit's schedule as it is.
+     */
+    post: operations["apps_habits_api_snooze_from_reminder"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/folders": {
     parameters: {
       query?: never;
@@ -1224,6 +1264,176 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/habits": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List Habits
+     * @description Return the user's Habits in their order.
+     */
+    get: operations["apps_habits_api_list_habits"];
+    put?: never;
+    /**
+     * Add a Habit
+     * @description Add a Habit last in the user's order, starting today in the user's time zone by default.
+     */
+    post: operations["apps_habits_api_create_habit"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/habits/today": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List today's Habits
+     * @description Return the Habits for the Today strip: due today, or still short of this week's target.
+     */
+    get: operations["apps_habits_api_list_today_habits"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/habits/{habit_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    /**
+     * Delete a Habit
+     * @description Delete a Habit and its Check-ins for good. Habits don't go to Trash.
+     */
+    delete: operations["apps_habits_api_delete_habit"];
+    options?: never;
+    head?: never;
+    /**
+     * Edit a Habit
+     * @description Change any of a Habit's settings; the ones left out stay as they are.
+     *
+     *     A null reminder time removes the Reminder, unlike the other settings.
+     */
+    patch: operations["apps_habits_api_update_habit"];
+    trace?: never;
+  };
+  "/api/v1/habits/{habit_id}/check-ins": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Habit's Check-ins
+     * @description Return the days from `start` to `end`, both included, that have Check-ins, oldest first.
+     */
+    get: operations["apps_habits_api_list_check_ins"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/habits/{habit_id}/check-ins/{day}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    /**
+     * Set a day's Check-ins
+     * @description Set how many times the user did a Habit on a day, up to its Goal; zero clears the day.
+     */
+    put: operations["apps_habits_api_set_check_ins"];
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/habits/{habit_id}/move": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Move a Habit in the user's order
+     * @description Put a Habit right after another, or first.
+     */
+    post: operations["apps_habits_api_move_habit"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/habits/{habit_id}/archive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Archive a Habit
+     * @description Move a Habit to the Archived section, keeping its Check-ins.
+     */
+    post: operations["apps_habits_api_archive_habit"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/habits/{habit_id}/unarchive": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Unarchive a Habit
+     * @description Bring an archived Habit back to its place, with its Check-ins.
+     */
+    post: operations["apps_habits_api_unarchive_habit"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1386,6 +1596,11 @@ export interface components {
        * @description Whether a Reminder sent it, so its Task can be completed or snoozed from it.
        */
       is_reminder: boolean;
+      /**
+       * Is Habit Reminder
+       * @description Whether a Habit Reminder sent it, so its Habit can be checked in to or snoozed from it.
+       */
+      is_habit_reminder: boolean;
       /**
        * Created At
        * Format: date-time
@@ -1774,6 +1989,109 @@ export interface components {
       /** @description Tomorrow morning is 09:00 in the user's time zone. */
       until: components["schemas"]["Snooze"];
     };
+    /**
+     * Frequency
+     * @description When a Habit is meant to be done.
+     * @enum {string}
+     */
+    Frequency: "daily" | "weekdays" | "times_per_week";
+    /**
+     * HabitIcon
+     * @description The Lucide icons a Habit can show. Not `Habit.Icon`: the API schema names enums by class.
+     * @enum {string}
+     */
+    HabitIcon:
+      | "circle-check"
+      | "droplet"
+      | "book-open"
+      | "dumbbell"
+      | "footprints"
+      | "bike"
+      | "apple"
+      | "salad"
+      | "pill"
+      | "bed"
+      | "moon"
+      | "sun"
+      | "brain"
+      | "heart-pulse"
+      | "music"
+      | "pencil"
+      | "languages"
+      | "code"
+      | "sprout"
+      | "coffee"
+      | "cigarette-off"
+      | "wallet"
+      | "smile"
+      | "star";
+    /**
+     * HabitOut
+     * @description A Habit's own fields.
+     */
+    HabitOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      icon: components["schemas"]["HabitIcon"];
+      color: components["schemas"]["PaletteColor"];
+      frequency: components["schemas"]["Frequency"];
+      /**
+       * Weekdays
+       * @description The chosen weekdays, 1 is Monday; else empty.
+       */
+      weekdays: number[];
+      /**
+       * Times Per Week
+       * @description How many times a week; else null.
+       */
+      times_per_week: number | null;
+      /**
+       * Goal
+       * @description How many Check-ins make a day done.
+       */
+      goal: number;
+      /**
+       * Start Date
+       * Format: date
+       * @description The first day the Habit counts, in the user's zone.
+       */
+      start_date: string;
+      /**
+       * Reminder Time
+       * @description When to remind the user on days the Habit is still to do; null for never.
+       */
+      reminder_time: string | null;
+      /**
+       * Today Count
+       * @description Check-ins so far today, in the user's zone.
+       */
+      today_count: number;
+      /**
+       * Is Archived
+       * @description Archived Habits keep their history but stay out of Today.
+       */
+      is_archived: boolean;
+      /**
+       * Current Streak
+       * @description The current run of done days or met weeks.
+       */
+      current_streak: number;
+      /**
+       * Best Streak
+       * @description The longest run of done days or met weeks ever.
+       */
+      best_streak: number;
+      /** @description Weeks for a times-a-week Habit, else days. */
+      streak_unit: components["schemas"]["StreakUnit"];
+    };
+    /**
+     * StreakUnit
+     * @description What a Streak counts: done days, or weeks that met a times-a-week Habit's number.
+     * @enum {string}
+     */
+    StreakUnit: "days" | "weeks";
     /**
      * FolderOut
      * @description A Folder's own fields.
@@ -3608,6 +3926,108 @@ export interface components {
        */
       project_ids: number[];
     };
+    /**
+     * HabitIn
+     * @description A new Habit. Unless told otherwise it's done once every day, starting today.
+     */
+    HabitIn: {
+      /** Name */
+      name: string;
+      icon: components["schemas"]["HabitIcon"];
+      color: components["schemas"]["PaletteColor"];
+      /** @default daily */
+      frequency: components["schemas"]["Frequency"];
+      /**
+       * Weekdays
+       * @description The chosen weekdays, needed when the Frequency is chosen weekdays.
+       */
+      weekdays?: number[];
+      /**
+       * Times Per Week
+       * @description How many times a week, needed when the Frequency is times a week.
+       */
+      times_per_week?: number | null;
+      /**
+       * Goal
+       * @default 1
+       */
+      goal: number;
+      /**
+       * Start Date
+       * @description Defaults to today.
+       */
+      start_date?: string | null;
+      /**
+       * Reminder Time
+       * @description A clock time in the user's zone to remind them at; none when null.
+       */
+      reminder_time?: string | null;
+    };
+    /**
+     * HabitPatchIn
+     * @description The settings of a Habit to change; ones left out or null stay, but a null Reminder goes.
+     */
+    HabitPatchIn: {
+      /** Name */
+      name?: string | null;
+      icon?: components["schemas"]["HabitIcon"] | null;
+      color?: components["schemas"]["PaletteColor"] | null;
+      frequency?: components["schemas"]["Frequency"] | null;
+      /**
+       * Weekdays
+       * @description The chosen weekdays, kept only when the Frequency is chosen weekdays.
+       */
+      weekdays?: number[] | null;
+      /**
+       * Times Per Week
+       * @description How many times a week, kept only when the Frequency is times a week.
+       */
+      times_per_week?: number | null;
+      /**
+       * Goal
+       * @description A lower Goal keeps every day's Check-ins; a day above it counts as met.
+       */
+      goal?: number | null;
+      /** Start Date */
+      start_date?: string | null;
+      /**
+       * Reminder Time
+       * @description A clock time in the user's zone to remind them at; null removes it.
+       */
+      reminder_time?: string | null;
+    };
+    /**
+     * CheckInOut
+     * @description How many times the user did a Habit on a day with Check-ins.
+     */
+    CheckInOut: {
+      /**
+       * Date
+       * Format: date
+       */
+      date: string;
+      /** Count */
+      count: number;
+    };
+    /**
+     * CheckInsIn
+     * @description How many times the user did a Habit on a day. Zero clears the day.
+     */
+    CheckInsIn: {
+      /** Count */
+      count: number;
+    };
+    /**
+     * HabitMoveIn
+     * @description Where a Habit goes in the user's order.
+     */
+    HabitMoveIn: {
+      /**
+       * After Id
+       * @description The Habit it now follows; first when null, last when it isn't there.
+       */
+      after_id?: number | null;
+    };
   };
   responses: never;
   parameters: never;
@@ -4065,6 +4485,79 @@ export interface operations {
     };
   };
   apps_tasks_api_reminder_actions_snooze: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["SnoozeIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_check_in_from_reminder: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        notification_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_snooze_from_reminder: {
     parameters: {
       query?: never;
       header?: never;
@@ -5981,6 +6474,326 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_list_habits: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"][];
+        };
+      };
+    };
+  };
+  apps_habits_api_create_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HabitIn"];
+      };
+    };
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_list_today_habits: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"][];
+        };
+      };
+    };
+  };
+  apps_habits_api_delete_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_update_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HabitPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_list_check_ins: {
+    parameters: {
+      query: {
+        start: string;
+        end: string;
+      };
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CheckInOut"][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_set_check_ins: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+        day: string;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["CheckInsIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_move_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["HabitMoveIn"];
+      };
+    };
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_archive_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_habits_api_unarchive_habit: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        habit_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["HabitOut"];
+        };
       };
       /** @description Not Found */
       404: {

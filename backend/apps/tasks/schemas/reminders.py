@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Annotated, Literal
 
 from ninja import Field, Schema
 
-from apps.tasks.reminder_actions import Snooze  # noqa: TC001 - Pydantic needs the type at runtime
 from apps.tasks.reminders import MAX_OFFSET
 
 if TYPE_CHECKING:
@@ -39,12 +38,6 @@ class ReminderOut(Schema):
     def of(cls, reminder: Reminder) -> ReminderOut:
         """Return the Reminder as the API shows it, with its offset in whole minutes."""
         return cls(offset=int(reminder.offset.total_seconds()) // 60, fire_at=reminder.fire_at)
-
-
-class SnoozeIn(Schema):
-    """When a snoozed Reminder should fire again."""
-
-    until: Snooze = Field(description="Tomorrow morning is 09:00 in the user's time zone.")
 
 
 class RemindersChangedData(Schema):

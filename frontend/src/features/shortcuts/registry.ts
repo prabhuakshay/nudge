@@ -38,6 +38,7 @@ export const SHORTCUTS = {
   goToAll: { keys: ["g a"], scope: "global", label: "Go to All" },
   goToSearch: { keys: ["g s"], scope: "global", label: "Go to Search" },
   goToTrash: { keys: ["g x"], scope: "global", label: "Go to Trash" },
+  goToHabits: { keys: ["g h"], scope: "global", label: "Go to Habits" },
   goToSettings: { keys: ["g ,"], scope: "global", label: "Open Settings" },
 
   previousRow: { keys: ["ArrowUp", "k"], scope: "list", label: "Previous task" },

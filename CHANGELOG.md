@@ -6,6 +6,14 @@ All notable changes to Nudge are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-10-23
+
+### Fixed
+
+- The container image is now published at `ghcr.io/prabhuakshay/nudge`. The 0.1.0 image was held
+  back because it carried packages with known security vulnerabilities; this one ships without
+  them.
+
 ## [0.1.0] - 2026-10-23
 
 The first release of Nudge, a self-hostable task manager in the spirit of TickTick.
@@ -53,5 +61,6 @@ The first release of Nudge, a self-hostable task manager in the spirit of TickTi
 - A ready-to-run image for amd64 and arm64 at `ghcr.io/prabhuakshay/nudge`, run with Docker
   Compose against your own PostgreSQL. Every setting lives in `.env`.
 
-[Unreleased]: https://github.com/prabhuakshay/nudge/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/prabhuakshay/nudge/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/prabhuakshay/nudge/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/prabhuakshay/nudge/releases/tag/v0.1.0

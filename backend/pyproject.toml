@@ -1,6 +1,6 @@
 [project]
 name = "nudge"
-version = "0.1.0"
+version = "0.1.1"
 description = "Backend for Nudge, an open-source, self-hostable task manager."
 license = "MIT"
 authors = [{ name = "Akshay Prabhu" }]

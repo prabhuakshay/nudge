@@ -15,6 +15,9 @@
 backend/staticfiles/
 backend/media/
 
+# Throwaway design prototypes (see #136): served locally, never committed.
+/prototypes/
+
 # Frontend build output and caches
 frontend/dist/
 frontend/dev-dist/

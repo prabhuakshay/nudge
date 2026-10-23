@@ -83,6 +83,28 @@ docker compose pull && docker compose up -d
 
 [Releases](https://github.com/prabhuakshay/nudge/releases) list what changed in each version.
 
+### Storing Attachments in Cloudflare R2
+
+Attachments are stored on the `media` volume by default. To keep them in an R2 bucket instead,
+run the wizard from the folder that holds `compose.yaml` and `.env`:
+
+```sh
+curl -fsSLO https://raw.githubusercontent.com/prabhuakshay/nudge/main/scripts/setup-r2.sh
+bash setup-r2.sh
+```
+
+It tells you what to click in the Cloudflare dashboard to create the bucket and a token limited to
+it, writes the `NUDGE_STORAGE_*` settings to `.env` if you want, copies existing Attachments to
+the bucket and tests it. The bucket stays private: downloads still go through Nudge.
+
+Any other S3-compatible service (Backblaze B2, MinIO, Wasabi, AWS S3) works with the same
+settings, set by hand (see `.env.example`). Test the bucket any time, for example after rotating
+keys, with:
+
+```sh
+docker compose run --rm web python manage.py check_storage
+```
+
 ## Development
 
 Requirements: [uv](https://docs.astral.sh/uv/), Node.js 24+, Docker,

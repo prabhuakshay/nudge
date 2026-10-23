@@ -12,19 +12,12 @@ from apps.tasks import attachments, creation, services, trash
 from apps.tasks.models import Task
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from collections.abc import Callable
 
     from django.test.client import _MonkeyPatchedWSGIResponse as Response
-    from pytest_django import Settings
     from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
 
     from apps.accounts.models import User
-
-
-@pytest.fixture(autouse=True)
-def media_root(settings: Settings, tmp_path: Path) -> Path:
-    settings.MEDIA_ROOT = tmp_path
-    return tmp_path
 
 
 def _trashed(user: User, title: str) -> Task:
@@ -130,7 +123,7 @@ def test_delete_forever_needs_at_least_one_id(client: Client) -> None:
 def test_delete_forever_deletes_attachment_files_after_commit(
     client: Client,
     ada: User,
-    media_root: Path,
+    stored_files: Callable[[], list[str]],
     django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     task = creation.create_task(services.inbox(ada), "File the taxes")
@@ -140,7 +133,7 @@ def test_delete_forever_deletes_attachment_files_after_commit(
     with django_capture_on_commit_callbacks(execute=True):
         _delete_forever(client, task)
 
-    assert [path for path in media_root.rglob("*") if path.is_file()] == []
+    assert stored_files() == []
 
 
 @pytest.mark.django_db

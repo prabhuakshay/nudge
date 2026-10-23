@@ -7,6 +7,7 @@ Nothing here should need editing to deploy Nudge.
 
 from __future__ import annotations
 
+import os
 import re
 import tomllib
 from pathlib import Path
@@ -14,6 +15,8 @@ from urllib.parse import urlsplit
 
 import django_stubs_ext
 import environ
+
+from config import storage
 
 # Lets generic Django classes such as `ModelAdmin[User]` be subscripted at runtime, matching
 # what the type checker sees.
@@ -174,16 +177,19 @@ USE_TZ = True
 
 STATIC_URL = "static/"
 STATIC_ROOT = env.path("NUDGE_STATIC_ROOT", default=BASE_DIR / "staticfiles")
+# Attachments go to an S3-compatible bucket when the NUDGE_STORAGE_* settings are set, and to
+# MEDIA_ROOT otherwise. `config/storage.py` holds the rules.
 STORAGES = {
-    "default": {"BACKEND": "django.core.files.storage.FileSystemStorage"},
+    "default": storage.default_storage(os.environ),
     "staticfiles": {"BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage"},
 }
 
-# Uploaded files (Attachments). Never served from a public URL: only the owner-checked download
-# endpoint reads them. In Docker this is the `media` volume, shared by the web and the worker.
+# Uploaded files (Attachments) when no bucket is set. Never served from a public URL: only the
+# owner-checked download endpoint reads them, from here or from the bucket. In Docker this is the
+# `media` volume, shared by the web and the worker.
 MEDIA_ROOT = Path(env.path("NUDGE_MEDIA_ROOT", default=BASE_DIR / "media"))
-# Big uploads are spooled to disk while they arrive. Keep them on the media volume: the
-# container's /tmp is RAM, and a read-only container has nowhere else to write.
+# Big uploads are spooled to disk while they arrive, even with a bucket. Keep them on the media
+# volume: the container's /tmp is RAM, and a read-only container has nowhere else to write.
 FILE_UPLOAD_TEMP_DIR = MEDIA_ROOT / "uploads"
 # The largest Attachment, in bytes. Keep the proxy's request body limit a little above it.
 ATTACHMENT_MAX_SIZE = env.int("NUDGE_ATTACHMENT_MAX_SIZE", default=25 * 1024 * 1024)

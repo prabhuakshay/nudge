@@ -12,7 +12,7 @@ from apps.tasks import creation, services
 from apps.tasks.models import Attachment
 
 if TYPE_CHECKING:
-    from pathlib import Path
+    from collections.abc import Callable
 
     from django.test.client import _MonkeyPatchedWSGIResponse as Response
     from pytest_django import Settings
@@ -22,12 +22,7 @@ if TYPE_CHECKING:
     from apps.tasks.models import Task
 
 
-@pytest.fixture(autouse=True)
-def media_root(settings: Settings, tmp_path: Path) -> Path:
-    settings.MEDIA_ROOT = tmp_path
-    settings.FILE_UPLOAD_TEMP_DIR = tmp_path / "uploads"
-    settings.FILE_UPLOAD_TEMP_DIR.mkdir()
-    return tmp_path
+pytestmark = pytest.mark.usefixtures("stored_files")
 
 
 @pytest.fixture
@@ -47,10 +42,6 @@ def _download(client: Client, attachment_id: int) -> tuple[Response, bytes]:
     content = response.getvalue()
     response.close()
     return response, content
-
-
-def _stored_files(media_root: Path) -> list[Path]:
-    return [path for path in media_root.rglob("*") if path.is_file()]
 
 
 @pytest.mark.django_db
@@ -91,14 +82,14 @@ def test_upload_keeps_the_name_and_size_and_picks_the_type_from_the_name(
 def test_upload_stores_the_file_under_a_generated_key(
     client: Client,
     task: Task,
-    media_root: Path,
+    stored_files: Callable[[], list[str]],
 ) -> None:
-    _upload(client, task.pk, "../../etc/passwd")
+    attachment_id = _upload(client, task.pk, "../../etc/passwd").json()["id"]
 
-    [stored] = _stored_files(media_root)
-    assert stored.read_bytes() == b"data"
-    assert "passwd" not in str(stored)
-    assert stored.is_relative_to(media_root / "attachments")
+    [key] = stored_files()
+    assert key.startswith(f"attachments/{task.owner_id}/")
+    assert "passwd" not in key
+    assert _download(client, attachment_id)[1] == b"data"
 
 
 @pytest.mark.django_db
@@ -113,7 +104,7 @@ def test_upload_over_the_size_limit_is_refused(
     client: Client,
     task: Task,
     settings: Settings,
-    media_root: Path,
+    stored_files: Callable[[], list[str]],
 ) -> None:
     settings.ATTACHMENT_MAX_SIZE = 25 * 1024 * 1024
 
@@ -121,7 +112,7 @@ def test_upload_over_the_size_limit_is_refused(
 
     assert response.status_code == 413
     assert response.json() == {"detail": "Files can be at most 25.0\xa0MB."}
-    assert _stored_files(media_root) == []
+    assert stored_files() == []
     assert not Attachment.objects.exists()
 
 
@@ -149,14 +140,14 @@ def test_upload_without_a_file_is_rejected(client: Client, task: Task) -> None:
 def test_upload_to_another_users_task_is_not_found(
     client: Client,
     grace: User,
-    media_root: Path,
+    stored_files: Callable[[], list[str]],
 ) -> None:
     task = creation.create_task(services.inbox(grace), "Private")
 
     response = _upload(client, task.pk, "x.txt")
 
     assert response.status_code == 404
-    assert _stored_files(media_root) == []
+    assert stored_files() == []
 
 
 @pytest.mark.django_db
@@ -231,18 +222,18 @@ def test_download_of_another_users_attachment_is_not_found(
 def test_delete_removes_the_attachment_and_its_file_after_commit(
     client: Client,
     task: Task,
-    media_root: Path,
+    stored_files: Callable[[], list[str]],
     django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
     attachment_id = _upload(client, task.pk, "old.txt").json()["id"]
 
     with django_capture_on_commit_callbacks(execute=True) as callbacks:
         response = client.delete(f"/api/v1/attachments/{attachment_id}")
-        assert len(_stored_files(media_root)) == 1
+        assert len(stored_files()) == 1
 
     assert response.status_code == 204
     assert len(callbacks) == 1
-    assert _stored_files(media_root) == []
+    assert stored_files() == []
     assert client.get(f"/api/v1/tasks/{task.pk}/attachments").json() == []
 
 
@@ -250,7 +241,7 @@ def test_delete_removes_the_attachment_and_its_file_after_commit(
 def test_delete_of_another_users_attachment_is_not_found(
     client: Client,
     grace: User,
-    media_root: Path,
+    stored_files: Callable[[], list[str]],
 ) -> None:
     task = creation.create_task(services.inbox(grace), "Private")
     grace_client = Client()
@@ -260,7 +251,7 @@ def test_delete_of_another_users_attachment_is_not_found(
     response = client.delete(f"/api/v1/attachments/{attachment_id}")
 
     assert response.status_code == 404
-    assert len(_stored_files(media_root)) == 1
+    assert len(stored_files()) == 1
 
 
 @pytest.mark.django_db

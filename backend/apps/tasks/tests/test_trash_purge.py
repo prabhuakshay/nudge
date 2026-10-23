@@ -33,7 +33,6 @@ from apps.tasks.models import (
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from pathlib import Path
 
     from pytest_django import Settings
     from pytest_django.fixtures import DjangoCaptureOnCommitCallbacks
@@ -42,16 +41,6 @@ if TYPE_CHECKING:
 
 DELETED = datetime(2025, 3, 1, 9, 0, tzinfo=UTC)
 RETENTION = timedelta(days=365)
-
-
-@pytest.fixture(autouse=True)
-def media_root(settings: Settings, tmp_path: Path) -> Path:
-    settings.MEDIA_ROOT = tmp_path
-    return tmp_path
-
-
-def _stored_files(media_root: Path) -> list[Path]:
-    return [path for path in media_root.rglob("*") if path.is_file()]
 
 
 def _trashed(user: User, title: str, freeze_time: Callable[[datetime], None]) -> Task:
@@ -158,7 +147,7 @@ def test_a_fired_reminders_notification_outlives_the_purge(
 @pytest.mark.django_db
 def test_attachment_files_are_deleted_only_after_the_purge_commits(
     ada: User,
-    media_root: Path,
+    stored_files: Callable[[], list[str]],
     freeze_time: Callable[[datetime], None],
     django_capture_on_commit_callbacks: DjangoCaptureOnCommitCallbacks,
 ) -> None:
@@ -170,8 +159,8 @@ def test_attachment_files_are_deleted_only_after_the_purge_commits(
 
     with django_capture_on_commit_callbacks(execute=True) as callbacks:
         purge.purge_expired_trash()
-        assert len(_stored_files(media_root)) == 1
+        assert len(stored_files()) == 1
 
     assert len(callbacks) == 1
-    assert _stored_files(media_root) == []
+    assert stored_files() == []
     assert not Attachment.objects.exists()

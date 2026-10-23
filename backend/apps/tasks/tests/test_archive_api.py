@@ -14,10 +14,7 @@ from apps.tasks.archive import active_tasks
 from apps.tasks.models import Project, Task
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from django.test.client import _MonkeyPatchedWSGIResponse as Response
-    from pytest_django import Settings
 
     from apps.accounts.models import User
 
@@ -28,14 +25,6 @@ def _post(client: Client, path: str, data: object | None = None) -> Response:
 
 def _patch(client: Client, path: str, data: object) -> Response:
     return client.patch(path, data, content_type="application/json")
-
-
-@pytest.fixture
-def media_root(settings: Settings, tmp_path: Path) -> Path:
-    settings.MEDIA_ROOT = tmp_path
-    settings.FILE_UPLOAD_TEMP_DIR = tmp_path / "uploads"
-    settings.FILE_UPLOAD_TEMP_DIR.mkdir()
-    return tmp_path
 
 
 @pytest.fixture
@@ -241,7 +230,7 @@ def test_moving_a_task_into_an_archived_project_is_refused(
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("media_root")
+@pytest.mark.usefixtures("stored_files")
 def test_attaching_a_file_to_a_task_in_an_archived_project_is_refused(
     client: Client,
     archived: Project,
@@ -259,7 +248,7 @@ def test_attaching_a_file_to_a_task_in_an_archived_project_is_refused(
 
 
 @pytest.mark.django_db
-@pytest.mark.usefixtures("media_root")
+@pytest.mark.usefixtures("stored_files")
 def test_deleting_a_file_from_a_task_in_an_archived_project_is_refused(
     client: Client,
     ada: User,

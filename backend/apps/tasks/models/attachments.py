@@ -10,10 +10,13 @@ from django.utils import timezone
 
 from apps.tasks.models.tasks import Task
 
+# Every Attachment's storage key starts with this folder, on disk and in a bucket.
+ATTACHMENTS_FOLDER = "attachments"
+
 
 def _attachment_key(attachment: Attachment, _filename: str) -> str:
     """Return a fresh storage key, so a file's name never reaches the file system."""
-    return f"attachments/{attachment.task.owner_id}/{uuid.uuid4().hex}"
+    return f"{ATTACHMENTS_FOLDER}/{attachment.task.owner_id}/{uuid.uuid4().hex}"
 
 
 class Attachment(models.Model):

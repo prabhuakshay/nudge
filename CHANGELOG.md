@@ -6,6 +6,22 @@ All notable changes to Nudge are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-10-23
+
+### Added
+
+- Attachments can be stored in Cloudflare R2 or any other S3-compatible bucket (Backblaze B2,
+  MinIO, Wasabi, AWS S3) instead of the server's disk, configured entirely in `.env`. Files stay
+  private: only their owner can download them, through Nudge. Nudge refuses to start if only some
+  of the bucket settings are filled in, and names the missing ones. Deployments that set nothing
+  keep using the disk as before. (#134)
+- A setup wizard, `scripts/setup-r2.sh`, tells you what to click in the Cloudflare dashboard to
+  create an R2 bucket and a token limited to it. It then writes the settings to `.env` if you
+  want, copies your existing Attachments into the bucket and tests it. (#134)
+- Two commands for self-hosters: `check_storage` tests the bucket at any time, for example after
+  rotating keys, and `copy_media_to_storage` copies Attachments from disk to the bucket. Running
+  the copy again is safe, and it never deletes the local files. (#134)
+
 ## [0.1.1] - 2026-10-23
 
 ### Fixed
@@ -61,6 +77,7 @@ The first release of Nudge, a self-hostable task manager in the spirit of TickTi
 - A ready-to-run image for amd64 and arm64 at `ghcr.io/prabhuakshay/nudge`, run with Docker
   Compose against your own PostgreSQL. Every setting lives in `.env`.
 
-[Unreleased]: https://github.com/prabhuakshay/nudge/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/prabhuakshay/nudge/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/prabhuakshay/nudge/compare/v0.1.1...v0.2.0
 [0.1.1]: https://github.com/prabhuakshay/nudge/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/prabhuakshay/nudge/releases/tag/v0.1.0

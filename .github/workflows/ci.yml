@@ -3,14 +3,26 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ["v*"]
   pull_request:
+  # Rebuilds the image of an existing release, e.g. to pick up a patched base image.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to rebuild, such as v0.2.0
+        required: true
+        type: string
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ inputs.tag || github.ref }}
   cancel-in-progress: true
 
 permissions:
   contents: read
+
+env:
+  IMAGE: ghcr.io/${{ github.repository }}
+  RELEASE: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' }}
 
 jobs:
   checks:
@@ -18,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -51,6 +65,8 @@ jobs:
       DATABASE_URL: postgres://nudge:nudge@localhost:5432/nudge
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
       - uses: astral-sh/setup-uv@v7
         with:
           enable-cache: true
@@ -73,6 +89,8 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
       - uses: actions/setup-node@v7
         with:
           node-version-file: .nvmrc
@@ -82,17 +100,216 @@ jobs:
       - run: npm --prefix frontend test
       - run: npm --prefix frontend run build
 
-  docker:
-    name: Production image
+
+  release:
+    name: Release version
     runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.version.outputs.publish }}
+      tags: ${{ steps.meta.outputs.tags }}
+      labels: ${{ steps.meta.outputs.labels }}
+      annotations: ${{ steps.meta.outputs.annotations }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
+          # Every tag, to tell whether this release is the newest one.
+          fetch-depth: 0
+      - name: Check the tag against the project version
+        id: version
+        env:
+          PUBLISH: ${{ startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch' }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          echo "publish=$PUBLISH" >> "$GITHUB_OUTPUT"
+          [ "$PUBLISH" = true ] || exit 0
+
+          version="${TAG#v}"
+          base="${version%%-*}"
+          if ! echo "$base" | grep -qxE '[0-9]+\.[0-9]+\.[0-9]+'; then
+            echo "::error::$TAG is not a vX.Y.Z tag"
+            exit 1
+          fi
+          # Pre-releases are spelled differently in each file (0.3.0rc1, 0.3.0-rc.1), so only
+          # X.Y.Z is compared.
+          backend=$(sed -n 's/^version = "\(.*\)"$/\1/p' backend/pyproject.toml)
+          frontend=$(jq -r .version frontend/package.json)
+          for found in "$backend" "$frontend"; do
+            if [ "${found%%[!0-9.]*}" != "$base" ]; then
+              echo "::error::$TAG does not match the project version $found"
+              exit 1
+            fi
+          done
+
+          # A floating tag (latest, X.Y, X) moves only to the newest stable release it covers, so
+          # rebuilding an old release never rolls servers back.
+          newest() {
+            [ "$base" = "$version" ] &&
+              [ "$(git tag --list "$1" | grep -v -- - | sort -V | tail -n 1)" = "$TAG" ]
+          }
+          major="${base%%.*}"
+          minor="${base%.*}"
+          newest 'v*' && echo "latest=true" >> "$GITHUB_OUTPUT"
+          newest "v$minor.*" && echo "minor=true" >> "$GITHUB_OUTPUT"
+          # 0.x promises no compatibility between minor versions, so it gets no major tag.
+          [ "$major" != 0 ] && newest "v$major.*" && echo "major=true" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Image tags and labels
+        id: meta
+        if: steps.version.outputs.publish == 'true'
+        uses: docker/metadata-action@v6
+        env:
+          DOCKER_METADATA_ANNOTATIONS_LEVELS: index
+        with:
+          context: git
+          images: ${{ env.IMAGE }}
+          flavor: latest=false
+          tags: |
+            type=semver,pattern={{version}},value=${{ inputs.tag || github.ref_name }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ inputs.tag || github.ref_name }},enable=${{ steps.version.outputs.minor == 'true' }}
+            type=semver,pattern={{major}},value=${{ inputs.tag || github.ref_name }},enable=${{ steps.version.outputs.major == 'true' }}
+            type=raw,value=latest,enable=${{ steps.version.outputs.latest == 'true' }}
+
+  image:
+    name: Production image (${{ matrix.arch }})
+    needs: release
+    strategy:
+      matrix:
+        include:
+          - { arch: amd64, runner: ubuntu-24.04 }
+          - { arch: arm64, runner: ubuntu-24.04-arm }
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      packages: write
+      security-events: write
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_USER: nudge
+          POSTGRES_PASSWORD: nudge
+          POSTGRES_DB: nudge
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U nudge"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag }}
       - uses: docker/setup-buildx-action@v4
-      - uses: docker/build-push-action@v7
+      - name: Build
+        uses: docker/build-push-action@v7
         with:
           context: .
           file: docker/Dockerfile
           target: production
-          push: false
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          platforms: linux/${{ matrix.arch }}
+          load: true
+          tags: nudge:ci
+          # The local image store can't hold attestations; the pushed image gets them below.
+          provenance: false
+          sbom: false
+          cache-from: type=gha,scope=${{ matrix.arch }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.arch }}
+      - name: Smoke test
+        env:
+          NUDGE_SECRET_KEY: ci-only-${{ github.run_id }}-not-a-real-secret-key-padding-to-fifty-chars
+        # Runs as compose.yaml does (host network, read-only, no capabilities), so a startup that
+        # writes to disk or needs a privilege fails here.
+        run: |
+          docker run --detach --name nudge --network host --read-only --tmpfs /tmp \
+            --cap-drop ALL --security-opt no-new-privileges \
+            --env DATABASE_URL=postgres://nudge:nudge@localhost:5432/nudge \
+            --env NUDGE_SECRET_KEY \
+            nudge:ci
+          for _ in $(seq 60); do
+            if docker exec nudge python /usr/local/bin/nudge-healthcheck; then exit 0; fi
+            sleep 2
+          done
+          docker logs nudge
+          exit 1
+      - name: Scan for vulnerabilities
+        # Pinned to a commit: a tag can be moved, as happened to this action's tags in March 2026.
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          image-ref: nudge:ci
+          format: sarif
+          output: trivy.sarif
+          severity: HIGH,CRITICAL
+          limit-severities-for-sarif: true
+          ignore-unfixed: true
+          # A newly published CVE shouldn't block unrelated pull requests, only a release.
+          exit-code: ${{ needs.release.outputs.publish == 'true' && '1' || '0' }}
+      - name: Upload the scan to code scanning
+        if: ${{ !cancelled() && github.event_name != 'pull_request' && hashFiles('trivy.sarif') != '' }}
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy.sarif
+          category: trivy-${{ matrix.arch }}
+      - uses: docker/login-action@v4
+        if: needs.release.outputs.publish == 'true'
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Push by digest
+        id: push
+        if: needs.release.outputs.publish == 'true'
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          file: docker/Dockerfile
+          target: production
+          platforms: linux/${{ matrix.arch }}
+          labels: ${{ needs.release.outputs.labels }}
+          # Untagged: the publish job tags the multi-arch image once every check has passed.
+          outputs: type=image,name=${{ env.IMAGE }},push-by-digest=true,name-canonical=true,push=true
+          provenance: mode=max
+          sbom: true
+      - name: Save the digest
+        if: needs.release.outputs.publish == 'true'
+        env:
+          DIGEST: ${{ steps.push.outputs.digest }}
+        run: echo "$DIGEST" > "digest-${{ matrix.arch }}"
+      - uses: actions/upload-artifact@v7
+        if: needs.release.outputs.publish == 'true'
+        with:
+          name: digest-${{ matrix.arch }}
+          path: digest-${{ matrix.arch }}
+          retention-days: 1
+
+  publish:
+    name: Publish image
+    needs: [release, checks, backend, frontend, image]
+    if: needs.release.outputs.publish == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: digest-*
+          merge-multiple: true
+          path: digests
+      - uses: docker/setup-buildx-action@v4
+      - uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Tag the multi-arch image
+        env:
+          TAGS: ${{ needs.release.outputs.tags }}
+          ANNOTATIONS: ${{ needs.release.outputs.annotations }}
+        run: |
+          args=()
+          while IFS= read -r tag; do [ -n "$tag" ] && args+=(--tag "$tag"); done <<< "$TAGS"
+          while IFS= read -r note; do [ -n "$note" ] && args+=(--annotation "$note"); done <<< "$ANNOTATIONS"
+          for digest in digests/*; do args+=("$IMAGE@$(cat "$digest")"); done
+          docker buildx imagetools create "${args[@]}"
+          docker buildx imagetools inspect "$(head -n 1 <<< "$TAGS")"

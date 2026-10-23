@@ -165,6 +165,16 @@ A private, read-only address a calendar app subscribes to, showing each open dat
 event on its current date.
 _Avoid_: iCal export, calendar sync
 
+**Tab**:
+One of up to five places in the phone's bottom bar, each opening a View, Habits, a Project, a
+Tag or a Person. Each user chooses and orders their own Tabs.
+_Avoid_: Pinned view, shortcut, favourite
+
+**Browse**:
+The Tab that is always last and can't be removed; it lists everything the other Tabs don't
+show, including Settings and Trash.
+_Avoid_: More, menu
+
 ## People
 
 **Person**:

@@ -1,12 +1,14 @@
 # Production stack. Configure everything in .env (see .env.example), then:
-#   docker compose up -d --build
+#   docker compose pull && docker compose up -d
+#
+# It runs the image CI publishes for each release; NUDGE_IMAGE_TAG picks the version.
 #
 # Both services use the host's network so they reach the host's PostgreSQL at the address in
 # DATABASE_URL, and the web server listens directly on NUDGE_WEB_HOST:NUDGE_WEB_PORT for the
 # reverse proxy (Caddy) on the same machine.
 
 x-nudge: &nudge
-  image: nudge:${NUDGE_IMAGE_TAG:-latest}
+  image: ghcr.io/prabhuakshay/nudge:${NUDGE_IMAGE_TAG:-latest}
   network_mode: host
   env_file: .env
   restart: unless-stopped
@@ -31,10 +33,6 @@ x-nudge: &nudge
 services:
   web:
     <<: *nudge
-    build:
-      context: .
-      dockerfile: docker/Dockerfile
-      target: production
     stop_grace_period: 30s
 
   worker:

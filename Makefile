@@ -23,8 +23,9 @@ dev-down: ## Stop the dev stack
 	$(DEV) down
 
 .PHONY: up
-up: ## Build and start the production stack in the background
-	docker compose up -d --build
+up: ## Pull the release image and start the production stack in the background
+	docker compose pull
+	docker compose up -d
 
 .PHONY: down
 down: ## Stop the production stack

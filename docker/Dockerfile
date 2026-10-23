@@ -62,7 +62,10 @@ FROM python:${PYTHON_VERSION}-slim AS production
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:${PATH}"
-RUN groupadd --system --gid 10001 nudge \
+# The app runs from /opt/venv and never installs packages, and the base image's pip bundles its
+# own copies of urllib3, certifi and others that vulnerability scans flag.
+RUN python -m pip uninstall --yes --quiet pip \
+    && groupadd --system --gid 10001 nudge \
     && useradd --system --uid 10001 --gid nudge --no-create-home --shell /usr/sbin/nologin nudge
 WORKDIR /app/backend
 COPY --from=backend-build /opt/venv /opt/venv

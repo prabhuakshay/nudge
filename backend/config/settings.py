@@ -8,6 +8,7 @@ Nothing here should need editing to deploy Nudge.
 from __future__ import annotations
 
 import re
+import tomllib
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -23,6 +24,10 @@ REPO_ROOT = BASE_DIR.parent
 
 env = environ.Env()
 environ.Env.read_env(REPO_ROOT / ".env")
+
+# The backend isn't installed as a package, so its version comes from pyproject.toml itself.
+with (BASE_DIR / "pyproject.toml").open("rb") as pyproject:
+    VERSION: str = tomllib.load(pyproject)["project"]["version"]
 
 # ---------------------------------------------------------------- core
 

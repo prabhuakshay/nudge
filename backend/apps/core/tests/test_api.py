@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import tomllib
 from typing import TYPE_CHECKING
 
 import pytest
+from django.conf import settings
 
 if TYPE_CHECKING:
     from django.test import Client
@@ -34,3 +36,12 @@ def test_unknown_api_path_returns_404_instead_of_the_app(client: Client) -> None
 
     assert response.status_code == 404
     assert response.json() == {"detail": "Not Found"}
+
+
+def test_openapi_schema_reports_the_project_version(client: Client) -> None:
+    with (settings.BASE_DIR / "pyproject.toml").open("rb") as file:
+        version = tomllib.load(file)["project"]["version"]
+
+    response = client.get("/api/v1/openapi.json")
+
+    assert response.json()["info"]["version"] == version

@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
+from apps.accounts.services import set_time_zone
 from apps.notifications.models import Notification
 from apps.tasks import tasks as jobs
 
@@ -59,6 +60,7 @@ def test_a_reminder_time_set_through_the_api_fires(
     client: Client,
     freeze_time: Callable[[datetime], None],
 ) -> None:
+    set_time_zone(ada, "Europe/London")
     freeze_time(NOW)
     _create(client, {**HABIT, "reminder_time": "09:00"})
     freeze_time(datetime(2026, 3, 10, 9, 0, tzinfo=UTC))

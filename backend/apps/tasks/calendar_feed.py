@@ -18,7 +18,7 @@ from apps.accounts.models import User
 from apps.accounts.services import local_zone
 from apps.core.address_secrets import new_address_secret
 from apps.tasks.archive import active_tasks
-from apps.tasks.mentions import MENTION
+from apps.tasks.mentions import plain_names
 from apps.tasks.models import OPEN_STATUSES
 
 if TYPE_CHECKING:
@@ -95,7 +95,7 @@ def _event(task: Task, zone: ZoneInfo) -> Event:
     event.add("dtstamp", task.updated_at)
     event.add("dtstart", start)
     event.add("dtend", end)
-    event.add("summary", _plain(task.title))
+    event.add("summary", plain_names(task.title))
     event.add("description", _description(task))
     return event
 
@@ -118,10 +118,5 @@ def _description(task: Task) -> str:
     project = task.project
     path = "/inbox" if project.is_inbox else f"/projects/{project.pk}"
     link = f"{settings.PUBLIC_URL}{path}?task={task.pk}"
-    parts = (project.name, _plain(task.description), link)
+    parts = (project.name, plain_names(task.description), link)
     return "\n\n".join(part for part in parts if part)
-
-
-def _plain(text: str) -> str:
-    """Return the text with each Mention as the Person's plain name."""
-    return MENTION.sub(r"\1", text)

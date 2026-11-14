@@ -26,6 +26,11 @@ class MentionError(DomainRuleError):
     """A text mentions a Person the user doesn't have."""
 
 
+def plain_names(text: str) -> str:
+    """Return the text with each Mention as the Person's plain name, for readers outside the app."""
+    return MENTION.sub(r"\1", text)
+
+
 def mentioned_ids(*texts: str) -> set[int]:
     """Return the ids of every Person the texts mention."""
     return {int(match[2]) for text in texts for match in MENTION.finditer(text)}

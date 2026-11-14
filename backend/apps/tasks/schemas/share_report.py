@@ -5,9 +5,11 @@ They carry only what the viewer reads, never ids or settings of the owner's othe
 
 from __future__ import annotations
 
-from datetime import datetime  # noqa: TC003 - Pydantic needs the type at runtime
+from datetime import date, datetime, time  # noqa: TC003 - Pydantic needs the types at runtime
 
 from ninja import Field, Schema
+
+from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
 
 
 class ShareReportProjectOut(Schema):
@@ -18,10 +20,26 @@ class ShareReportProjectOut(Schema):
 
 
 class ShareReportTaskOut(Schema):
-    """One Task on the report."""
+    """One Task on the report, with Mentions as plain names."""
 
     id: int
     title: str
+    parent_title: str | None = Field(
+        description="The parent's title for a Subtask, which follows it; null for a root."
+    )
+    status: Task.Status
+    priority: Task.Priority
+    due_date: date | None
+    due_time: time | None
+    start_date: date | None
+    start_time: time | None
+    completed_at: datetime | None = Field(
+        description="When the Task was Closed, in the owner's time zone; null while it's open."
+    )
+    is_overdue: bool
+    tags: list[str] = Field(description="The names of the Task's Tags.")
+    description: str
+    blocked_reason: str
 
 
 class ShareReportSectionOut(Schema):
@@ -31,9 +49,21 @@ class ShareReportSectionOut(Schema):
     tasks: list[ShareReportTaskOut]
 
 
+class ShareReportSummaryOut(Schema):
+    """How the report's Tasks stand, counted over every Task it shows, Subtasks included."""
+
+    completed: int
+    total: int
+    blocked: int
+    overdue: int
+
+
 class ShareReportOut(Schema):
     """The whole report a Share link shows, as the Project is now."""
 
     project: ShareReportProjectOut
     as_of: datetime = Field(description="When the report was made, in the owner's time zone.")
-    sections: list[ShareReportSectionOut] = Field(description="Groups of open Tasks, in order.")
+    summary: ShareReportSummaryOut
+    sections: list[ShareReportSectionOut] = Field(
+        description="No section first, then each Section in List order; empty ones are left out."
+    )

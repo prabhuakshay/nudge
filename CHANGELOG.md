@@ -6,6 +6,20 @@ All notable changes to Nudge are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-14
+
+### Changed
+
+- The shared page now focuses on the work itself: each Task with its Status, Priority, dates,
+  Tags, Description, Attachments and Comments. Activity such as "Created this task" or "Pinned"
+  is no longer shown.
+- The shared page is easier to scan. Each Task shows its Status as an icon beside its title,
+  Subtasks sit under their parent on a guide line with smaller titles, Comments appear as cards
+  dated by day, and Completed Tasks are struck through.
+- A Share link's "Timeline" setting is now called "History". It still decides how many days of
+  Closed Tasks and Comments the page shows.
+- The shared page no longer shows an "As of" time or when each Closed Task was Closed.
+
 ## [0.3.1] - 2026-11-14
 
 ### Fixed

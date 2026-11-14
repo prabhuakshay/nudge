@@ -19,6 +19,8 @@ from apps.tasks import (
     share_links,
     trash,
 )
+from apps.tasks.models import Task
+from apps.tasks.services import TaskEdit
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -26,7 +28,7 @@ if TYPE_CHECKING:
     from django.test.client import _MonkeyPatchedWSGIResponse as Response
 
     from apps.accounts.models import User
-    from apps.tasks.models import Attachment, Project, ShareLink, Task
+    from apps.tasks.models import Attachment, Project, ShareLink
 
 pytestmark = pytest.mark.usefixtures("stored_files")
 
@@ -170,6 +172,22 @@ def test_an_attachment_under_a_trashed_parent_is_not_found(
     parent = creation.create_task(work, "Thrown away")
     attachment = _attach(creation.create_subtask(parent, "Outline").task)
     trash.trash_task(ada, parent.pk)
+
+    response, _content = _download(link.key, attachment.pk)
+
+    assert response.status_code == 404
+
+
+@pytest.mark.django_db
+def test_an_attachment_on_a_task_closed_before_the_range_is_not_found(
+    ada: User, work: Project, freeze_time: Callable[[datetime], None]
+) -> None:
+    freeze_time(_NOW - timedelta(days=15))
+    task = creation.create_task(work, "Done 15 days ago")
+    attachment = _attach(task)
+    services.update_task(ada, task.pk, TaskEdit(status=Task.Status.COMPLETED))
+    freeze_time(_NOW)
+    link = share_links.create_share_link(ada, work.pk)
 
     response, _content = _download(link.key, attachment.pk)
 

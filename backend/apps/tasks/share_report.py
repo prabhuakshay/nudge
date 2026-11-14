@@ -139,15 +139,15 @@ def share_link(key: str) -> ShareLink | None:
 
 
 def shared_attachment(key: str, attachment_id: int) -> Attachment | None:
-    """Return the Attachment if the key's link is active and it's on a live Task in its Project.
+    """Return the Attachment if the key's link is active and it's on a Task the report shows.
 
     Anything else is None, so the key can't fetch a file the report doesn't cover.
     """
     link = share_link(key)
     if link is None or not link.is_active:
         return None
-    shared_tasks = live.tasks(link.owner).filter(project=link.project)
-    return Attachment.objects.filter(pk=attachment_id, task__in=shared_tasks).first()
+    shown = _shown_tasks(link, _range_start(link, timezone.now()))
+    return Attachment.objects.filter(pk=attachment_id, task__in=shown).first()
 
 
 def open_report(link: ShareLink) -> Report:
@@ -158,7 +158,7 @@ def open_report(link: ShareLink) -> Report:
     now = timezone.now()
     link.last_opened_at = now
     link.save(update_fields=["last_opened_at"])
-    since = None if link.range_days is None else now - timedelta(days=link.range_days)
+    since = _range_start(link, now)
     tasks = _shown_tasks(link, since)
     overdue_ids = set(tasks.filter(overdue(link.owner)).values_list("pk", flat=True))
     zone = local_zone(link.owner)
@@ -189,6 +189,11 @@ def _summary(shown: list[ReportTask]) -> ReportSummary:
         blocked=sum(task.status == Task.Status.BLOCKED for task in shown),
         overdue=sum(task.is_overdue for task in shown),
     )
+
+
+def _range_start(link: ShareLink, now: datetime) -> datetime | None:
+    """Return when the link's range begins as of now; None when it shows all."""
+    return None if link.range_days is None else now - timedelta(days=link.range_days)
 
 
 def _shown_tasks(link: ShareLink, since: datetime | None) -> QuerySet[Task]:

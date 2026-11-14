@@ -6,6 +6,29 @@ All notable changes to Nudge are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-14
+
+### Added
+
+- Share a Project with someone who has no account through a Share link: a private, read-only
+  page at its own address. Open it from the Share item in a Project's menu, copy the address,
+  and stop sharing at any time. Stopped, expired and unknown links say so, and search engines
+  are asked not to index the page. (#158, #159)
+- Each Share link has an expiry (1, 7 or 30 days, a custom number of days, or never) and a
+  timeline range (the last 7, 14 or 30 days, or all). Both can be changed later, and extending
+  an expired link makes it work again. The Share panel shows when each link expires and when it
+  was last opened. (#160)
+- The shared page shows the Project the way you organise it: a summary of Completed, Blocked
+  and Overdue Tasks, then each Section with its Tasks and Subtasks, their Status, Priority,
+  dates, Tags, Description and Blocked reason. Tasks Closed within the range are included, and
+  the page prints cleanly. (#161)
+- Each Task on the shared page shows a timeline of its Comments and Activity within the range,
+  worded the same way as in the app. (#162)
+- Viewers can download the Attachments of the Tasks the shared page shows, and nothing else.
+  (#163)
+- Every Section now ends with an "Add task" row that adds a Task at the bottom of that Section.
+  "Add section" moved to a button in the Project header.
+
 ## [0.2.0] - 2026-10-23
 
 ### Added

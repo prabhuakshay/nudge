@@ -19,24 +19,53 @@ function link(id: number): ShareLink {
   };
 }
 
-/** Fakes the Share link endpoints: POST adds the next link, stop takes it off the list. */
+const NOW = Date.parse("2026-11-02T09:30:00Z");
+
+type Settings = {
+  expires_in_days?: number | null;
+  range_days?: number | null;
+};
+
+/** Applies settings as the server would, counting a new expiry from NOW. */
+function applied(target: ShareLink, settings: Settings): ShareLink {
+  const { expires_in_days: days, range_days } = settings;
+  return {
+    ...target,
+    ...(days !== undefined && {
+      expires_at: days === null ? null : new Date(NOW + days * 86_400_000).toISOString(),
+    }),
+    ...(range_days !== undefined && { range_days }),
+  };
+}
+
+/**
+ * Fakes the Share link endpoints: POST adds the next link with its settings, PATCH changes one,
+ * stop takes one off the list. Returns the bodies the panel sent.
+ */
 function mockServer(initial: ShareLink[]) {
   let links = initial;
   let nextId = 100;
-  return vi.spyOn(globalThis, "fetch").mockImplementation((input) => {
+  const sent: { method: string; url: string; body: Settings }[] = [];
+  vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => {
     const request = requestOf(input);
     const stopped = /\/share-links\/(\d+)\/stop$/.exec(request.url);
     if (stopped) {
       links = links.filter(({ id }) => id !== Number(stopped[1]));
-      return Promise.resolve(new Response(null, { status: 204 }));
+      return new Response(null, { status: 204 });
     }
+    if (request.method === "GET") return json(links);
+    const body = (await request.json()) as Settings;
+    sent.push({ method: request.method, url: request.url, body });
     if (request.method === "POST") {
-      const created = link(nextId++);
+      const created = applied(link(nextId++), body);
       links = [...links, created];
       return json(created, 201);
     }
-    return json(links);
+    const changed = /\/share-links\/(\d+)$/.exec(request.url);
+    links = links.map((each) => (each.id === Number(changed?.[1]) ? applied(each, body) : each));
+    return json(links.find(({ id }) => id === Number(changed?.[1])));
   });
+  return sent;
 }
 
 function renderPanel() {
@@ -60,8 +89,8 @@ describe("SharePanel", () => {
     expect(addresses[1]).toHaveValue(link(2).url);
   });
 
-  it("creates a Share link and shows its address", async () => {
-    const fetch = mockServer([]);
+  it("creates a Share link with the default settings and shows its address", async () => {
+    const sent = mockServer([]);
     const user = renderPanel();
 
     await user.click(await screen.findByRole("button", { name: "Create link" }));
@@ -69,8 +98,72 @@ describe("SharePanel", () => {
     expect(await screen.findByRole("textbox", { name: "Share link address" })).toHaveValue(
       link(100).url,
     );
-    const created = fetch.mock.calls.map(([input]) => requestOf(input)).find(isPost);
-    expect(created?.url).toContain(`/api/v1/projects/${String(WORK.id)}/share-links`);
+    expect(sent).toEqual([
+      {
+        method: "POST",
+        url: expect.stringContaining(`/api/v1/projects/${String(WORK.id)}/share-links`) as string,
+        body: { expires_in_days: 7, range_days: 14 },
+      },
+    ]);
+  });
+
+  it("creates a Share link with chosen settings", async () => {
+    const sent = mockServer([]);
+    const user = renderPanel();
+
+    await user.selectOptions(await screen.findByRole("combobox", { name: "Expires" }), "Custom");
+    await user.type(screen.getByRole("spinbutton", { name: "Days until it expires" }), "45");
+    await user.selectOptions(screen.getByRole("combobox", { name: "Timeline" }), "All");
+    await user.click(screen.getByRole("button", { name: "Create link" }));
+
+    expect(await screen.findByRole("listitem")).toHaveTextContent("Shows all history");
+    expect(sent[0]?.body).toEqual({ expires_in_days: 45, range_days: null });
+  });
+
+  it("shows when each link expires and was last opened", async () => {
+    mockServer([link(1), { ...link(2), expires_at: null, last_opened_at: "2026-11-03T18:00:00Z" }]);
+    renderPanel();
+
+    const [first, second] = await screen.findAllByRole("listitem");
+
+    expect(first).toHaveTextContent("Expires 9 Nov 2026");
+    expect(first).toHaveTextContent("Never opened");
+    expect(first).toHaveTextContent("Shows 14 days");
+    expect(second).toHaveTextContent("Never expires");
+    expect(second).toHaveTextContent("Last opened 3 Nov 2026");
+  });
+
+  it("changes a link's expiry", async () => {
+    const sent = mockServer([link(1)]);
+    const user = renderPanel();
+    const item = await screen.findByRole("listitem");
+
+    await user.click(within(item).getByRole("button", { name: "Edit" }));
+    await user.selectOptions(within(item).getByRole("combobox", { name: "Expires" }), "30 days");
+    await user.click(within(item).getByRole("button", { name: "Save" }));
+
+    expect(await within(item).findByText(/Expires 2 Dec 2026/)).toBeInTheDocument();
+    expect(sent).toEqual([
+      {
+        method: "PATCH",
+        url: expect.stringContaining("/api/v1/share-links/1") as string,
+        body: { expires_in_days: 30 },
+      },
+    ]);
+  });
+
+  it("changes a link's timeline range and keeps its expiry", async () => {
+    const sent = mockServer([link(1)]);
+    const user = renderPanel();
+    const item = await screen.findByRole("listitem");
+
+    await user.click(within(item).getByRole("button", { name: "Edit" }));
+    await user.selectOptions(within(item).getByRole("combobox", { name: "Timeline" }), "30 days");
+    await user.click(within(item).getByRole("button", { name: "Save" }));
+
+    expect(await within(item).findByText(/Shows 30 days/)).toBeInTheDocument();
+    expect(within(item).getByText(/Expires 9 Nov 2026/)).toBeInTheDocument();
+    expect(sent[0]?.body).toEqual({ range_days: 30 });
   });
 
   it("copies a link's address", async () => {
@@ -104,7 +197,3 @@ describe("SharePanel", () => {
     expect(await screen.findByText(/not shared/i)).toBeInTheDocument();
   });
 });
-
-function isPost(request: Request) {
-  return request.method === "POST";
-}

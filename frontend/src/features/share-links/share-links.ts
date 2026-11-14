@@ -6,6 +6,8 @@ import type { components } from "@/api/schema";
 
 export type ShareLink = components["schemas"]["ShareLinkOut"];
 export type ShareReport = components["schemas"]["ShareReportOut"];
+export type NewShareLink = components["schemas"]["ShareLinkIn"];
+export type ShareLinkChange = components["schemas"]["ShareLinkPatchIn"];
 
 /** What a Share link's address shows: its report, or why there is none. */
 export type ShareReportAnswer =
@@ -45,9 +47,10 @@ export function shareLinksQuery(projectId: number) {
 export function useCreateShareLink(projectId: number) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async () => {
+    mutationFn: async (settings: NewShareLink) => {
       const { data, error } = await api.POST("/api/v1/projects/{project_id}/share-links", {
         params: { path: { project_id: projectId } },
+        body: settings,
       });
       if (!data) throw new Error(failureReason(error, "Couldn't create a Share link."));
       return data;
@@ -57,6 +60,26 @@ export function useCreateShareLink(projectId: number) {
         ...links,
         created,
       ]);
+    },
+  });
+}
+
+/** Changes a Share link's expiry or timeline range; its address stays the same. */
+export function useUpdateShareLink(projectId: number) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ linkId, change }: { linkId: number; change: ShareLinkChange }) => {
+      const { data, error } = await api.PATCH("/api/v1/share-links/{link_id}", {
+        params: { path: { link_id: linkId } },
+        body: change,
+      });
+      if (!data) throw new Error(failureReason(error, "Couldn't change that Share link."));
+      return data;
+    },
+    onSuccess: (changed) => {
+      queryClient.setQueryData(shareLinksQuery(projectId).queryKey, (links = []) =>
+        links.map((link) => (link.id === changed.id ? changed : link)),
+      );
     },
   });
 }

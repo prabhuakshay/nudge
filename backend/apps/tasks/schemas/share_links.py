@@ -1,4 +1,4 @@
-"""Response shapes for the owner's Share link endpoints."""
+"""Request and response shapes for the owner's Share link endpoints."""
 
 from __future__ import annotations
 
@@ -19,3 +19,25 @@ class ShareLinkOut(Schema):
         description="How many days back each Task's timeline goes; null for all."
     )
     last_opened_at: datetime | None = Field(description="Null until someone opens it.")
+
+
+class ShareLinkIn(Schema):
+    """The settings of a new Share link; fields left out take their defaults."""
+
+    expires_in_days: int | None = Field(
+        default=7, description="Days from now until it stops working; null for never."
+    )
+    range_days: int | None = Field(
+        default=14, description="Days of each Task's timeline to show: 7, 14 or 30; null for all."
+    )
+
+
+class ShareLinkPatchIn(Schema):
+    """The settings of a Share link to change; fields left out stay as they are."""
+
+    expires_in_days: int | None = Field(
+        default=None, description="Days from now until it stops working; null for never."
+    )
+    range_days: int | None = Field(
+        default=None, description="Days of each Task's timeline to show: 7, 14 or 30; null for all."
+    )

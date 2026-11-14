@@ -661,7 +661,7 @@ export interface paths {
     put?: never;
     /**
      * Share a Project
-     * @description Create a Share link that expires in 7 days and shows 14 days of history.
+     * @description Create a Share link; without a body it expires in 7 days and shows 14 days of history.
      *
      *     The Inbox and Projects in Trash can't be shared.
      */
@@ -670,6 +670,28 @@ export interface paths {
     options?: never;
     head?: never;
     patch?: never;
+    trace?: never;
+  };
+  "/api/v1/share-links/{link_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    /**
+     * Change a Share link
+     * @description Change a Share link's expiry or range; its address stays the same.
+     *
+     *     A new expiry counts from now, so extending an expired link makes it work again.
+     */
+    patch: operations["apps_tasks_api_share_links_update_share_link"];
     trace?: never;
   };
   "/api/v1/share-links/{link_id}/stop": {
@@ -2417,6 +2439,40 @@ export interface components {
        * @description Null until someone opens it.
        */
       last_opened_at: string | null;
+    };
+    /**
+     * ShareLinkIn
+     * @description The settings of a new Share link; fields left out take their defaults.
+     */
+    ShareLinkIn: {
+      /**
+       * Expires In Days
+       * @description Days from now until it stops working; null for never.
+       * @default 7
+       */
+      expires_in_days: number | null;
+      /**
+       * Range Days
+       * @description Days of each Task's timeline to show: 7, 14 or 30; null for all.
+       * @default 14
+       */
+      range_days: number | null;
+    };
+    /**
+     * ShareLinkPatchIn
+     * @description The settings of a Share link to change; fields left out stay as they are.
+     */
+    ShareLinkPatchIn: {
+      /**
+       * Expires In Days
+       * @description Days from now until it stops working; null for never.
+       */
+      expires_in_days?: number | null;
+      /**
+       * Range Days
+       * @description Days of each Task's timeline to show: 7, 14 or 30; null for all.
+       */
+      range_days?: number | null;
     };
     /**
      * AttachmentAddedActivityOut
@@ -5442,10 +5498,58 @@ export interface operations {
       };
       cookie?: never;
     };
-    requestBody?: never;
+    requestBody?: {
+      content: {
+        "application/json": components["schemas"]["ShareLinkIn"] | null;
+      };
+    };
     responses: {
       /** @description Created */
       201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShareLinkOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_share_links_update_share_link: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        link_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": components["schemas"]["ShareLinkPatchIn"];
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
         headers: {
           [name: string]: unknown;
         };

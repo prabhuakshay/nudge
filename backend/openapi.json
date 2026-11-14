@@ -1705,10 +1705,95 @@
             }
           }
         },
-        "description": "Create a Share link that expires in 7 days and shows 14 days of history.\n\nThe Inbox and Projects in Trash can't be shared.",
+        "description": "Create a Share link; without a body it expires in 7 days and shows 14 days of history.\n\nThe Inbox and Projects in Trash can't be shared.",
         "tags": [
           "share links"
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/ShareLinkIn"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          },
+          "required": false
+        },
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/share-links/{link_id}": {
+      "patch": {
+        "operationId": "apps_tasks_api_share_links_update_share_link",
+        "summary": "Change a Share link",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "schema": {
+              "title": "Link Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareLinkOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Change a Share link's expiry or range; its address stays the same.\n\nA new expiry counts from now, so extending an expired link makes it work again.",
+        "tags": [
+          "share links"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ShareLinkPatchIn"
+              }
+            }
+          },
+          "required": true
+        },
         "security": [
           {
             "SessionAuth": []
@@ -6182,6 +6267,70 @@
           "last_opened_at"
         ],
         "title": "ShareLinkOut",
+        "type": "object"
+      },
+      "ShareLinkIn": {
+        "description": "The settings of a new Share link; fields left out take their defaults.",
+        "properties": {
+          "expires_in_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 7,
+            "description": "Days from now until it stops working; null for never.",
+            "title": "Expires In Days"
+          },
+          "range_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 14,
+            "description": "Days of each Task's timeline to show: 7, 14 or 30; null for all.",
+            "title": "Range Days"
+          }
+        },
+        "title": "ShareLinkIn",
+        "type": "object"
+      },
+      "ShareLinkPatchIn": {
+        "description": "The settings of a Share link to change; fields left out stay as they are.",
+        "properties": {
+          "expires_in_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Days from now until it stops working; null for never.",
+            "title": "Expires In Days"
+          },
+          "range_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Days of each Task's timeline to show: 7, 14 or 30; null for all.",
+            "title": "Range Days"
+          }
+        },
+        "title": "ShareLinkPatchIn",
         "type": "object"
       },
       "AttachmentAddedActivityOut": {

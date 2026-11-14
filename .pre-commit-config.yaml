@@ -84,7 +84,7 @@ repos:
         name: OpenAPI schema and frontend types are up to date
         entry: sh -c 'NUDGE_DEBUG=true uv run --directory backend python manage.py export_openapi_schema --api config.api.api --indent 2 --output openapi.json && npm --prefix frontend run --silent api:generate && git diff --exit-code -- backend/openapi.json frontend/src/api/schema.d.ts'
         language: system
-        files: ^backend/apps/.*/(api|schemas)\.py$|^backend/config/api\.py$
+        files: ^backend/apps/[^/]+/(api|schemas)(/[^/]+)?\.py$|^backend/config/api\.py$
         pass_filenames: false
 
       # ------------------------------------------------------------ frontend

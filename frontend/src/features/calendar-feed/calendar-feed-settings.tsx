@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { CopyField } from "@/components/ui/copy-field";
 import { SettingsCard, SettingsStack } from "@/features/settings/settings-layout";
 
 import { calendarFeedQuery, useTurnOffCalendarFeed, useTurnOnCalendarFeed } from "./calendar-feed";
@@ -37,7 +35,7 @@ export function CalendarFeedSettings() {
             </Button>
           )}
         </div>
-        {url && <FeedAddress url={url} />}
+        {url && <CopyField label="Feed address" value={url} />}
         {url && (
           <div className="flex flex-wrap justify-end gap-2">
             <Button
@@ -72,44 +70,5 @@ export function CalendarFeedSettings() {
         few minutes to once a day. Anyone with the link can see your tasks: reset it if it leaks.
       </p>
     </SettingsStack>
-  );
-}
-
-function FeedAddress({ url }: { url: string }) {
-  const inputId = useId();
-  const [copied, setCopied] = useState<boolean | null>(null);
-
-  async function copy() {
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-    } catch {
-      setCopied(false);
-    }
-  }
-
-  return (
-    <div className="flex flex-col gap-1.5">
-      <Label htmlFor={inputId}>Feed address</Label>
-      <div className="flex gap-2">
-        <Input
-          id={inputId}
-          value={url}
-          readOnly
-          spellCheck={false}
-          onFocus={(event) => {
-            event.currentTarget.select();
-          }}
-        />
-        <Button variant="outline" className="shrink-0" onClick={() => void copy()}>
-          Copy link
-        </Button>
-      </div>
-      {copied !== null && (
-        <p role="status" className="text-xs text-muted-foreground">
-          {copied ? "Copied." : "Couldn't copy. Select the address and copy it yourself."}
-        </p>
-      )}
-    </div>
   );
 }

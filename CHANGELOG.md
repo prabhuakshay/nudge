@@ -6,6 +6,14 @@ All notable changes to Nudge are documented here. The format follows
 
 ## [Unreleased]
 
+## [0.3.1] - 2026-11-14
+
+### Fixed
+
+- The container image for this version is published at `ghcr.io/prabhuakshay/nudge`. The 0.3.0
+  image was held back because its base system carried a zlib library with known security
+  vulnerabilities; the image now installs the system's security updates when it is built.
+
 ## [0.3.0] - 2026-11-14
 
 ### Added

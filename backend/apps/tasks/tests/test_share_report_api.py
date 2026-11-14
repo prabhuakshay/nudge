@@ -224,6 +224,7 @@ def test_each_task_shows_its_details_with_mentions_as_names(
         "tags": ["client", "urgent"],
         "description": "Ask Grace about **dates**",
         "blocked_reason": "Waiting on Grace",
+        "attachments": [],
     }
 
 

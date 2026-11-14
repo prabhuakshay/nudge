@@ -1810,6 +1810,54 @@
         ]
       }
     },
+    "/api/v1/share/{key}/attachments/{attachment_id}": {
+      "get": {
+        "operationId": "apps_tasks_api_share_report_download_attachment",
+        "summary": "Download an Attachment through a Share link",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "attachment_id",
+            "schema": {
+              "title": "Attachment Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "200": {
+            "description": "The file's bytes.",
+            "content": {
+              "application/octet-stream": {}
+            }
+          }
+        },
+        "description": "Send an Attachment of a Task in the shared Project, with the same headers as the owner's.\n\nAny other Attachment, and any Attachment through an inactive link, is 404, so the key can't\nfetch other files and an inactive link says nothing about what it held.",
+        "tags": [
+          "share links"
+        ]
+      }
+    },
     "/api/v1/people": {
       "get": {
         "operationId": "apps_tasks_api_people_list_people",
@@ -6184,6 +6232,31 @@
         "title": "ShareLinkOut",
         "type": "object"
       },
+      "ShareReportAttachmentOut": {
+        "description": "A file on a Task of the report, downloaded through the Share link by its id.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "size": {
+            "description": "The file's size in bytes.",
+            "title": "Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "size"
+        ],
+        "title": "ShareReportAttachmentOut",
+        "type": "object"
+      },
       "ShareReportOut": {
         "description": "The whole report a Share link shows, as the Project is now.",
         "properties": {
@@ -6404,6 +6477,14 @@
           "blocked_reason": {
             "title": "Blocked Reason",
             "type": "string"
+          },
+          "attachments": {
+            "description": "Oldest first.",
+            "items": {
+              "$ref": "#/components/schemas/ShareReportAttachmentOut"
+            },
+            "title": "Attachments",
+            "type": "array"
           }
         },
         "required": [
@@ -6420,7 +6501,8 @@
           "is_overdue",
           "tags",
           "description",
-          "blocked_reason"
+          "blocked_reason",
+          "attachments"
         ],
         "title": "ShareReportTaskOut",
         "type": "object"

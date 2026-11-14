@@ -21,7 +21,7 @@ from django.utils import timezone
 from apps.accounts.services import local_zone
 from apps.tasks import live
 from apps.tasks.mentions import plain_names
-from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, ShareLink, Task
+from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Attachment, ShareLink, Task
 from apps.tasks.rows import overdue
 from apps.tasks.sections import project_sections
 
@@ -33,6 +33,15 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from apps.tasks.models import Project
+
+
+@dataclass(frozen=True)
+class ReportAttachment:
+    """A file on a Task of the report, which the viewer downloads through the link."""
+
+    id: int
+    name: str
+    size: int
 
 
 @dataclass(frozen=True)
@@ -56,6 +65,7 @@ class ReportTask:
     tags: list[str]
     description: str
     blocked_reason: str
+    attachments: list[ReportAttachment]
 
 
 @dataclass(frozen=True)
@@ -89,6 +99,18 @@ class Report:
 def share_link(key: str) -> ShareLink | None:
     """Return the Share link whose address carries this key, active or not, if any."""
     return ShareLink.objects.select_related("project", "owner").filter(key=key).first()
+
+
+def shared_attachment(key: str, attachment_id: int) -> Attachment | None:
+    """Return the Attachment if the key's link is active and it's on a live Task in its Project.
+
+    Anything else is None, so the key can't fetch a file the report doesn't cover.
+    """
+    link = share_link(key)
+    if link is None or not link.is_active:
+        return None
+    shared_tasks = live.tasks(link.owner).filter(project=link.project)
+    return Attachment.objects.filter(pk=attachment_id, task__in=shared_tasks).first()
 
 
 def open_report(link: ShareLink) -> Report:
@@ -136,7 +158,7 @@ def _shown_tasks(link: ShareLink, now: datetime) -> QuerySet[Task]:
         live.tasks(link.owner)
         .filter(shown, project=link.project)
         .select_related("parent")
-        .prefetch_related("tags")
+        .prefetch_related("tags", "attachments")
         .order_by(F("pinned_at").asc(nulls_last=True), "position", "id")
     )
 
@@ -194,4 +216,8 @@ def _entry(task: Task, zone: ZoneInfo, *, is_overdue: bool) -> ReportTask:
         tags=[tag.name for tag in task.tags.all()],
         description=plain_names(task.description),
         blocked_reason=plain_names(task.blocked_reason),
+        attachments=[
+            ReportAttachment(id=file.pk, name=file.name, size=file.size)
+            for file in task.attachments.all()
+        ],
     )

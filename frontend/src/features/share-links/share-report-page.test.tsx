@@ -24,6 +24,7 @@ function reportTask(id: number, title: string, fields: Partial<ReportTask> = {})
     tags: [],
     description: "",
     blocked_reason: "",
+    attachments: [],
     ...fields,
   };
 }
@@ -116,6 +117,24 @@ describe("ShareReportPage", () => {
       screen.getByRole("heading", { name: "Pick a date" }).closest("li") ?? document.body,
     );
     expect(done.getByText("Completed 1 Nov 2026, 20:00")).toBeInTheDocument();
+  });
+
+  it("links each Task's Attachments for download through the Share link", async () => {
+    const withFiles = reportTask(1, "Write the brief", {
+      attachments: [
+        { id: 7, name: "brief.pdf", size: 34_816 },
+        { id: 8, name: "notes.txt", size: 512 },
+      ],
+    });
+    mockServer(() => json({ ...REPORT, sections: [{ name: null, tasks: [withFiles] }] }));
+    renderPage();
+
+    const brief = await screen.findByRole("link", { name: "brief.pdf (34 KB)" });
+    expect(brief).toHaveAttribute("href", "/api/v1/share/the-key/attachments/7");
+    expect(screen.getByRole("link", { name: "notes.txt (512 B)" })).toHaveAttribute(
+      "href",
+      "/api/v1/share/the-key/attachments/8",
+    );
   });
 
   it("says when the Project is archived", async () => {

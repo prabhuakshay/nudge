@@ -21,6 +21,8 @@ from apps.tasks.schemas.attachments import AttachmentOut
 if TYPE_CHECKING:
     from django.http import HttpRequest
 
+    from apps.tasks.models import Attachment
+
 router = Router()
 
 # Types a browser shows without running anything. SVG and HTML can carry scripts, so they, like
@@ -86,7 +88,11 @@ def download_attachment(
     attachment_id: int,
 ) -> FileResponse:
     """Send an Attachment's bytes, inline for images and PDFs and as a download otherwise."""
-    attachment = attachments.live_attachment(signed_in_user(request), attachment_id)
+    return file_response(attachments.live_attachment(signed_in_user(request), attachment_id))
+
+
+def file_response(attachment: Attachment) -> FileResponse:
+    """Return a response sending an Attachment's bytes with headers that keep it inert."""
     response = FileResponse(
         attachment.file.open("rb"),
         as_attachment=attachment.content_type not in _INLINE_TYPES,

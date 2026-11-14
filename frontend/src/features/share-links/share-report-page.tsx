@@ -2,9 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 
 import { describeDates } from "@/features/tasks/due";
+import { fileSize } from "@/features/tasks/file-size";
 import { Markdown } from "@/features/tasks/markdown";
 import { PRIORITY, STATUS } from "@/features/tasks/task-properties";
-import { shareReportQuery, type ShareReport } from "./share-links";
+import { shareReportQuery, sharedAttachmentUrl, type ShareReport } from "./share-links";
 
 type ReportTask = ShareReport["sections"][number]["tasks"][number];
 
@@ -20,7 +21,7 @@ export function ShareReportPage({ shareKey }: { shareKey: string }) {
     <main className="mx-auto min-h-dvh max-w-2xl bg-background px-4 pt-[max(2rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))] text-foreground sm:px-6 sm:pt-12 print:min-h-0 print:max-w-none print:bg-transparent print:p-0 print:scheme-light">
       <meta name="robots" content="noindex" />
       {answer?.kind === "report" ? (
-        <Report report={answer.report} />
+        <Report report={answer.report} shareKey={shareKey} />
       ) : answer?.kind === "inactive" ? (
         <Notice title="This link is no longer active">
           Ask the person who shared it for a new link.
@@ -36,7 +37,7 @@ export function ShareReportPage({ shareKey }: { shareKey: string }) {
   );
 }
 
-function Report({ report }: { report: ShareReport }) {
+function Report({ report, shareKey }: { report: ShareReport; shareKey: string }) {
   const { completed, total, blocked, overdue } = report.summary;
   return (
     <article>
@@ -68,7 +69,7 @@ function Report({ report }: { report: ShareReport }) {
             )}
             <ul className="flex flex-col divide-y divide-border">
               {section.tasks.map((task) => (
-                <TaskEntry key={task.id} task={task} />
+                <TaskEntry key={task.id} task={task} shareKey={shareKey} />
               ))}
             </ul>
           </section>
@@ -79,7 +80,7 @@ function Report({ report }: { report: ShareReport }) {
 }
 
 /** One Task, flat: a Subtask's title names its parent, since the report has no nesting. */
-function TaskEntry({ task }: { task: ReportTask }) {
+function TaskEntry({ task, shareKey }: { task: ReportTask; shareKey: string }) {
   return (
     <li className="flex flex-col gap-1 py-3 print:break-inside-avoid">
       <h3 className="font-semibold">
@@ -99,6 +100,21 @@ function TaskEntry({ task }: { task: ReportTask }) {
       </p>
       {task.blocked_reason && <p className="text-sm">Blocked: {task.blocked_reason}</p>}
       {task.description && <Markdown text={task.description} />}
+      {task.attachments.length > 0 && (
+        <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-sm">
+          {task.attachments.map((file) => (
+            <a
+              key={file.id}
+              href={sharedAttachmentUrl(shareKey, file.id)}
+              target="_blank"
+              rel="noreferrer"
+              className="text-primary hover:underline"
+            >
+              {file.name} <span className="text-muted-foreground">({fileSize(file.size)})</span>
+            </a>
+          ))}
+        </p>
+      )}
     </li>
   );
 }

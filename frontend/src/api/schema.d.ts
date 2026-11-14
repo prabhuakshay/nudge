@@ -715,6 +715,29 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/share/{key}/attachments/{attachment_id}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Download an Attachment through a Share link
+     * @description Send an Attachment of a Task in the shared Project, with the same headers as the owner's.
+     *
+     *     Any other Attachment, and any Attachment through an inactive link, is 404, so the key can't
+     *     fetch other files and an inactive link says nothing about what it held.
+     */
+    get: operations["apps_tasks_api_share_report_download_attachment"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/people": {
     parameters: {
       query?: never;
@@ -2419,6 +2442,21 @@ export interface components {
       last_opened_at: string | null;
     };
     /**
+     * ShareReportAttachmentOut
+     * @description A file on a Task of the report, downloaded through the Share link by its id.
+     */
+    ShareReportAttachmentOut: {
+      /** Id */
+      id: number;
+      /** Name */
+      name: string;
+      /**
+       * Size
+       * @description The file's size in bytes.
+       */
+      size: number;
+    };
+    /**
      * ShareReportOut
      * @description The whole report a Share link shows, as the Project is now.
      */
@@ -2514,6 +2552,11 @@ export interface components {
       description: string;
       /** Blocked Reason */
       blocked_reason: string;
+      /**
+       * Attachments
+       * @description Oldest first.
+       */
+      attachments: components["schemas"]["ShareReportAttachmentOut"][];
     };
     /**
      * PersonOut
@@ -5479,6 +5522,38 @@ export interface operations {
       };
       /** @description Gone */
       410: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_share_report_download_attachment: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+        attachment_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description The file's bytes. */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/octet-stream": unknown;
+        };
+      };
+      /** @description Not Found */
+      404: {
         headers: {
           [name: string]: unknown;
         };

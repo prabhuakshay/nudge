@@ -27,6 +27,11 @@ export function shareReportQuery(key: string) {
   });
 }
 
+/** Where a viewer gets a report's Attachment: inline for images and PDFs, else a download. */
+export function sharedAttachmentUrl(key: string, attachmentId: number) {
+  return `/api/v1/share/${encodeURIComponent(key)}/attachments/${String(attachmentId)}`;
+}
+
 /** A Project's Share links that haven't been stopped, oldest first. */
 export function shareLinksQuery(projectId: number) {
   return queryOptions({

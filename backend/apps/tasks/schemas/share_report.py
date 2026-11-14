@@ -19,6 +19,14 @@ class ShareReportProjectOut(Schema):
     is_archived: bool
 
 
+class ShareReportAttachmentOut(Schema):
+    """A file on a Task of the report, downloaded through the Share link by its id."""
+
+    id: int
+    name: str
+    size: int = Field(description="The file's size in bytes.")
+
+
 class ShareReportTaskOut(Schema):
     """One Task on the report, with Mentions as plain names."""
 
@@ -40,6 +48,7 @@ class ShareReportTaskOut(Schema):
     tags: list[str] = Field(description="The names of the Task's Tags.")
     description: str
     blocked_reason: str
+    attachments: list[ShareReportAttachmentOut] = Field(description="Oldest first.")
 
 
 class ShareReportSectionOut(Schema):

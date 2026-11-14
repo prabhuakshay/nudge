@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { format, parseISO } from "date-fns";
 
+import { describeActivity } from "@/features/tasks/activity-description";
 import { describeDates } from "@/features/tasks/due";
 import { fileSize } from "@/features/tasks/file-size";
 import { Markdown } from "@/features/tasks/markdown";
@@ -114,6 +115,25 @@ function TaskEntry({ task, shareKey }: { task: ReportTask; shareKey: string }) {
             </a>
           ))}
         </p>
+      )}
+      {task.timeline.length > 0 && (
+        <ol
+          aria-label="Timeline"
+          className="mt-1 ml-1 flex flex-col gap-2 border-l border-border pl-3"
+        >
+          {task.timeline.map((entry) => (
+            <li key={`${entry.kind}-${String(entry.id)}`} className="text-[13px]">
+              {entry.kind === "comment" ? (
+                <Markdown text={entry.body} />
+              ) : (
+                <p className="text-muted-foreground">{describeActivity(entry)}</p>
+              )}
+              <time dateTime={entry.at} className="text-[11px] text-muted-foreground">
+                {ownerClock(entry.at)}
+              </time>
+            </li>
+          ))}
+        </ol>
       )}
     </li>
   );

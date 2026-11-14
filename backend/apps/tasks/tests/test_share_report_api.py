@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import UTC, date, datetime, time, timedelta
 from typing import TYPE_CHECKING
+from unittest.mock import ANY
 
 import pytest
 from django.core.cache import cache
@@ -225,6 +226,7 @@ def test_each_task_shows_its_details_with_mentions_as_names(
         "description": "Ask Grace about **dates**",
         "blocked_reason": "Waiting on Grace",
         "attachments": [],
+        "timeline": ANY,
     }
 
 

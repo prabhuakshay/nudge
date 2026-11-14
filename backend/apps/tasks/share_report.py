@@ -5,7 +5,8 @@ link is stopped, expired or whose Project is in Trash only says the link is no l
 
 The report is flat: Sections in List order, each with its open trees first and its Closed trees
 after, and every Subtask directly after its parent. Open Tasks are always shown, a Closed Task only
-if it was Closed within the link's range, and Tasks in Trash never.
+if it was Closed within the link's range, and Tasks in Trash never. Each Task carries a timeline
+of its Comments and Activity within the range, oldest first.
 """
 
 from __future__ import annotations
@@ -13,26 +14,61 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 
 from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.accounts.services import local_zone
 from apps.tasks import live
-from apps.tasks.mentions import plain_names
-from apps.tasks.models import CLOSED_STATUSES, OPEN_STATUSES, Attachment, ShareLink, Task
+from apps.tasks.mentions import MENTION, plain_names
+from apps.tasks.models import (
+    CLOSED_STATUSES,
+    OPEN_STATUSES,
+    Attachment,
+    Comment,
+    ShareLink,
+    Task,
+    TaskActivity,
+)
 from apps.tasks.rows import overdue
 from apps.tasks.sections import project_sections
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
     from datetime import date, datetime, time
+    from re import Match
     from zoneinfo import ZoneInfo
 
     from django.db.models import QuerySet
 
     from apps.tasks.models import Project
+
+
+type Json = str | int | float | bool | list[Json] | dict[str, Json] | None
+
+
+@dataclass(frozen=True)
+class ReportComment:
+    """A Comment in a Task's timeline."""
+
+    id: int
+    at: datetime
+    body: str
+    kind: Literal["comment"] = "comment"
+
+
+@dataclass(frozen=True)
+class ReportActivity:
+    """An Activity event in a Task's timeline, its `data` shaped per kind as the Activity API's."""
+
+    id: int
+    kind: str
+    at: datetime
+    data: Json
+
+
+type ReportEntry = ReportComment | ReportActivity
 
 
 @dataclass(frozen=True)
@@ -66,6 +102,7 @@ class ReportTask:
     description: str
     blocked_reason: str
     attachments: list[ReportAttachment]
+    timeline: list[ReportEntry]
 
 
 @dataclass(frozen=True)
@@ -121,14 +158,21 @@ def open_report(link: ShareLink) -> Report:
     now = timezone.now()
     link.last_opened_at = now
     link.save(update_fields=["last_opened_at"])
-    tasks = _shown_tasks(link, now)
+    since = None if link.range_days is None else now - timedelta(days=link.range_days)
+    tasks = _shown_tasks(link, since)
     overdue_ids = set(tasks.filter(overdue(link.owner)).values_list("pk", flat=True))
     zone = local_zone(link.owner)
+    shown = list(tasks)
+    timelines = _timelines(link, shown, since, zone)
     sections = [
         ReportSection(
-            name, [_entry(task, zone, is_overdue=task.pk in overdue_ids) for task in trees]
+            name,
+            [
+                _entry(task, zone, is_overdue=task.pk in overdue_ids, timeline=timelines[task.pk])
+                for task in trees
+            ],
         )
-        for name, trees in _sections(link.project, list(tasks))
+        for name, trees in _sections(link.project, shown)
     ]
     return Report(
         project=link.project,
@@ -147,13 +191,13 @@ def _summary(shown: list[ReportTask]) -> ReportSummary:
     )
 
 
-def _shown_tasks(link: ShareLink, now: datetime) -> QuerySet[Task]:
+def _shown_tasks(link: ShareLink, since: datetime | None) -> QuerySet[Task]:
     """Return the Project's live Tasks the report shows: Pinned roots first, then manual order."""
     shown = Q(status__in=OPEN_STATUSES)
-    if link.range_days is None:
+    if since is None:
         shown |= Q(status__in=CLOSED_STATUSES)
     else:
-        shown |= Q(completed_at__gte=now - timedelta(days=link.range_days))
+        shown |= Q(completed_at__gte=since)
     return (
         live.tasks(link.owner)
         .filter(shown, project=link.project)
@@ -161,6 +205,50 @@ def _shown_tasks(link: ShareLink, now: datetime) -> QuerySet[Task]:
         .prefetch_related("tags", "attachments")
         .order_by(F("pinned_at").asc(nulls_last=True), "position", "id")
     )
+
+
+def _timelines(
+    link: ShareLink, tasks: list[Task], since: datetime | None, zone: ZoneInfo
+) -> dict[int, list[ReportEntry]]:
+    """Return each Task's Comments and Activity since the range began, oldest first, by Task id."""
+    found_comments = Comment.objects.filter(task__in=tasks)
+    found_activity = TaskActivity.objects.filter(task__in=tasks).order_by("at", "id")
+    if since is not None:
+        found_comments = found_comments.filter(created_at__gte=since)
+        found_activity = found_activity.filter(at__gte=since)
+    # Activity keeps the names it had when it happened, so each Mention is looked up by id.
+    names = dict(link.owner.people.values_list("pk", "name"))
+    timelines: dict[int, list[ReportEntry]] = defaultdict(list)
+    for event in found_activity:
+        timelines[event.task_id].append(
+            ReportActivity(
+                event.pk, event.kind, event.at.astimezone(zone), _named(event.data, names)
+            )
+        )
+    for comment in found_comments:
+        timelines[comment.task_id].append(
+            ReportComment(
+                comment.pk, comment.created_at.astimezone(zone), plain_names(comment.body)
+            )
+        )
+    for timeline in timelines.values():
+        timeline.sort(key=lambda entry: entry.at)
+    return timelines
+
+
+def _named(data: Json, names: dict[int, str]) -> Json:
+    """Return Activity data with each Mention as the Person's current name, or its old one."""
+
+    def name(match: Match[str]) -> str:
+        return names.get(int(match[2]), match[1])
+
+    if isinstance(data, str):
+        return MENTION.sub(name, data)
+    if isinstance(data, list):
+        return [_named(item, names) for item in data]
+    if isinstance(data, dict):
+        return {key: _named(value, names) for key, value in data.items()}
+    return data
 
 
 def _sections(project: Project, tasks: list[Task]) -> list[tuple[str | None, list[Task]]]:
@@ -200,7 +288,9 @@ def _tree(task: Task, children: dict[int, list[Task]]) -> Iterable[Task]:
         yield from _tree(child, children)
 
 
-def _entry(task: Task, zone: ZoneInfo, *, is_overdue: bool) -> ReportTask:
+def _entry(
+    task: Task, zone: ZoneInfo, *, is_overdue: bool, timeline: list[ReportEntry]
+) -> ReportTask:
     return ReportTask(
         id=task.pk,
         title=plain_names(task.title),
@@ -220,4 +310,5 @@ def _entry(task: Task, zone: ZoneInfo, *, is_overdue: bool) -> ReportTask:
             ReportAttachment(id=file.pk, name=file.name, size=file.size)
             for file in task.attachments.all()
         ],
+        timeline=timeline,
     )

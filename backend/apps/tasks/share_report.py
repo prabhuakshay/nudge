@@ -33,6 +33,7 @@ from apps.tasks.models import (
 )
 from apps.tasks.rows import overdue
 from apps.tasks.sections import project_sections
+from apps.tasks.tree import ancestors
 
 if TYPE_CHECKING:
     from collections.abc import Iterable
@@ -206,7 +207,7 @@ def _shown_tasks(link: ShareLink, since: datetime | None) -> QuerySet[Task]:
     return (
         live.tasks(link.owner)
         .filter(shown, project=link.project)
-        .select_related("parent")
+        .select_related("parent__parent__parent")
         .prefetch_related("tags", "attachments")
         .order_by(F("pinned_at").asc(nulls_last=True), "position", "id")
     )
@@ -257,14 +258,22 @@ def _named(data: Json, names: dict[int, str]) -> Json:
 
 
 def _sections(project: Project, tasks: list[Task]) -> list[tuple[str | None, list[Task]]]:
-    """Group the Tasks' trees by Section: No section, then each in order, leaving out empty ones."""
+    """Group the Tasks' trees by Section: No section, then each in order, leaving out empty ones.
+
+    A tree's Section is its root's, even when the root itself isn't shown.
+    """
+    shown_ids = {task.pk for task in tasks}
     roots_by_section: dict[int | None, list[Task]] = defaultdict(list)
     children: dict[int, list[Task]] = defaultdict(list)
     for task in tasks:
-        if task.parent_id is None:
-            roots_by_section[task.section_id].append(task)
+        above = ancestors(task)
+        # A Subtask Closed within the range can sit under a parent Closed before it, which the
+        # report hides; it then hangs from its nearest shown ancestor, or stands as a root.
+        shown_above = [ancestor for ancestor in above if ancestor.pk in shown_ids]
+        if shown_above:
+            children[shown_above[-1].pk].append(task)
         else:
-            children[task.parent_id].append(task)
+            roots_by_section[(above[0] if above else task).section_id].append(task)
     names: list[tuple[int | None, str | None]] = [(None, None)]
     names += [(section.pk, section.name) for section in project_sections(project)]
     return [

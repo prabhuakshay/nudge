@@ -181,6 +181,48 @@ def test_a_closed_subtask_under_open_work_follows_the_range_too(
 
 
 @pytest.mark.django_db
+def test_a_subtask_closed_within_the_range_shows_though_its_parent_was_closed_before(
+    work: Project, link: ShareLink, freeze_time: Callable[[datetime], None]
+) -> None:
+    design = sections.create_section(work, "Design")
+    freeze_time(_NOW - timedelta(days=30))
+    plan = creation.create_task(work, "Plan", NewTask(section=design))
+    step = creation.create_subtask(plan, "Step").task
+    _close(plan)
+    freeze_time(_NOW)
+    _close(step, Task.Status.WONT_DO)
+
+    report = _open(link.key).json()
+
+    assert [
+        (s["name"], [(t["parent_title"], t["title"]) for t in s["tasks"]])
+        for s in report["sections"]
+    ] == [("Design", [("Plan", "Step")])]
+
+
+@pytest.mark.django_db
+def test_a_subtask_whose_parent_is_hidden_follows_the_nearest_shown_ancestor(
+    work: Project, link: ShareLink, freeze_time: Callable[[datetime], None]
+) -> None:
+    creation.create_task(work, "Last", NewTask(last=True))
+    plan = creation.create_task(work, "Plan")
+    freeze_time(_NOW - timedelta(days=30))
+    outline = creation.create_subtask(plan, "Outline").task
+    headings = creation.create_subtask(outline, "Headings").task
+    _close(outline)
+    freeze_time(_NOW)
+    _close(headings, Task.Status.WONT_DO)
+
+    tasks = _open(link.key).json()["sections"][0]["tasks"]
+
+    assert [(t["parent_title"], t["title"]) for t in tasks] == [
+        (None, "Plan"),
+        ("Outline", "Headings"),
+        (None, "Last"),
+    ]
+
+
+@pytest.mark.django_db
 def test_each_task_shows_its_details_with_mentions_as_names(
     ada: User, work: Project, link: ShareLink
 ) -> None:

@@ -16,7 +16,7 @@ from ninja.decorators import decorate_view
 from ninja.throttling import AnonRateThrottle
 
 from apps.core.schemas import ErrorOut
-from apps.tasks import attachments, share_links, share_report
+from apps.tasks import share_report
 from apps.tasks.api.attachments import file_response
 from apps.tasks.schemas.share_report import ShareReportOut
 
@@ -26,8 +26,6 @@ if TYPE_CHECKING:
     from django.http import FileResponse, HttpRequest, HttpResponseBase
 
 router = Router()
-
-NO_LONGER_ACTIVE = "This link is no longer active."
 
 
 def _noindex[**P](view: Callable[P, HttpResponseBase]) -> Callable[P, HttpResponseBase]:
@@ -66,12 +64,11 @@ def open_report(request: HttpRequest, key: str) -> Status[ShareReportOut] | Stat
     An inactive link (stopped, expired, or its Project in Trash) says nothing else about itself
     or its Project. An unknown key is 404, so nobody learns which keys ever existed.
     """
-    link = share_report.share_link(key)
-    if link is None:
-        return Status(HTTPStatus.NOT_FOUND, ErrorOut(detail=share_links.SHARE_LINK_NOT_FOUND))
-    if not link.is_active:
-        return Status(HTTPStatus.GONE, ErrorOut(detail=NO_LONGER_ACTIVE))
-    return Status(HTTPStatus.OK, ShareReportOut.from_orm(share_report.open_report(link)))
+    try:
+        report = share_report.open_report(key)
+    except share_report.InactiveShareLinkError as error:
+        return Status(HTTPStatus.GONE, ErrorOut(detail=str(error)))
+    return Status(HTTPStatus.OK, ShareReportOut.from_orm(report))
 
 
 @router.get(
@@ -90,15 +87,10 @@ def open_report(request: HttpRequest, key: str) -> Status[ShareReportOut] | Stat
     },
 )
 @decorate_view(_noindex)
-def download_attachment(
-    request: HttpRequest, key: str, attachment_id: int
-) -> FileResponse | Status[ErrorOut]:
+def download_attachment(request: HttpRequest, key: str, attachment_id: int) -> FileResponse:
     """Send an Attachment of a Task in the shared Project, with the same headers as the owner's.
 
     Any other Attachment, and any Attachment through an inactive link, is 404, so the key can't
     fetch other files and an inactive link says nothing about what it held.
     """
-    attachment = share_report.shared_attachment(key, attachment_id)
-    if attachment is None:
-        return Status(HTTPStatus.NOT_FOUND, ErrorOut(detail=attachments.ATTACHMENT_NOT_FOUND))
-    return file_response(attachment)
+    return file_response(share_report.shared_attachment(key, attachment_id))

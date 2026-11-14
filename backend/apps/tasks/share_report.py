@@ -20,7 +20,9 @@ from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.accounts.services import local_zone
+from apps.core.errors import NotFoundError
 from apps.tasks import live
+from apps.tasks.attachments import ATTACHMENT_NOT_FOUND
 from apps.tasks.mentions import MENTION, plain_names
 from apps.tasks.models import (
     CLOSED_STATUSES,
@@ -33,6 +35,7 @@ from apps.tasks.models import (
 )
 from apps.tasks.rows import overdue
 from apps.tasks.sections import project_sections
+from apps.tasks.share_links import SHARE_LINK_NOT_FOUND
 from apps.tasks.tree import ancestors
 
 if TYPE_CHECKING:
@@ -134,28 +137,44 @@ class Report:
     sections: list[ReportSection]
 
 
-def share_link(key: str) -> ShareLink | None:
-    """Return the Share link whose address carries this key, active or not, if any."""
-    return ShareLink.objects.select_related("project", "owner").filter(key=key).first()
+NO_LONGER_ACTIVE = "This link is no longer active."
 
 
-def shared_attachment(key: str, attachment_id: int) -> Attachment | None:
+class InactiveShareLinkError(Exception):
+    """A key whose Share link is stopped, expired or whose Project is in Trash."""
+
+
+def shared_attachment(key: str, attachment_id: int) -> Attachment:
     """Return the Attachment if the key's link is active and it's on a Task the report shows.
 
-    Anything else is None, so the key can't fetch a file the report doesn't cover.
+    Raises:
+        NotFoundError: Anything else, so the key can't fetch a file the report doesn't cover and
+            an inactive link says nothing about what it held.
     """
-    link = share_link(key)
-    if link is None or not link.is_active:
-        return None
-    shown = _shown_tasks(link, _range_start(link, timezone.now()))
-    return Attachment.objects.filter(pk=attachment_id, task__in=shown).first()
+    link = _share_link(key)
+    attachment = None
+    if link is not None and link.is_active:
+        shown = _shown_tasks(link, _range_start(link, timezone.now()))
+        attachment = Attachment.objects.filter(pk=attachment_id, task__in=shown).first()
+    if attachment is None:
+        raise NotFoundError(ATTACHMENT_NOT_FOUND)
+    return attachment
 
 
-def open_report(link: ShareLink) -> Report:
-    """Record that the active link was opened, and return its Project's report as of now.
+def open_report(key: str) -> Report:
+    """Record that the key's link was opened, and return its Project's report as of now.
 
     Times are in the owner's time zone, so the viewer reads the same days the owner does.
+
+    Raises:
+        NotFoundError: No Share link has this key.
+        InactiveShareLinkError: The link is no longer active.
     """
+    link = _share_link(key)
+    if link is None:
+        raise NotFoundError(SHARE_LINK_NOT_FOUND)
+    if not link.is_active:
+        raise InactiveShareLinkError(NO_LONGER_ACTIVE)
     now = timezone.now()
     link.last_opened_at = now
     link.save(update_fields=["last_opened_at"])
@@ -181,6 +200,11 @@ def open_report(link: ShareLink) -> Report:
         summary=_summary([task for section in sections for task in section.tasks]),
         sections=sections,
     )
+
+
+def _share_link(key: str) -> ShareLink | None:
+    """Return the Share link whose address carries this key, active or not, if any."""
+    return ShareLink.objects.select_related("project", "owner").filter(key=key).first()
 
 
 def _summary(shown: list[ReportTask]) -> ReportSummary:

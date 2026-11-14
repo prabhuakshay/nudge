@@ -25,6 +25,7 @@ import {
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { SharePanel, ShareProjectItem } from "@/features/share-links/share-panel";
 import { cn } from "@/lib/utils";
 
 import { DeleteProjectDialog } from "./delete-project-dialog";
@@ -100,6 +101,7 @@ export function ProjectRow({
 }) {
   const setArchived = useSetArchived();
   const [deleting, setDeleting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const last = (siblings: SidebarItem[]) => {
     const item = siblings.filter((sibling) => sibling.id !== project.id).at(-1);
     return item ? { kind: item.kind, id: item.id } : null;
@@ -163,12 +165,18 @@ export function ProjectRow({
         >
           <Archive aria-hidden /> Archive
         </DropdownMenuItem>
+        <ShareProjectItem
+          onSelect={() => {
+            setSharing(true);
+          }}
+        />
         <DeleteProjectItem
           onSelect={() => {
             setDeleting(true);
           }}
         />
       </RowMenu>
+      <SharePanel project={project} open={sharing} onOpenChange={setSharing} />
       <DeleteProjectDialog project={project} open={deleting} onOpenChange={setDeleting} />
     </div>
   );
@@ -184,6 +192,7 @@ export function ArchivedProjectRow({
 }) {
   const setArchived = useSetArchived();
   const [deleting, setDeleting] = useState(false);
+  const [sharing, setSharing] = useState(false);
   return (
     <div className={cn(ROW, "has-[a[data-status=active]]:bg-primary-soft")}>
       <Link
@@ -203,12 +212,18 @@ export function ArchivedProjectRow({
         >
           <ArchiveRestore aria-hidden /> Unarchive
         </DropdownMenuItem>
+        <ShareProjectItem
+          onSelect={() => {
+            setSharing(true);
+          }}
+        />
         <DeleteProjectItem
           onSelect={() => {
             setDeleting(true);
           }}
         />
       </RowMenu>
+      <SharePanel project={project} open={sharing} onOpenChange={setSharing} />
       <DeleteProjectDialog project={project} open={deleting} onOpenChange={setDeleting} />
     </div>
   );

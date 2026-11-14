@@ -20,6 +20,7 @@ import { Route as AppMatrixRouteImport } from './routes/_app/matrix'
 import { Route as AppSearchRouteImport } from './routes/_app/search'
 import { Route as AppTrashRouteImport } from './routes/_app/trash'
 import { Route as AppUpcomingRouteImport } from './routes/_app/upcoming'
+import { Route as ShareKeyRouteImport } from './routes/share.$key'
 import { Route as AppPeoplePersonIdRouteImport } from './routes/_app/people.$personId'
 import { Route as AppProjectsProjectIdRouteImport } from './routes/_app/projects.$projectId'
 import { Route as AppTagsTagIdRouteImport } from './routes/_app/tags.$tagId'
@@ -78,6 +79,11 @@ const AppUpcomingRoute = AppUpcomingRouteImport.update({
   path: '/upcoming',
   getParentRoute: () => AppRoute,
 } as any)
+const ShareKeyRoute = ShareKeyRouteImport.update({
+  id: '/share/$key',
+  path: '/share/$key',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppPeoplePersonIdRoute = AppPeoplePersonIdRouteImport.update({
   id: '/people/$personId',
   path: '/people/$personId',
@@ -105,6 +111,7 @@ export interface FileRoutesByFullPath {
   '/search': typeof AppSearchRoute
   '/trash': typeof AppTrashRoute
   '/upcoming': typeof AppUpcomingRoute
+  '/share/$key': typeof ShareKeyRoute
   '/people/$personId': typeof AppPeoplePersonIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
   '/tags/$tagId': typeof AppTagsTagIdRoute
@@ -119,6 +126,7 @@ export interface FileRoutesByTo {
   '/search': typeof AppSearchRoute
   '/trash': typeof AppTrashRoute
   '/upcoming': typeof AppUpcomingRoute
+  '/share/$key': typeof ShareKeyRoute
   '/': typeof AppIndexRoute
   '/people/$personId': typeof AppPeoplePersonIdRoute
   '/projects/$projectId': typeof AppProjectsProjectIdRoute
@@ -136,6 +144,7 @@ export interface FileRoutesById {
   '/_app/search': typeof AppSearchRoute
   '/_app/trash': typeof AppTrashRoute
   '/_app/upcoming': typeof AppUpcomingRoute
+  '/share/$key': typeof ShareKeyRoute
   '/_app/': typeof AppIndexRoute
   '/_app/people/$personId': typeof AppPeoplePersonIdRoute
   '/_app/projects/$projectId': typeof AppProjectsProjectIdRoute
@@ -154,6 +163,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/trash'
     | '/upcoming'
+    | '/share/$key'
     | '/people/$personId'
     | '/projects/$projectId'
     | '/tags/$tagId'
@@ -168,6 +178,7 @@ export interface FileRouteTypes {
     | '/search'
     | '/trash'
     | '/upcoming'
+    | '/share/$key'
     | '/'
     | '/people/$personId'
     | '/projects/$projectId'
@@ -184,6 +195,7 @@ export interface FileRouteTypes {
     | '/_app/search'
     | '/_app/trash'
     | '/_app/upcoming'
+    | '/share/$key'
     | '/_app/'
     | '/_app/people/$personId'
     | '/_app/projects/$projectId'
@@ -193,6 +205,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
   LoginRoute: typeof LoginRoute
+  ShareKeyRoute: typeof ShareKeyRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -274,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppUpcomingRouteImport
       parentRoute: typeof AppRoute
     }
+    '/share/$key': {
+      id: '/share/$key'
+      path: '/share/$key'
+      fullPath: '/share/$key'
+      preLoaderRoute: typeof ShareKeyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_app/people/$personId': {
       id: '/_app/people/$personId'
       path: '/people/$personId'
@@ -333,6 +353,7 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
   LoginRoute: LoginRoute,
+  ShareKeyRoute: ShareKeyRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

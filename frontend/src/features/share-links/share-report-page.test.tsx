@@ -12,42 +12,34 @@ function reportTask(id: number, title: string, fields: Partial<ReportTask> = {})
   return {
     id,
     title,
-    parent_title: null,
     status: "open",
     priority: 0,
     due_date: null,
     due_time: null,
     start_date: null,
     start_time: null,
-    completed_at: null,
     is_overdue: false,
     tags: [],
     description: "",
     blocked_reason: "",
     attachments: [],
-    timeline: [],
+    comments: [],
+    subtasks: [],
     ...fields,
   };
 }
 
 const REPORT: ShareReport = {
   project: { name: "Launch", is_archived: false },
-  as_of: "2026-11-02T15:00:00+05:30",
   summary: { completed: 1, total: 5, blocked: 1, overdue: 2 },
   sections: [
     {
       name: null,
       tasks: [
         reportTask(1, "Write the brief", {
-          timeline: [
-            { kind: "created", id: 1, at: "2026-10-30T09:00:00+05:30", data: {} },
-            { kind: "comment", id: 1, at: "2026-10-31T10:15:00+05:30", body: "Ask **Grace**" },
-            {
-              kind: "priority_changed",
-              id: 2,
-              at: "2026-11-01T18:45:00+05:30",
-              data: { old: 0, new: 1 },
-            },
+          comments: [
+            { id: 1, at: "2026-10-31T23:15:00-08:00", body: "Ask **Grace**" },
+            { id: 2, at: "2026-11-01T18:45:00-08:00", body: "Draft is ready" },
           ],
         }),
       ],
@@ -63,12 +55,13 @@ const REPORT: ShareReport = {
           is_overdue: true,
           tags: ["client"],
           description: "Ask about **parking**",
+          subtasks: [
+            reportTask(3, "Call the caterer", {
+              subtasks: [reportTask(5, "Ask about vegan options")],
+            }),
+          ],
         }),
-        reportTask(3, "Call the caterer", { parent_title: "Book the venue" }),
-        reportTask(4, "Pick a date", {
-          status: "completed",
-          completed_at: "2026-11-01T20:00:00-08:00",
-        }),
+        reportTask(4, "Pick a date", { status: "completed" }),
       ],
     },
   ],
@@ -88,17 +81,17 @@ function renderPage() {
 }
 
 describe("ShareReportPage", () => {
-  it("shows the Project's name, when the report is from and a summary", async () => {
+  it("shows the Project's name and a summary", async () => {
     const fetch = mockServer(() => json(REPORT));
     renderPage();
 
     expect(await screen.findByRole("heading", { level: 1, name: "Launch" })).toBeInTheDocument();
-    expect(screen.getByText("As of 2 Nov 2026, 15:00")).toBeInTheDocument();
+    expect(screen.queryByText(/As of/)).not.toBeInTheDocument();
     expect(screen.getByText("1 of 5 completed · 1 blocked · 2 overdue")).toBeInTheDocument();
     expect(requestOf(fetch.mock.calls[0]?.[0]).url).toContain("/api/v1/share/the-key");
   });
 
-  it("lists Sections as plain headings with their Tasks flat and in order", async () => {
+  it("lists Sections as plain headings with their Tasks in order", async () => {
     mockServer(() => json(REPORT));
     renderPage();
 
@@ -108,22 +101,29 @@ describe("ShareReportPage", () => {
     expect(titles).toEqual([
       "Write the brief",
       "Book the venue",
-      "Book the venue › Call the caterer",
+      "Call the caterer",
+      "Ask about vegan options",
       "Pick a date",
     ]);
-    const lists = screen
-      .getAllByRole("list")
-      .filter((list) => list.getAttribute("aria-label") !== "Timeline");
-    expect(
-      lists.every((list) =>
-        within(list)
-          .queryAllByRole("list")
-          .every((nested) => nested.getAttribute("aria-label") === "Timeline"),
-      ),
-    ).toBe(true);
   });
 
-  it("shows each Task's details, with times on the owner's clock", async () => {
+  it("nests each Task's Subtasks under it", async () => {
+    mockServer(() => json(REPORT));
+    renderPage();
+
+    const parentOf = (title: string) =>
+      screen
+        .getByRole("heading", { name: title })
+        .closest('ul[aria-label="Subtasks"]')
+        ?.closest("li")
+        ?.querySelector("h3")?.textContent;
+    await screen.findByRole("heading", { name: "Book the venue" });
+    expect(parentOf("Call the caterer")).toBe("Book the venue");
+    expect(parentOf("Ask about vegan options")).toBe("Call the caterer");
+    expect(parentOf("Book the venue")).toBeUndefined();
+  });
+
+  it("shows each Task's details", async () => {
     mockServer(() => json(REPORT));
     renderPage();
 
@@ -141,7 +141,7 @@ describe("ShareReportPage", () => {
     const done = within(
       screen.getByRole("heading", { name: "Pick a date" }).closest("li") ?? document.body,
     );
-    expect(done.getByText("Completed 1 Nov 2026, 20:00")).toBeInTheDocument();
+    expect(done.getByText("Completed")).toBeInTheDocument();
   });
 
   it("links each Task's Attachments for download through the Share link", async () => {
@@ -162,7 +162,7 @@ describe("ShareReportPage", () => {
     );
   });
 
-  it("shows each Task's Comments and Activity oldest first, on the owner's clock", async () => {
+  it("shows each Task's Comments oldest first, dated on the owner's calendar", async () => {
     mockServer(() => json(REPORT));
     renderPage();
 
@@ -170,13 +170,12 @@ describe("ShareReportPage", () => {
       (await screen.findByRole("heading", { name: "Write the brief" })).closest("li") ??
         document.body,
     );
-    const entries = within(brief.getByRole("list", { name: "Timeline" })).getAllByRole("listitem");
+    const entries = within(brief.getByRole("list", { name: "Comments" })).getAllByRole("listitem");
     expect(entries.map((entry) => entry.textContent)).toEqual([
-      "Created this task30 Oct 2026, 09:00",
-      "Ask Grace31 Oct 2026, 10:15",
-      "Changed priority from None to P11 Nov 2026, 18:45",
+      "Ask Grace31 Oct 2026",
+      "Draft is ready1 Nov 2026",
     ]);
-    expect(within(entries[1] ?? document.body).getByText("Grace").tagName).toBe("STRONG");
+    expect(within(entries[0] ?? document.body).getByText("Grace").tagName).toBe("STRONG");
   });
 
   it("says when the Project is archived", async () => {

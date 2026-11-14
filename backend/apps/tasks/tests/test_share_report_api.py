@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 from datetime import UTC, date, datetime, time, timedelta
-from typing import TYPE_CHECKING
-from unittest.mock import ANY
+from typing import TYPE_CHECKING, Any
 
 import pytest
 from django.core.cache import cache
 from django.test import Client
 
-from apps.accounts.services import set_time_zone
 from apps.tasks import (
     creation,
     people,
@@ -60,8 +58,26 @@ def _open(key: str) -> Response:
     return Client().get(f"/api/v1/share/{key}")
 
 
-def _titles(report: dict[str, list[dict[str, list[dict[str, str]]]]]) -> list[str]:
-    return [task["title"] for section in report["sections"] for task in section["tasks"]]
+type _Tree = tuple[str, list[_Tree]]
+
+
+def _tree(task: dict[str, Any]) -> _Tree:
+    """The Task's title with its Subtasks' trees."""
+    return (task["title"], [_tree(subtask) for subtask in task["subtasks"]])
+
+
+def _titles(report: dict[str, Any]) -> list[str]:
+    """Every Task's title, each followed by its Subtasks', depth first."""
+
+    def walk(tree: _Tree) -> list[str]:
+        return [tree[0], *(title for subtree in tree[1] for title in walk(subtree))]
+
+    return [
+        title
+        for section in report["sections"]
+        for task in section["tasks"]
+        for title in walk(_tree(task))
+    ]
 
 
 def _close(task: Task, status: Task.Status = Task.Status.COMPLETED) -> None:
@@ -70,9 +86,8 @@ def _close(task: Task, status: Task.Status = Task.Status.COMPLETED) -> None:
 
 @pytest.mark.django_db
 def test_the_report_shows_the_projects_tasks_without_a_session(
-    ada: User, work: Project, link: ShareLink
+    work: Project, link: ShareLink
 ) -> None:
-    set_time_zone(ada, "Asia/Kolkata")
     creation.create_task(work, "Write the brief")
     creation.create_task(work, "Book the venue")
 
@@ -81,7 +96,7 @@ def test_the_report_shows_the_projects_tasks_without_a_session(
     assert response.status_code == 200
     report = response.json()
     assert report["project"] == {"name": "Work", "is_archived": False}
-    assert report["as_of"] == "2026-11-02T15:00:00+05:30"
+    assert "as_of" not in report
     assert _titles(report) == ["Book the venue", "Write the brief"]
 
 
@@ -124,7 +139,7 @@ def test_pinned_tasks_lead_as_in_the_list(ada: User, work: Project, link: ShareL
 
 
 @pytest.mark.django_db
-def test_subtasks_follow_their_parent_with_its_title(work: Project, link: ShareLink) -> None:
+def test_subtasks_nest_under_their_parent(work: Project, link: ShareLink) -> None:
     creation.create_task(work, "Last", NewTask(last=True))
     plan = creation.create_task(work, "Plan")
     outline = creation.create_subtask(plan, "Outline").task
@@ -133,12 +148,9 @@ def test_subtasks_follow_their_parent_with_its_title(work: Project, link: ShareL
 
     tasks = _open(link.key).json()["sections"][0]["tasks"]
 
-    assert [(t["parent_title"], t["title"]) for t in tasks] == [
-        (None, "Plan"),
-        ("Plan", "Outline"),
-        ("Outline", "Headings"),
-        ("Plan", "Review"),
-        (None, "Last"),
+    assert [_tree(task) for task in tasks] == [
+        ("Plan", [("Outline", [("Headings", [])]), ("Review", [])]),
+        ("Last", []),
     ]
 
 
@@ -194,10 +206,9 @@ def test_a_subtask_closed_within_the_range_shows_though_its_parent_was_closed_be
 
     report = _open(link.key).json()
 
-    assert [
-        (s["name"], [(t["parent_title"], t["title"]) for t in s["tasks"]])
-        for s in report["sections"]
-    ] == [("Design", [("Plan", "Step")])]
+    assert [(s["name"], [_tree(t) for t in s["tasks"]]) for s in report["sections"]] == [
+        ("Design", [("Step", [])])
+    ]
 
 
 @pytest.mark.django_db
@@ -215,11 +226,7 @@ def test_a_subtask_whose_parent_is_hidden_follows_the_nearest_shown_ancestor(
 
     tasks = _open(link.key).json()["sections"][0]["tasks"]
 
-    assert [(t["parent_title"], t["title"]) for t in tasks] == [
-        (None, "Plan"),
-        ("Outline", "Headings"),
-        (None, "Last"),
-    ]
+    assert [_tree(task) for task in tasks] == [("Plan", [("Headings", [])]), ("Last", [])]
 
 
 @pytest.mark.django_db
@@ -255,39 +262,20 @@ def test_each_task_shows_its_details_with_mentions_as_names(
     assert shown == {
         "id": task.pk,
         "title": "Call Grace",
-        "parent_title": None,
         "status": "blocked",
         "priority": 1,
         "due_date": "2026-11-20",
         "due_time": "17:00:00",
         "start_date": "2026-11-18",
         "start_time": "09:00:00",
-        "completed_at": None,
         "is_overdue": False,
         "tags": ["client", "urgent"],
         "description": "Ask Grace about **dates**",
         "blocked_reason": "Waiting on Grace",
         "attachments": [],
-        "timeline": ANY,
+        "comments": [],
+        "subtasks": [],
     }
-
-
-@pytest.mark.django_db
-def test_dates_are_on_the_owners_clock(
-    ada: User, work: Project, link: ShareLink, freeze_time: Callable[[datetime], None]
-) -> None:
-    set_time_zone(ada, "America/Los_Angeles")
-    due = TaskDates(due_date=date(2026, 11, 1), due_time=time(23, 0))
-    creation.create_task(work, "Due last night", NewTask(dates=due))
-    freeze_time(datetime(2026, 11, 2, 4, 0, tzinfo=UTC))
-    _close(creation.create_task(work, "Closed in the evening"))
-
-    tasks = _open(link.key).json()["sections"][0]["tasks"]
-
-    assert [(t["title"], t["due_time"], t["completed_at"]) for t in tasks] == [
-        ("Due last night", "23:00:00", None),
-        ("Closed in the evening", None, "2026-11-01T20:00:00-08:00"),
-    ]
 
 
 @pytest.mark.django_db

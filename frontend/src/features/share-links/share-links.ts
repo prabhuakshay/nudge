@@ -69,7 +69,7 @@ export function useCreateShareLink(projectId: number) {
   });
 }
 
-/** Changes a Share link's expiry or timeline range; its address stays the same. */
+/** Changes a Share link's expiry or history range; its address stays the same. */
 export function useUpdateShareLink(projectId: number) {
   const queryClient = useQueryClient();
   return useMutation({

@@ -113,7 +113,7 @@ describe("SharePanel", () => {
 
     await user.selectOptions(await screen.findByRole("combobox", { name: "Expires" }), "Custom");
     await user.type(screen.getByRole("spinbutton", { name: "Days until it expires" }), "45");
-    await user.selectOptions(screen.getByRole("combobox", { name: "Timeline" }), "All");
+    await user.selectOptions(screen.getByRole("combobox", { name: "History" }), "All");
     await user.click(screen.getByRole("button", { name: "Create link" }));
 
     expect(await screen.findByRole("listitem")).toHaveTextContent("Shows all history");
@@ -152,13 +152,13 @@ describe("SharePanel", () => {
     ]);
   });
 
-  it("changes a link's timeline range and keeps its expiry", async () => {
+  it("changes a link's history range and keeps its expiry", async () => {
     const sent = mockServer([link(1)]);
     const user = renderPanel();
     const item = await screen.findByRole("listitem");
 
     await user.click(within(item).getByRole("button", { name: "Edit" }));
-    await user.selectOptions(within(item).getByRole("combobox", { name: "Timeline" }), "30 days");
+    await user.selectOptions(within(item).getByRole("combobox", { name: "History" }), "30 days");
     await user.click(within(item).getByRole("button", { name: "Save" }));
 
     expect(await within(item).findByText(/Shows 30 days/)).toBeInTheDocument();

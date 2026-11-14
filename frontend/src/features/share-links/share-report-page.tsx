@@ -1,7 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { describeActivity } from "@/features/tasks/activity-description";
-import { describeDates, longDateTime } from "@/features/tasks/due";
+import { describeDates, longDate } from "@/features/tasks/due";
 import { fileSize } from "@/features/tasks/file-size";
 import { Markdown } from "@/features/tasks/markdown";
 import { PRIORITY, STATUS } from "@/features/tasks/task-properties";
@@ -10,7 +9,7 @@ import { shareReportQuery, sharedAttachmentUrl, type ShareReport } from "./share
 type ReportTask = ShareReport["sections"][number]["tasks"][number];
 
 /**
- * The public page a Share link opens: a flat, read-only report of one Project for someone
+ * The public page a Share link opens: a read-only report of one Project for someone
  * without an account, or a plain message when the link no longer works. It prints on a light
  * page whatever the viewer's colour scheme.
  */
@@ -46,15 +45,9 @@ function Report({ report, shareKey }: { report: ShareReport; shareKey: string })
         <h1 className="text-2xl font-extrabold tracking-tight text-balance sm:text-3xl">
           {report.project.name}
         </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {report.project.is_archived && (
-            <>
-              <span>Archived</span>
-              <span aria-hidden> · </span>
-            </>
-          )}
-          <span>As of {ownerClock(report.as_of)}</span>
-        </p>
+        {report.project.is_archived && (
+          <p className="mt-1 text-sm text-muted-foreground">Archived</p>
+        )}
         <p className="mt-2 text-sm font-medium">
           {`${String(completed)} of ${String(total)} completed · ${String(blocked)} blocked · ${String(overdue)} overdue`}
         </p>
@@ -79,16 +72,13 @@ function Report({ report, shareKey }: { report: ShareReport; shareKey: string })
   );
 }
 
-/** One Task, flat: a Subtask's title names its parent, since the report has no nesting. */
+/** One Task with its Comments, and its Subtasks indented under it. */
 function TaskEntry({ task, shareKey }: { task: ReportTask; shareKey: string }) {
   return (
     <li className="flex flex-col gap-1 py-3 print:break-inside-avoid">
-      <h3 className="font-semibold">
-        {task.parent_title && <span className="text-muted-foreground">{task.parent_title} › </span>}
-        {task.title}
-      </h3>
+      <h3 className="font-semibold">{task.title}</h3>
       <p className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-        <span className={STATUS[task.status].text}>{statusLabel(task)}</span>
+        <span className={STATUS[task.status].text}>{STATUS[task.status].label}</span>
         {task.priority !== 0 && (
           <span className={PRIORITY[task.priority].text}>{PRIORITY[task.priority].short}</span>
         )}
@@ -115,33 +105,30 @@ function TaskEntry({ task, shareKey }: { task: ReportTask; shareKey: string }) {
           ))}
         </p>
       )}
-      {task.timeline.length > 0 && (
+      {task.comments.length > 0 && (
         <ol
-          aria-label="Timeline"
+          aria-label="Comments"
           className="mt-1 ml-1 flex flex-col gap-2 border-l border-border pl-3"
         >
-          {task.timeline.map((entry) => (
-            <li key={`${entry.kind}-${String(entry.id)}`} className="text-[13px]">
-              {entry.kind === "comment" ? (
-                <Markdown text={entry.body} />
-              ) : (
-                <p className="text-muted-foreground">{describeActivity(entry)}</p>
-              )}
-              <time dateTime={entry.at} className="text-[11px] text-muted-foreground">
-                {ownerClock(entry.at)}
+          {task.comments.map((comment) => (
+            <li key={comment.id} className="text-[13px]">
+              <Markdown text={comment.body} />
+              <time dateTime={comment.at} className="text-[11px] text-muted-foreground">
+                {ownerDay(comment.at)}
               </time>
             </li>
           ))}
         </ol>
       )}
+      {task.subtasks.length > 0 && (
+        <ul aria-label="Subtasks" className="ml-4 flex flex-col divide-y divide-border">
+          {task.subtasks.map((subtask) => (
+            <TaskEntry key={subtask.id} task={subtask} shareKey={shareKey} />
+          ))}
+        </ul>
+      )}
     </li>
   );
-}
-
-/** The Status, with when it was Closed for a Closed Task: "Completed 1 Nov 2026, 20:00". */
-function statusLabel(task: ReportTask) {
-  const label = STATUS[task.status].label;
-  return task.completed_at === null ? label : `${label} ${ownerClock(task.completed_at)}`;
 }
 
 /** "Due 1 Nov 2026" for a single date, or the range in full. */
@@ -160,9 +147,9 @@ function Notice({ title, children }: { title: string; children: string }) {
 }
 
 /**
- * The time as the owner's clock showed it. The server sends it with the owner's offset, so
- * reading only its date and time keeps the owner's day even when the viewer is elsewhere.
+ * The day as the owner's calendar showed it. The server sends the time with the owner's offset,
+ * so reading only its date keeps the owner's day even when the viewer is elsewhere.
  */
-function ownerClock(iso: string) {
-  return longDateTime(iso.slice(0, 19));
+function ownerDay(iso: string) {
+  return longDate(iso.slice(0, 10));
 }

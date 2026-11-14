@@ -14,7 +14,7 @@ const FIELD =
   "h-9 rounded-md border border-border bg-surface px-2 text-base text-foreground focus-visible:border-primary focus-visible:outline-none sm:h-8 sm:text-sm";
 
 /**
- * A Share link's expiry and timeline range. Editing a link adds a "Keep" expiry option,
+ * A Share link's expiry and how much history it shows. Editing a link adds a "Keep" expiry option,
  * because a new expiry counts from now.
  */
 export function ShareSettingsFields({
@@ -64,7 +64,7 @@ export function ShareSettingsFields({
         />
       )}
       <label className="flex items-center gap-2">
-        Timeline
+        History
         <select
           value={settings.range}
           onChange={(event) => {

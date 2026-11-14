@@ -2454,7 +2454,7 @@ export interface components {
       expires_at: string | null;
       /**
        * Range Days
-       * @description How many days back each Task's timeline goes; null for all.
+       * @description Days of Closed Tasks and Comments the report shows; null for all.
        */
       range_days: number | null;
       /**
@@ -2476,7 +2476,7 @@ export interface components {
       expires_in_days: number | null;
       /**
        * Range Days
-       * @description Days of each Task's timeline to show: 7, 14 or 30; null for all.
+       * @description Days of Closed Tasks and Comments to show: 7, 14 or 30; null for all.
        * @default 14
        */
       range_days: number | null;
@@ -2493,456 +2493,9 @@ export interface components {
       expires_in_days?: number | null;
       /**
        * Range Days
-       * @description Days of each Task's timeline to show: 7, 14 or 30; null for all.
+       * @description Days of Closed Tasks and Comments to show: 7, 14 or 30; null for all.
        */
       range_days?: number | null;
-    };
-    /**
-     * AttachmentAddedActivityOut
-     * @description A file was attached to the Task.
-     */
-    AttachmentAddedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "attachment_added";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["AttachmentData"];
-    };
-    /**
-     * AttachmentData
-     * @description The Attachment an event is about, by the name it had.
-     */
-    AttachmentData: {
-      /** Name */
-      name: string;
-    };
-    /**
-     * AttachmentRemovedActivityOut
-     * @description An Attachment was deleted from the Task.
-     */
-    AttachmentRemovedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "attachment_removed";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["AttachmentData"];
-    };
-    /**
-     * CountdownMarkedActivityOut
-     * @description The Task was marked as a Countdown.
-     */
-    CountdownMarkedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "countdown_marked";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["NoActivityData"];
-    };
-    /**
-     * CountdownUnmarkedActivityOut
-     * @description The Task stopped being a Countdown.
-     */
-    CountdownUnmarkedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "countdown_unmarked";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["NoActivityData"];
-    };
-    /**
-     * CreatedActivityOut
-     * @description The Task was created.
-     */
-    CreatedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "created";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["NoActivityData"];
-    };
-    /**
-     * DatesChangedActivityOut
-     * @description The Task's due date, time or range was set, changed or removed.
-     */
-    DatesChangedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "dates_changed";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["DatesChangedData"];
-    };
-    /**
-     * DatesChangedData
-     * @description The dates before and after a change; null when the Task had or has none.
-     */
-    DatesChangedData: {
-      old: components["schemas"]["DatesData"] | null;
-      new: components["schemas"]["DatesData"] | null;
-    };
-    /**
-     * DatesData
-     * @description A Task's dates at one moment, as a change recorded them.
-     */
-    DatesData: {
-      /**
-       * Due Date
-       * Format: date
-       */
-      due_date: string;
-      /** Due Time */
-      due_time: string | null;
-      /** Start Date */
-      start_date: string | null;
-      /** Start Time */
-      start_time: string | null;
-    };
-    /**
-     * DescriptionEditedActivityOut
-     * @description The Task's Description was edited. The edit itself isn't kept.
-     */
-    DescriptionEditedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "description_edited";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["NoActivityData"];
-    };
-    /**
-     * MovedActivityOut
-     * @description The Task moved to another Project, parent or Section.
-     */
-    MovedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "moved";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["MovedData"];
-    };
-    /**
-     * MovedData
-     * @description The Projects, parents and Sections a Task moved between, by their names at the time.
-     */
-    MovedData: {
-      /** From Project */
-      from_project: string;
-      /** To Project */
-      to_project: string;
-      /**
-       * From Parent
-       * @description Null when it was a root.
-       */
-      from_parent?: string | null;
-      /**
-       * To Parent
-       * @description Null when it became a root.
-       */
-      to_parent?: string | null;
-      /**
-       * From Section
-       * @description Null for No section.
-       */
-      from_section?: string | null;
-      /**
-       * To Section
-       * @description Null for No section.
-       */
-      to_section?: string | null;
-    };
-    /**
-     * NoActivityData
-     * @description The details of an event whose kind says it all.
-     */
-    NoActivityData: Record<string, never>;
-    /**
-     * PersonMergedActivityOut
-     * @description A Person the Task mentioned was merged into another.
-     */
-    PersonMergedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "person_merged";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["PersonMergedData"];
-    };
-    /**
-     * PersonMergedData
-     * @description The People merged, by their names at the time: `from_person` was folded into `to_person`.
-     */
-    PersonMergedData: {
-      /** From Person */
-      from_person: string;
-      /** To Person */
-      to_person: string;
-    };
-    /**
-     * PinnedActivityOut
-     * @description The Task was pinned.
-     */
-    PinnedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "pinned";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["NoActivityData"];
-    };
-    /**
-     * PriorityChangedActivityOut
-     * @description The Task's Priority changed.
-     */
-    PriorityChangedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "priority_changed";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["PriorityChangedData"];
-    };
-    /**
-     * PriorityChangedData
-     * @description The Priority before and after a change.
-     */
-    PriorityChangedData: {
-      old: components["schemas"]["Priority"];
-      new: components["schemas"]["Priority"];
-    };
-    /**
-     * RemindersChangedActivityOut
-     * @description The Task's Reminders were added, changed or removed.
-     */
-    RemindersChangedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "reminders_changed";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["RemindersChangedData"];
-    };
-    /**
-     * RemindersChangedData
-     * @description The Reminders before and after a change, as offsets in minutes.
-     */
-    RemindersChangedData: {
-      /** Old */
-      old: number[];
-      /** New */
-      new: number[];
-      /**
-       * All Day
-       * @description Whether the offsets count from the start of a day.
-       */
-      all_day: boolean;
-    };
-    /**
-     * RepeatAdvancedActivityOut
-     * @description Closing the repeating Task moved it on to its next Occurrence.
-     */
-    RepeatAdvancedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "repeat_advanced";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["RepeatAdvancedData"];
-    };
-    /**
-     * RepeatAdvancedData
-     * @description Which Occurrence was closed, how, and the one the Task moved on to.
-     */
-    RepeatAdvancedData: {
-      /**
-       * Action
-       * @description Skipped is Won't do.
-       * @enum {string}
-       */
-      action: "completed" | "skipped";
-      /**
-       * Occurrence
-       * Format: date
-       */
-      occurrence: string;
-      /**
-       * Next
-       * Format: date
-       */
-      next: string;
-    };
-    /**
-     * RepeatChangedActivityOut
-     * @description The Task's Repeat was set, changed or stopped.
-     */
-    RepeatChangedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "repeat_changed";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["RepeatChangedData"];
-    };
-    /**
-     * RepeatChangedData
-     * @description The Repeat before and after a change; null when the Task didn't or doesn't repeat.
-     */
-    RepeatChangedData: {
-      old: components["schemas"]["RepeatData"] | null;
-      new: components["schemas"]["RepeatData"] | null;
-    };
-    /**
-     * RepeatData
-     * @description A Task's Repeat at one moment, as a change recorded it.
-     */
-    RepeatData: {
-      /**
-       * Rule
-       * @description An RFC 5545 RRULE.
-       */
-      rule: string;
-      repeat_from: components["schemas"]["RepeatFrom"];
-    };
-    /**
-     * RepeatRemovedActivityOut
-     * @description The Task stopped repeating because it lost its due date or became a Subtask.
-     */
-    RepeatRemovedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "repeat_removed";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["RepeatData"];
-    };
-    /**
-     * RestoredActivityOut
-     * @description The Task was restored from Trash.
-     */
-    RestoredActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "restored";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["NoActivityData"];
     };
     /**
      * ShareReportAttachmentOut
@@ -2961,14 +2514,9 @@ export interface components {
     };
     /**
      * ShareReportCommentOut
-     * @description A Comment in a Task's timeline, with Mentions as plain names.
+     * @description A Comment on a Task of the report, with Mentions as plain names.
      */
     ShareReportCommentOut: {
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "comment";
       /** Id */
       id: number;
       /**
@@ -2989,12 +2537,6 @@ export interface components {
      */
     ShareReportOut: {
       project: components["schemas"]["ShareReportProjectOut"];
-      /**
-       * As Of
-       * Format: date-time
-       * @description When the report was made, in the owner's time zone.
-       */
-      as_of: string;
       summary: components["schemas"]["ShareReportSummaryOut"];
       /**
        * Sections
@@ -3022,7 +2564,10 @@ export interface components {
        * @description The Section's name; null for Tasks outside any Section.
        */
       name: string | null;
-      /** Tasks */
+      /**
+       * Tasks
+       * @description The Section's top-level Tasks.
+       */
       tasks: components["schemas"]["ShareReportTaskOut"][];
     };
     /**
@@ -3041,18 +2586,13 @@ export interface components {
     };
     /**
      * ShareReportTaskOut
-     * @description One Task on the report, with Mentions as plain names.
+     * @description One Task on the report with its Subtasks, Mentions as plain names.
      */
     ShareReportTaskOut: {
       /** Id */
       id: number;
       /** Title */
       title: string;
-      /**
-       * Parent Title
-       * @description The parent's title for a Subtask, which follows it; null for a root.
-       */
-      parent_title: string | null;
       status: components["schemas"]["Status"];
       priority: components["schemas"]["Priority"];
       /** Due Date */
@@ -3063,11 +2603,6 @@ export interface components {
       start_date: string | null;
       /** Start Time */
       start_time: string | null;
-      /**
-       * Completed At
-       * @description When the Task was Closed, in the owner's time zone; null while it's open.
-       */
-      completed_at: string | null;
       /** Is Overdue */
       is_overdue: boolean;
       /**
@@ -3085,225 +2620,15 @@ export interface components {
        */
       attachments: components["schemas"]["ShareReportAttachmentOut"][];
       /**
-       * Timeline
-       * @description The Task's Comments and Activity within the link's range, oldest first, with times in the owner's time zone and Mentions as the Person's current name.
+       * Comments
+       * @description The Task's Comments within the link's range, oldest first.
        */
-      timeline: (
-        | components["schemas"]["ShareReportCommentOut"]
-        | components["schemas"]["CreatedActivityOut"]
-        | components["schemas"]["TitleChangedActivityOut"]
-        | components["schemas"]["DescriptionEditedActivityOut"]
-        | components["schemas"]["StatusChangedActivityOut"]
-        | components["schemas"]["PriorityChangedActivityOut"]
-        | components["schemas"]["PinnedActivityOut"]
-        | components["schemas"]["UnpinnedActivityOut"]
-        | components["schemas"]["CountdownMarkedActivityOut"]
-        | components["schemas"]["CountdownUnmarkedActivityOut"]
-        | components["schemas"]["AttachmentAddedActivityOut"]
-        | components["schemas"]["AttachmentRemovedActivityOut"]
-        | components["schemas"]["DatesChangedActivityOut"]
-        | components["schemas"]["RemindersChangedActivityOut"]
-        | components["schemas"]["MovedActivityOut"]
-        | components["schemas"]["PersonMergedActivityOut"]
-        | components["schemas"]["RepeatChangedActivityOut"]
-        | components["schemas"]["RepeatRemovedActivityOut"]
-        | components["schemas"]["RepeatAdvancedActivityOut"]
-        | components["schemas"]["TagAddedActivityOut"]
-        | components["schemas"]["TagRemovedActivityOut"]
-        | components["schemas"]["TagsMergedActivityOut"]
-        | components["schemas"]["TrashedActivityOut"]
-        | components["schemas"]["RestoredActivityOut"]
-      )[];
-    };
-    /**
-     * StatusChangedActivityOut
-     * @description The Task's Status changed.
-     */
-    StatusChangedActivityOut: {
-      /** Id */
-      id: number;
+      comments: components["schemas"]["ShareReportCommentOut"][];
       /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
+       * Subtasks
+       * @description Open ones in List order, then Closed ones within the link's range.
        */
-      kind: "status_changed";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["StatusChangedData"];
-    };
-    /**
-     * StatusChangedData
-     * @description The Status before and after a change, the Blocked reason it was given, and any cascade.
-     *
-     *     A change the user made to a relative names that relative: `via_parent` when closing a
-     *     parent closed this Task, `via_subtask` when reopening a Subtask reopened it.
-     */
-    StatusChangedData: {
-      old: components["schemas"]["Status"];
-      new: components["schemas"]["Status"];
-      /** Blocked Reason */
-      blocked_reason: string;
-      /**
-       * Via Parent
-       * @description The Closed parent's title.
-       */
-      via_parent?: string | null;
-      /**
-       * Via Subtask
-       * @description The reopened Subtask's title.
-       */
-      via_subtask?: string | null;
-      /**
-       * Closed Subtasks
-       * @description How many Subtasks closed with it.
-       * @default 0
-       */
-      closed_subtasks: number;
-    };
-    /**
-     * TagAddedActivityOut
-     * @description A Tag was put on the Task.
-     */
-    TagAddedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "tag_added";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["TagData"];
-    };
-    /**
-     * TagData
-     * @description The Tag an event is about, by the name it had.
-     */
-    TagData: {
-      /** Name */
-      name: string;
-    };
-    /**
-     * TagRemovedActivityOut
-     * @description A Tag was taken off the Task, or deleted.
-     */
-    TagRemovedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "tag_removed";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["TagData"];
-    };
-    /**
-     * TagsMergedActivityOut
-     * @description One of the Task's Tags was merged into another.
-     */
-    TagsMergedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "tags_merged";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["TagsMergedData"];
-    };
-    /**
-     * TagsMergedData
-     * @description The Tags of a merge, by the names they had.
-     */
-    TagsMergedData: {
-      /** From Tag */
-      from_tag: string;
-      /** Into Tag */
-      into_tag: string;
-    };
-    /**
-     * TitleChangedActivityOut
-     * @description The Task was renamed.
-     */
-    TitleChangedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "title_changed";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["TitleChangedData"];
-    };
-    /**
-     * TitleChangedData
-     * @description The title before and after a rename.
-     */
-    TitleChangedData: {
-      /** Old */
-      old: string;
-      /** New */
-      new: string;
-    };
-    /**
-     * TrashedActivityOut
-     * @description The Task was moved to Trash.
-     */
-    TrashedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "trashed";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["NoActivityData"];
-    };
-    /**
-     * UnpinnedActivityOut
-     * @description The Task was unpinned.
-     */
-    UnpinnedActivityOut: {
-      /** Id */
-      id: number;
-      /**
-       * @description discriminator enum property added by openapi-typescript
-       * @enum {string}
-       */
-      kind: "unpinned";
-      /**
-       * At
-       * Format: date-time
-       */
-      at: string;
-      data: components["schemas"]["NoActivityData"];
+      subtasks: components["schemas"]["ShareReportTaskOut"][];
     };
     /**
      * PersonOut
@@ -4020,6 +3345,576 @@ export interface components {
       snippet: string;
     };
     /**
+     * AttachmentAddedActivityOut
+     * @description A file was attached to the Task.
+     */
+    AttachmentAddedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "attachment_added";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["AttachmentData"];
+    };
+    /**
+     * AttachmentData
+     * @description The Attachment an event is about, by the name it had.
+     */
+    AttachmentData: {
+      /** Name */
+      name: string;
+    };
+    /**
+     * AttachmentRemovedActivityOut
+     * @description An Attachment was deleted from the Task.
+     */
+    AttachmentRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "attachment_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["AttachmentData"];
+    };
+    /**
+     * CountdownMarkedActivityOut
+     * @description The Task was marked as a Countdown.
+     */
+    CountdownMarkedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "countdown_marked";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * CountdownUnmarkedActivityOut
+     * @description The Task stopped being a Countdown.
+     */
+    CountdownUnmarkedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "countdown_unmarked";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * CreatedActivityOut
+     * @description The Task was created.
+     */
+    CreatedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "created";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * DatesChangedActivityOut
+     * @description The Task's due date, time or range was set, changed or removed.
+     */
+    DatesChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "dates_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["DatesChangedData"];
+    };
+    /**
+     * DatesChangedData
+     * @description The dates before and after a change; null when the Task had or has none.
+     */
+    DatesChangedData: {
+      old: components["schemas"]["DatesData"] | null;
+      new: components["schemas"]["DatesData"] | null;
+    };
+    /**
+     * DatesData
+     * @description A Task's dates at one moment, as a change recorded them.
+     */
+    DatesData: {
+      /**
+       * Due Date
+       * Format: date
+       */
+      due_date: string;
+      /** Due Time */
+      due_time: string | null;
+      /** Start Date */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+    };
+    /**
+     * DescriptionEditedActivityOut
+     * @description The Task's Description was edited. The edit itself isn't kept.
+     */
+    DescriptionEditedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "description_edited";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * MovedActivityOut
+     * @description The Task moved to another Project, parent or Section.
+     */
+    MovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "moved";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["MovedData"];
+    };
+    /**
+     * MovedData
+     * @description The Projects, parents and Sections a Task moved between, by their names at the time.
+     */
+    MovedData: {
+      /** From Project */
+      from_project: string;
+      /** To Project */
+      to_project: string;
+      /**
+       * From Parent
+       * @description Null when it was a root.
+       */
+      from_parent?: string | null;
+      /**
+       * To Parent
+       * @description Null when it became a root.
+       */
+      to_parent?: string | null;
+      /**
+       * From Section
+       * @description Null for No section.
+       */
+      from_section?: string | null;
+      /**
+       * To Section
+       * @description Null for No section.
+       */
+      to_section?: string | null;
+    };
+    /**
+     * NoActivityData
+     * @description The details of an event whose kind says it all.
+     */
+    NoActivityData: Record<string, never>;
+    /**
+     * PersonMergedActivityOut
+     * @description A Person the Task mentioned was merged into another.
+     */
+    PersonMergedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "person_merged";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["PersonMergedData"];
+    };
+    /**
+     * PersonMergedData
+     * @description The People merged, by their names at the time: `from_person` was folded into `to_person`.
+     */
+    PersonMergedData: {
+      /** From Person */
+      from_person: string;
+      /** To Person */
+      to_person: string;
+    };
+    /**
+     * PinnedActivityOut
+     * @description The Task was pinned.
+     */
+    PinnedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "pinned";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * PriorityChangedActivityOut
+     * @description The Task's Priority changed.
+     */
+    PriorityChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "priority_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["PriorityChangedData"];
+    };
+    /**
+     * PriorityChangedData
+     * @description The Priority before and after a change.
+     */
+    PriorityChangedData: {
+      old: components["schemas"]["Priority"];
+      new: components["schemas"]["Priority"];
+    };
+    /**
+     * RemindersChangedActivityOut
+     * @description The Task's Reminders were added, changed or removed.
+     */
+    RemindersChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "reminders_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RemindersChangedData"];
+    };
+    /**
+     * RemindersChangedData
+     * @description The Reminders before and after a change, as offsets in minutes.
+     */
+    RemindersChangedData: {
+      /** Old */
+      old: number[];
+      /** New */
+      new: number[];
+      /**
+       * All Day
+       * @description Whether the offsets count from the start of a day.
+       */
+      all_day: boolean;
+    };
+    /**
+     * RepeatAdvancedActivityOut
+     * @description Closing the repeating Task moved it on to its next Occurrence.
+     */
+    RepeatAdvancedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_advanced";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatAdvancedData"];
+    };
+    /**
+     * RepeatAdvancedData
+     * @description Which Occurrence was closed, how, and the one the Task moved on to.
+     */
+    RepeatAdvancedData: {
+      /**
+       * Action
+       * @description Skipped is Won't do.
+       * @enum {string}
+       */
+      action: "completed" | "skipped";
+      /**
+       * Occurrence
+       * Format: date
+       */
+      occurrence: string;
+      /**
+       * Next
+       * Format: date
+       */
+      next: string;
+    };
+    /**
+     * RepeatChangedActivityOut
+     * @description The Task's Repeat was set, changed or stopped.
+     */
+    RepeatChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatChangedData"];
+    };
+    /**
+     * RepeatChangedData
+     * @description The Repeat before and after a change; null when the Task didn't or doesn't repeat.
+     */
+    RepeatChangedData: {
+      old: components["schemas"]["RepeatData"] | null;
+      new: components["schemas"]["RepeatData"] | null;
+    };
+    /**
+     * RepeatData
+     * @description A Task's Repeat at one moment, as a change recorded it.
+     */
+    RepeatData: {
+      /**
+       * Rule
+       * @description An RFC 5545 RRULE.
+       */
+      rule: string;
+      repeat_from: components["schemas"]["RepeatFrom"];
+    };
+    /**
+     * RepeatRemovedActivityOut
+     * @description The Task stopped repeating because it lost its due date or became a Subtask.
+     */
+    RepeatRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "repeat_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["RepeatData"];
+    };
+    /**
+     * RestoredActivityOut
+     * @description The Task was restored from Trash.
+     */
+    RestoredActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "restored";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * StatusChangedActivityOut
+     * @description The Task's Status changed.
+     */
+    StatusChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "status_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["StatusChangedData"];
+    };
+    /**
+     * StatusChangedData
+     * @description The Status before and after a change, the Blocked reason it was given, and any cascade.
+     *
+     *     A change the user made to a relative names that relative: `via_parent` when closing a
+     *     parent closed this Task, `via_subtask` when reopening a Subtask reopened it.
+     */
+    StatusChangedData: {
+      old: components["schemas"]["Status"];
+      new: components["schemas"]["Status"];
+      /** Blocked Reason */
+      blocked_reason: string;
+      /**
+       * Via Parent
+       * @description The Closed parent's title.
+       */
+      via_parent?: string | null;
+      /**
+       * Via Subtask
+       * @description The reopened Subtask's title.
+       */
+      via_subtask?: string | null;
+      /**
+       * Closed Subtasks
+       * @description How many Subtasks closed with it.
+       * @default 0
+       */
+      closed_subtasks: number;
+    };
+    /**
+     * TagAddedActivityOut
+     * @description A Tag was put on the Task.
+     */
+    TagAddedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tag_added";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagData"];
+    };
+    /**
+     * TagData
+     * @description The Tag an event is about, by the name it had.
+     */
+    TagData: {
+      /** Name */
+      name: string;
+    };
+    /**
+     * TagRemovedActivityOut
+     * @description A Tag was taken off the Task, or deleted.
+     */
+    TagRemovedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tag_removed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagData"];
+    };
+    /**
+     * TagsMergedActivityOut
+     * @description One of the Task's Tags was merged into another.
+     */
+    TagsMergedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "tags_merged";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TagsMergedData"];
+    };
+    /**
+     * TagsMergedData
+     * @description The Tags of a merge, by the names they had.
+     */
+    TagsMergedData: {
+      /** From Tag */
+      from_tag: string;
+      /** Into Tag */
+      into_tag: string;
+    };
+    /**
      * TaskActivityListOut
      * @description A page of a Task's history, newest first.
      */
@@ -4060,6 +3955,73 @@ export interface components {
        * @description How many events the whole history holds.
        */
       count: number;
+    };
+    /**
+     * TitleChangedActivityOut
+     * @description The Task was renamed.
+     */
+    TitleChangedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "title_changed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["TitleChangedData"];
+    };
+    /**
+     * TitleChangedData
+     * @description The title before and after a rename.
+     */
+    TitleChangedData: {
+      /** Old */
+      old: string;
+      /** New */
+      new: string;
+    };
+    /**
+     * TrashedActivityOut
+     * @description The Task was moved to Trash.
+     */
+    TrashedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "trashed";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
+    };
+    /**
+     * UnpinnedActivityOut
+     * @description The Task was unpinned.
+     */
+    UnpinnedActivityOut: {
+      /** Id */
+      id: number;
+      /**
+       * @description discriminator enum property added by openapi-typescript
+       * @enum {string}
+       */
+      kind: "unpinned";
+      /**
+       * At
+       * Format: date-time
+       */
+      at: string;
+      data: components["schemas"]["NoActivityData"];
     };
     /**
      * CalendarQuery

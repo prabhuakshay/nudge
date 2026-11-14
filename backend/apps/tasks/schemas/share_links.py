@@ -18,7 +18,7 @@ class ShareLinkOut(Schema):
     created_at: datetime
     expires_at: datetime | None = Field(description="When it stops working; null for never.")
     range_days: int | None = Field(
-        description="How many days back each Task's timeline goes; null for all."
+        description="Days of Closed Tasks and Comments the report shows; null for all."
     )
     last_opened_at: datetime | None = Field(description="Null until someone opens it.")
 
@@ -32,7 +32,7 @@ class ShareLinkIn(Schema):
     )
     range_days: int | None = Field(
         default=DEFAULT_RANGE_DAYS,
-        description="Days of each Task's timeline to show: 7, 14 or 30; null for all.",
+        description="Days of Closed Tasks and Comments to show: 7, 14 or 30; null for all.",
     )
 
 
@@ -43,5 +43,6 @@ class ShareLinkPatchIn(Schema):
         default=None, description="Days from now until it stops working; null for never."
     )
     range_days: int | None = Field(
-        default=None, description="Days of each Task's timeline to show: 7, 14 or 30; null for all."
+        default=None,
+        description="Days of Closed Tasks and Comments to show: 7, 14 or 30; null for all.",
     )

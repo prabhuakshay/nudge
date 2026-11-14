@@ -142,6 +142,7 @@ describe("ShareReportPage", () => {
       screen.getByRole("heading", { name: "Pick a date" }).closest("li") ?? document.body,
     );
     expect(done.getByText("Completed")).toBeInTheDocument();
+    expect(screen.queryByText("Open")).not.toBeInTheDocument();
   });
 
   it("links each Task's Attachments for download through the Share link", async () => {

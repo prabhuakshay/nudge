@@ -33,6 +33,16 @@ export function shortTime(time: string): string {
   return time.slice(0, 5);
 }
 
+/** A date or moment as its day in full: "3 Nov 2026". */
+export function longDate(iso: string): string {
+  return format(parseISO(iso), "d MMM yyyy");
+}
+
+/** A moment as its day in full and its clock time: "3 Nov 2026, 22:00". */
+export function longDateTime(iso: string): string {
+  return format(parseISO(iso), "d MMM yyyy, HH:mm");
+}
+
 /** A day relative to today, like TickTick: "Today", "Tomorrow", "Friday", "Last Sat", "6 Nov". */
 function dayLabel(date: string, now: Date): string {
   const day = parseISO(date);
@@ -67,7 +77,7 @@ export function dueLabel(dates: Dates, now: Date): string {
 
 /** The dates in full, for tooltips and Activity: "3 Nov 2026, 22:00 – 4 Nov 2026, 06:30". */
 export function describeDates(dates: Dates): string {
-  return range(dates, (date) => format(parseISO(date), "d MMM yyyy"));
+  return range(dates, longDate);
 }
 
 /**

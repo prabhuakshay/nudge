@@ -1,6 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
-import { format, parseISO } from "date-fns";
 import { Share2 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,7 @@ import { CopyField } from "@/components/ui/copy-field";
 import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { SidebarDialog } from "@/features/projects/project-dialog";
 import type { SidebarProject } from "@/features/projects/projects";
+import { longDate, longDateTime } from "@/features/tasks/due";
 
 import {
   shareLinksQuery,
@@ -127,7 +127,7 @@ function ShareLinkItem({
   const [editing, setEditing] = useState(false);
   const expiry = link.expires_at ? `Expires ${longDate(link.expires_at)}` : "Never expires";
   const opened = link.last_opened_at
-    ? `Last opened ${format(parseISO(link.last_opened_at), "d MMM yyyy, HH:mm")}`
+    ? `Last opened ${longDateTime(link.last_opened_at)}`
     : "Never opened";
 
   return (
@@ -204,8 +204,4 @@ function EditShareLink({
       </div>
     </form>
   );
-}
-
-function longDate(iso: string) {
-  return format(parseISO(iso), "d MMM yyyy");
 }

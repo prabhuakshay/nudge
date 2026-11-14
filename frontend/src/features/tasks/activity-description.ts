@@ -1,8 +1,6 @@
-import { format, parseISO } from "date-fns";
-
 import { plainMentions } from "@/features/people/mentions";
 
-import { describeDates } from "./due";
+import { describeDates, longDate } from "./due";
 import { remindersLabel } from "./reminders";
 import { REPEAT_FROM, repeatLabel } from "./repeat";
 import { PRIORITY, STATUS_VERB } from "./task-properties";
@@ -52,10 +50,6 @@ const DESCRIBE: { [K in keyof ActivityData]: (data: ActivityData[K]) => string }
   trashed: () => "Moved to Trash",
   restored: () => "Restored from Trash",
 };
-
-function longDate(date: string): string {
-  return format(parseISO(date), "d MMM yyyy");
-}
 
 /** What an Activity event says happened, in a sentence: "Changed priority from P3 to P1". */
 export function describeActivity<K extends TaskActivity["kind"]>(event: {

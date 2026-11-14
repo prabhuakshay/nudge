@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { format, parseISO } from "date-fns";
 
 import { describeActivity } from "@/features/tasks/activity-description";
-import { describeDates } from "@/features/tasks/due";
+import { describeDates, longDateTime } from "@/features/tasks/due";
 import { fileSize } from "@/features/tasks/file-size";
 import { Markdown } from "@/features/tasks/markdown";
 import { PRIORITY, STATUS } from "@/features/tasks/task-properties";
@@ -165,5 +164,5 @@ function Notice({ title, children }: { title: string; children: string }) {
  * reading only its date and time keeps the owner's day even when the viewer is elsewhere.
  */
 function ownerClock(iso: string) {
-  return format(parseISO(iso.slice(0, 19)), "d MMM yyyy, HH:mm");
+  return longDateTime(iso.slice(0, 19));
 }

@@ -4,7 +4,7 @@ import type { components } from "@/api/schema";
 
 import { plainMentions } from "@/features/people/mentions";
 
-import { dueLabel } from "./due";
+import { dueLabel, longDate } from "./due";
 import { isClosed, STATUS_VERB, statusMessage } from "./task-properties";
 import type { Task, TaskStatus } from "./tasks";
 
@@ -118,8 +118,7 @@ export function repeatLabel(rule: string): string {
   const count = parts.get("COUNT");
   if (count !== undefined) return `${base}, ${count} times`;
   const until = parts.get("UNTIL");
-  if (until !== undefined)
-    return `${base}, until ${format(parseISO(until.slice(0, 8)), "d MMM yyyy")}`;
+  if (until !== undefined) return `${base}, until ${longDate(until.slice(0, 8))}`;
   return base;
 }
 

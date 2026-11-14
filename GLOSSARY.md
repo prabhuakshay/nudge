@@ -165,6 +165,12 @@ A private, read-only address a calendar app subscribes to, showing each open dat
 event on its current date.
 _Avoid_: iCal export, calendar sync
 
+**Share link**:
+A private, read-only address that shows one Project's Tasks, each with its Comments and Activity
+in date order, to someone without an account. It stops working when it expires or when its
+owner stops sharing it.
+_Avoid_: Public link, status report, invite
+
 ## People
 
 **Person**:

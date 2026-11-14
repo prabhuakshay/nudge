@@ -6184,6 +6184,839 @@
         "title": "ShareLinkOut",
         "type": "object"
       },
+      "AttachmentAddedActivityOut": {
+        "description": "A file was attached to the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "attachment_added",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttachmentData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "AttachmentAddedActivityOut",
+        "type": "object"
+      },
+      "AttachmentData": {
+        "description": "The Attachment an event is about, by the name it had.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "AttachmentData",
+        "type": "object"
+      },
+      "AttachmentRemovedActivityOut": {
+        "description": "An Attachment was deleted from the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "attachment_removed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/AttachmentData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "AttachmentRemovedActivityOut",
+        "type": "object"
+      },
+      "CountdownMarkedActivityOut": {
+        "description": "The Task was marked as a Countdown.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "countdown_marked",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "CountdownMarkedActivityOut",
+        "type": "object"
+      },
+      "CountdownUnmarkedActivityOut": {
+        "description": "The Task stopped being a Countdown.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "countdown_unmarked",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "CountdownUnmarkedActivityOut",
+        "type": "object"
+      },
+      "CreatedActivityOut": {
+        "description": "The Task was created.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "created",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "CreatedActivityOut",
+        "type": "object"
+      },
+      "DatesChangedActivityOut": {
+        "description": "The Task's due date, time or range was set, changed or removed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "dates_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/DatesChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "DatesChangedActivityOut",
+        "type": "object"
+      },
+      "DatesChangedData": {
+        "description": "The dates before and after a change; null when the Task had or has none.",
+        "properties": {
+          "old": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatesData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "new": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/DatesData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "DatesChangedData",
+        "type": "object"
+      },
+      "DatesData": {
+        "description": "A Task's dates at one moment, as a change recorded them.",
+        "properties": {
+          "due_date": {
+            "format": "date",
+            "title": "Due Date",
+            "type": "string"
+          },
+          "due_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Due Time"
+          },
+          "start_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Date"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          }
+        },
+        "required": [
+          "due_date",
+          "due_time",
+          "start_date",
+          "start_time"
+        ],
+        "title": "DatesData",
+        "type": "object"
+      },
+      "DescriptionEditedActivityOut": {
+        "description": "The Task's Description was edited. The edit itself isn't kept.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "description_edited",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "DescriptionEditedActivityOut",
+        "type": "object"
+      },
+      "MovedActivityOut": {
+        "description": "The Task moved to another Project, parent or Section.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "moved",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/MovedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "MovedActivityOut",
+        "type": "object"
+      },
+      "MovedData": {
+        "description": "The Projects, parents and Sections a Task moved between, by their names at the time.",
+        "properties": {
+          "from_project": {
+            "title": "From Project",
+            "type": "string"
+          },
+          "to_project": {
+            "title": "To Project",
+            "type": "string"
+          },
+          "from_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when it was a root.",
+            "title": "From Parent"
+          },
+          "to_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null when it became a root.",
+            "title": "To Parent"
+          },
+          "from_section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for No section.",
+            "title": "From Section"
+          },
+          "to_section": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null for No section.",
+            "title": "To Section"
+          }
+        },
+        "required": [
+          "from_project",
+          "to_project"
+        ],
+        "title": "MovedData",
+        "type": "object"
+      },
+      "NoActivityData": {
+        "description": "The details of an event whose kind says it all.",
+        "properties": {},
+        "title": "NoActivityData",
+        "type": "object"
+      },
+      "PersonMergedActivityOut": {
+        "description": "A Person the Task mentioned was merged into another.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "person_merged",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PersonMergedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "PersonMergedActivityOut",
+        "type": "object"
+      },
+      "PersonMergedData": {
+        "description": "The People merged, by their names at the time: `from_person` was folded into `to_person`.",
+        "properties": {
+          "from_person": {
+            "title": "From Person",
+            "type": "string"
+          },
+          "to_person": {
+            "title": "To Person",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_person",
+          "to_person"
+        ],
+        "title": "PersonMergedData",
+        "type": "object"
+      },
+      "PinnedActivityOut": {
+        "description": "The Task was pinned.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "pinned",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "PinnedActivityOut",
+        "type": "object"
+      },
+      "PriorityChangedActivityOut": {
+        "description": "The Task's Priority changed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "priority_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/PriorityChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "PriorityChangedActivityOut",
+        "type": "object"
+      },
+      "PriorityChangedData": {
+        "description": "The Priority before and after a change.",
+        "properties": {
+          "old": {
+            "$ref": "#/components/schemas/Priority"
+          },
+          "new": {
+            "$ref": "#/components/schemas/Priority"
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "PriorityChangedData",
+        "type": "object"
+      },
+      "RemindersChangedActivityOut": {
+        "description": "The Task's Reminders were added, changed or removed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "reminders_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RemindersChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RemindersChangedActivityOut",
+        "type": "object"
+      },
+      "RemindersChangedData": {
+        "description": "The Reminders before and after a change, as offsets in minutes.",
+        "properties": {
+          "old": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "Old",
+            "type": "array"
+          },
+          "new": {
+            "items": {
+              "type": "integer"
+            },
+            "title": "New",
+            "type": "array"
+          },
+          "all_day": {
+            "description": "Whether the offsets count from the start of a day.",
+            "title": "All Day",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "old",
+          "new",
+          "all_day"
+        ],
+        "title": "RemindersChangedData",
+        "type": "object"
+      },
+      "RepeatAdvancedActivityOut": {
+        "description": "Closing the repeating Task moved it on to its next Occurrence.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "repeat_advanced",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RepeatAdvancedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RepeatAdvancedActivityOut",
+        "type": "object"
+      },
+      "RepeatAdvancedData": {
+        "description": "Which Occurrence was closed, how, and the one the Task moved on to.",
+        "properties": {
+          "action": {
+            "description": "Skipped is Won't do.",
+            "enum": [
+              "completed",
+              "skipped"
+            ],
+            "title": "Action",
+            "type": "string"
+          },
+          "occurrence": {
+            "format": "date",
+            "title": "Occurrence",
+            "type": "string"
+          },
+          "next": {
+            "format": "date",
+            "title": "Next",
+            "type": "string"
+          }
+        },
+        "required": [
+          "action",
+          "occurrence",
+          "next"
+        ],
+        "title": "RepeatAdvancedData",
+        "type": "object"
+      },
+      "RepeatChangedActivityOut": {
+        "description": "The Task's Repeat was set, changed or stopped.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "repeat_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RepeatChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RepeatChangedActivityOut",
+        "type": "object"
+      },
+      "RepeatChangedData": {
+        "description": "The Repeat before and after a change; null when the Task didn't or doesn't repeat.",
+        "properties": {
+          "old": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "new": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RepeatData"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "RepeatChangedData",
+        "type": "object"
+      },
+      "RepeatData": {
+        "description": "A Task's Repeat at one moment, as a change recorded it.",
+        "properties": {
+          "rule": {
+            "description": "An RFC 5545 RRULE.",
+            "title": "Rule",
+            "type": "string"
+          },
+          "repeat_from": {
+            "$ref": "#/components/schemas/RepeatFrom"
+          }
+        },
+        "required": [
+          "rule",
+          "repeat_from"
+        ],
+        "title": "RepeatData",
+        "type": "object"
+      },
+      "RepeatRemovedActivityOut": {
+        "description": "The Task stopped repeating because it lost its due date or became a Subtask.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "repeat_removed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/RepeatData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RepeatRemovedActivityOut",
+        "type": "object"
+      },
+      "RestoredActivityOut": {
+        "description": "The Task was restored from Trash.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "restored",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "RestoredActivityOut",
+        "type": "object"
+      },
+      "ShareReportCommentOut": {
+        "description": "A Comment in a Task's timeline, with Mentions as plain names.",
+        "properties": {
+          "kind": {
+            "const": "comment",
+            "title": "Kind",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "at": {
+            "description": "When it was written, in the owner's time zone.",
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "body": {
+            "description": "Markdown.",
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "required": [
+          "kind",
+          "id",
+          "at",
+          "body"
+        ],
+        "title": "ShareReportCommentOut",
+        "type": "object"
+      },
       "ShareReportOut": {
         "description": "The whole report a Share link shows, as the Project is now.",
         "properties": {
@@ -6404,6 +7237,116 @@
           "blocked_reason": {
             "title": "Blocked Reason",
             "type": "string"
+          },
+          "timeline": {
+            "description": "The Task's Comments and Activity within the link's range, oldest first, with times in the owner's time zone and Mentions as the Person's current name.",
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "attachment_added": "#/components/schemas/AttachmentAddedActivityOut",
+                  "attachment_removed": "#/components/schemas/AttachmentRemovedActivityOut",
+                  "comment": "#/components/schemas/ShareReportCommentOut",
+                  "countdown_marked": "#/components/schemas/CountdownMarkedActivityOut",
+                  "countdown_unmarked": "#/components/schemas/CountdownUnmarkedActivityOut",
+                  "created": "#/components/schemas/CreatedActivityOut",
+                  "dates_changed": "#/components/schemas/DatesChangedActivityOut",
+                  "description_edited": "#/components/schemas/DescriptionEditedActivityOut",
+                  "moved": "#/components/schemas/MovedActivityOut",
+                  "person_merged": "#/components/schemas/PersonMergedActivityOut",
+                  "pinned": "#/components/schemas/PinnedActivityOut",
+                  "priority_changed": "#/components/schemas/PriorityChangedActivityOut",
+                  "reminders_changed": "#/components/schemas/RemindersChangedActivityOut",
+                  "repeat_advanced": "#/components/schemas/RepeatAdvancedActivityOut",
+                  "repeat_changed": "#/components/schemas/RepeatChangedActivityOut",
+                  "repeat_removed": "#/components/schemas/RepeatRemovedActivityOut",
+                  "restored": "#/components/schemas/RestoredActivityOut",
+                  "status_changed": "#/components/schemas/StatusChangedActivityOut",
+                  "tag_added": "#/components/schemas/TagAddedActivityOut",
+                  "tag_removed": "#/components/schemas/TagRemovedActivityOut",
+                  "tags_merged": "#/components/schemas/TagsMergedActivityOut",
+                  "title_changed": "#/components/schemas/TitleChangedActivityOut",
+                  "trashed": "#/components/schemas/TrashedActivityOut",
+                  "unpinned": "#/components/schemas/UnpinnedActivityOut"
+                },
+                "propertyName": "kind"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/ShareReportCommentOut"
+                },
+                {
+                  "$ref": "#/components/schemas/CreatedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TitleChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/DescriptionEditedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/StatusChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/PriorityChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/PinnedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/UnpinnedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/CountdownMarkedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/CountdownUnmarkedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/AttachmentAddedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/AttachmentRemovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/DatesChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RemindersChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/MovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/PersonMergedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RepeatChangedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RepeatRemovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RepeatAdvancedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TagAddedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TagRemovedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TagsMergedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/TrashedActivityOut"
+                },
+                {
+                  "$ref": "#/components/schemas/RestoredActivityOut"
+                }
+              ]
+            },
+            "title": "Timeline",
+            "type": "array"
           }
         },
         "required": [
@@ -6420,9 +7363,324 @@
           "is_overdue",
           "tags",
           "description",
-          "blocked_reason"
+          "blocked_reason",
+          "timeline"
         ],
         "title": "ShareReportTaskOut",
+        "type": "object"
+      },
+      "StatusChangedActivityOut": {
+        "description": "The Task's Status changed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "status_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/StatusChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "StatusChangedActivityOut",
+        "type": "object"
+      },
+      "StatusChangedData": {
+        "description": "The Status before and after a change, the Blocked reason it was given, and any cascade.\n\nA change the user made to a relative names that relative: `via_parent` when closing a\nparent closed this Task, `via_subtask` when reopening a Subtask reopened it.",
+        "properties": {
+          "old": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "new": {
+            "$ref": "#/components/schemas/Status"
+          },
+          "blocked_reason": {
+            "title": "Blocked Reason",
+            "type": "string"
+          },
+          "via_parent": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Closed parent's title.",
+            "title": "Via Parent"
+          },
+          "via_subtask": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The reopened Subtask's title.",
+            "title": "Via Subtask"
+          },
+          "closed_subtasks": {
+            "default": 0,
+            "description": "How many Subtasks closed with it.",
+            "title": "Closed Subtasks",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "old",
+          "new",
+          "blocked_reason"
+        ],
+        "title": "StatusChangedData",
+        "type": "object"
+      },
+      "TagAddedActivityOut": {
+        "description": "A Tag was put on the Task.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "tag_added",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TagData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TagAddedActivityOut",
+        "type": "object"
+      },
+      "TagData": {
+        "description": "The Tag an event is about, by the name it had.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "title": "TagData",
+        "type": "object"
+      },
+      "TagRemovedActivityOut": {
+        "description": "A Tag was taken off the Task, or deleted.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "tag_removed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TagData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TagRemovedActivityOut",
+        "type": "object"
+      },
+      "TagsMergedActivityOut": {
+        "description": "One of the Task's Tags was merged into another.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "tags_merged",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TagsMergedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TagsMergedActivityOut",
+        "type": "object"
+      },
+      "TagsMergedData": {
+        "description": "The Tags of a merge, by the names they had.",
+        "properties": {
+          "from_tag": {
+            "title": "From Tag",
+            "type": "string"
+          },
+          "into_tag": {
+            "title": "Into Tag",
+            "type": "string"
+          }
+        },
+        "required": [
+          "from_tag",
+          "into_tag"
+        ],
+        "title": "TagsMergedData",
+        "type": "object"
+      },
+      "TitleChangedActivityOut": {
+        "description": "The Task was renamed.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "title_changed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/TitleChangedData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TitleChangedActivityOut",
+        "type": "object"
+      },
+      "TitleChangedData": {
+        "description": "The title before and after a rename.",
+        "properties": {
+          "old": {
+            "title": "Old",
+            "type": "string"
+          },
+          "new": {
+            "title": "New",
+            "type": "string"
+          }
+        },
+        "required": [
+          "old",
+          "new"
+        ],
+        "title": "TitleChangedData",
+        "type": "object"
+      },
+      "TrashedActivityOut": {
+        "description": "The Task was moved to Trash.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "trashed",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "TrashedActivityOut",
+        "type": "object"
+      },
+      "UnpinnedActivityOut": {
+        "description": "The Task was unpinned.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "kind": {
+            "const": "unpinned",
+            "title": "Kind",
+            "type": "string"
+          },
+          "at": {
+            "format": "date-time",
+            "title": "At",
+            "type": "string"
+          },
+          "data": {
+            "$ref": "#/components/schemas/NoActivityData"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "at",
+          "data"
+        ],
+        "title": "UnpinnedActivityOut",
         "type": "object"
       },
       "PersonOut": {
@@ -7994,1011 +9252,6 @@
         "title": "TaskSearchOut",
         "type": "object"
       },
-      "AttachmentAddedActivityOut": {
-        "description": "A file was attached to the Task.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "attachment_added",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/AttachmentData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "AttachmentAddedActivityOut",
-        "type": "object"
-      },
-      "AttachmentData": {
-        "description": "The Attachment an event is about, by the name it had.",
-        "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "AttachmentData",
-        "type": "object"
-      },
-      "AttachmentRemovedActivityOut": {
-        "description": "An Attachment was deleted from the Task.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "attachment_removed",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/AttachmentData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "AttachmentRemovedActivityOut",
-        "type": "object"
-      },
-      "CountdownMarkedActivityOut": {
-        "description": "The Task was marked as a Countdown.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "countdown_marked",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/NoActivityData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "CountdownMarkedActivityOut",
-        "type": "object"
-      },
-      "CountdownUnmarkedActivityOut": {
-        "description": "The Task stopped being a Countdown.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "countdown_unmarked",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/NoActivityData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "CountdownUnmarkedActivityOut",
-        "type": "object"
-      },
-      "CreatedActivityOut": {
-        "description": "The Task was created.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "created",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/NoActivityData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "CreatedActivityOut",
-        "type": "object"
-      },
-      "DatesChangedActivityOut": {
-        "description": "The Task's due date, time or range was set, changed or removed.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "dates_changed",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/DatesChangedData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "DatesChangedActivityOut",
-        "type": "object"
-      },
-      "DatesChangedData": {
-        "description": "The dates before and after a change; null when the Task had or has none.",
-        "properties": {
-          "old": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/DatesData"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "new": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/DatesData"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "old",
-          "new"
-        ],
-        "title": "DatesChangedData",
-        "type": "object"
-      },
-      "DatesData": {
-        "description": "A Task's dates at one moment, as a change recorded them.",
-        "properties": {
-          "due_date": {
-            "format": "date",
-            "title": "Due Date",
-            "type": "string"
-          },
-          "due_time": {
-            "anyOf": [
-              {
-                "format": "time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Due Time"
-          },
-          "start_date": {
-            "anyOf": [
-              {
-                "format": "date",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start Date"
-          },
-          "start_time": {
-            "anyOf": [
-              {
-                "format": "time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Start Time"
-          }
-        },
-        "required": [
-          "due_date",
-          "due_time",
-          "start_date",
-          "start_time"
-        ],
-        "title": "DatesData",
-        "type": "object"
-      },
-      "DescriptionEditedActivityOut": {
-        "description": "The Task's Description was edited. The edit itself isn't kept.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "description_edited",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/NoActivityData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "DescriptionEditedActivityOut",
-        "type": "object"
-      },
-      "MovedActivityOut": {
-        "description": "The Task moved to another Project, parent or Section.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "moved",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/MovedData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "MovedActivityOut",
-        "type": "object"
-      },
-      "MovedData": {
-        "description": "The Projects, parents and Sections a Task moved between, by their names at the time.",
-        "properties": {
-          "from_project": {
-            "title": "From Project",
-            "type": "string"
-          },
-          "to_project": {
-            "title": "To Project",
-            "type": "string"
-          },
-          "from_parent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null when it was a root.",
-            "title": "From Parent"
-          },
-          "to_parent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null when it became a root.",
-            "title": "To Parent"
-          },
-          "from_section": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null for No section.",
-            "title": "From Section"
-          },
-          "to_section": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "Null for No section.",
-            "title": "To Section"
-          }
-        },
-        "required": [
-          "from_project",
-          "to_project"
-        ],
-        "title": "MovedData",
-        "type": "object"
-      },
-      "NoActivityData": {
-        "description": "The details of an event whose kind says it all.",
-        "properties": {},
-        "title": "NoActivityData",
-        "type": "object"
-      },
-      "PersonMergedActivityOut": {
-        "description": "A Person the Task mentioned was merged into another.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "person_merged",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/PersonMergedData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "PersonMergedActivityOut",
-        "type": "object"
-      },
-      "PersonMergedData": {
-        "description": "The People merged, by their names at the time: `from_person` was folded into `to_person`.",
-        "properties": {
-          "from_person": {
-            "title": "From Person",
-            "type": "string"
-          },
-          "to_person": {
-            "title": "To Person",
-            "type": "string"
-          }
-        },
-        "required": [
-          "from_person",
-          "to_person"
-        ],
-        "title": "PersonMergedData",
-        "type": "object"
-      },
-      "PinnedActivityOut": {
-        "description": "The Task was pinned.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "pinned",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/NoActivityData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "PinnedActivityOut",
-        "type": "object"
-      },
-      "PriorityChangedActivityOut": {
-        "description": "The Task's Priority changed.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "priority_changed",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/PriorityChangedData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "PriorityChangedActivityOut",
-        "type": "object"
-      },
-      "PriorityChangedData": {
-        "description": "The Priority before and after a change.",
-        "properties": {
-          "old": {
-            "$ref": "#/components/schemas/Priority"
-          },
-          "new": {
-            "$ref": "#/components/schemas/Priority"
-          }
-        },
-        "required": [
-          "old",
-          "new"
-        ],
-        "title": "PriorityChangedData",
-        "type": "object"
-      },
-      "RemindersChangedActivityOut": {
-        "description": "The Task's Reminders were added, changed or removed.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "reminders_changed",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/RemindersChangedData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "RemindersChangedActivityOut",
-        "type": "object"
-      },
-      "RemindersChangedData": {
-        "description": "The Reminders before and after a change, as offsets in minutes.",
-        "properties": {
-          "old": {
-            "items": {
-              "type": "integer"
-            },
-            "title": "Old",
-            "type": "array"
-          },
-          "new": {
-            "items": {
-              "type": "integer"
-            },
-            "title": "New",
-            "type": "array"
-          },
-          "all_day": {
-            "description": "Whether the offsets count from the start of a day.",
-            "title": "All Day",
-            "type": "boolean"
-          }
-        },
-        "required": [
-          "old",
-          "new",
-          "all_day"
-        ],
-        "title": "RemindersChangedData",
-        "type": "object"
-      },
-      "RepeatAdvancedActivityOut": {
-        "description": "Closing the repeating Task moved it on to its next Occurrence.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "repeat_advanced",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/RepeatAdvancedData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "RepeatAdvancedActivityOut",
-        "type": "object"
-      },
-      "RepeatAdvancedData": {
-        "description": "Which Occurrence was closed, how, and the one the Task moved on to.",
-        "properties": {
-          "action": {
-            "description": "Skipped is Won't do.",
-            "enum": [
-              "completed",
-              "skipped"
-            ],
-            "title": "Action",
-            "type": "string"
-          },
-          "occurrence": {
-            "format": "date",
-            "title": "Occurrence",
-            "type": "string"
-          },
-          "next": {
-            "format": "date",
-            "title": "Next",
-            "type": "string"
-          }
-        },
-        "required": [
-          "action",
-          "occurrence",
-          "next"
-        ],
-        "title": "RepeatAdvancedData",
-        "type": "object"
-      },
-      "RepeatChangedActivityOut": {
-        "description": "The Task's Repeat was set, changed or stopped.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "repeat_changed",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/RepeatChangedData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "RepeatChangedActivityOut",
-        "type": "object"
-      },
-      "RepeatChangedData": {
-        "description": "The Repeat before and after a change; null when the Task didn't or doesn't repeat.",
-        "properties": {
-          "old": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RepeatData"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "new": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/RepeatData"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "old",
-          "new"
-        ],
-        "title": "RepeatChangedData",
-        "type": "object"
-      },
-      "RepeatData": {
-        "description": "A Task's Repeat at one moment, as a change recorded it.",
-        "properties": {
-          "rule": {
-            "description": "An RFC 5545 RRULE.",
-            "title": "Rule",
-            "type": "string"
-          },
-          "repeat_from": {
-            "$ref": "#/components/schemas/RepeatFrom"
-          }
-        },
-        "required": [
-          "rule",
-          "repeat_from"
-        ],
-        "title": "RepeatData",
-        "type": "object"
-      },
-      "RepeatRemovedActivityOut": {
-        "description": "The Task stopped repeating because it lost its due date or became a Subtask.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "repeat_removed",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/RepeatData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "RepeatRemovedActivityOut",
-        "type": "object"
-      },
-      "RestoredActivityOut": {
-        "description": "The Task was restored from Trash.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "restored",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/NoActivityData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "RestoredActivityOut",
-        "type": "object"
-      },
-      "StatusChangedActivityOut": {
-        "description": "The Task's Status changed.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "status_changed",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/StatusChangedData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "StatusChangedActivityOut",
-        "type": "object"
-      },
-      "StatusChangedData": {
-        "description": "The Status before and after a change, the Blocked reason it was given, and any cascade.\n\nA change the user made to a relative names that relative: `via_parent` when closing a\nparent closed this Task, `via_subtask` when reopening a Subtask reopened it.",
-        "properties": {
-          "old": {
-            "$ref": "#/components/schemas/Status"
-          },
-          "new": {
-            "$ref": "#/components/schemas/Status"
-          },
-          "blocked_reason": {
-            "title": "Blocked Reason",
-            "type": "string"
-          },
-          "via_parent": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The Closed parent's title.",
-            "title": "Via Parent"
-          },
-          "via_subtask": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "description": "The reopened Subtask's title.",
-            "title": "Via Subtask"
-          },
-          "closed_subtasks": {
-            "default": 0,
-            "description": "How many Subtasks closed with it.",
-            "title": "Closed Subtasks",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "old",
-          "new",
-          "blocked_reason"
-        ],
-        "title": "StatusChangedData",
-        "type": "object"
-      },
-      "TagAddedActivityOut": {
-        "description": "A Tag was put on the Task.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "tag_added",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/TagData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "TagAddedActivityOut",
-        "type": "object"
-      },
-      "TagData": {
-        "description": "The Tag an event is about, by the name it had.",
-        "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name"
-        ],
-        "title": "TagData",
-        "type": "object"
-      },
-      "TagRemovedActivityOut": {
-        "description": "A Tag was taken off the Task, or deleted.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "tag_removed",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/TagData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "TagRemovedActivityOut",
-        "type": "object"
-      },
-      "TagsMergedActivityOut": {
-        "description": "One of the Task's Tags was merged into another.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "tags_merged",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/TagsMergedData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "TagsMergedActivityOut",
-        "type": "object"
-      },
-      "TagsMergedData": {
-        "description": "The Tags of a merge, by the names they had.",
-        "properties": {
-          "from_tag": {
-            "title": "From Tag",
-            "type": "string"
-          },
-          "into_tag": {
-            "title": "Into Tag",
-            "type": "string"
-          }
-        },
-        "required": [
-          "from_tag",
-          "into_tag"
-        ],
-        "title": "TagsMergedData",
-        "type": "object"
-      },
       "TaskActivityListOut": {
         "description": "A page of a Task's history, newest first.",
         "properties": {
@@ -9131,115 +9384,6 @@
           "count"
         ],
         "title": "TaskActivityListOut",
-        "type": "object"
-      },
-      "TitleChangedActivityOut": {
-        "description": "The Task was renamed.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "title_changed",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/TitleChangedData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "TitleChangedActivityOut",
-        "type": "object"
-      },
-      "TitleChangedData": {
-        "description": "The title before and after a rename.",
-        "properties": {
-          "old": {
-            "title": "Old",
-            "type": "string"
-          },
-          "new": {
-            "title": "New",
-            "type": "string"
-          }
-        },
-        "required": [
-          "old",
-          "new"
-        ],
-        "title": "TitleChangedData",
-        "type": "object"
-      },
-      "TrashedActivityOut": {
-        "description": "The Task was moved to Trash.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "trashed",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/NoActivityData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "TrashedActivityOut",
-        "type": "object"
-      },
-      "UnpinnedActivityOut": {
-        "description": "The Task was unpinned.",
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "kind": {
-            "const": "unpinned",
-            "title": "Kind",
-            "type": "string"
-          },
-          "at": {
-            "format": "date-time",
-            "title": "At",
-            "type": "string"
-          },
-          "data": {
-            "$ref": "#/components/schemas/NoActivityData"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "at",
-          "data"
-        ],
-        "title": "UnpinnedActivityOut",
         "type": "object"
       },
       "CalendarQuery": {

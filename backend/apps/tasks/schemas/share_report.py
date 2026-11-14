@@ -6,10 +6,12 @@ They carry only what the viewer reads, never ids or settings of the owner's othe
 from __future__ import annotations
 
 from datetime import date, datetime, time  # noqa: TC003 - Pydantic needs the types at runtime
+from typing import Annotated, Literal
 
 from ninja import Field, Schema
 
 from apps.tasks.models import Task  # noqa: TC001 - Pydantic needs the type at runtime
+from apps.tasks.schemas.activity import TaskActivityOut
 
 
 class ShareReportProjectOut(Schema):
@@ -17,6 +19,21 @@ class ShareReportProjectOut(Schema):
 
     name: str
     is_archived: bool
+
+
+class ShareReportCommentOut(Schema):
+    """A Comment in a Task's timeline, with Mentions as plain names."""
+
+    kind: Literal["comment"]
+    id: int
+    at: datetime = Field(description="When it was written, in the owner's time zone.")
+    body: str = Field(description="Markdown.")
+
+
+ShareReportEntryOut = Annotated[
+    ShareReportCommentOut | TaskActivityOut,
+    Field(discriminator="kind"),
+]
 
 
 class ShareReportTaskOut(Schema):
@@ -40,6 +57,12 @@ class ShareReportTaskOut(Schema):
     tags: list[str] = Field(description="The names of the Task's Tags.")
     description: str
     blocked_reason: str
+    timeline: list[ShareReportEntryOut] = Field(
+        description=(
+            "The Task's Comments and Activity within the link's range, oldest first, with times "
+            "in the owner's time zone and Mentions as the Person's current name."
+        )
+    )
 
 
 class ShareReportSectionOut(Schema):

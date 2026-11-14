@@ -24,6 +24,7 @@ function reportTask(id: number, title: string, fields: Partial<ReportTask> = {})
     tags: [],
     description: "",
     blocked_reason: "",
+    timeline: [],
     ...fields,
   };
 }
@@ -33,7 +34,23 @@ const REPORT: ShareReport = {
   as_of: "2026-11-02T15:00:00+05:30",
   summary: { completed: 1, total: 5, blocked: 1, overdue: 2 },
   sections: [
-    { name: null, tasks: [reportTask(1, "Write the brief")] },
+    {
+      name: null,
+      tasks: [
+        reportTask(1, "Write the brief", {
+          timeline: [
+            { kind: "created", id: 1, at: "2026-10-30T09:00:00+05:30", data: {} },
+            { kind: "comment", id: 1, at: "2026-10-31T10:15:00+05:30", body: "Ask **Grace**" },
+            {
+              kind: "priority_changed",
+              id: 2,
+              at: "2026-11-01T18:45:00+05:30",
+              data: { old: 0, new: 1 },
+            },
+          ],
+        }),
+      ],
+    },
     {
       name: "Venue",
       tasks: [
@@ -93,8 +110,16 @@ describe("ShareReportPage", () => {
       "Book the venue › Call the caterer",
       "Pick a date",
     ]);
-    const lists = screen.getAllByRole("list");
-    expect(lists.every((list) => within(list).queryAllByRole("list").length === 0)).toBe(true);
+    const lists = screen
+      .getAllByRole("list")
+      .filter((list) => list.getAttribute("aria-label") !== "Timeline");
+    expect(
+      lists.every((list) =>
+        within(list)
+          .queryAllByRole("list")
+          .every((nested) => nested.getAttribute("aria-label") === "Timeline"),
+      ),
+    ).toBe(true);
   });
 
   it("shows each Task's details, with times on the owner's clock", async () => {
@@ -116,6 +141,23 @@ describe("ShareReportPage", () => {
       screen.getByRole("heading", { name: "Pick a date" }).closest("li") ?? document.body,
     );
     expect(done.getByText("Completed 1 Nov 2026, 20:00")).toBeInTheDocument();
+  });
+
+  it("shows each Task's Comments and Activity oldest first, on the owner's clock", async () => {
+    mockServer(() => json(REPORT));
+    renderPage();
+
+    const brief = within(
+      (await screen.findByRole("heading", { name: "Write the brief" })).closest("li") ??
+        document.body,
+    );
+    const entries = within(brief.getByRole("list", { name: "Timeline" })).getAllByRole("listitem");
+    expect(entries.map((entry) => entry.textContent)).toEqual([
+      "Created this task30 Oct 2026, 09:00",
+      "Ask Grace31 Oct 2026, 10:15",
+      "Changed priority from None to P11 Nov 2026, 18:45",
+    ]);
+    expect(within(entries[1] ?? document.body).getByText("Grace").tagName).toBe("STRONG");
   });
 
   it("says when the Project is archived", async () => {

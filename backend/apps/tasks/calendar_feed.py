@@ -7,7 +7,6 @@ time; resetting rotates it and turning the feed off clears it.
 
 from __future__ import annotations
 
-import secrets
 from datetime import date, datetime, timedelta
 from typing import TYPE_CHECKING
 from urllib.parse import urlsplit
@@ -17,6 +16,7 @@ from icalendar import Calendar, Event, vDuration
 
 from apps.accounts.models import User
 from apps.accounts.services import local_zone
+from apps.core.address_secrets import new_address_secret
 from apps.tasks.archive import active_tasks
 from apps.tasks.mentions import MENTION
 from apps.tasks.models import OPEN_STATUSES
@@ -26,8 +26,6 @@ if TYPE_CHECKING:
 
     from apps.tasks.models import Task
 
-# 32 random bytes, so feed addresses can't be guessed.
-_TOKEN_BYTES = 32
 # Calendar apps choose when to refresh; this is the hint they may honour.
 _REFRESH = timedelta(hours=1)
 # A timed Task without a start shows as a short event that ends at its due time.
@@ -46,7 +44,7 @@ def feed_url(user: User) -> str | None:
 
 def turn_on(user: User) -> str:
     """Give the user a fresh feed address, replacing any old one, and return it."""
-    token = secrets.token_urlsafe(_TOKEN_BYTES)
+    token = new_address_secret()
     user.calendar_feed_token = token
     user.save(update_fields=["calendar_feed_token"])
     return _address(token)

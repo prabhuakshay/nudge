@@ -141,6 +141,48 @@ describe("Sections in a Project", () => {
     expect(await writes(fetchSpy)).toEqual([]);
   });
 
+  it("adds a Task at the end of a Section from its Add task row", async () => {
+    const fetchSpy = mockApi({
+      open: [makeTask({ id: 1, project_id: WORK.id, title: "Write brief", section_id: TO_DO.id })],
+    });
+    const { user } = renderTaskList({ project: WORK });
+
+    await screen.findByText("Write brief");
+    await user.click(screen.getByRole("button", { name: "Add task at the end of To do" }));
+    await user.keyboard("Review copy{Enter}");
+
+    await waitFor(() => {
+      expect(titlesIn("To do")).toEqual(["Write brief", "Review copy"]);
+    });
+    expect(screen.getByRole("combobox", { name: "Add a task to To do" })).toHaveFocus();
+    expect(await writes(fetchSpy)).toEqual([
+      [
+        "POST /api/v1/tasks",
+        { title: "Review copy", project_id: WORK.id, section_id: TO_DO.id, last: true },
+      ],
+    ]);
+  });
+
+  it("adds a Task at the end of No section from its Add task row", async () => {
+    const fetchSpy = mockApi({
+      open: [makeTask({ id: 1, project_id: WORK.id, title: "Loose end" })],
+    });
+    const { user } = renderTaskList({ project: WORK });
+
+    await screen.findByText("Loose end");
+    await user.click(screen.getByRole("button", { name: "Add task at the end of No section" }));
+    await user.keyboard("Tidy up{Enter}");
+
+    await waitFor(async () => {
+      expect(await writes(fetchSpy)).toEqual([
+        [
+          "POST /api/v1/tasks",
+          { title: "Tidy up", project_id: WORK.id, section_id: null, last: true },
+        ],
+      ]);
+    });
+  });
+
   it("gives the Inbox no Sections", async () => {
     const fetchSpy = mockApi({ open: [makeTask({ id: 1, title: "Buy milk" })] });
 

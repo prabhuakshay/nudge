@@ -1,5 +1,5 @@
 import { Plus } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { Kbd } from "@/components/ui/kbd";
 import { cn } from "@/lib/utils";
@@ -10,7 +10,7 @@ import { typedFields } from "@/features/tasks/quick-add-view";
 import { useCreateTask } from "@/features/tasks/tasks";
 import { useQuickAdd } from "@/features/tasks/use-quick-add";
 
-import { addTaskLabel, type Section } from "./sections";
+import { addTaskLabel, sectionName, type Section } from "./sections";
 
 /** The + at the end of a Section's header that opens the field for adding a Task in it. */
 export function AddSectionTaskButton({
@@ -31,6 +31,39 @@ export function AddSectionTaskButton({
       className="relative flex size-7 items-center justify-center rounded-md text-muted-foreground after:absolute after:-inset-2 after:content-[''] hover:bg-surface hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring"
     >
       <Plus className="size-4" aria-hidden />
+    </button>
+  );
+}
+
+/**
+ * The "Add task" row at the end of a Section, or of No section for null, that opens the field
+ * for adding a Task at its bottom.
+ */
+export function AddTaskRow({ projectId, section }: { projectId: number; section: Section | null }) {
+  const [open, setOpen] = useState(false);
+  if (open) {
+    return (
+      <AddSectionTask
+        projectId={projectId}
+        section={section}
+        last
+        onClose={() => {
+          setOpen(false);
+        }}
+      />
+    );
+  }
+  return (
+    <button
+      type="button"
+      aria-label={`Add task at the end of ${sectionName(section)}`}
+      onClick={() => {
+        setOpen(true);
+      }}
+      className="flex min-h-11 w-full items-center gap-2 px-3 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring sm:min-h-10"
+    >
+      <Plus className="size-4 shrink-0" aria-hidden />
+      Add task
     </button>
   );
 }

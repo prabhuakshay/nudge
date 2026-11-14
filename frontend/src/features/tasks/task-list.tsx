@@ -1,11 +1,11 @@
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { ListTodo } from "lucide-react";
-import { Fragment, useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
 
 import { Kbd } from "@/components/ui/kbd";
 import { ArchivedNotice } from "@/features/projects/archived-notice";
 import { ProjectHeader } from "@/features/projects/project-header";
-import { AddSection } from "@/features/sections/add-section";
+import { AddSectionButton, NewSectionField } from "@/features/sections/add-section";
 import { bySection } from "@/features/sections/section-trees";
 import { SectionedTasks } from "@/features/sections/sectioned-tasks";
 import { sectionsQuery } from "@/features/sections/sections";
@@ -58,6 +58,9 @@ export function TaskList({ project }: { project: SidebarProject }) {
     [showClosed, closed.data],
   );
   const [collapsed, setCollapsed] = useState<ReadonlySet<number>>(new Set());
+  const canAddSection = !project.is_inbox && !project.is_archived;
+  const [addingSection, setAddingSection] = useState(false);
+  const addSectionRef = useRef<HTMLButtonElement>(null);
   const parents = useMemo(() => parentsOf([...open, ...closedTasks]), [open, closedTasks]);
   // J/K step through every Task in outline order, folded or not, as in the prototype.
   const order = useMemo(() => {
@@ -119,6 +122,15 @@ export function TaskList({ project }: { project: SidebarProject }) {
             }}
           />
         )}
+        {canAddSection && (
+          <AddSectionButton
+            open={addingSection}
+            buttonRef={addSectionRef}
+            onOpen={() => {
+              setAddingSection(true);
+            }}
+          />
+        )}
       </ProjectHeader>
 
       {project.is_archived ? (
@@ -137,13 +149,21 @@ export function TaskList({ project }: { project: SidebarProject }) {
           <TaskTableHeader />
 
           {sectioned ? (
-            <SectionedTasks trees={sectioned} context={context} />
+            <SectionedTasks projectId={project.id} trees={sectioned} context={context} />
           ) : (
             <UnsectionedTasks pinned={pinned} unpinned={unpinned} context={context} />
           )}
 
-          {!project.is_inbox && !project.is_archived && (
-            <AddSection projectId={project.id} className="border-b border-border px-3 py-1.5" />
+          {addingSection && (
+            <div className="border-b border-border px-3 py-1.5">
+              <NewSectionField
+                projectId={project.id}
+                onClose={({ refocus }) => {
+                  setAddingSection(false);
+                  if (refocus) addSectionRef.current?.focus();
+                }}
+              />
+            </div>
           )}
 
           <ClosedGroup

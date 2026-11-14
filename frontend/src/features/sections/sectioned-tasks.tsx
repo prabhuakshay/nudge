@@ -11,7 +11,7 @@ import {
 } from "@/features/tasks/task-rows";
 import { rootCount } from "@/features/tasks/task-tree";
 
-import { AddSectionTask, AddSectionTaskButton } from "./add-section-task";
+import { AddSectionTask, AddSectionTaskButton, AddTaskRow } from "./add-section-task";
 import { DeleteSectionDialog, DeleteSectionItem } from "./delete-section";
 import { MoveSectionItems } from "./move-section-items";
 import { SectionBlock } from "./section-block";
@@ -20,13 +20,15 @@ import type { Section } from "./sections";
 
 /**
  * A Project's open Tasks sorted into Sections: No section first, left out when it is empty, then
- * each Section's header with its Tasks under it. Dragging a Task past a header moves it into
- * that Section, and above the first one into No section.
+ * each Section's header with its Tasks under it, each ending in an Add task row. Dragging a Task
+ * past a header moves it into that Section, and above the first one into No section.
  */
 export function SectionedTasks({
+  projectId,
   trees,
   context,
 }: {
+  projectId: number;
   trees: SectionTrees;
   context: SortableRowContext;
 }) {
@@ -50,6 +52,7 @@ export function SectionedTasks({
               count={rootCount(tasks)}
             >
               {rows}
+              {context.sortable && <AddTaskRow projectId={projectId} section={null} />}
             </Group>
           )
         );
@@ -66,7 +69,7 @@ export function SectionedTasks({
         </SectionTasks>
       );
     },
-    [order, context.sortable],
+    [order, projectId, context.sortable],
   );
   return (
     <SortableTaskSections sections={taskSections} renderSection={renderSection} context={context} />
@@ -141,6 +144,7 @@ function SectionTasks({
         />
       )}
       {children}
+      {editable && <AddTaskRow projectId={section.project_id} section={section} />}
     </SectionBlock>
   );
 }

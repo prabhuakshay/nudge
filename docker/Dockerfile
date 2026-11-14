@@ -63,8 +63,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PATH="/opt/venv/bin:${PATH}"
 # The app runs from /opt/venv and never installs packages, and the base image's pip bundles its
-# own copies of urllib3, certifi and others that vulnerability scans flag.
-RUN python -m pip uninstall --yes --quiet pip \
+# own copies of urllib3, certifi and others that vulnerability scans flag. Debian's security fixes
+# reach apt before the base image is rebuilt, so upgrading keeps them from waiting on upstream.
+RUN apt-get update \
+    && apt-get upgrade --yes --no-install-recommends \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip uninstall --yes --quiet pip \
     && groupadd --system --gid 10001 nudge \
     && useradd --system --uid 10001 --gid nudge --no-create-home --shell /usr/sbin/nologin nudge
 WORKDIR /app/backend

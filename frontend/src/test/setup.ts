@@ -36,6 +36,12 @@ globalThis.ResizeObserver = class {
 };
 Element.prototype.scrollIntoView = () => undefined;
 
+// jsdom applies stylesheets but never runs animations, so Radix would wait forever for the
+// animationend of vaul's close animation and keep a closed drawer mounted.
+const noAnimations = document.createElement("style");
+noAnimations.textContent = "*, *::before, *::after { animation: none !important; }";
+document.head.append(noAnimations);
+
 afterEach(() => {
   cleanup();
   // Toasts live in sonner's module state, which a new Toaster replays; start each test without any.

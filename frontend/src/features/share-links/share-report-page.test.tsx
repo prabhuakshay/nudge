@@ -6,15 +6,51 @@ import { requestOf } from "@/test/fetch";
 import type { ShareReport } from "./share-links";
 import { ShareReportPage } from "./share-report-page";
 
+type ReportTask = ShareReport["sections"][number]["tasks"][number];
+
+function reportTask(id: number, title: string, fields: Partial<ReportTask> = {}): ReportTask {
+  return {
+    id,
+    title,
+    parent_title: null,
+    status: "open",
+    priority: 0,
+    due_date: null,
+    due_time: null,
+    start_date: null,
+    start_time: null,
+    completed_at: null,
+    is_overdue: false,
+    tags: [],
+    description: "",
+    blocked_reason: "",
+    ...fields,
+  };
+}
+
 const REPORT: ShareReport = {
   project: { name: "Launch", is_archived: false },
   as_of: "2026-11-02T15:00:00+05:30",
+  summary: { completed: 1, total: 5, blocked: 1, overdue: 2 },
   sections: [
+    { name: null, tasks: [reportTask(1, "Write the brief")] },
     {
-      name: null,
+      name: "Venue",
       tasks: [
-        { id: 1, title: "Write the brief" },
-        { id: 2, title: "Book the venue" },
+        reportTask(2, "Book the venue", {
+          status: "blocked",
+          blocked_reason: "Waiting on Grace",
+          priority: 1,
+          due_date: "2026-11-01",
+          is_overdue: true,
+          tags: ["client"],
+          description: "Ask about **parking**",
+        }),
+        reportTask(3, "Call the caterer", { parent_title: "Book the venue" }),
+        reportTask(4, "Pick a date", {
+          status: "completed",
+          completed_at: "2026-11-01T20:00:00-08:00",
+        }),
       ],
     },
   ],
@@ -34,15 +70,52 @@ function renderPage() {
 }
 
 describe("ShareReportPage", () => {
-  it("shows the Project's name, when the report is from and its open Tasks in order", async () => {
+  it("shows the Project's name, when the report is from and a summary", async () => {
     const fetch = mockServer(() => json(REPORT));
     renderPage();
 
     expect(await screen.findByRole("heading", { level: 1, name: "Launch" })).toBeInTheDocument();
     expect(screen.getByText("As of 2 Nov 2026, 15:00")).toBeInTheDocument();
-    const tasks = within(screen.getByRole("list")).getAllByRole("listitem");
-    expect(tasks.map((task) => task.textContent)).toEqual(["Write the brief", "Book the venue"]);
+    expect(screen.getByText("1 of 5 completed · 1 blocked · 2 overdue")).toBeInTheDocument();
     expect(requestOf(fetch.mock.calls[0]?.[0]).url).toContain("/api/v1/share/the-key");
+  });
+
+  it("lists Sections as plain headings with their Tasks flat and in order", async () => {
+    mockServer(() => json(REPORT));
+    renderPage();
+
+    const venue = await screen.findByRole("heading", { level: 2, name: "Venue" });
+    expect(screen.getAllByRole("heading", { level: 2 })).toEqual([venue]);
+    const titles = screen.getAllByRole("heading", { level: 3 }).map((title) => title.textContent);
+    expect(titles).toEqual([
+      "Write the brief",
+      "Book the venue",
+      "Book the venue › Call the caterer",
+      "Pick a date",
+    ]);
+    const lists = screen.getAllByRole("list");
+    expect(lists.every((list) => within(list).queryAllByRole("list").length === 0)).toBe(true);
+  });
+
+  it("shows each Task's details, with times on the owner's clock", async () => {
+    mockServer(() => json(REPORT));
+    renderPage();
+
+    const venue = within(
+      (await screen.findByRole("heading", { name: "Book the venue" })).closest("li") ??
+        document.body,
+    );
+    expect(venue.getByText("Blocked")).toBeInTheDocument();
+    expect(venue.getByText("P1")).toBeInTheDocument();
+    expect(venue.getByText("Due 1 Nov 2026")).toBeInTheDocument();
+    expect(venue.getByText("Overdue")).toBeInTheDocument();
+    expect(venue.getByText("#client")).toBeInTheDocument();
+    expect(venue.getByText("Blocked: Waiting on Grace")).toBeInTheDocument();
+    expect(venue.getByText("parking").tagName).toBe("STRONG");
+    const done = within(
+      screen.getByRole("heading", { name: "Pick a date" }).closest("li") ?? document.body,
+    );
+    expect(done.getByText("Completed 1 Nov 2026, 20:00")).toBeInTheDocument();
   });
 
   it("says when the Project is archived", async () => {

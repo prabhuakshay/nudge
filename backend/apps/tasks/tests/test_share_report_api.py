@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from typing import TYPE_CHECKING
 
 import pytest
@@ -10,8 +10,20 @@ from django.core.cache import cache
 from django.test import Client
 
 from apps.accounts.services import set_time_zone
-from apps.tasks import creation, project_trash, projects, share_links, trash
+from apps.tasks import (
+    creation,
+    people,
+    project_trash,
+    projects,
+    sections,
+    services,
+    share_links,
+    trash,
+)
+from apps.tasks.creation import NewTask
+from apps.tasks.dates import TaskDates
 from apps.tasks.models import ShareLink, Task
+from apps.tasks.services import TaskEdit
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Iterator
@@ -51,15 +63,17 @@ def _titles(report: dict[str, list[dict[str, list[dict[str, str]]]]]) -> list[st
     return [task["title"] for section in report["sections"] for task in section["tasks"]]
 
 
+def _close(task: Task, status: Task.Status = Task.Status.COMPLETED) -> None:
+    services.update_task(task.owner, task.pk, TaskEdit(status=status))
+
+
 @pytest.mark.django_db
-def test_the_report_shows_the_projects_open_tasks_without_a_session(
+def test_the_report_shows_the_projects_tasks_without_a_session(
     ada: User, work: Project, link: ShareLink
 ) -> None:
     set_time_zone(ada, "Asia/Kolkata")
     creation.create_task(work, "Write the brief")
     creation.create_task(work, "Book the venue")
-    done = creation.create_task(work, "Pick a date")
-    Task.objects.filter(pk=done.pk).update(status=Task.Status.COMPLETED, completed_at=_NOW)
 
     response = _open(link.key)
 
@@ -68,6 +82,186 @@ def test_the_report_shows_the_projects_open_tasks_without_a_session(
     assert report["project"] == {"name": "Work", "is_archived": False}
     assert report["as_of"] == "2026-11-02T15:00:00+05:30"
     assert _titles(report) == ["Book the venue", "Write the brief"]
+
+
+@pytest.mark.django_db
+def test_sections_come_in_list_order_with_closed_tasks_after_open_ones(
+    work: Project, link: ShareLink
+) -> None:
+    design = sections.create_section(work, "Design")
+    build = sections.create_section(work, "Build")
+    creation.create_task(work, "Loose end")
+    creation.create_task(work, "Lay bricks", NewTask(section=build))
+    sketch = creation.create_task(work, "Sketch", NewTask(section=design, last=True))
+    creation.create_task(work, "Pick colours", NewTask(section=design, last=True))
+    _close(sketch)
+
+    report = _open(link.key).json()
+
+    assert [(s["name"], [t["title"] for t in s["tasks"]]) for s in report["sections"]] == [
+        (None, ["Loose end"]),
+        ("Design", ["Pick colours", "Sketch"]),
+        ("Build", ["Lay bricks"]),
+    ]
+
+
+@pytest.mark.django_db
+def test_pinned_tasks_lead_as_in_the_list(ada: User, work: Project, link: ShareLink) -> None:
+    for title in ("Third", "Second", "First"):
+        creation.create_task(work, title)
+    for title in ("Pinned last", "Pinned first"):
+        pinned = creation.create_task(work, title, NewTask(last=True))
+        services.update_task(ada, pinned.pk, TaskEdit(pinned=True))
+
+    assert _titles(_open(link.key).json()) == [
+        "Pinned last",
+        "Pinned first",
+        "First",
+        "Second",
+        "Third",
+    ]
+
+
+@pytest.mark.django_db
+def test_subtasks_follow_their_parent_with_its_title(work: Project, link: ShareLink) -> None:
+    creation.create_task(work, "Last", NewTask(last=True))
+    plan = creation.create_task(work, "Plan")
+    outline = creation.create_subtask(plan, "Outline").task
+    creation.create_subtask(outline, "Headings")
+    creation.create_subtask(plan, "Review")
+
+    tasks = _open(link.key).json()["sections"][0]["tasks"]
+
+    assert [(t["parent_title"], t["title"]) for t in tasks] == [
+        (None, "Plan"),
+        ("Plan", "Outline"),
+        ("Outline", "Headings"),
+        ("Plan", "Review"),
+        (None, "Last"),
+    ]
+
+
+@pytest.mark.django_db
+def test_open_tasks_show_however_old_and_closed_ones_only_if_closed_within_the_range(
+    ada: User, work: Project, freeze_time: Callable[[datetime], None]
+) -> None:
+    freeze_time(_NOW - timedelta(days=400))
+    creation.create_task(work, "Untouched for a year")
+    _close(creation.create_task(work, "Done long ago"))
+    freeze_time(_NOW - timedelta(days=15))
+    _close(creation.create_task(work, "Done 15 days ago"))
+    freeze_time(_NOW - timedelta(days=13))
+    _close(creation.create_task(work, "Dropped 13 days ago"), Task.Status.WONT_DO)
+    freeze_time(_NOW)
+    fortnight = share_links.create_share_link(ada, work.pk)
+    everything = share_links.create_share_link(ada, work.pk)
+    ShareLink.objects.filter(pk=everything.pk).update(range_days=None)
+
+    assert _titles(_open(fortnight.key).json()) == ["Untouched for a year", "Dropped 13 days ago"]
+    assert _titles(_open(everything.key).json()) == [
+        "Untouched for a year",
+        "Dropped 13 days ago",
+        "Done 15 days ago",
+        "Done long ago",
+    ]
+
+
+@pytest.mark.django_db
+def test_a_closed_subtask_under_open_work_follows_the_range_too(
+    work: Project, link: ShareLink, freeze_time: Callable[[datetime], None]
+) -> None:
+    freeze_time(_NOW - timedelta(days=30))
+    plan = creation.create_task(work, "Plan")
+    _close(creation.create_subtask(plan, "Old step").task)
+    freeze_time(_NOW)
+    _close(creation.create_subtask(plan, "New step").task)
+
+    assert _titles(_open(link.key).json()) == ["Plan", "New step"]
+
+
+@pytest.mark.django_db
+def test_each_task_shows_its_details_with_mentions_as_names(
+    ada: User, work: Project, link: ShareLink
+) -> None:
+    grace = people.create_person(ada, "Grace")
+    task = creation.create_task(
+        work,
+        f"Call [@Grace](person:{grace.pk})",
+        NewTask(
+            description=f"Ask [@Grace](person:{grace.pk}) about **dates**",
+            dates=TaskDates(
+                due_date=date(2026, 11, 20),
+                due_time=time(17, 0),
+                start_date=date(2026, 11, 18),
+                start_time=time(9, 0),
+            ),
+            priority=Task.Priority.P1,
+            tags=["client", "urgent"],
+        ),
+    )
+    services.update_task(
+        ada,
+        task.pk,
+        TaskEdit(
+            status=Task.Status.BLOCKED, blocked_reason=f"Waiting on [@Grace](person:{grace.pk})"
+        ),
+    )
+
+    shown = _open(link.key).json()["sections"][0]["tasks"][0]
+
+    assert shown == {
+        "id": task.pk,
+        "title": "Call Grace",
+        "parent_title": None,
+        "status": "blocked",
+        "priority": 1,
+        "due_date": "2026-11-20",
+        "due_time": "17:00:00",
+        "start_date": "2026-11-18",
+        "start_time": "09:00:00",
+        "completed_at": None,
+        "is_overdue": False,
+        "tags": ["client", "urgent"],
+        "description": "Ask Grace about **dates**",
+        "blocked_reason": "Waiting on Grace",
+    }
+
+
+@pytest.mark.django_db
+def test_dates_are_on_the_owners_clock(
+    ada: User, work: Project, link: ShareLink, freeze_time: Callable[[datetime], None]
+) -> None:
+    set_time_zone(ada, "America/Los_Angeles")
+    due = TaskDates(due_date=date(2026, 11, 1), due_time=time(23, 0))
+    creation.create_task(work, "Due last night", NewTask(dates=due))
+    freeze_time(datetime(2026, 11, 2, 4, 0, tzinfo=UTC))
+    _close(creation.create_task(work, "Closed in the evening"))
+
+    tasks = _open(link.key).json()["sections"][0]["tasks"]
+
+    assert [(t["title"], t["due_time"], t["completed_at"]) for t in tasks] == [
+        ("Due last night", "23:00:00", None),
+        ("Closed in the evening", None, "2026-11-01T20:00:00-08:00"),
+    ]
+
+
+@pytest.mark.django_db
+def test_the_summary_counts_completed_out_of_all_shown_blocked_and_overdue(
+    ada: User, work: Project, link: ShareLink
+) -> None:
+    yesterday = TaskDates(due_date=date(2026, 11, 1))
+    creation.create_task(work, "Late", NewTask(dates=yesterday))
+    stuck = creation.create_task(work, "Stuck", NewTask(dates=yesterday))
+    services.update_task(ada, stuck.pk, TaskEdit(status=Task.Status.BLOCKED))
+    plan = creation.create_task(work, "Plan")
+    _close(creation.create_subtask(plan, "Step").task)
+    _close(creation.create_task(work, "Shipped"))
+    _close(creation.create_task(work, "Dropped"), Task.Status.WONT_DO)
+    trash.trash_task(ada, creation.create_task(work, "Thrown away").pk)
+
+    summary = _open(link.key).json()["summary"]
+
+    assert summary == {"completed": 2, "total": 6, "blocked": 1, "overdue": 2}
 
 
 @pytest.mark.django_db

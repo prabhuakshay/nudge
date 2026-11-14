@@ -2430,9 +2430,10 @@ export interface components {
        * @description When the report was made, in the owner's time zone.
        */
       as_of: string;
+      summary: components["schemas"]["ShareReportSummaryOut"];
       /**
        * Sections
-       * @description Groups of open Tasks, in order.
+       * @description No section first, then each Section in List order; empty ones are left out.
        */
       sections: components["schemas"]["ShareReportSectionOut"][];
     };
@@ -2460,14 +2461,59 @@ export interface components {
       tasks: components["schemas"]["ShareReportTaskOut"][];
     };
     /**
+     * ShareReportSummaryOut
+     * @description How the report's Tasks stand, counted over every Task it shows, Subtasks included.
+     */
+    ShareReportSummaryOut: {
+      /** Completed */
+      completed: number;
+      /** Total */
+      total: number;
+      /** Blocked */
+      blocked: number;
+      /** Overdue */
+      overdue: number;
+    };
+    /**
      * ShareReportTaskOut
-     * @description One Task on the report.
+     * @description One Task on the report, with Mentions as plain names.
      */
     ShareReportTaskOut: {
       /** Id */
       id: number;
       /** Title */
       title: string;
+      /**
+       * Parent Title
+       * @description The parent's title for a Subtask, which follows it; null for a root.
+       */
+      parent_title: string | null;
+      status: components["schemas"]["Status"];
+      priority: components["schemas"]["Priority"];
+      /** Due Date */
+      due_date: string | null;
+      /** Due Time */
+      due_time: string | null;
+      /** Start Date */
+      start_date: string | null;
+      /** Start Time */
+      start_time: string | null;
+      /**
+       * Completed At
+       * @description When the Task was Closed, in the owner's time zone; null while it's open.
+       */
+      completed_at: string | null;
+      /** Is Overdue */
+      is_overdue: boolean;
+      /**
+       * Tags
+       * @description The names of the Task's Tags.
+       */
+      tags: string[];
+      /** Description */
+      description: string;
+      /** Blocked Reason */
+      blocked_reason: string;
     };
     /**
      * PersonOut

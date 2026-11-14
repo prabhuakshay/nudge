@@ -646,6 +646,75 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/api/v1/projects/{project_id}/share-links": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * List a Project's Share links
+     * @description List the Project's Share links that haven't been stopped, oldest first.
+     */
+    get: operations["apps_tasks_api_share_links_list_share_links"];
+    put?: never;
+    /**
+     * Share a Project
+     * @description Create a Share link that expires in 7 days and shows 14 days of history.
+     *
+     *     The Inbox and Projects in Trash can't be shared.
+     */
+    post: operations["apps_tasks_api_share_links_create_share_link"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/share-links/{link_id}/stop": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /**
+     * Stop sharing
+     * @description Stop a Share link: its address shows "no longer active" from now on.
+     */
+    post: operations["apps_tasks_api_share_links_stop_share_link"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
+  "/api/v1/share/{key}": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /**
+     * Open a Share link's report
+     * @description Return the shared Project's report, or 410 when the link is no longer active.
+     *
+     *     An inactive link (stopped, expired, or its Project in Trash) says nothing else about itself
+     *     or its Project. An unknown key is 404, so nobody learns which keys ever existed.
+     */
+    get: operations["apps_tasks_api_share_report_open_report"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/api/v1/people": {
     parameters: {
       query?: never;
@@ -2313,6 +2382,92 @@ export interface components {
        * @description The Section it now follows in the same Project; first when left out.
        */
       after_id?: number | null;
+    };
+    /**
+     * ShareLinkOut
+     * @description A Share link, as its owner sees it in the Share panel.
+     */
+    ShareLinkOut: {
+      /** Id */
+      id: number;
+      /** Project Id */
+      project_id: number;
+      /**
+       * Url
+       * @description The public address of the report. Anyone with it can open it.
+       */
+      url: string;
+      /**
+       * Created At
+       * Format: date-time
+       */
+      created_at: string;
+      /**
+       * Expires At
+       * @description When it stops working; null for never.
+       */
+      expires_at: string | null;
+      /**
+       * Range Days
+       * @description How many days back each Task's timeline goes; null for all.
+       */
+      range_days: number | null;
+      /**
+       * Last Opened At
+       * @description Null until someone opens it.
+       */
+      last_opened_at: string | null;
+    };
+    /**
+     * ShareReportOut
+     * @description The whole report a Share link shows, as the Project is now.
+     */
+    ShareReportOut: {
+      project: components["schemas"]["ShareReportProjectOut"];
+      /**
+       * As Of
+       * Format: date-time
+       * @description When the report was made, in the owner's time zone.
+       */
+      as_of: string;
+      /**
+       * Sections
+       * @description Groups of open Tasks, in order.
+       */
+      sections: components["schemas"]["ShareReportSectionOut"][];
+    };
+    /**
+     * ShareReportProjectOut
+     * @description The shared Project, as the report's header shows it.
+     */
+    ShareReportProjectOut: {
+      /** Name */
+      name: string;
+      /** Is Archived */
+      is_archived: boolean;
+    };
+    /**
+     * ShareReportSectionOut
+     * @description A group of the report's Tasks, under a plain heading.
+     */
+    ShareReportSectionOut: {
+      /**
+       * Name
+       * @description The Section's name; null for Tasks outside any Section.
+       */
+      name: string | null;
+      /** Tasks */
+      tasks: components["schemas"]["ShareReportTaskOut"][];
+    };
+    /**
+     * ShareReportTaskOut
+     * @description One Task on the report.
+     */
+    ShareReportTaskOut: {
+      /** Id */
+      id: number;
+      /** Title */
+      title: string;
     };
     /**
      * PersonOut
@@ -5138,6 +5293,146 @@ export interface operations {
       };
       /** @description Unprocessable Content */
       422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_share_links_list_share_links: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShareLinkOut"][];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_share_links_create_share_link: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        project_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description Created */
+      201: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShareLinkOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Unprocessable Content */
+      422: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_share_links_stop_share_link: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        link_id: number;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description No Content */
+      204: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content?: never;
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+    };
+  };
+  apps_tasks_api_share_report_open_report: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        key: string;
+      };
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ShareReportOut"];
+        };
+      };
+      /** @description Not Found */
+      404: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["ErrorOut"];
+        };
+      };
+      /** @description Gone */
+      410: {
         headers: {
           [name: string]: unknown;
         };

@@ -35,6 +35,8 @@ from apps.tasks.api.projects import router as projects_router
 from apps.tasks.api.reminder_actions import router as reminder_actions_router
 from apps.tasks.api.search import router as search_router
 from apps.tasks.api.sections import router as sections_router
+from apps.tasks.api.share_links import router as share_links_router
+from apps.tasks.api.share_report import router as share_report_router
 from apps.tasks.api.sidebar import router as sidebar_router
 from apps.tasks.api.tags import router as tags_router
 from apps.tasks.api.tasks import router as tasks_router
@@ -77,6 +79,8 @@ api.add_router("/notifications", habit_reminder_actions_router, tags=["notificat
 api.add_router("/folders", folders_router, tags=["folders"])
 api.add_router("/projects", projects_router, tags=["projects"])
 api.add_router("/", sections_router, tags=["sections"])
+api.add_router("/", share_links_router, tags=["share links"])
+api.add_router("/share", share_report_router, tags=["share links"])
 api.add_router("/people", people_router, tags=["people"])
 api.add_router("/sidebar", sidebar_router, tags=["sidebar"])
 api.add_router("/tags", tags_router, tags=["tags"])

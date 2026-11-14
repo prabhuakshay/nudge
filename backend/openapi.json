@@ -1608,6 +1608,208 @@
         ]
       }
     },
+    "/api/v1/projects/{project_id}/share-links": {
+      "get": {
+        "operationId": "apps_tasks_api_share_links_list_share_links",
+        "summary": "List a Project's Share links",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ShareLinkOut"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "List the Project's Share links that haven't been stopped, oldest first.",
+        "tags": [
+          "share links"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      },
+      "post": {
+        "operationId": "apps_tasks_api_share_links_create_share_link",
+        "summary": "Share a Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareLinkOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unprocessable Content",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Create a Share link that expires in 7 days and shows 14 days of history.\n\nThe Inbox and Projects in Trash can't be shared.",
+        "tags": [
+          "share links"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/share-links/{link_id}/stop": {
+      "post": {
+        "operationId": "apps_tasks_api_share_links_stop_share_link",
+        "summary": "Stop sharing",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "link_id",
+            "schema": {
+              "title": "Link Id",
+              "type": "integer"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Stop a Share link: its address shows \"no longer active\" from now on.",
+        "tags": [
+          "share links"
+        ],
+        "security": [
+          {
+            "SessionAuth": []
+          }
+        ]
+      }
+    },
+    "/api/v1/share/{key}": {
+      "get": {
+        "operationId": "apps_tasks_api_share_report_open_report",
+        "summary": "Open a Share link's report",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "key",
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShareReportOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          },
+          "410": {
+            "description": "Gone",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorOut"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the shared Project's report, or 410 when the link is no longer active.\n\nAn inactive link (stopped, expired, or its Project in Trash) says nothing else about itself\nor its Project. An unknown key is 404, so nobody learns which keys ever existed.",
+        "tags": [
+          "share links"
+        ]
+      }
+    },
     "/api/v1/people": {
       "get": {
         "operationId": "apps_tasks_api_people_list_people",
@@ -5908,6 +6110,175 @@
           }
         },
         "title": "SectionMoveIn",
+        "type": "object"
+      },
+      "ShareLinkOut": {
+        "description": "A Share link, as its owner sees it in the Share panel.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "project_id": {
+            "title": "Project Id",
+            "type": "integer"
+          },
+          "url": {
+            "description": "The public address of the report. Anyone with it can open it.",
+            "title": "Url",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "expires_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "When it stops working; null for never.",
+            "title": "Expires At"
+          },
+          "range_days": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "How many days back each Task's timeline goes; null for all.",
+            "title": "Range Days"
+          },
+          "last_opened_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Null until someone opens it.",
+            "title": "Last Opened At"
+          }
+        },
+        "required": [
+          "id",
+          "project_id",
+          "url",
+          "created_at",
+          "expires_at",
+          "range_days",
+          "last_opened_at"
+        ],
+        "title": "ShareLinkOut",
+        "type": "object"
+      },
+      "ShareReportOut": {
+        "description": "The whole report a Share link shows, as the Project is now.",
+        "properties": {
+          "project": {
+            "$ref": "#/components/schemas/ShareReportProjectOut"
+          },
+          "as_of": {
+            "description": "When the report was made, in the owner's time zone.",
+            "format": "date-time",
+            "title": "As Of",
+            "type": "string"
+          },
+          "sections": {
+            "description": "Groups of open Tasks, in order.",
+            "items": {
+              "$ref": "#/components/schemas/ShareReportSectionOut"
+            },
+            "title": "Sections",
+            "type": "array"
+          }
+        },
+        "required": [
+          "project",
+          "as_of",
+          "sections"
+        ],
+        "title": "ShareReportOut",
+        "type": "object"
+      },
+      "ShareReportProjectOut": {
+        "description": "The shared Project, as the report's header shows it.",
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "is_archived": {
+            "title": "Is Archived",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "name",
+          "is_archived"
+        ],
+        "title": "ShareReportProjectOut",
+        "type": "object"
+      },
+      "ShareReportSectionOut": {
+        "description": "A group of the report's Tasks, under a plain heading.",
+        "properties": {
+          "name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The Section's name; null for Tasks outside any Section.",
+            "title": "Name"
+          },
+          "tasks": {
+            "items": {
+              "$ref": "#/components/schemas/ShareReportTaskOut"
+            },
+            "title": "Tasks",
+            "type": "array"
+          }
+        },
+        "required": [
+          "name",
+          "tasks"
+        ],
+        "title": "ShareReportSectionOut",
+        "type": "object"
+      },
+      "ShareReportTaskOut": {
+        "description": "One Task on the report.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "ShareReportTaskOut",
         "type": "object"
       },
       "PersonOut": {

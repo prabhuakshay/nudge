@@ -143,6 +143,9 @@ LOGIN_RATE_LIMIT = env.str("NUDGE_LOGIN_RATE_LIMIT", default="10/m")
 # Calendar feed fetches allowed per client IP. Calendar apps poll at most every few minutes, so
 # this only bites someone guessing feed addresses.
 CALENDAR_FEED_RATE_LIMIT = env.str("NUDGE_CALENDAR_FEED_RATE_LIMIT", default="30/m")
+# Share link report opens allowed per client IP. A viewer opens a report a few times at most, so
+# this only bites someone guessing Share link addresses.
+SHARE_LINK_RATE_LIMIT = env.str("NUDGE_SHARE_LINK_RATE_LIMIT", default="30/m")
 
 # ---------------------------------------------------------------- security
 

@@ -271,7 +271,7 @@ LOGGING = {
         "plain": {"format": "{asctime} {levelname} {name}: {message}", "style": "{"},
     },
     "filters": {
-        "redact_feed_tokens": {"()": "apps.core.log_redaction.RedactFeedTokens"},
+        "redact_address_secrets": {"()": "apps.core.log_redaction.RedactAddressSecrets"},
     },
     "handlers": {
         "console": {"class": "logging.StreamHandler", "formatter": "plain"},
@@ -283,8 +283,8 @@ LOGGING = {
             "level": env.str("NUDGE_DJANGO_LOG_LEVEL", default="WARNING"),
             "propagate": False,
         },
-        # These two log request paths, which for a Calendar feed include its secret token.
-        "django.request": {"filters": ["redact_feed_tokens"]},
-        "django.server": {"filters": ["redact_feed_tokens"]},
+        # These two log request paths, which for a Calendar feed or Share link include its secret.
+        "django.request": {"filters": ["redact_address_secrets"]},
+        "django.server": {"filters": ["redact_address_secrets"]},
     },
 }

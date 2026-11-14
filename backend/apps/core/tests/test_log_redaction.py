@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pytest
 
-from apps.core.log_redaction import RedactFeedTokens, redact_feed_tokens
+from apps.core.log_redaction import RedactAddressSecrets, redact_address_secrets
 
 if TYPE_CHECKING:
     from collections.abc import Iterator
@@ -39,7 +39,7 @@ def test_django_logs_an_unknown_feed_without_its_token(
 
 def test_gunicorn_access_lines_carry_no_feed_token(caplog: pytest.LogCaptureFixture) -> None:
     logger = logging.getLogger("test.gunicorn.access")
-    logger.addFilter(RedactFeedTokens())
+    logger.addFilter(RedactAddressSecrets())
     raw_uri = f"/api/v1/calendar/{TOKEN}.ics?refresh=1"
     # Gunicorn formats access lines from a dict of "atoms" like this one.
     atoms = {
@@ -62,6 +62,19 @@ def test_gunicorn_access_lines_carry_no_feed_token(caplog: pytest.LogCaptureFixt
 
 
 def test_other_calendar_paths_are_left_alone() -> None:
-    assert redact_feed_tokens("GET /api/v1/calendar/feed HTTP/1.1") == (
+    assert redact_address_secrets("GET /api/v1/calendar/feed HTTP/1.1") == (
         "GET /api/v1/calendar/feed HTTP/1.1"
     )
+
+
+@pytest.mark.parametrize("path", ["/share/{}", "/api/v1/share/{}", "/share/{}?print=1"])
+def test_share_link_keys_are_redacted(path: str) -> None:
+    line = f"GET {path.format(TOKEN)} HTTP/1.1"
+
+    assert redact_address_secrets(line) == f"GET {path.format('[redacted]')} HTTP/1.1"
+
+
+def test_share_link_management_paths_are_left_alone() -> None:
+    line = "POST /api/v1/projects/3/share-links HTTP/1.1"
+
+    assert redact_address_secrets(line) == line

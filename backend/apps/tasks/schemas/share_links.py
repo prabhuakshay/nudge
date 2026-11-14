@@ -6,6 +6,8 @@ from datetime import datetime  # noqa: TC003 - Pydantic needs the type at runtim
 
 from ninja import Field, Schema
 
+from apps.tasks.share_links import DEFAULT_EXPIRY_DAYS, DEFAULT_RANGE_DAYS
+
 
 class ShareLinkOut(Schema):
     """A Share link, as its owner sees it in the Share panel."""
@@ -25,10 +27,12 @@ class ShareLinkIn(Schema):
     """The settings of a new Share link; fields left out take their defaults."""
 
     expires_in_days: int | None = Field(
-        default=7, description="Days from now until it stops working; null for never."
+        default=DEFAULT_EXPIRY_DAYS,
+        description="Days from now until it stops working; null for never.",
     )
     range_days: int | None = Field(
-        default=14, description="Days of each Task's timeline to show: 7, 14 or 30; null for all."
+        default=DEFAULT_RANGE_DAYS,
+        description="Days of each Task's timeline to show: 7, 14 or 30; null for all.",
     )
 
 
